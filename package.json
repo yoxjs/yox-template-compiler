@@ -1,7 +1,7 @@
 {
-  "name": "yox-expression-compiler",
+  "name": "yox-template-compiler",
   "version": "0.1.0",
-  "description": "yox.js expression compiler",
+  "description": "yox.js template compiler",
   "main": "src/index.js",
   "directories": {
     "example": "example",
@@ -12,13 +12,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yoxjs/yox-expression-compiler.git"
+    "url": "git+https://github.com/yoxjs/yox-template-compiler.git"
   },
   "keywords": [],
   "author": "musicode",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/yoxjs/yox-expression-compiler/issues"
+    "url": "https://github.com/yoxjs/yox-template-compiler/issues"
   },
-  "homepage": "https://github.com/yoxjs/yox-expression-compiler#readme"
+  "homepage": "https://github.com/yoxjs/yox-template-compiler#readme"
 }
