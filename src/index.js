@@ -234,7 +234,7 @@ export function compile(template) {
       }
     }
 
-    if (!node.invalid) {
+    if (node.invalid !== env.TRUE) {
       currentNode.addChild(node)
     }
 
@@ -319,7 +319,7 @@ export function compile(template) {
               if (name.startsWith(syntax.DIRECTIVE_EVENT_PREFIX)) {
                 name = name.slice(syntax.DIRECTIVE_EVENT_PREFIX.length)
                 if (name) {
-                  levelNode = new Directive({ name: 'event', type: name })
+                  levelNode = new Directive({ name: 'event', subName: name })
                 }
               }
               else if (name.startsWith(syntax.DIRECTIVE_PREFIX)) {
