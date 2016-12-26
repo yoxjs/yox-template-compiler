@@ -18,7 +18,13 @@ export default class Import extends Node {
   }
 
   render(data) {
-    return data.partial(this.name).render(data)
+    let partial = data.partial(this.name)
+    if (partial.type === nodeType.ELEMENT) {
+      return partial.render(data)
+    }
+    else {
+      return this.renderChildren(data, partial.children)
+    }
   }
 
 }
