@@ -8,14 +8,14 @@ export const IMPORT = '>'
 export const COMMENT = '!'
 export const SPREAD = '...'
 
-export const DIRECTIVE_PREFIX = 'o-'
-export const DIRECTIVE_EVENT_PREFIX = 'on-'
-
 export const SPECIAL_EVENT = '$event'
 export const SPECIAL_KEYPATH = '$keypath'
 
-export const KEY_REF = 'ref'
-export const KEY_LAZY = 'lazy'
-export const KEY_MODEL = 'model'
+export const DIRECTIVE_PREFIX = 'o-'
+export const DIRECTIVE_EVENT_PREFIX = 'on-'
 
-export const KEY_UNIQUE = 'key'
+export const DIRECTIVE_REF = 'ref'
+export const DIRECTIVE_LAZY = 'lazy'
+export const DIRECTIVE_MODEL = 'model'
+
+export const KEYWORD_UNIQUE = 'key'

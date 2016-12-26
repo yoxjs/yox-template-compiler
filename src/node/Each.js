@@ -1,8 +1,8 @@
 
 import Node from './Node'
-import * as nodeType from '../nodeType'
 
-import * as syntax from '../../config/syntax'
+import * as syntax from '../syntax'
+import * as nodeType from '../nodeType'
 
 import * as is from 'yox-common/util/is'
 import * as array from 'yox-common/util/array'

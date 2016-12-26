@@ -24,7 +24,7 @@ import * as env from 'yox-common/util/env'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
 import * as logger from 'yox-common/util/logger'
-import * as expression from 'yox-expression-compiler'
+import * as expressionEnginer from 'yox-expression-compiler'
 
 let cache = { }
 
@@ -51,7 +51,7 @@ const parsers = [
     },
     create: function (source) {
       let terms = source.slice(syntax.EACH.length).trim().split(':')
-      let expr = expression.compile(terms[0])
+      let expr = expressionEnginer.compile(terms[0])
       let index
       if (terms[1]) {
         index = terms[1].trim()
@@ -88,7 +88,7 @@ const parsers = [
     create: function (source) {
       let expr = source.slice(syntax.IF.length).trim()
       return expr
-        ? new If({ expr: expression.compile(expr) })
+        ? new If({ expr: expressionEnginer.compile(expr) })
         : ERROR_EXPRESSION
     }
   },
@@ -100,7 +100,7 @@ const parsers = [
       let expr = source.slice(syntax.ELSE_IF.length)
       if (expr) {
         popStack()
-        return new ElseIf({ expr: expression.compile(expr) })
+        return new ElseIf({ expr: expressionEnginer.compile(expr) })
       }
       return ERROR_EXPRESSION
     }
@@ -121,7 +121,7 @@ const parsers = [
     create: function (source) {
       let expr = source.slice(syntax.SPREAD.length)
       if (expr) {
-        return new Spread({ expr: expression.compile(expr) })
+        return new Spread({ expr: expressionEnginer.compile(expr) })
       }
       return ERROR_EXPRESSION
     }
@@ -137,7 +137,7 @@ const parsers = [
         source = source.slice(1)
       }
       return new Expression({
-        expr: expression.compile(source),
+        expr: expressionEnginer.compile(source),
         safe,
       })
     }
@@ -147,6 +147,12 @@ const parsers = [
 const LEVEL_ELEMENT = 0
 const LEVEL_ATTRIBUTE = 1
 const LEVEL_TEXT = 2
+
+const buildInDirectives = { }
+buildInDirectives[syntax.DIRECTIVE_REF] =
+buildInDirectives[syntax.DIRECTIVE_LAZY] =
+buildInDirectives[syntax.DIRECTIVE_MODEL] =
+buildInDirectives[syntax.KEYWORD_UNIQUE] = env.TRUE
 
 /**
  * 把抽象语法树渲染成 Virtual DOM
@@ -228,7 +234,9 @@ export function compile(template) {
       }
     }
 
-    currentNode.addChild(node)
+    if (!node.invalid) {
+      currentNode.addChild(node)
+    }
 
     if (children) {
       pushStack(node)
@@ -304,14 +312,27 @@ export function compile(template) {
             content = content.slice(match.index + match[0].length)
             name = match[1]
 
-            levelNode = name === syntax.KEY_REF
-              || name === syntax.KEY_LAZY
-              || name === syntax.KEY_MODEL
-              || name === syntax.KEY_UNIQUE
-              || name.startsWith(syntax.DIRECTIVE_PREFIX)
-              || name.startsWith(syntax.DIRECTIVE_EVENT_PREFIX)
-            ? new Directive({ name })
-            : new Attribute({ name })
+            if (buildInDirectives[name]) {
+              levelNode = new Directive({ name })
+            }
+            else {
+              if (name.startsWith(syntax.DIRECTIVE_EVENT_PREFIX)) {
+                name = name.slice(syntax.DIRECTIVE_EVENT_PREFIX.length)
+                if (name) {
+                  levelNode = new Directive({ name: 'event', type: name })
+                }
+              }
+              else if (name.startsWith(syntax.DIRECTIVE_PREFIX)) {
+                name = name.slice(syntax.DIRECTIVE_PREFIX.length)
+                levelNode = new Directive({ name })
+                if (!name || buildInDirectives[name]) {
+                  levelNode.invalid = env.TRUE
+                }
+              }
+              else {
+                levelNode = new Attribute({ name })
+              }
+            }
 
             addChild(levelNode)
             level++
