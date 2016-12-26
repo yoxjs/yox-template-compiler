@@ -1,0 +1,24 @@
+{
+  "name": "yox-expression-compiler",
+  "version": "0.1.0",
+  "description": "yox.js expression compiler",
+  "main": "src/index.js",
+  "directories": {
+    "example": "example",
+    "test": "test"
+  },
+  "devDependencies": {
+    "yox-common": "^0.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yoxjs/yox-expression-compiler.git"
+  },
+  "keywords": [],
+  "author": "musicode",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yoxjs/yox-expression-compiler/issues"
+  },
+  "homepage": "https://github.com/yoxjs/yox-expression-compiler#readme"
+}
