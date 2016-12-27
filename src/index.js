@@ -376,7 +376,7 @@ export function compile(template) {
                   util.parseError(template, index, mainScanner.pos + helperScanner.pos)
                 }
                 else if (level === LEVEL_ATTRIBUTE
-                  && node.type === nodeType.EXPRESSION
+                  && index.type === nodeType.EXPRESSION
                 ) {
                   levelNode = new Attribute({ name: index })
                   level++
