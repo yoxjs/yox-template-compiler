@@ -245,7 +245,9 @@ export function compile(template) {
     match = util.matchByQuote(content, quote)
     if (match) {
       addChild(
-        new Text({ content: match })
+        new Text({
+          content: match,
+        })
       )
     }
     let { length } = match
@@ -419,7 +421,7 @@ export function compile(template) {
       if (mainScanner.charAt(0) !== '>') {
         return util.parseError(template, 'Illegal tag name', mainScanner.pos)
       }
-      else if (name !== currentNode.name) {
+      else if (currentNode.type === nodeType.ELEMENT && name !== currentNode.name) {
         return util.parseError(template, 'Unexpected closing tag', mainScanner.pos)
       }
 
