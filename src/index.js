@@ -46,10 +46,10 @@ const ERROR_EXPRESSION = 'Expected expression'
 
 const parsers = [
   {
-    test: function (source) {
+    test(source) {
       return source.startsWith(syntax.EACH)
     },
-    create: function (source) {
+    create(source) {
       let terms = source.slice(syntax.EACH.length).trim().split(':')
       let expr = expressionEnginer.compile(terms[0])
       let index
@@ -60,10 +60,10 @@ const parsers = [
     }
   },
   {
-    test: function (source) {
+    test(source) {
        return source.startsWith(syntax.IMPORT)
     },
-    create: function (source) {
+    create(source) {
       let name = source.slice(syntax.IMPORT.length).trim()
       return name
         ? new Import({ name })
@@ -71,10 +71,10 @@ const parsers = [
     }
   },
   {
-    test: function (source) {
+    test(source) {
        return source.startsWith(syntax.PARTIAL)
     },
-    create: function (source) {
+    create(source) {
       let name = source.slice(syntax.PARTIAL.length).trim()
       return name
         ? new Partial({ name })
@@ -82,10 +82,10 @@ const parsers = [
     }
   },
   {
-    test: function (source) {
+    test(source) {
        return source.startsWith(syntax.IF)
     },
-    create: function (source) {
+    create(source) {
       let expr = source.slice(syntax.IF.length).trim()
       return expr
         ? new If({ expr: expressionEnginer.compile(expr) })
@@ -93,10 +93,10 @@ const parsers = [
     }
   },
   {
-    test: function (source) {
+    test(source) {
       return source.startsWith(syntax.ELSE_IF)
     },
-    create: function (source, popStack) {
+    create(source, popStack) {
       let expr = source.slice(syntax.ELSE_IF.length)
       if (expr) {
         popStack()
@@ -106,19 +106,19 @@ const parsers = [
     }
   },
   {
-    test: function (source) {
+    test(source) {
       return source.startsWith(syntax.ELSE)
     },
-    create: function (source, popStack) {
+    create(source, popStack) {
       popStack()
       return new Else()
     }
   },
   {
-    test: function (source) {
+    test(source) {
       return source.startsWith(syntax.SPREAD)
     },
-    create: function (source) {
+    create(source) {
       let expr = source.slice(syntax.SPREAD.length)
       if (expr) {
         return new Spread({ expr: expressionEnginer.compile(expr) })
@@ -127,10 +127,10 @@ const parsers = [
     }
   },
   {
-    test: function (source) {
+    test(source) {
       return !source.startsWith(syntax.COMMENT)
     },
-    create: function (source) {
+    create(source) {
       let safe = env.TRUE
       if (source.startsWith('{')) {
         safe = env.FALSE
@@ -170,7 +170,7 @@ export function render(ast, data, partial) {
       keys: [ ],
       context: new Context(data),
       partial,
-      addDeps: function (childrenDeps) {
+      addDeps(childrenDeps) {
         object.extend(deps, childrenDeps)
       }
     }),
