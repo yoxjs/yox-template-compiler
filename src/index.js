@@ -28,10 +28,8 @@ import * as expressionEnginer from 'yox-expression-compiler'
 
 let cache = { }
 
-const openingDelimiter = '\\{\\{\\s*'
-const closingDelimiter = '\\s*\\}\\}'
-const openingDelimiterPattern = new RegExp(openingDelimiter)
-const closingDelimiterPattern = new RegExp(closingDelimiter)
+const openingDelimiterPattern = new RegExp(syntax.DELIMITER_OPENING)
+const closingDelimiterPattern = new RegExp(syntax.DELIMITER_CLOSING)
 
 const elementPattern = /<(?:\/)?[-a-z]\w*/i
 const elementEndPattern = /(?:\/)?>/

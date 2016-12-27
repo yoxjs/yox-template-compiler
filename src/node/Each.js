@@ -44,7 +44,9 @@ export default class Each extends Node {
       let { context, keys } = data
       let listContext = context.push(value)
 
-      keys.push(expr.stringify())
+      keys.push(
+        keypathUtil.normalize(expr.stringify())
+      )
 
       iterate(
         value,
