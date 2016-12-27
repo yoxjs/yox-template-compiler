@@ -79,10 +79,11 @@ export default class Context {
 
     let { instance, keypath, lookup } = this.format(key)
     if (instance) {
-      let { cache } = instance
+      let { data, cache } = instance
       if (!object.has(cache, keypath)) {
-        let result
         if (keypath) {
+          let result
+
           if (lookup) {
             let keys = [ keypath ]
             while (instance) {
@@ -98,16 +99,17 @@ export default class Context {
             keypath = keys.join(keypathUtil.SEPARATOR_PATH)
           }
           else {
-            result = object.get(instance.data, keypath)
+            result = object.get(data, keypath)
+          }
+
+          if (result) {
+            cache[keypath] = result.value
           }
         }
         else {
-          result = instance.data
+          cache[keypath] = data
         }
 
-        if (result) {
-          cache[keypath] = result.value
-        }
       }
 
       return {
@@ -117,7 +119,7 @@ export default class Context {
     }
 
     return {
-      keypath,
+      keypath: key,
     }
 
   }

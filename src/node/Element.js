@@ -9,7 +9,7 @@ import * as keypathUtil from 'yox-common/util/keypath'
  * 元素节点
  *
  * @param {string} name
- * @param {string} component
+ * @param {?string} component
  */
 export default class Element extends Node {
 

@@ -1,4 +1,6 @@
 
+import * as string from 'yox-common/util/string'
+
 export default class Scanner {
 
   constructor(str) {
@@ -72,7 +74,7 @@ export default class Scanner {
   }
 
   charAt(index) {
-    return this.tail[index]
+    return string.charAt(this.tail, index)
   }
 
 }

@@ -22,7 +22,7 @@ export default class Import extends Node {
     if (partial.type === nodeType.ELEMENT) {
       return partial.render(data)
     }
-    else {
+    else if (partial.type === nodeType.PARTIAL) {
       return this.renderChildren(data, partial.children)
     }
   }
