@@ -181,7 +181,7 @@ export function render(ast, data, createText, createElement, addDeps) {
   let context = new Context(data)
 
   let execute = function (expr) {
-    let { value, deps } = expr.execute(context)
+    let { value, deps } = expressionEnginer.execute(expr, context)
     if (addDeps) {
         addDeps(deps, getKeypath)
     }
@@ -298,7 +298,9 @@ export function render(ast, data, createText, createElement, addDeps) {
 
             let result = [ ]
 
-            let keypath = keypathUtil.normalize(expr.stringify())
+            let keypath = keypathUtil.normalize(
+              expressionEnginer.stringify(expr)
+            )
             keys.push(keypath)
             context = context.push(value)
 
