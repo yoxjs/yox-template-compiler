@@ -24,6 +24,10 @@ export default class Context {
     return new Context(data, this)
   }
 
+  pop() {
+    return this.parent
+  }
+
   format(keypath) {
     let instance = this, keys = keypathUtil.parse(keypath)
     if (keys[0] === 'this') {

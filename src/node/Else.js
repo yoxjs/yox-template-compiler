@@ -11,8 +11,4 @@ export default class Else extends Node {
     super(nodeType.ELSE)
   }
 
-  render(data) {
-    return this.renderChildren(data)
-  }
-
 }

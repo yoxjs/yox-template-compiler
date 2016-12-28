@@ -23,8 +23,18 @@ import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
+import * as string from 'yox-common/util/string'
 import * as logger from 'yox-common/util/logger'
+import * as keypathUtil from 'yox-common/util/keypath'
+
 import * as expressionEnginer from 'yox-expression-compiler'
+
+const EQUAL = 61         // =
+const SLASH = 47         // /
+const ARROW_LEFT = 60    // <
+const ARROW_RIGHT = 62   // >
+const BRACE_LEFT = 123   // {
+const BRACE_RIGHT = 125  // }
 
 let cache = { }
 
@@ -54,7 +64,7 @@ const parsers = [
       if (terms[1]) {
         index = terms[1].trim()
       }
-      return new Each({ expr, index })
+      return new Each(expr, index)
     }
   },
   {
@@ -64,7 +74,7 @@ const parsers = [
     create(source) {
       let name = source.slice(syntax.IMPORT.length).trim()
       return name
-        ? new Import({ name })
+        ? new Import(name)
         : ERROR_PARTIAL_NAME
     }
   },
@@ -75,7 +85,7 @@ const parsers = [
     create(source) {
       let name = source.slice(syntax.PARTIAL.length).trim()
       return name
-        ? new Partial({ name })
+        ? new Partial(name)
         : ERROR_PARTIAL_NAME
     }
   },
@@ -86,7 +96,7 @@ const parsers = [
     create(source) {
       let expr = source.slice(syntax.IF.length).trim()
       return expr
-        ? new If({ expr: expressionEnginer.compile(expr) })
+        ? new If(expressionEnginer.compile(expr))
         : ERROR_EXPRESSION
     }
   },
@@ -98,7 +108,7 @@ const parsers = [
       let expr = source.slice(syntax.ELSE_IF.length)
       if (expr) {
         popStack()
-        return new ElseIf({ expr: expressionEnginer.compile(expr) })
+        return new ElseIf(expressionEnginer.compile(expr))
       }
       return ERROR_EXPRESSION
     }
@@ -119,7 +129,7 @@ const parsers = [
     create(source) {
       let expr = source.slice(syntax.SPREAD.length)
       if (expr) {
-        return new Spread({ expr: expressionEnginer.compile(expr) })
+        return new Spread(expressionEnginer.compile(expr))
       }
       return ERROR_EXPRESSION
     }
@@ -134,10 +144,10 @@ const parsers = [
         safe = env.FALSE
         source = source.slice(1)
       }
-      return new Expression({
-        expr: expressionEnginer.compile(source),
-        safe,
-      })
+      return new Expression(
+        expressionEnginer.compile(source),
+        safe
+      )
     }
   }
 ]
@@ -146,34 +156,282 @@ const LEVEL_ELEMENT = 0
 const LEVEL_ATTRIBUTE = 1
 const LEVEL_TEXT = 2
 
+const levelTypes = { }
+levelTypes[ nodeType.ELEMENT ] =
+levelTypes[ nodeType.ATTRIBUTE ] =
+levelTypes[ nodeType.DIRECTIVE ] = env.TRUE
+
 const buildInDirectives = { }
-buildInDirectives[syntax.DIRECTIVE_REF] =
-buildInDirectives[syntax.DIRECTIVE_LAZY] =
-buildInDirectives[syntax.DIRECTIVE_MODEL] =
-buildInDirectives[syntax.KEYWORD_UNIQUE] = env.TRUE
+buildInDirectives[ syntax.DIRECTIVE_REF ] =
+buildInDirectives[ syntax.DIRECTIVE_LAZY ] =
+buildInDirectives[ syntax.DIRECTIVE_MODEL ] =
+buildInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
 
-/**
- * 把抽象语法树渲染成 Virtual DOM
- *
- * @param {Object} ast
- * @param {Object} data
- * @return {Object}
- */
-export function render(ast, data, partial) {
+export function render(ast, data, createText, createElement, addDeps) {
 
-  let deps = { }
-
-  return {
-    root: ast.render({
-      keys: [ ],
-      context: new Context(data),
-      partial,
-      addDeps(childrenDeps) {
-        object.extend(deps, childrenDeps)
-      }
-    }),
-    deps,
+  let keys = [ ]
+  let getKeypath = function () {
+    return keypathUtil.stringify(keys)
   }
+  getKeypath.$computed = env.TRUE
+  data[ syntax.SPECIAL_KEYPATH ] = getKeypath
+
+  let level = 0
+  let partials = { }
+  let context = new Context(data)
+
+  let execute = function (expr) {
+    let { value, deps } = expr.execute(context)
+    if (addDeps) {
+        addDeps(deps, getKeypath)
+    }
+    return value
+  }
+
+  let merge = function (nodes) {
+    if (nodes.length === 1) {
+      return nodes[0]
+    }
+    else if (nodes.length > 1) {
+      return nodes.join('')
+    }
+  }
+
+  let traverseList = function (nodes) {
+    let list = [ ], item
+    let i = 0, node
+    while (node = nodes[i]) {
+      item = walkTree(node)
+      if (item) {
+        array.push(list, item)
+        if (node.type === nodeType.IF
+          || node.type === nodeType.ELSE_IF
+        ) {
+          // 跳过后面紧跟着的 elseif else
+          while (node = nodes[i + 1]) {
+            if (node.type === nodeType.ELSE_IF
+              || node.type === nodeType.ELSE
+            ) {
+              i++
+            }
+            else {
+              break
+            }
+          }
+        }
+      }
+      i++
+    }
+    return list
+  }
+
+  let traverseTree = function (node, enter, leave) {
+
+    let result = enter(node)
+    if (result) {
+      return result
+    }
+    else if (result === env.FALSE) {
+      return
+    }
+
+    let { children, attributes, directives } = node
+    if (is.array(children)) {
+      children = traverseList(children)
+    }
+    if (is.array(attributes)) {
+      attributes = traverseList(attributes)
+    }
+    if (is.array(directives)) {
+      directives = traverseList(directives)
+    }
+
+    return leave(node, children, attributes, directives)
+
+  }
+
+  let walkTree = function (root) {
+    return traverseTree(
+      root,
+      function (node) {
+
+        let { type, name } = node
+
+        switch (type) {
+
+          // 用时定义的子模块无需注册到组件实例
+          case nodeType.PARTIAL:
+            partials[name] = node
+            return env.FALSE
+
+          case nodeType.IMPORT:
+            let partial = partials[name] || instance.partial(name)
+            if (partial) {
+              return traverseList(partial.children)
+            }
+            logger.error(`Importing partial '${name}' is not found.`)
+            break
+
+          // 条件判断失败就没必要往下走了
+          case nodeType.IF:
+          case nodeType.ELSE_IF:
+            if (!execute(node.expr)) {
+              return env.FALSE
+            }
+            break
+
+          // each 比较特殊，只能放在 enter 里执行
+          case nodeType.EACH:
+            let { expr, index, children } = node
+            let value = execute(expr)
+
+            let iterate
+            if (is.array(value)) {
+              iterate = array.each
+            }
+            else if (is.object(value)) {
+              iterate = object.each
+            }
+            else {
+              return env.FALSE
+            }
+
+            let result = [ ]
+
+            let keypath = keypathUtil.normalize(expr.stringify())
+            keys.push(keypath)
+            context = context.push(value)
+
+            iterate(
+              value,
+              function (item, i) {
+                if (index) {
+                  context.set(index, i)
+                }
+
+                keys.push(i)
+                context = context.push(item)
+
+                array.push(
+                  result,
+                  traverseList(children)
+                )
+
+                keys.pop()
+                context = context.pop()
+
+              }
+            )
+
+            keys.pop()
+            context = context.pop()
+
+            return result
+
+        }
+
+        if (object.has(levelTypes, type)) {
+          level++
+        }
+
+      },
+      function (node, children, attributes, directives) {
+
+        let { type, name, subName, component, content } = node
+
+        if (object.has(levelTypes, type)) {
+          level--
+        }
+
+        let keypath = getKeypath()
+
+        switch (type) {
+          case nodeType.TEXT:
+            return createText({
+              keypath,
+              content,
+            })
+
+
+          case nodeType.EXPRESSION:
+            let { expr, safe } = node
+            content = execute(expr)
+            if (is.func(content) && content.$computed) {
+              content = content()
+            }
+            return createText({
+              safe,
+              keypath,
+              content,
+            })
+
+
+          case nodeType.ATTRIBUTE:
+            if (name.type === nodeType.EXPRESSION) {
+              name = execute(name.expr)
+            }
+            return {
+              name,
+              keypath,
+              value: merge(children),
+            }
+
+
+          case nodeType.DIRECTIVE:
+            return {
+              name,
+              subName,
+              keypath,
+              value: merge(children),
+            }
+
+
+          case nodeType.IF:
+          case nodeType.ELSE_IF:
+          case nodeType.ELSE:
+            return children
+
+
+          case nodeType.SPREAD:
+            content = execute(node.expr)
+            if (is.object(content)) {
+              let result = [ ]
+              object.each(
+                content,
+                function (value, name) {
+                  array.push(
+                    result,
+                    {
+                      name,
+                      value,
+                      keypath,
+                    }
+                  )
+                }
+              )
+              return result
+            }
+            break
+
+
+          case nodeType.ELEMENT:
+            let options = {
+              name,
+              attributes,
+              directives,
+              keypath,
+            }
+            if (!component) {
+              options.children = children
+            }
+            return createElement(options, !level, component)
+        }
+
+      }
+    )
+  }
+
+  return walkTree(ast)
 
 }
 
@@ -189,13 +447,20 @@ export function compile(template) {
     return cache[template]
   }
 
-  let name,
-    quote,
-    content,
-    isSelfClosing,
-    match
+  // 当前内容
+  let content
+  // 记录标签名、属性名、指令名
+  let name
+  // 记录属性、指令值的开始引号，方便匹配结束引号
+  let quote
+  // 标签是否子闭合
+  let isSelfClosing
+  // 正则匹配结果
+  let match
 
+  // 主扫描器
   let mainScanner = new Scanner(template)
+  // 辅扫描器
   let helperScanner = new Scanner()
 
   // level 有三级
@@ -206,7 +471,7 @@ export function compile(template) {
   let level = LEVEL_ELEMENT, levelNode
 
   let nodeStack = [ ]
-  let rootNode = new Element({ name: 'root' })
+  let rootNode = new Element('root')
   let currentNode = rootNode
 
   let pushStack = function (node) {
@@ -245,9 +510,7 @@ export function compile(template) {
     match = util.matchByQuote(content, quote)
     if (match) {
       addChild(
-        new Text({
-          content: match,
-        })
+        new Text(match)
       )
     }
     let { length } = match
@@ -273,7 +536,7 @@ export function compile(template) {
 
       if (content) {
 
-        // 支持以下 8 种写法：
+        // 属性和指令支持以下 8 种写法：
         // 1. name
         // 2. name="value"
         // 3. name="{{value}}"
@@ -283,8 +546,7 @@ export function compile(template) {
         // 7. {{name}}="{{value}}"
         // 8. {{name}}="prefix{{value}}suffix"
 
-        // 已开始解析 ATTRIBUTE 或 DIRECTIVE
-        // 表示至少已经有了 name
+        // 已开始解析属性或指令
         if (level === LEVEL_TEXT) {
           // 命中 8 种写法中的 3 4
           // 因为前面处理过 {{ }}，所以 levelNode 必定有 child
@@ -293,8 +555,8 @@ export function compile(template) {
           }
           else {
             // 命中 8 种写法中的 6 7 8
-            if (content.charAt(0) === '=') {
-              quote = content.charAt(1)
+            if (string.charCodeAt(content, 0) === EQUAL) {
+              quote = string.charAt(content, 1)
               content = content.slice(2)
             }
             // 命中 8 种写法中的 5
@@ -313,24 +575,24 @@ export function compile(template) {
             name = match[1]
 
             if (buildInDirectives[name]) {
-              levelNode = new Directive({ name })
+              levelNode = new Directive(name)
             }
             else {
               if (name.startsWith(syntax.DIRECTIVE_EVENT_PREFIX)) {
                 name = name.slice(syntax.DIRECTIVE_EVENT_PREFIX.length)
                 if (name) {
-                  levelNode = new Directive({ name: 'event', subName: name })
+                  levelNode = new Directive('event', name)
                 }
               }
               else if (name.startsWith(syntax.DIRECTIVE_PREFIX)) {
                 name = name.slice(syntax.DIRECTIVE_PREFIX.length)
-                levelNode = new Directive({ name })
+                levelNode = new Directive(name)
                 if (!name || buildInDirectives[name]) {
                   levelNode.invalid = env.TRUE
                 }
               }
               else {
-                levelNode = new Attribute({ name })
+                levelNode = new Attribute(name)
               }
             }
 
@@ -350,7 +612,7 @@ export function compile(template) {
         }
         else if (content) {
           addChild(
-            new Text({ content })
+            new Text(content)
           )
         }
 
@@ -361,7 +623,7 @@ export function compile(template) {
       helperScanner.nextAfter(closingDelimiterPattern)
 
       if (content) {
-        if (content.charAt(0) === '/') {
+        if (string.charCodeAt(content, 0) === SLASH) {
           popStack()
         }
         else {
@@ -380,7 +642,7 @@ export function compile(template) {
                 else if (level === LEVEL_ATTRIBUTE
                   && index.type === nodeType.EXPRESSION
                 ) {
-                  levelNode = new Attribute({ name: index })
+                  levelNode = new Attribute(index)
                   level++
                   addChild(levelNode)
                 }
@@ -439,16 +701,13 @@ export function compile(template) {
       if (componentNamePattern.test(name)) {
         // 低版本浏览器不支持自定义标签，需要转成 div
         addChild(
-          new Element({
-            name: 'div',
-            component: name,
-          })
+          new Element(name, env.TRUE)
         )
         isSelfClosing = env.TRUE
       }
       else {
         addChild(
-          new Element({ name })
+          new Element(name)
         )
         isSelfClosing = selfClosingTagNamePattern.test(name)
       }
@@ -479,10 +738,12 @@ export function compile(template) {
   }
 
   let { children } = rootNode
-  if (children.length > 1) {
+  let root = children[0]
+
+  if (children.length > 1 || root.type !== nodeType.ELEMENT) {
     logger.error('Component template should contain exactly one root element.')
   }
 
-  return cache[template] = children[0]
+  return cache[template] = root
 
 }

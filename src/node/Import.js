@@ -3,7 +3,6 @@ import Node from './Node'
 import * as nodeType from '../nodeType'
 
 import * as env from 'yox-common/util/env'
-import * as object from 'yox-common/util/object'
 
 /**
  * import 节点
@@ -12,19 +11,9 @@ import * as object from 'yox-common/util/object'
  */
 export default class Import extends Node {
 
-  constructor(options) {
+  constructor(name) {
     super(nodeType.IMPORT, env.FALSE)
-    object.extend(this, options)
-  }
-
-  render(data) {
-    let partial = data.partial(this.name)
-    if (partial.type === nodeType.ELEMENT) {
-      return partial.render(data)
-    }
-    else if (partial.type === nodeType.PARTIAL) {
-      return this.renderChildren(data, partial.children)
-    }
+    this.name = name
   }
 
 }
