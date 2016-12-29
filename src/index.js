@@ -1,5 +1,4 @@
 
-import * as util from './util'
 import * as syntax from './syntax'
 import * as nodeType from './nodeType'
 
@@ -36,8 +35,7 @@ const ARROW_RIGHT = 62   // >
 const BRACE_LEFT = 123   // {
 const BRACE_RIGHT = 125  // }
 
-// 缓存编译结果
-let cache = { }
+const BREAKLINE = '\n'
 
 const openingDelimiterPattern = new RegExp(syntax.DELIMITER_OPENING)
 const closingDelimiterPattern = new RegExp(syntax.DELIMITER_CLOSING)
@@ -49,6 +47,9 @@ const attributePattern = /([-:@a-z0-9]+)(?==["'])?/i
 
 const nonSingleQuotePattern = /^[^']*/
 const nonDoubleQuotePattern = /^[^"]*/
+
+const breaklinePrefixPattern = /^[ \t]*\n/
+const breaklineSuffixPattern = /\n[ \t]*$/
 
 const componentNamePattern = /[-A-Z]/
 const selfClosingTagNamePattern = /input|img|br/i
@@ -531,6 +532,56 @@ export function render(ast, createText, createElement, importTemplate, data) {
 
 }
 
+// 缓存编译结果
+let cache = { }
+
+function getLocationByPos(str, pos) {
+
+  let line = 0, col = 0, index = 0
+
+  array.each(
+    str.split(BREAKLINE),
+    function (lineStr) {
+      line++
+      col = 0
+
+      let { length } = lineStr
+      if (pos >= index && pos <= (index + length)) {
+        col = pos - index
+        return env.FALSE
+      }
+
+      index += length
+    }
+  )
+
+  return { line, col }
+
+}
+
+/**
+ * 是否是纯粹的换行
+ *
+ * @param {string} content
+ * @return {boolean}
+ */
+function isBreakline(content) {
+  return content.indexOf(BREAKLINE) >= 0
+    && content.trim() === ''
+}
+
+/**
+ * trim 文本开始和结束位置的换行符
+ *
+ * @param {string} content
+ * @return {boolean}
+ */
+function trimBreakline(content) {
+  return content
+    .replace(breaklinePrefixPattern, '')
+    .replace(breaklineSuffixPattern, '')
+}
+
 /**
  * 解析属性值，传入开始引号，匹配结束引号
  *
@@ -604,6 +655,17 @@ export function compile(template, loose) {
   let rootNode = new Element('root')
   let currentNode = rootNode
 
+  let parseError = function (msg, pos) {
+    if (pos == env.NULL) {
+      msg += '.'
+    }
+    else {
+      let { line, col } = getLocationByPos(template, pos)
+      msg += `, at line ${line}, col ${col}.`
+    }
+    logger.error(`${msg}${BREAKLINE}${template}`)
+  }
+
   let pushStack = function (node) {
     array.push(nodeStack, currentNode)
     currentNode = node
@@ -619,12 +681,12 @@ export function compile(template, loose) {
     let { type, content } = node
 
     if (type === nodeType.TEXT) {
-      if (content = util.trimBreakline(content)) {
-        node.content = content
-      }
-      else {
+      if (isBreakline(content)
+        || !(content = trimBreakline(content))
+      ) {
         return
       }
+      node.content = content
     }
 
     if (level === LEVEL_ATTRIBUTE
@@ -707,8 +769,8 @@ export function compile(template, loose) {
                 name = name.slice(syntax.DIRECTIVE_EVENT_PREFIX.length)
                 levelNode = new Directive('event', name)
               }
-              else if (name.startsWith(syntax.DIRECTIVE_PREFIX)) {
-                name = name.slice(syntax.DIRECTIVE_PREFIX.length)
+              else if (name.startsWith(syntax.DIRECTIVE_CUSTOM_PREFIX)) {
+                name = name.slice(syntax.DIRECTIVE_CUSTOM_PREFIX.length)
                 levelNode = new Directive(name)
               }
               else {
@@ -748,7 +810,7 @@ export function compile(template, loose) {
                 // 用 index 节省一个变量定义
                 index = parser.create(content, delimiter, popStack)
                 if (is.string(index)) {
-                  util.parseError(template, index, mainScanner.pos + helperScanner.pos)
+                  parseError(index, mainScanner.pos + helperScanner.pos)
                 }
                 else if (level === LEVEL_ATTRIBUTE
                   && index.type === nodeType.EXPRESSION
@@ -792,10 +854,10 @@ export function compile(template, loose) {
 
       // 没有匹配到 >
       if (mainScanner.charCodeAt(0) !== ARROW_RIGHT) {
-        return util.parseError(template, 'Illegal tag name', mainScanner.pos)
+        return parseError('Illegal tag name', mainScanner.pos)
       }
       else if (currentNode.type === nodeType.ELEMENT && name !== currentNode.name) {
-        return util.parseError(template, 'Unexpected closing tag', mainScanner.pos)
+        return parseError('Unexpected closing tag', mainScanner.pos)
       }
 
       popStack()
@@ -832,7 +894,7 @@ export function compile(template, loose) {
       content = mainScanner.nextAfter(elementEndPattern)
       // 没有匹配到 > 或 />
       if (!content) {
-        return util.parseError(template, 'Illegal tag name', mainScanner.pos)
+        return parseError('Illegal tag name', mainScanner.pos)
       }
 
       if (isSelfClosing) {
@@ -842,11 +904,10 @@ export function compile(template, loose) {
   }
 
   if (nodeStack.length) {
-    return util.parseError(template, `Missing end tag (</${nodeStack[0].name}>)`, mainScanner.pos)
+    return parseError(`Missing end tag (</${nodeStack[0].name}>)`, mainScanner.pos)
   }
 
   let { children } = rootNode
-
   if (loose) {
     return cache[template] = children
   }

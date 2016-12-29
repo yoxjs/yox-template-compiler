@@ -11,7 +11,7 @@ export const SPREAD = '...'
 export const SPECIAL_EVENT = '$event'
 export const SPECIAL_KEYPATH = '$keypath'
 
-export const DIRECTIVE_PREFIX = 'o-'
+export const DIRECTIVE_CUSTOM_PREFIX = 'o-'
 export const DIRECTIVE_EVENT_PREFIX = 'on-'
 
 export const DIRECTIVE_REF = 'ref'
