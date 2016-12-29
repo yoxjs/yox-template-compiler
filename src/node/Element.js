@@ -13,9 +13,9 @@ export default class Element extends Node {
   constructor(name, component) {
     super(nodeType.ELEMENT)
     this.name = name
-    this.component = component
-    this.attributes = [ ]
-    this.directives = [ ]
+    if (component) {
+      this.component = component
+    }
   }
 
   addChild(child) {
@@ -23,13 +23,13 @@ export default class Element extends Node {
     switch (child.type) {
       case nodeType.ATTRIBUTE:
       case nodeType.SPREAD:
-        children = this.attributes
+        children = this.attributes || (this.attributes = [ ])
         break
       case nodeType.DIRECTIVE:
-        children = this.directives
+        children = this.directives || (this.directives = [ ])
         break
       default:
-        children = this.children
+        children = this.children || (this.children = [ ])
         break
     }
     children.push(child)

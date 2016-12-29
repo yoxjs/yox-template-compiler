@@ -14,7 +14,7 @@ import * as nodeType from '../nodeType'
 export default class Directive extends Node {
 
   constructor(name, subName, value) {
-    super(nodeType.DIRECTIVE, arguments.length < 3)
+    super(nodeType.DIRECTIVE)
     this.name = name
     this.subName = subName
     this.value = value

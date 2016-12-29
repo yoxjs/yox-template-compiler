@@ -36,6 +36,7 @@ const ARROW_RIGHT = 62   // >
 const BRACE_LEFT = 123   // {
 const BRACE_RIGHT = 125  // }
 
+// 缓存编译结果
 let cache = { }
 
 const openingDelimiterPattern = new RegExp(syntax.DELIMITER_OPENING)
@@ -152,43 +153,45 @@ const parsers = [
   }
 ]
 
+// 三种 level
+// 当 level 为 LEVEL_ELEMENT 时，表示可以处理任何类型
+// 当 level 为 LEVEL_ATTRIBUTE 时，表示只可以处理属性和指令
+// 当 level 为 LEVEL_TEXT 时，表示只可以处理属性和指令的值
 const LEVEL_ELEMENT = 0
 const LEVEL_ATTRIBUTE = 1
 const LEVEL_TEXT = 2
 
+// 触发 level 变化的节点类型
 const levelTypes = { }
 levelTypes[ nodeType.ELEMENT ] =
 levelTypes[ nodeType.ATTRIBUTE ] =
 levelTypes[ nodeType.DIRECTIVE ] = env.TRUE
 
+// 叶子节点类型
+const leafTypes = { }
+leafTypes[ nodeType.EXPRESSION ] =
+leafTypes[ nodeType.IMPORT ] =
+leafTypes[ nodeType.SPREAD ] =
+leafTypes[ nodeType.TEXT ] = env.TRUE
+
+// 内置指令，无需加前缀
 const buildInDirectives = { }
 buildInDirectives[ syntax.DIRECTIVE_REF ] =
 buildInDirectives[ syntax.DIRECTIVE_LAZY ] =
 buildInDirectives[ syntax.DIRECTIVE_MODEL ] =
 buildInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
 
-export function render(ast, data, createText, createElement, addDeps) {
 
-  let keys = [ ]
-  let getKeypath = function () {
-    return keypathUtil.stringify(keys)
-  }
-  getKeypath.$computed = env.TRUE
-  data[ syntax.SPECIAL_KEYPATH ] = getKeypath
-
-  let level = 0
-  let partials = { }
-  let context = new Context(data)
-
-  let execute = function (expr) {
-    let { value, deps } = expressionEnginer.execute(expr, context)
-    if (addDeps) {
-        addDeps(deps, getKeypath)
-    }
-    return value
-  }
-
-  let merge = function (nodes) {
+/**
+ * 合并多个节点
+ *
+ * 用于处理属性值，如 name="xx{{xx}}xx"  name="xx"  name="{{xx}}"
+ *
+ * @param {?Array} nodes
+ * @return {*}
+ */
+function mergeNodes(nodes) {
+  if (is.array(nodes)) {
     if (nodes.length === 1) {
       return nodes[0]
     }
@@ -196,66 +199,138 @@ export function render(ast, data, createText, createElement, addDeps) {
       return nodes.join('')
     }
   }
+}
 
-  let traverseList = function (nodes) {
-    let list = [ ], item
-    let i = 0, node
-    while (node = nodes[i]) {
-      item = walkTree(node)
-      if (item) {
-        array.push(list, item)
-        if (node.type === nodeType.IF
-          || node.type === nodeType.ELSE_IF
-        ) {
-          // 跳过后面紧跟着的 elseif else
-          while (node = nodes[i + 1]) {
-            if (node.type === nodeType.ELSE_IF
-              || node.type === nodeType.ELSE
-            ) {
-              i++
-            }
-            else {
-              break
-            }
+/**
+ * 遍历节点树
+ *
+ * @param {Node} node
+ * @param {Function} enter
+ * @param {Function} leave
+ * @param {Function} traverseList
+ * @param {Function} recursion
+ * @return {*}
+ */
+function traverseTree(node, enter, leave, traverseList, recursion) {
+
+  let result = enter(node)
+  if (result) {
+    return result
+  }
+  else if (result === env.FALSE) {
+    return
+  }
+
+  let { children, attributes, directives } = node
+  if (is.array(children)) {
+    children = traverseList(children, recursion)
+  }
+  if (is.array(attributes)) {
+    attributes = traverseList(attributes, recursion)
+  }
+  if (is.array(directives)) {
+    directives = traverseList(directives, recursion)
+  }
+
+  return leave(node, children, attributes, directives)
+
+}
+
+/**
+ * 遍历节点列表
+ *
+ * @param {Array.<Node>} nodes
+ * @param {Function} recursion
+ * @return {Array}
+ */
+function traverseList(nodes, recursion) {
+  let list = [ ], item
+  let i = 0, node
+  while (node = nodes[i]) {
+    item = recursion(node)
+    if (item) {
+      array.push(list, item)
+      if (node.type === nodeType.IF
+        || node.type === nodeType.ELSE_IF
+      ) {
+        // 跳过后面紧跟着的 elseif else
+        while (node = nodes[i + 1]) {
+          if (node.type === nodeType.ELSE_IF
+            || node.type === nodeType.ELSE
+          ) {
+            i++
+          }
+          else {
+            break
           }
         }
       }
-      i++
     }
-    return list
+    i++
+  }
+  return list
+}
+
+/**
+ * 序列化表达式
+ *
+ * @param {Object} expr
+ * @return {string}
+ */
+function stringifyExpr(expr) {
+  return keypathUtil.normalize(
+    expressionEnginer.stringify(expr)
+  )
+}
+
+/**
+ * 渲染抽象语法树
+ *
+ * @param {Object} ast 编译出来的抽象语法树
+ * @param {Function} createText 创建文本节点
+ * @param {Function} createElement 创建元素节点
+ * @param {?Function} importTemplate 导入子模板，如果是纯模板，可不传
+ * @param {?Object} data 渲染模板的数据，如果渲染纯模板，可不传
+ * @return {Object} { node: x, deps: { } }
+ */
+export function render(ast, createText, createElement, importTemplate, data) {
+
+  let context, keys
+  let getKeypath = function () {
+    return ''
   }
 
-  let traverseTree = function (node, enter, leave) {
-
-    let result = enter(node)
-    if (result) {
-      return result
+  if (data) {
+    keys = [ ]
+    getKeypath = function () {
+      return keypathUtil.stringify(keys)
     }
-    else if (result === env.FALSE) {
-      return
-    }
-
-    let { children, attributes, directives } = node
-    if (is.array(children)) {
-      children = traverseList(children)
-    }
-    if (is.array(attributes)) {
-      attributes = traverseList(attributes)
-    }
-    if (is.array(directives)) {
-      directives = traverseList(directives)
-    }
-
-    return leave(node, children, attributes, directives)
-
+    getKeypath.$computed = env.TRUE
+    data[ syntax.SPECIAL_KEYPATH ] = getKeypath
+    context = new Context(data)
   }
 
-  let walkTree = function (root) {
+  let level = 0
+  let partials = { }
+
+  let deps = { }
+  let executeExpr = function (expr) {
+    let result = expressionEnginer.execute(expr, context)
+    object.each(
+      result.deps,
+      function (value, key) {
+        deps[ keypathUtil.resolve(getKeypath(), key) ] = value
+      }
+    )
+    return result.value
+  }
+
+  let recursion = function (node) {
     return traverseTree(
-      root,
+      node,
       function (node) {
 
-        let { type, name } = node
+        let { type, name, expr } = node
 
         switch (type) {
 
@@ -265,9 +340,15 @@ export function render(ast, data, createText, createElement, addDeps) {
             return env.FALSE
 
           case nodeType.IMPORT:
-            let partial = partials[name] || instance.partial(name)
+            let partial = partials[name] || importTemplate(name)
             if (partial) {
-              return traverseList(partial.children)
+              if (is.string(partial)) {
+                return traverseList(
+                  compile(partial, env.TRUE),
+                  recursion
+                )
+              }
+              return traverseList(partial.children, recursion)
             }
             logger.error(`Importing partial '${name}' is not found.`)
             break
@@ -275,15 +356,15 @@ export function render(ast, data, createText, createElement, addDeps) {
           // 条件判断失败就没必要往下走了
           case nodeType.IF:
           case nodeType.ELSE_IF:
-            if (!execute(node.expr)) {
+            if (!executeExpr(expr)) {
               return env.FALSE
             }
             break
 
           // each 比较特殊，只能放在 enter 里执行
           case nodeType.EACH:
-            let { expr, index, children } = node
-            let value = execute(expr)
+            let { index, children } = node
+            let value = executeExpr(expr)
 
             let iterate
             if (is.array(value)) {
@@ -298,10 +379,7 @@ export function render(ast, data, createText, createElement, addDeps) {
 
             let result = [ ]
 
-            let keypath = keypathUtil.normalize(
-              expressionEnginer.stringify(expr)
-            )
-            keys.push(keypath)
+            array.push(keys, stringifyExpr(expr))
             context = context.push(value)
 
             iterate(
@@ -311,12 +389,12 @@ export function render(ast, data, createText, createElement, addDeps) {
                   context.set(index, i)
                 }
 
-                keys.push(i)
+                array.push(keys, i)
                 context = context.push(item)
 
                 array.push(
                   result,
-                  traverseList(children)
+                  traverseList(children, recursion)
                 )
 
                 keys.pop()
@@ -340,12 +418,11 @@ export function render(ast, data, createText, createElement, addDeps) {
       function (node, children, attributes, directives) {
 
         let { type, name, subName, component, content } = node
+        let keypath = getKeypath()
 
         if (object.has(levelTypes, type)) {
           level--
         }
-
-        let keypath = getKeypath()
 
         switch (type) {
           case nodeType.TEXT:
@@ -357,7 +434,7 @@ export function render(ast, data, createText, createElement, addDeps) {
 
           case nodeType.EXPRESSION:
             let { expr, safe } = node
-            content = execute(expr)
+            content = executeExpr(expr)
             if (is.func(content) && content.$computed) {
               content = content()
             }
@@ -370,12 +447,12 @@ export function render(ast, data, createText, createElement, addDeps) {
 
           case nodeType.ATTRIBUTE:
             if (name.type === nodeType.EXPRESSION) {
-              name = execute(name.expr)
+              name = executeExpr(name.expr)
             }
             return {
               name,
               keypath,
-              value: merge(children),
+              value: mergeNodes(children),
             }
 
 
@@ -384,7 +461,7 @@ export function render(ast, data, createText, createElement, addDeps) {
               name,
               subName,
               keypath,
-              value: merge(children),
+              value: mergeNodes(children),
             }
 
 
@@ -395,7 +472,7 @@ export function render(ast, data, createText, createElement, addDeps) {
 
 
           case nodeType.SPREAD:
-            content = execute(node.expr)
+            content = executeExpr(node.expr)
             if (is.object(content)) {
               let result = [ ]
               object.each(
@@ -417,23 +494,28 @@ export function render(ast, data, createText, createElement, addDeps) {
 
 
           case nodeType.ELEMENT:
-            let options = {
-              name,
-              attributes,
-              directives,
-              keypath,
-            }
-            if (!component) {
-              options.children = children
-            }
-            return createElement(options, !level, component)
+            return createElement(
+              {
+                name,
+                attributes,
+                directives,
+                children,
+                keypath,
+              },
+              !level,
+              component
+            )
         }
 
-      }
+      },
+      traverseList,
+      recursion
     )
   }
 
-  return walkTree(ast)
+  let node = recursion(ast)
+
+  return { node, deps }
 
 }
 
@@ -441,9 +523,10 @@ export function render(ast, data, createText, createElement, addDeps) {
  * 把模板编译为抽象语法树
  *
  * @param {string} template
+ * @param {?boolean} loose
  * @return {Object}
  */
-export function compile(template) {
+export function compile(template, loose) {
 
   if (cache[template]) {
     return cache[template]
@@ -477,7 +560,7 @@ export function compile(template) {
   let currentNode = rootNode
 
   let pushStack = function (node) {
-    nodeStack.push(currentNode)
+    array.push(nodeStack, currentNode)
     currentNode = node
   }
 
@@ -503,7 +586,7 @@ export function compile(template) {
       currentNode.addChild(node)
     }
 
-    if (children) {
+    if (!leafTypes[type]) {
       pushStack(node)
     }
   }
@@ -740,12 +823,15 @@ export function compile(template) {
   }
 
   let { children } = rootNode
-  let root = children[0]
 
+  if (loose) {
+    return cache[template] = children
+  }
+
+  let root = children[0]
   if (children.length > 1 || root.type !== nodeType.ELEMENT) {
     logger.error('Component template should contain exactly one root element.')
   }
-
   return cache[template] = root
 
 }

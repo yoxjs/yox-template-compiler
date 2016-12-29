@@ -11,7 +11,7 @@ import * as nodeType from '../nodeType'
 export default class Attribute extends Node {
 
   constructor(name, value) {
-    super(nodeType.ATTRIBUTE, arguments.length === 1)
+    super(nodeType.ATTRIBUTE)
     this.name = name
     this.value = value
   }

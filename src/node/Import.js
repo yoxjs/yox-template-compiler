@@ -2,8 +2,6 @@
 import Node from './Node'
 import * as nodeType from '../nodeType'
 
-import * as env from 'yox-common/util/env'
-
 /**
  * import 节点
  *
@@ -12,7 +10,7 @@ import * as env from 'yox-common/util/env'
 export default class Import extends Node {
 
   constructor(name) {
-    super(nodeType.IMPORT, env.FALSE)
+    super(nodeType.IMPORT)
     this.name = name
   }
 

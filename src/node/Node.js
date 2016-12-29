@@ -8,13 +8,11 @@ export default class Node {
 
   constructor(type, hasChildren) {
     this.type = type
-    if (hasChildren !== env.FALSE) {
-      this.children = [ ]
-    }
   }
 
   addChild(child) {
-    this.children.push(child)
+    let children = this.children || (this.children = [ ])
+    children.push(child)
   }
 
 }

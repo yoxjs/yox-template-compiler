@@ -2,8 +2,6 @@
 import Node from './Node'
 import * as nodeType from '../nodeType'
 
-import * as env from 'yox-common/util/env'
-
 /**
  * 表达式节点
  *
@@ -13,7 +11,7 @@ import * as env from 'yox-common/util/env'
 export default class Expression extends Node {
 
   constructor(expr, safe) {
-    super(nodeType.EXPRESSION, env.FALSE)
+    super(nodeType.EXPRESSION)
     this.expr = expr
     this.safe = safe
   }
