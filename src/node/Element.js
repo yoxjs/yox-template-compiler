@@ -18,21 +18,9 @@ export default class Element extends Node {
     }
   }
 
-  addChild(child) {
-    let children
-    switch (child.type) {
-      case nodeType.ATTRIBUTE:
-      case nodeType.SPREAD:
-        children = this.attributes || (this.attributes = [ ])
-        break
-      case nodeType.DIRECTIVE:
-        children = this.directives || (this.directives = [ ])
-        break
-      default:
-        children = this.children || (this.children = [ ])
-        break
-    }
-    children.push(child)
+  addAttr(child) {
+    let attrs = this.attrs || (this.attrs = [ ])
+    attrs.push(child)
   }
 
 }

@@ -20,5 +20,5 @@ export const DIRECTIVE_MODEL = 'model'
 
 export const KEYWORD_UNIQUE = 'key'
 
-export const DELIMITER_OPENING = '\\{\\{\\s*'
-export const DELIMITER_CLOSING = '\\s*\\}\\}'
+export const DELIMITER_OPENING = '(?:\\{)?\\{\\{\\s*'
+export const DELIMITER_CLOSING = '\\s*\\}\\}(?:\\})?'

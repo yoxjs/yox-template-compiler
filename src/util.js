@@ -7,9 +7,6 @@ const breaklinePattern = /^[ \t]*\n[ \t]*$/
 const breaklinePrefixPattern = /^[ \t]*\n/
 const breaklineSuffixPattern = /\n[ \t]*$/
 
-const nonSingleQuotePattern = /^[^']*/
-const nonDoubleQuotePattern = /^[^"]*/
-
 export function trimBreakline(str) {
   if (breaklinePattern.test(str)) {
     return ''
@@ -17,11 +14,6 @@ export function trimBreakline(str) {
   return str
     .replace(breaklinePrefixPattern, '')
     .replace(breaklineSuffixPattern, '')
-}
-
-export function matchByQuote(str, nonQuote) {
-  let match = str.match(nonQuote === '"' ? nonDoubleQuotePattern : nonSingleQuotePattern)
-  return match ? match[0] : ''
 }
 
 function getLocationByIndex(str, index) {

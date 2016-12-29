@@ -77,4 +77,8 @@ export default class Scanner {
     return string.charAt(this.tail, index)
   }
 
+  charCodeAt(index) {
+    return string.charCodeAt(this.tail, index)
+  }
+
 }

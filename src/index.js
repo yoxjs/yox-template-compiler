@@ -45,7 +45,10 @@ const closingDelimiterPattern = new RegExp(syntax.DELIMITER_CLOSING)
 const elementPattern = /<(?:\/)?[-a-z]\w*/i
 const elementEndPattern = /(?:\/)?>/
 
-const attributePattern = /([-:@a-z0-9]+)(=["'])?/i
+const attributePattern = /([-:@a-z0-9]+)(?==["'])?/i
+
+const nonSingleQuotePattern = /^[^']*/
+const nonDoubleQuotePattern = /^[^"]*/
 
 const componentNamePattern = /[-A-Z]/
 const selfClosingTagNamePattern = /input|img|br/i
@@ -105,7 +108,7 @@ const parsers = [
     test(source) {
       return source.startsWith(syntax.ELSE_IF)
     },
-    create(source, popStack) {
+    create(source, delimiter, popStack) {
       let expr = source.slice(syntax.ELSE_IF.length)
       if (expr) {
         popStack()
@@ -118,7 +121,7 @@ const parsers = [
     test(source) {
       return source.startsWith(syntax.ELSE)
     },
-    create(source, popStack) {
+    create(source, delimiter, popStack) {
       popStack()
       return new Else()
     }
@@ -139,25 +142,18 @@ const parsers = [
     test(source) {
       return !source.startsWith(syntax.COMMENT)
     },
-    create(source) {
-      let safe = env.TRUE
-      if (source.startsWith('{')) {
-        safe = env.FALSE
-        source = source.slice(1)
-      }
+    create(source, delimiter) {
       return new Expression(
         expressionEnginer.compile(source),
-        safe
+        !delimiter.endsWith('}}}')
       )
     }
   }
 ]
 
-// 三种 level
-// 当 level 为 LEVEL_ELEMENT 时，表示可以处理任何类型
+// 2 种 level
 // 当 level 为 LEVEL_ATTRIBUTE 时，表示只可以处理属性和指令
 // 当 level 为 LEVEL_TEXT 时，表示只可以处理属性和指令的值
-const LEVEL_ELEMENT = 0
 const LEVEL_ATTRIBUTE = 1
 const LEVEL_TEXT = 2
 
@@ -221,18 +217,15 @@ function traverseTree(node, enter, leave, traverseList, recursion) {
     return
   }
 
-  let { children, attributes, directives } = node
+  let { children, attrs } = node
   if (is.array(children)) {
     children = traverseList(children, recursion)
   }
-  if (is.array(attributes)) {
-    attributes = traverseList(attributes, recursion)
-  }
-  if (is.array(directives)) {
-    directives = traverseList(directives, recursion)
+  if (is.array(attrs)) {
+    attrs = traverseList(attrs, recursion)
   }
 
-  return leave(node, children, attributes, directives)
+  return leave(node, children, attrs)
 
 }
 
@@ -310,7 +303,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
     context = new Context(data)
   }
 
-  let level = 0
+  let count = 0
   let partials = { }
 
   let deps = { }
@@ -411,17 +404,17 @@ export function render(ast, createText, createElement, importTemplate, data) {
         }
 
         if (object.has(levelTypes, type)) {
-          level++
+          count++
         }
 
       },
-      function (node, children, attributes, directives) {
+      function (node, children, attrs) {
 
         let { type, name, subName, component, content } = node
         let keypath = getKeypath()
 
         if (object.has(levelTypes, type)) {
-          level--
+          count--
         }
 
         switch (type) {
@@ -494,6 +487,25 @@ export function render(ast, createText, createElement, importTemplate, data) {
 
 
           case nodeType.ELEMENT:
+            let attributes = [ ], directives = [ ]
+            if (attrs) {
+              array.each(
+                attrs,
+                function (node) {
+                  if (object.has(node, 'subName')) {
+                    if (node.name && node.subName !== '') {
+                      array.push(directives, node)
+                    }
+                  }
+                  else {
+                    array.push(attributes, node)
+                  }
+                }
+              )
+            }
+            if (!children) {
+              children = [ ]
+            }
             return createElement(
               {
                 name,
@@ -502,7 +514,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
                 children,
                 keypath,
               },
-              !level,
+              !count,
               component
             )
         }
@@ -516,6 +528,42 @@ export function render(ast, createText, createElement, importTemplate, data) {
   let node = recursion(ast)
 
   return { node, deps }
+
+}
+
+/**
+ * 解析属性值，传入开始引号，匹配结束引号
+ *
+ * @param {string} content
+ * @param {string} quote
+ * @return {Object}
+ */
+function parseAttributeValue(content, quote) {
+
+  let result = {
+    content,
+  }
+
+  let match = content.match(
+    quote === '"'
+    ? nonDoubleQuotePattern
+    : nonSingleQuotePattern
+  )
+
+  if (match) {
+    result.value = match[0]
+
+    let { length } = match[0]
+    if (string.charAt(content, length) === quote) {
+      result.end = env.TRUE
+      length++
+    }
+    if (length) {
+      result.content = content.slice(length)
+    }
+  }
+
+  return result
 
 }
 
@@ -536,24 +584,21 @@ export function compile(template, loose) {
   let content
   // 记录标签名、属性名、指令名
   let name
-  // 记录属性、指令值的开始引号，方便匹配结束引号
+  // 记录属性值、指令值的开始引号，方便匹配结束引号
   let quote
   // 标签是否子闭合
   let isSelfClosing
   // 正则匹配结果
   let match
+  // 分隔符
+  let delimiter
 
   // 主扫描器
   let mainScanner = new Scanner(template)
   // 辅扫描器
   let helperScanner = new Scanner()
 
-  // level 有三级
-  // 0 表示可以 add Element 和 Text
-  // 1 表示只能 add Attribute 和 Directive
-  // 2 表示只能 add Text
-
-  let level = LEVEL_ELEMENT, levelNode
+  let level, levelNode
 
   let nodeStack = [ ]
   let rootNode = new Element('root')
@@ -571,7 +616,7 @@ export function compile(template, loose) {
 
   let addChild = function (node) {
 
-    let { type, content, children } = node
+    let { type, content } = node
 
     if (type === nodeType.TEXT) {
       if (content = util.trimBreakline(content)) {
@@ -582,32 +627,56 @@ export function compile(template, loose) {
       }
     }
 
-    if (node.invalid !== env.TRUE) {
+    if (level === LEVEL_ATTRIBUTE
+      && currentNode.addAttr
+    ) {
+      currentNode.addAttr(node)
+    }
+    else {
       currentNode.addChild(node)
     }
 
     if (!leafTypes[type]) {
       pushStack(node)
     }
+
   }
 
-  let parseAttributeValue = function (content) {
-    match = util.matchByQuote(content, quote)
-    if (match) {
+  // 属性和指令支持以下 8 种写法：
+  // 1. name
+  // 2. name="value"
+  // 3. name="{{value}}"
+  // 4. name="prefix{{value}}suffix"
+  // 5. {{name}}
+  // 6. {{name}}="value"
+  // 7. {{name}}="{{value}}"
+  // 8. {{name}}="prefix{{value}}suffix"
+  let parseAttribute = function (content) {
+
+    if (array.falsy(levelNode.children)) {
+      if (content && string.charCodeAt(content, 0) === EQUAL) {
+        quote = string.charAt(content, 1)
+        content = content.slice(2)
+      }
+      else {
+        popStack()
+        level = LEVEL_ATTRIBUTE
+        return content
+      }
+    }
+
+    match = parseAttributeValue(content, quote)
+    if (match.value) {
       addChild(
-        new Text(match)
+        new Text(match.value)
       )
     }
-    let { length } = match
-    if (content.charAt(length) === quote) {
+    if (match.end) {
       popStack()
-      level--
-      length++
+      level = LEVEL_ATTRIBUTE
     }
-    if (length) {
-      content = content.slice(length)
-    }
-    return content
+    return match.content
+
   }
 
   // 核心函数，负责分隔符和普通字符串的深度解析
@@ -621,40 +690,11 @@ export function compile(template, loose) {
 
       if (content) {
 
-        // 属性和指令支持以下 8 种写法：
-        // 1. name
-        // 2. name="value"
-        // 3. name="{{value}}"
-        // 4. name="prefix{{value}}suffix"
-        // 5. {{name}}
-        // 6. {{name}}="value"
-        // 7. {{name}}="{{value}}"
-        // 8. {{name}}="prefix{{value}}suffix"
-
-        // 已开始解析属性或指令
         if (level === LEVEL_TEXT) {
-          // 命中 8 种写法中的 3 4
-          // 因为前面处理过 {{ }}，所以 levelNode 必定有 child
-          if (levelNode.children.length) {
-            content = parseAttributeValue(content)
-          }
-          else {
-            // 命中 8 种写法中的 6 7 8
-            if (string.charCodeAt(content, 0) === EQUAL) {
-              quote = string.charAt(content, 1)
-              content = content.slice(2)
-            }
-            // 命中 8 种写法中的 5
-            else {
-              popStack()
-              level--
-            }
-            // 8 种写法中的 1 2 在下面的 if 会一次性处理完，逻辑走不进这里
-          }
+          content = parseAttribute(content)
         }
 
         if (level === LEVEL_ATTRIBUTE) {
-          // 下一个属性的开始
           while (content && (match = attributePattern.exec(content))) {
             content = content.slice(match.index + match[0].length)
             name = match[1]
@@ -665,16 +705,11 @@ export function compile(template, loose) {
             else {
               if (name.startsWith(syntax.DIRECTIVE_EVENT_PREFIX)) {
                 name = name.slice(syntax.DIRECTIVE_EVENT_PREFIX.length)
-                if (name) {
-                  levelNode = new Directive('event', name)
-                }
+                levelNode = new Directive('event', name)
               }
               else if (name.startsWith(syntax.DIRECTIVE_PREFIX)) {
                 name = name.slice(syntax.DIRECTIVE_PREFIX.length)
                 levelNode = new Directive(name)
-                if (!name || buildInDirectives[name]) {
-                  levelNode.invalid = env.TRUE
-                }
               }
               else {
                 levelNode = new Attribute(name)
@@ -682,17 +717,10 @@ export function compile(template, loose) {
             }
 
             addChild(levelNode)
-            level++
+            level = LEVEL_TEXT
 
-            match = match[2]
-            if (match) {
-              quote = match.charAt(1)
-              content = parseAttributeValue(content)
-            }
-            else {
-              popStack()
-              level--
-            }
+            content = parseAttribute(content)
+
           }
         }
         else if (content) {
@@ -705,22 +733,20 @@ export function compile(template, loose) {
 
       // 分隔符之间的内容
       content = helperScanner.nextBefore(closingDelimiterPattern)
-      helperScanner.nextAfter(closingDelimiterPattern)
+      // 结束分隔符
+      delimiter = helperScanner.nextAfter(closingDelimiterPattern)
 
       if (content) {
         if (string.charCodeAt(content, 0) === SLASH) {
           popStack()
         }
         else {
-          if (content.charAt(0) === '{' && helperScanner.charAt(0) === '}') {
-            helperScanner.forward(1)
-          }
           array.each(
             parsers,
             function (parser, index) {
-              if (parser.test(content)) {
+              if (parser.test(content, delimiter)) {
                 // 用 index 节省一个变量定义
-                index = parser.create(content, popStack)
+                index = parser.create(content, delimiter, popStack)
                 if (is.string(index)) {
                   util.parseError(template, index, mainScanner.pos + helperScanner.pos)
                 }
@@ -728,8 +754,8 @@ export function compile(template, loose) {
                   && index.type === nodeType.EXPRESSION
                 ) {
                   levelNode = new Attribute(index)
-                  level++
                   addChild(levelNode)
+                  level = LEVEL_TEXT
                 }
                 else {
                   addChild(index)
@@ -754,18 +780,18 @@ export function compile(template, loose) {
 
     // 接下来必须是 < 开头（标签）
     // 如果不是标签，那就该结束了
-    if (mainScanner.charAt(0) !== '<') {
+    if (mainScanner.charCodeAt(0) !== ARROW_LEFT) {
       break
     }
 
     // 结束标签
-    if (mainScanner.charAt(1) === '/') {
+    if (mainScanner.charCodeAt(1) === SLASH) {
       // 取出 </tagName
       content = mainScanner.nextAfter(elementPattern)
       name = content.slice(2)
 
       // 没有匹配到 >
-      if (mainScanner.charAt(0) !== '>') {
+      if (mainScanner.charCodeAt(0) !== ARROW_RIGHT) {
         return util.parseError(template, 'Illegal tag name', mainScanner.pos)
       }
       else if (currentNode.type === nodeType.ELEMENT && name !== currentNode.name) {
@@ -784,26 +810,23 @@ export function compile(template, loose) {
       name = content.slice(1)
 
       if (componentNamePattern.test(name)) {
-        // 低版本浏览器不支持自定义标签，需要转成 div
-        addChild(
-          new Element(name, env.TRUE)
-        )
+        levelNode = new Element(name, env.TRUE)
         isSelfClosing = env.TRUE
       }
       else {
-        addChild(
-          new Element(name)
-        )
+        levelNode = new Element(name)
         isSelfClosing = selfClosingTagNamePattern.test(name)
       }
+
+      addChild(levelNode)
 
       // 截取 <name 和 > 之间的内容
       // 用于提取 Attribute 和 Directive
       content = mainScanner.nextBefore(elementEndPattern)
       if (content) {
-        level++
+        level = LEVEL_ATTRIBUTE
         parseContent(content)
-        level--
+        level = env.NULL
       }
 
       content = mainScanner.nextAfter(elementEndPattern)
