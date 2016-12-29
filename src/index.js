@@ -158,11 +158,14 @@ const parsers = [
 const LEVEL_ATTRIBUTE = 1
 const LEVEL_TEXT = 2
 
+// 属性层级的节点类型
+const attrTypes = { }
+attrTypes[ nodeType.ATTRIBUTE ] =
+attrTypes[ nodeType.DIRECTIVE ] = env.TRUE
+
 // 触发 level 变化的节点类型
-const levelTypes = { }
-levelTypes[ nodeType.ELEMENT ] =
-levelTypes[ nodeType.ATTRIBUTE ] =
-levelTypes[ nodeType.DIRECTIVE ] = env.TRUE
+const levelTypes = object.extend({ }, attrTypes)
+levelTypes[ nodeType.ELEMENT ] = env.TRUE
 
 // 叶子节点类型
 const leafTypes = { }
@@ -242,7 +245,7 @@ function traverseList(nodes, recursion) {
   let i = 0, node
   while (node = nodes[i]) {
     item = recursion(node)
-    if (item) {
+    if (item !== env.UNDEFINED) {
       array.push(list, item)
       if (node.type === nodeType.IF
         || node.type === nodeType.ELSE_IF
@@ -687,6 +690,12 @@ export function compile(template, loose) {
       }
       node.content = content
     }
+    else if (type === nodeType.EXPRESSION
+      && level === LEVEL_ATTRIBUTE
+    ) {
+      node = levelNode = new Attribute(node)
+      type = nodeType.ATTRIBUTE
+    }
 
     if (level === LEVEL_ATTRIBUTE
       && currentNode.addAttr
@@ -699,6 +708,10 @@ export function compile(template, loose) {
 
     if (!leafTypes[type]) {
       pushStack(node)
+    }
+
+    if (attrTypes[type]) {
+      level = LEVEL_TEXT
     }
 
   }
@@ -778,7 +791,6 @@ export function compile(template, loose) {
             }
 
             addChild(levelNode)
-            level = LEVEL_TEXT
 
             content = parseAttribute(content)
 
@@ -810,13 +822,6 @@ export function compile(template, loose) {
                 index = parser.create(content, delimiter, popStack)
                 if (is.string(index)) {
                   parseError(index, mainScanner.pos + helperScanner.pos)
-                }
-                else if (level === LEVEL_ATTRIBUTE
-                  && index.type === nodeType.EXPRESSION
-                ) {
-                  levelNode = new Attribute(index)
-                  addChild(levelNode)
-                  level = LEVEL_TEXT
                 }
                 else {
                   addChild(index)
@@ -910,12 +915,12 @@ export function compile(template, loose) {
   cache[template] = children
 
   if (loose) {
-    return template
+    return children
   }
 
   let root = children[0]
   if (children.length > 1 || root.type !== nodeType.ELEMENT) {
-    logger.error('Component template should contain exactly one root element.')
+    logger.error('Template should contain exactly one root element.')
   }
   return root
 

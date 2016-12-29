@@ -13,7 +13,9 @@ export default class Each extends Node {
   constructor(expr, index) {
     super(nodeType.EACH)
     this.expr = expr
-    this.index = index
+    if (index) {
+      this.index = index
+    }
   }
 
 }
