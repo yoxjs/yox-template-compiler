@@ -627,8 +627,9 @@ function parseAttributeValue(content, quote) {
  */
 export function compile(template, loose) {
 
-  if (cache[template]) {
-    return cache[template]
+  let result = cache[template]
+  if (result) {
+    return loose ? result : result[0]
   }
 
   // 当前内容
@@ -639,8 +640,6 @@ export function compile(template, loose) {
   let quote
   // 标签是否子闭合
   let isSelfClosing
-  // 正则匹配结果
-  let match
   // 分隔符
   let delimiter
 
@@ -727,17 +726,17 @@ export function compile(template, loose) {
       }
     }
 
-    match = parseAttributeValue(content, quote)
-    if (match.value) {
+    result = parseAttributeValue(content, quote)
+    if (result.value) {
       addChild(
-        new Text(match.value)
+        new Text(result.value)
       )
     }
-    if (match.end) {
+    if (result.end) {
       popStack()
       level = LEVEL_ATTRIBUTE
     }
-    return match.content
+    return result.content
 
   }
 
@@ -757,9 +756,9 @@ export function compile(template, loose) {
         }
 
         if (level === LEVEL_ATTRIBUTE) {
-          while (content && (match = attributePattern.exec(content))) {
-            content = content.slice(match.index + match[0].length)
-            name = match[1]
+          while (content && (result = attributePattern.exec(content))) {
+            content = content.slice(result.index + result[0].length)
+            name = result[1]
 
             if (buildInDirectives[name]) {
               levelNode = new Directive(name)
@@ -908,14 +907,16 @@ export function compile(template, loose) {
   }
 
   let { children } = rootNode
+  cache[template] = children
+
   if (loose) {
-    return cache[template] = children
+    return template
   }
 
   let root = children[0]
   if (children.length > 1 || root.type !== nodeType.ELEMENT) {
     logger.error('Component template should contain exactly one root element.')
   }
-  return cache[template] = root
+  return root
 
 }

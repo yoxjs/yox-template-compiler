@@ -2,8 +2,21 @@
 
 Template compiler for yox.js
 
-[TODO]
+```js
+import * as templateCompiler from 'yox-template-compiler'
 
-* charCodeAt
-* index.js 逻辑优化
-* 更好的错误提示
+// 编译成抽象语法树
+let ast = templateCompiler.compile('<div>...</div>')
+
+// 构建阶段可序列化到文件
+JSON.stringify(ast)
+
+// 渲染
+templateCompiler.render(
+  ast,
+  createText,
+  createElement,
+  importTemplate,
+  data
+)
+``
