@@ -1,6 +1,6 @@
 # yox-template-compiler
 
-Template compiler for yox.js
+Template compiler for Yox.js
 
 ```js
 import * as templateCompiler from 'yox-template-compiler'

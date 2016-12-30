@@ -54,22 +54,15 @@ const breaklineSuffixPattern = /\n[ \t]*$/
 const componentNamePattern = /[-A-Z]/
 const selfClosingTagNamePattern = /input|img|br/i
 
-const ERROR_PARTIAL_NAME = 'Expected legal partial name'
-const ERROR_EXPRESSION = 'Expected expression'
-
 const parsers = [
   {
     test(source) {
       return source.startsWith(syntax.EACH)
     },
     create(source) {
-      let terms = source.slice(syntax.EACH.length).trim().split(':')
+      let terms = string.trim(source.slice(syntax.EACH.length)).split(':')
       let expr = expressionEnginer.compile(terms[0])
-      let index
-      if (terms[1]) {
-        index = terms[1].trim()
-      }
-      return new Each(expr, index)
+      return new Each(expr, string.trim(terms[1]))
     }
   },
   {
@@ -77,10 +70,10 @@ const parsers = [
        return source.startsWith(syntax.IMPORT)
     },
     create(source) {
-      let name = source.slice(syntax.IMPORT.length).trim()
-      return name
-        ? new Import(name)
-        : ERROR_PARTIAL_NAME
+      let name = string.trim(source.slice(syntax.IMPORT.length))
+      if (name) {
+        new Import(name)
+      }
     }
   },
   {
@@ -88,10 +81,10 @@ const parsers = [
        return source.startsWith(syntax.PARTIAL)
     },
     create(source) {
-      let name = source.slice(syntax.PARTIAL.length).trim()
-      return name
-        ? new Partial(name)
-        : ERROR_PARTIAL_NAME
+      let name = string.trim(source.slice(syntax.PARTIAL.length))
+      if (name) {
+        new Partial(name)
+      }
     }
   },
   {
@@ -99,10 +92,12 @@ const parsers = [
        return source.startsWith(syntax.IF)
     },
     create(source) {
-      let expr = source.slice(syntax.IF.length).trim()
-      return expr
-        ? new If(expressionEnginer.compile(expr))
-        : ERROR_EXPRESSION
+      let expr = string.trim(source.slice(syntax.IF.length))
+      if (expr) {
+        return new If(
+          expressionEnginer.compile(expr)
+        )
+      }
     }
   },
   {
@@ -113,9 +108,10 @@ const parsers = [
       let expr = source.slice(syntax.ELSE_IF.length)
       if (expr) {
         popStack()
-        return new ElseIf(expressionEnginer.compile(expr))
+        return new ElseIf(
+          expressionEnginer.compile(expr)
+        )
       }
-      return ERROR_EXPRESSION
     }
   },
   {
@@ -134,9 +130,10 @@ const parsers = [
     create(source) {
       let expr = source.slice(syntax.SPREAD.length)
       if (expr) {
-        return new Spread(expressionEnginer.compile(expr))
+        return new Spread(
+          expressionEnginer.compile(expr)
+        )
       }
-      return ERROR_EXPRESSION
     }
   },
   {
@@ -570,7 +567,7 @@ function getLocationByPos(str, pos) {
  */
 function isBreakline(content) {
   return content.indexOf(BREAKLINE) >= 0
-    && content.trim() === ''
+    && string.trim(content) === ''
 }
 
 /**
@@ -820,10 +817,7 @@ export function compile(template, loose) {
               if (parser.test(content, delimiter)) {
                 // 用 index 节省一个变量定义
                 index = parser.create(content, delimiter, popStack)
-                if (is.string(index)) {
-                  parseError(index, mainScanner.pos + helperScanner.pos)
-                }
-                else {
+                if (index) {
                   addChild(index)
                 }
                 return env.FALSE
