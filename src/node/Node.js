@@ -1,6 +1,8 @@
 
 import * as env from 'yox-common/util/env'
 
+import * as array from 'yox-common/util/array'
+
 /**
  * 节点基类
  */
@@ -11,8 +13,10 @@ export default class Node {
   }
 
   addChild(child) {
-    let children = this.children || (this.children = [ ])
-    children.push(child)
+    array.push(
+      this.children || (this.children = [ ]),
+      child
+    )
   }
 
 }

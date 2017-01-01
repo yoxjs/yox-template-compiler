@@ -344,7 +344,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
               }
               return traverseList(partial.children, recursion)
             }
-            logger.error(`Importing partial '${name}' is not found.`)
+            logger.error(`Importing partial "${name}" is not found.`)
             break
 
           // 条件判断失败就没必要往下走了
@@ -912,10 +912,10 @@ export function compile(template, loose) {
     return children
   }
 
-  let root = children[0]
-  if (children.length > 1 || root.type !== nodeType.ELEMENT) {
+  result = children[0]
+  if (children.length > 1 || result.type !== nodeType.ELEMENT) {
     logger.error('Template should contain exactly one root element.')
   }
-  return root
+  return result
 
 }

@@ -2,6 +2,8 @@
 import Node from './Node'
 import * as nodeType from '../nodeType'
 
+import * as array from 'yox-common/util/array'
+
 /**
  * 元素节点
  *
@@ -19,8 +21,10 @@ export default class Element extends Node {
   }
 
   addAttr(child) {
-    let attrs = this.attrs || (this.attrs = [ ])
-    attrs.push(child)
+    array.push(
+      this.attrs || (this.attrs = [ ]),
+      child,
+    )
   }
 
 }
