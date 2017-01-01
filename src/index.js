@@ -72,7 +72,7 @@ const parsers = [
     create(source) {
       let name = string.trim(source.slice(syntax.IMPORT.length))
       if (name) {
-        new Import(name)
+        return new Import(name)
       }
     }
   },
@@ -83,7 +83,7 @@ const parsers = [
     create(source) {
       let name = string.trim(source.slice(syntax.PARTIAL.length))
       if (name) {
-        new Partial(name)
+        return new Partial(name)
       }
     }
   },
