@@ -52,6 +52,8 @@ const breaklineSuffixPattern = /\n[ \t]*$/
 const componentNamePattern = /[-A-Z]/
 const selfClosingTagNamePattern = /input|img|br/i
 
+const { toString } = Function.prototype
+
 // 2 种 level
 // 当 level 为 LEVEL_ATTRIBUTE 时，表示只可以处理属性和指令
 // 当 level 为 LEVEL_TEXT 时，表示只可以处理属性和指令的值
@@ -199,10 +201,10 @@ export function render(ast, createText, createElement, importTemplate, data) {
 
   if (data) {
     keys = [ ]
-    getKeypath = function () {
+    getKeypath = function () { }
+    getKeypath.toString = function () {
       return keypathUtil.stringify(keys)
     }
-    getKeypath.$computed = env.TRUE
     data[ syntax.SPECIAL_KEYPATH ] = getKeypath
     context = new Context(data)
   }
@@ -332,7 +334,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
           case nodeType.EXPRESSION:
             let { expr, safe } = node
             content = executeExpr(expr)
-            if (is.func(content) && content.$computed) {
+            if (is.func(content) && content.toString !== toString) {
               content = content()
             }
             return createText({
