@@ -201,10 +201,10 @@ export function render(ast, createText, createElement, importTemplate, data) {
 
   if (data) {
     keys = [ ]
-    getKeypath = function () { }
-    getKeypath.toString = function () {
-      return keypathUtil.stringify(keys)
+    getKeypath = function () {
+      keypathUtil.stringify(keys)
     }
+    getKeypath.toString = getKeypath
     data[ syntax.SPECIAL_KEYPATH ] = getKeypath
     context = new Context(data)
   }
