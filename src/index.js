@@ -1,4 +1,14 @@
 
+import * as is from 'yox-common/util/is'
+import * as env from 'yox-common/util/env'
+import * as array from 'yox-common/util/array'
+import * as object from 'yox-common/util/object'
+import * as string from 'yox-common/util/string'
+import * as logger from 'yox-common/util/logger'
+import * as keypathUtil from 'yox-common/util/keypath'
+
+import * as expressionEnginer from 'yox-expression-compiler'
+
 import * as syntax from './syntax'
 import * as nodeType from './nodeType'
 
@@ -18,24 +28,12 @@ import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Text from './node/Text'
 
-import * as is from 'yox-common/util/is'
-import * as env from 'yox-common/util/env'
-import * as array from 'yox-common/util/array'
-import * as object from 'yox-common/util/object'
-import * as string from 'yox-common/util/string'
-import * as logger from 'yox-common/util/logger'
-import * as keypathUtil from 'yox-common/util/keypath'
-
-import * as expressionEnginer from 'yox-expression-compiler'
-
 const EQUAL = 61         // =
 const SLASH = 47         // /
 const ARROW_LEFT = 60    // <
 const ARROW_RIGHT = 62   // >
 const BRACE_LEFT = 123   // {
 const BRACE_RIGHT = 125  // }
-
-const BREAKLINE = '\n'
 
 const openingDelimiterPattern = new RegExp(syntax.DELIMITER_OPENING)
 const closingDelimiterPattern = new RegExp(syntax.DELIMITER_CLOSING)
@@ -53,101 +51,6 @@ const breaklineSuffixPattern = /\n[ \t]*$/
 
 const componentNamePattern = /[-A-Z]/
 const selfClosingTagNamePattern = /input|img|br/i
-
-const parsers = [
-  {
-    test(source) {
-      return source.startsWith(syntax.EACH)
-    },
-    create(source) {
-      let terms = string.trim(source.slice(syntax.EACH.length)).split(':')
-      let expr = expressionEnginer.compile(terms[0])
-      return new Each(expr, string.trim(terms[1]))
-    }
-  },
-  {
-    test(source) {
-       return source.startsWith(syntax.IMPORT)
-    },
-    create(source) {
-      let name = string.trim(source.slice(syntax.IMPORT.length))
-      if (name) {
-        return new Import(name)
-      }
-    }
-  },
-  {
-    test(source) {
-       return source.startsWith(syntax.PARTIAL)
-    },
-    create(source) {
-      let name = string.trim(source.slice(syntax.PARTIAL.length))
-      if (name) {
-        return new Partial(name)
-      }
-    }
-  },
-  {
-    test(source) {
-       return source.startsWith(syntax.IF)
-    },
-    create(source) {
-      let expr = string.trim(source.slice(syntax.IF.length))
-      if (expr) {
-        return new If(
-          expressionEnginer.compile(expr)
-        )
-      }
-    }
-  },
-  {
-    test(source) {
-      return source.startsWith(syntax.ELSE_IF)
-    },
-    create(source, delimiter, popStack) {
-      let expr = source.slice(syntax.ELSE_IF.length)
-      if (expr) {
-        popStack()
-        return new ElseIf(
-          expressionEnginer.compile(expr)
-        )
-      }
-    }
-  },
-  {
-    test(source) {
-      return source.startsWith(syntax.ELSE)
-    },
-    create(source, delimiter, popStack) {
-      popStack()
-      return new Else()
-    }
-  },
-  {
-    test(source) {
-      return source.startsWith(syntax.SPREAD)
-    },
-    create(source) {
-      let expr = source.slice(syntax.SPREAD.length)
-      if (expr) {
-        return new Spread(
-          expressionEnginer.compile(expr)
-        )
-      }
-    }
-  },
-  {
-    test(source) {
-      return !source.startsWith(syntax.COMMENT)
-    },
-    create(source, delimiter) {
-      return new Expression(
-        expressionEnginer.compile(source),
-        !delimiter.endsWith('}}}')
-      )
-    }
-  }
-]
 
 // 2 种 level
 // 当 level 为 LEVEL_ATTRIBUTE 时，表示只可以处理属性和指令
@@ -535,12 +438,115 @@ export function render(ast, createText, createElement, importTemplate, data) {
 // 缓存编译结果
 let cache = { }
 
+const parsers = [
+  {
+    test(source) {
+      return source.startsWith(syntax.EACH)
+    },
+    create(source) {
+      let terms = string.trim(source.slice(syntax.EACH.length)).split(':')
+      let expr = string.trim(terms[0])
+      if (terms.length > 0 && expr) {
+        return new Each(
+          expressionEnginer.compile(expr),
+          string.trim(terms[1])
+        )
+      }
+    }
+  },
+  {
+    test(source) {
+       return source.startsWith(syntax.IMPORT)
+    },
+    create(source) {
+      let name = string.trim(source.slice(syntax.IMPORT.length))
+      if (name) {
+        return new Import(name)
+      }
+    }
+  },
+  {
+    test(source) {
+       return source.startsWith(syntax.PARTIAL)
+    },
+    create(source) {
+      let name = string.trim(source.slice(syntax.PARTIAL.length))
+      if (name) {
+        return new Partial(name)
+      }
+    }
+  },
+  {
+    test(source) {
+       return source.startsWith(syntax.IF)
+    },
+    create(source) {
+      let expr = string.trim(source.slice(syntax.IF.length))
+      if (expr) {
+        return new If(
+          expressionEnginer.compile(expr)
+        )
+      }
+    }
+  },
+  {
+    test(source) {
+      return source.startsWith(syntax.ELSE_IF)
+    },
+    create(source, delimiter, popStack) {
+      let expr = source.slice(syntax.ELSE_IF.length)
+      if (expr) {
+        popStack()
+        return new ElseIf(
+          expressionEnginer.compile(expr)
+        )
+      }
+    }
+  },
+  {
+    test(source) {
+      return source.startsWith(syntax.ELSE)
+    },
+    create(source, delimiter, popStack) {
+      popStack()
+      return new Else()
+    }
+  },
+  {
+    test(source) {
+      return source.startsWith(syntax.SPREAD)
+    },
+    create(source) {
+      let expr = source.slice(syntax.SPREAD.length)
+      if (expr) {
+        return new Spread(
+          expressionEnginer.compile(expr)
+        )
+      }
+    }
+  },
+  {
+    test(source) {
+      return !source.startsWith(syntax.COMMENT)
+    },
+    create(source, delimiter) {
+      source = string.trim(source)
+      if (source) {
+        return new Expression(
+          expressionEnginer.compile(source),
+          !delimiter.endsWith('}}}')
+        )
+      }
+    }
+  }
+]
+
 function getLocationByPos(str, pos) {
 
   let line = 0, col = 0, index = 0
 
   array.each(
-    str.split(BREAKLINE),
+    str.split(env.BREAKLINE),
     function (lineStr) {
       line++
       col = 0
@@ -566,7 +572,7 @@ function getLocationByPos(str, pos) {
  * @return {boolean}
  */
 function isBreakline(content) {
-  return content.indexOf(BREAKLINE) >= 0
+  return content.indexOf(env.BREAKLINE) >= 0
     && string.trim(content) === ''
 }
 
@@ -654,7 +660,7 @@ export function compile(template, loose) {
   let rootNode = new Element('root')
   let currentNode = rootNode
 
-  let parseError = function (msg, pos) {
+  let throwError = function (msg, pos) {
     if (pos == env.NULL) {
       msg += '.'
     }
@@ -662,7 +668,7 @@ export function compile(template, loose) {
       let { line, col } = getLocationByPos(template, pos)
       msg += `, at line ${line}, col ${col}.`
     }
-    logger.error(`${msg}${BREAKLINE}${template}`)
+    logger.error(`${msg}${env.BREAKLINE}${template}`)
   }
 
   let pushStack = function (node) {
@@ -820,6 +826,9 @@ export function compile(template, loose) {
                 if (index) {
                   addChild(index)
                 }
+                else {
+                  throwError('Expected expression', mainScanner.pos + helperScanner.pos)
+                }
                 return env.FALSE
               }
             }
@@ -852,10 +861,10 @@ export function compile(template, loose) {
 
       // 没有匹配到 >
       if (mainScanner.charCodeAt(0) !== ARROW_RIGHT) {
-        return parseError('Illegal tag name', mainScanner.pos)
+        return throwError('Illegal tag name', mainScanner.pos)
       }
       else if (currentNode.type === nodeType.ELEMENT && name !== currentNode.name) {
-        return parseError('Unexpected closing tag', mainScanner.pos)
+        return throwError('Unexpected closing tag', mainScanner.pos)
       }
 
       popStack()
@@ -892,7 +901,7 @@ export function compile(template, loose) {
       content = mainScanner.nextAfter(elementEndPattern)
       // 没有匹配到 > 或 />
       if (!content) {
-        return parseError('Illegal tag name', mainScanner.pos)
+        return throwError('Illegal tag name', mainScanner.pos)
       }
 
       if (isSelfClosing) {
@@ -902,7 +911,7 @@ export function compile(template, loose) {
   }
 
   if (nodeStack.length) {
-    return parseError(`Missing end tag (</${nodeStack[0].name}>)`, mainScanner.pos)
+    return throwError(`Expected end tag (</${nodeStack[0].name}>)`, mainScanner.pos)
   }
 
   let { children } = rootNode
