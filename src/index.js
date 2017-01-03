@@ -443,12 +443,12 @@ let cache = { }
 const parsers = [
   {
     test(source) {
-      return source.startsWith(syntax.EACH)
+      return string.startsWith(source, syntax.EACH)
     },
     create(source) {
       let terms = string.trim(source.slice(syntax.EACH.length)).split(':')
       let expr = string.trim(terms[0])
-      if (terms.length > 0 && expr) {
+      if (expr) {
         return new Each(
           expressionEnginer.compile(expr),
           string.trim(terms[1])
@@ -458,7 +458,7 @@ const parsers = [
   },
   {
     test(source) {
-       return source.startsWith(syntax.IMPORT)
+       return string.startsWith(source, syntax.IMPORT)
     },
     create(source) {
       let name = string.trim(source.slice(syntax.IMPORT.length))
@@ -469,7 +469,7 @@ const parsers = [
   },
   {
     test(source) {
-       return source.startsWith(syntax.PARTIAL)
+       return string.startsWith(source, syntax.PARTIAL)
     },
     create(source) {
       let name = string.trim(source.slice(syntax.PARTIAL.length))
@@ -480,7 +480,7 @@ const parsers = [
   },
   {
     test(source) {
-       return source.startsWith(syntax.IF)
+       return string.startsWith(source, syntax.IF)
     },
     create(source) {
       let expr = string.trim(source.slice(syntax.IF.length))
@@ -493,7 +493,7 @@ const parsers = [
   },
   {
     test(source) {
-      return source.startsWith(syntax.ELSE_IF)
+      return string.startsWith(source, syntax.ELSE_IF)
     },
     create(source, delimiter, popStack) {
       let expr = source.slice(syntax.ELSE_IF.length)
@@ -507,7 +507,7 @@ const parsers = [
   },
   {
     test(source) {
-      return source.startsWith(syntax.ELSE)
+      return string.startsWith(source, syntax.ELSE)
     },
     create(source, delimiter, popStack) {
       popStack()
@@ -516,7 +516,7 @@ const parsers = [
   },
   {
     test(source) {
-      return source.startsWith(syntax.SPREAD)
+      return string.startsWith(source, syntax.SPREAD)
     },
     create(source) {
       let expr = source.slice(syntax.SPREAD.length)
@@ -529,14 +529,14 @@ const parsers = [
   },
   {
     test(source) {
-      return !source.startsWith(syntax.COMMENT)
+      return !string.startsWith(source, syntax.COMMENT)
     },
     create(source, delimiter) {
       source = string.trim(source)
       if (source) {
         return new Expression(
           expressionEnginer.compile(source),
-          !delimiter.endsWith('}}}')
+          !string.endsWith(delimiter, '}}}')
         )
       }
     }
@@ -782,11 +782,11 @@ export function compile(template, loose) {
               levelNode = new Directive(name)
             }
             else {
-              if (name.startsWith(syntax.DIRECTIVE_EVENT_PREFIX)) {
+              if (string.startsWith(name, syntax.DIRECTIVE_EVENT_PREFIX)) {
                 name = name.slice(syntax.DIRECTIVE_EVENT_PREFIX.length)
                 levelNode = new Directive('event', name)
               }
-              else if (name.startsWith(syntax.DIRECTIVE_CUSTOM_PREFIX)) {
+              else if (string.startsWith(name, syntax.DIRECTIVE_CUSTOM_PREFIX)) {
                 name = name.slice(syntax.DIRECTIVE_CUSTOM_PREFIX.length)
                 levelNode = new Directive(name)
               }
