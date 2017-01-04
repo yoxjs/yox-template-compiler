@@ -87,18 +87,36 @@ buildInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
 /**
  * 合并多个节点
  *
- * 用于处理属性值，如 name="xx{{xx}}xx"  name="xx"  name="{{xx}}"
+ * 用于处理属性值和指令值
  *
  * @param {?Array} nodes
  * @return {*}
  */
 function mergeNodes(nodes) {
   if (is.array(nodes)) {
-    if (nodes.length === 1) {
+    let { length } = nodes
+    // name=""
+    if (length === 0) {
+      return ''
+    }
+    // name="{{value}}"
+    else if (length === 1) {
       return nodes[0]
     }
-    else if (nodes.length > 1) {
-      return nodes.join('')
+    // name="{{value1}}{{value2}}"
+    else if (length > 1) {
+      // 因为 traverseList 用 array.push 收集数据
+      // 因此有可能数据本身就是一个数组，却走近这个分支了
+      let stringable = env.TRUE
+      array.each(
+        nodes,
+        function (node) {
+          if (!is.primitive(node)) {
+            return stringable = env.FALSE
+          }
+        }
+      )
+      return stringable ? nodes.join('') : nodes
     }
   }
 }
