@@ -65,10 +65,6 @@ const attrTypes = { }
 attrTypes[ nodeType.ATTRIBUTE ] =
 attrTypes[ nodeType.DIRECTIVE ] = env.TRUE
 
-// 触发 level 变化的节点类型
-const levelTypes = object.extend({ }, attrTypes)
-levelTypes[ nodeType.ELEMENT ] = env.TRUE
-
 // 叶子节点类型
 const leafTypes = { }
 leafTypes[ nodeType.EXPRESSION ] =
@@ -83,6 +79,19 @@ buildInDirectives[ syntax.DIRECTIVE_LAZY ] =
 buildInDirectives[ syntax.DIRECTIVE_MODEL ] =
 buildInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
 
+
+const NODES_FLAG = '$nodes'
+
+/**
+ * 创建专门存放节点的数组，以区别普通数组
+ *
+ * @return {Array}
+ */
+function createNodes() {
+  let nodes = [ ]
+  nodes[NODES_FLAG] = env.TRUE
+  return nodes
+}
 
 /**
  * 合并多个节点
@@ -105,18 +114,7 @@ function mergeNodes(nodes) {
     }
     // name="{{value1}}{{value2}}"
     else if (length > 1) {
-      // 因为 traverseList 用 array.push 收集数据
-      // 因此有可能数据本身就是一个数组，却走近这个分支了
-      let stringable = env.TRUE
-      array.each(
-        nodes,
-        function (node) {
-          if (!is.primitive(node)) {
-            return stringable = env.FALSE
-          }
-        }
-      )
-      return stringable ? nodes.join(env.EMPTY) : nodes
+      return nodes.join(env.EMPTY)
     }
   }
 }
@@ -133,23 +131,20 @@ function mergeNodes(nodes) {
  */
 function traverseTree(node, enter, leave, traverseList, recursion) {
 
-  let result = enter(node)
-  if (result) {
-    return result
+  let value = enter(node)
+  if (value !== env.FALSE) {
+    if (!value) {
+      let { children, attrs } = node
+      if (is.array(children)) {
+        children = traverseList(children, recursion)
+      }
+      if (is.array(attrs)) {
+        attrs = traverseList(attrs, recursion)
+      }
+      value = leave(node, children, attrs)
+    }
+    return value
   }
-  else if (result === env.FALSE) {
-    return
-  }
-
-  let { children, attrs } = node
-  if (is.array(children)) {
-    children = traverseList(children, recursion)
-  }
-  if (is.array(attrs)) {
-    attrs = traverseList(attrs, recursion)
-  }
-
-  return leave(node, children, attrs)
 
 }
 
@@ -161,12 +156,17 @@ function traverseTree(node, enter, leave, traverseList, recursion) {
  * @return {Array}
  */
 function traverseList(nodes, recursion) {
-  let list = [ ], item
+  let list = createNodes(), item
   let i = 0, node
   while (node = nodes[i]) {
     item = recursion(node)
     if (item !== env.UNDEFINED) {
-      array.push(list, item)
+      if (is.array(item) && !item[NODES_FLAG]) {
+        list.push(item)
+      }
+      else {
+        array.push(list, item)
+      }
       if (node.type === nodeType.IF
         || node.type === nodeType.ELSE_IF
       ) {
@@ -227,7 +227,6 @@ export function render(ast, createText, createElement, importTemplate, data) {
     context = new Context(data)
   }
 
-  let count = 0
   let partials = { }
 
   let deps = { }
@@ -278,7 +277,6 @@ export function render(ast, createText, createElement, importTemplate, data) {
             }
             break
 
-          // each 比较特殊，只能放在 enter 里执行
           case nodeType.EACH:
             let { index, children } = node
             let value = executeExpr(expr)
@@ -294,7 +292,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
               return env.FALSE
             }
 
-            let result = [ ]
+            let list = createNodes()
 
             array.push(keys, stringifyExpr(expr))
             context = context.push(value)
@@ -310,7 +308,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
                 context = context.push(item)
 
                 array.push(
-                  result,
+                  list,
                   traverseList(children, recursion)
                 )
 
@@ -323,12 +321,8 @@ export function render(ast, createText, createElement, importTemplate, data) {
             keys.pop()
             context = context.pop()
 
-            return result
+            return list
 
-        }
-
-        if (object.has(levelTypes, type)) {
-          count++
         }
 
       },
@@ -336,10 +330,6 @@ export function render(ast, createText, createElement, importTemplate, data) {
 
         let { type, name, subName, component, content } = node
         let keypath = getKeypath()
-
-        if (object.has(levelTypes, type)) {
-          count--
-        }
 
         switch (type) {
           case nodeType.TEXT:
@@ -391,12 +381,12 @@ export function render(ast, createText, createElement, importTemplate, data) {
           case nodeType.SPREAD:
             content = executeExpr(node.expr)
             if (is.object(content)) {
-              let result = [ ]
+              let list = createNodes()
               object.each(
                 content,
                 function (value, name) {
                   array.push(
-                    result,
+                    list,
                     {
                       name,
                       value,
@@ -405,7 +395,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
                   )
                 }
               )
-              return result
+              return list
             }
             break
 
@@ -438,7 +428,6 @@ export function render(ast, createText, createElement, importTemplate, data) {
                 children,
                 keypath,
               },
-              !count,
               component
             )
         }
