@@ -97,7 +97,7 @@ function mergeNodes(nodes) {
     let { length } = nodes
     // name=""
     if (length === 0) {
-      return ''
+      return env.EMPTY
     }
     // name="{{value}}"
     else if (length === 1) {
@@ -116,7 +116,7 @@ function mergeNodes(nodes) {
           }
         }
       )
-      return stringable ? nodes.join('') : nodes
+      return stringable ? nodes.join(env.EMPTY) : nodes
     }
   }
 }
@@ -214,7 +214,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
 
   let context, keys
   let getKeypath = function () {
-    return ''
+    return env.EMPTY
   }
 
   if (data) {
@@ -417,7 +417,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
                 attrs,
                 function (node) {
                   if (object.has(node, 'subName')) {
-                    if (node.name && node.subName !== '') {
+                    if (node.name && node.subName !== env.EMPTY) {
                       array.push(directives, node)
                     }
                   }
@@ -593,7 +593,7 @@ function getLocationByPos(str, pos) {
  */
 function isBreakline(content) {
   return content.indexOf(env.BREAKLINE) >= 0
-    && string.trim(content) === ''
+    && string.trim(content) === env.EMPTY
 }
 
 /**
@@ -604,8 +604,8 @@ function isBreakline(content) {
  */
 function trimBreakline(content) {
   return content
-    .replace(breaklinePrefixPattern, '')
-    .replace(breaklineSuffixPattern, '')
+    .replace(breaklinePrefixPattern, env.EMPTY)
+    .replace(breaklineSuffixPattern, env.EMPTY)
 }
 
 /**
