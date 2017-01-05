@@ -82,14 +82,10 @@ buildInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
 
 const NODES_FLAG = '$nodes'
 
-/**
- * 创建专门存放节点的数组，以区别普通数组
- *
- * @return {Array}
- */
-function createNodes() {
-  let nodes = [ ]
-  nodes[NODES_FLAG] = env.TRUE
+function markNodes(nodes) {
+  if (is.array(nodes)) {
+    nodes[NODES_FLAG] = env.TRUE
+  }
   return nodes
 }
 
@@ -156,7 +152,7 @@ function traverseTree(node, enter, leave, traverseList, recursion) {
  * @return {Array}
  */
 function traverseList(nodes, recursion) {
-  let list = createNodes(), item
+  let list = markNodes([ ]), item
   let i = 0, node
   while (node = nodes[i]) {
     item = recursion(node)
@@ -292,7 +288,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
               return env.FALSE
             }
 
-            let list = createNodes()
+            let list = markNodes([ ])
 
             array.push(keys, stringifyExpr(expr))
             context = context.push(value)
@@ -333,10 +329,12 @@ export function render(ast, createText, createElement, importTemplate, data) {
 
         switch (type) {
           case nodeType.TEXT:
-            return createText({
-              keypath,
-              content,
-            })
+            return markNodes(
+              createText({
+                keypath,
+                content,
+              })
+            )
 
 
           case nodeType.EXPRESSION:
@@ -345,11 +343,13 @@ export function render(ast, createText, createElement, importTemplate, data) {
             if (is.func(content) && content.toString !== toString) {
               content = content()
             }
-            return createText({
-              safe,
-              keypath,
-              content,
-            })
+            return markNodes(
+              createText({
+                safe,
+                keypath,
+                content,
+              })
+            )
 
 
           case nodeType.ATTRIBUTE:
@@ -381,7 +381,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
           case nodeType.SPREAD:
             content = executeExpr(node.expr)
             if (is.object(content)) {
-              let list = createNodes()
+              let list = markNodes([ ])
               object.each(
                 content,
                 function (value, name) {
