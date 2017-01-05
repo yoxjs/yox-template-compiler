@@ -343,14 +343,14 @@ export function render(ast, createText, createElement, importTemplate, data) {
             if (is.func(content) && content.toString !== toString) {
               content = content()
             }
-            return markNodes(
-              createText({
-                safe,
-                keypath,
-                content,
-              })
-            )
-
+            content = createText({
+              safe,
+              keypath,
+              content,
+            })
+            return safe
+              ? content
+              : markNodes(content)
 
           case nodeType.ATTRIBUTE:
             if (name.type === nodeType.EXPRESSION) {
