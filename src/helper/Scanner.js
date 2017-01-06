@@ -1,5 +1,6 @@
 
-import * as env from 'yox-common/util/env'
+import char from 'yox-common/util/char'
+
 import * as string from 'yox-common/util/string'
 
 export default class Scanner {
@@ -35,7 +36,7 @@ export default class Scanner {
     let { tail } = this
     let matches = tail.match(pattern)
     if (!matches || matches.index) {
-      return string.CHAR_BLANK
+      return char.CHAR_BLANK
     }
     let result = matches[0]
     this.forward(result.length)
@@ -57,7 +58,7 @@ export default class Scanner {
     if (matches) {
       let { index } = matches
       if (!index) {
-        return string.CHAR_BLANK
+        return char.CHAR_BLANK
       }
       let result = tail.substr(0, index)
       this.forward(index)

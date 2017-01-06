@@ -1,4 +1,6 @@
 
+import char from 'yox-common/util/char'
+
 import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
 import * as array from 'yox-common/util/array'
@@ -95,7 +97,7 @@ function mergeNodes(nodes) {
     let { length } = nodes
     // name=""
     if (length === 0) {
-      return string.CHAR_BLANK
+      return char.CHAR_BLANK
     }
     // name="{{value}}"
     else if (length === 1) {
@@ -103,7 +105,7 @@ function mergeNodes(nodes) {
     }
     // name="{{value1}}{{value2}}"
     else if (length > 1) {
-      return nodes.join(string.CHAR_BLANK)
+      return nodes.join(char.CHAR_BLANK)
     }
   }
 }
@@ -203,7 +205,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
 
   let context, keys
   let getKeypath = function () {
-    return string.CHAR_BLANK
+    return char.CHAR_BLANK
   }
 
   if (data) {
@@ -400,7 +402,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
                 attrs,
                 function (node) {
                   if (object.has(node, 'subName')) {
-                    if (node.name && node.subName !== string.CHAR_BLANK) {
+                    if (node.name && node.subName !== char.CHAR_BLANK) {
                       array.push(directives, node)
                     }
                   }
@@ -446,7 +448,7 @@ const parsers = [
       return string.startsWith(source, syntax.EACH)
     },
     create(source) {
-      let terms = string.trim(source.slice(syntax.EACH.length)).split(string.CHAR_COLON)
+      let terms = string.trim(source.slice(syntax.EACH.length)).split(char.CHAR_COLON)
       let expr = string.trim(terms[0])
       if (expr) {
         return new Each(
@@ -548,7 +550,7 @@ function getLocationByPos(str, pos) {
   let line = 0, col = 0, index = 0
 
   array.each(
-    str.split(string.CHAR_BREAKLINE),
+    str.split(char.CHAR_BREAKLINE),
     function (lineStr) {
       line++
       col = 0
@@ -574,8 +576,8 @@ function getLocationByPos(str, pos) {
  * @return {boolean}
  */
 function isBreakline(content) {
-  return content.indexOf(string.CHAR_BREAKLINE) >= 0
-    && string.trim(content) === string.CHAR_BLANK
+  return content.indexOf(char.CHAR_BREAKLINE) >= 0
+    && string.trim(content) === char.CHAR_BLANK
 }
 
 /**
@@ -586,8 +588,8 @@ function isBreakline(content) {
  */
 function trimBreakline(content) {
   return content
-    .replace(breaklinePrefixPattern, string.CHAR_BLANK)
-    .replace(breaklineSuffixPattern, string.CHAR_BLANK)
+    .replace(breaklinePrefixPattern, char.CHAR_BLANK)
+    .replace(breaklineSuffixPattern, char.CHAR_BLANK)
 }
 
 /**
@@ -604,7 +606,7 @@ function parseAttributeValue(content, quote) {
   }
 
   let match = content.match(
-    quote === string.CHAR_DQUOTE
+    quote === char.CHAR_DQUOTE
     ? nonDoubleQuotePattern
     : nonSingleQuotePattern
   )
@@ -664,13 +666,13 @@ export function compile(template, loose) {
 
   let throwError = function (msg, pos) {
     if (pos == env.NULL) {
-      msg += string.CHAR_DOT
+      msg += char.CHAR_DOT
     }
     else {
       let { line, col } = getLocationByPos(template, pos)
       msg += `, at line ${line}, col ${col}.`
     }
-    logger.error(`${msg}${string.CHAR_BREAKLINE}${template}`)
+    logger.error(`${msg}${char.CHAR_BREAKLINE}${template}`)
   }
 
   let pushStack = function (node) {
@@ -733,7 +735,7 @@ export function compile(template, loose) {
   let parseAttribute = function (content) {
 
     if (array.falsy(levelNode.children)) {
-      if (content && string.charCodeAt(content) === string.CODE_EQUAL) {
+      if (content && string.charCodeAt(content) === char.CODE_EQUAL) {
         quote = string.charAt(content, 1)
         content = content.slice(2)
       }
@@ -815,7 +817,7 @@ export function compile(template, loose) {
       delimiter = helperScanner.nextAfter(closingDelimiterPattern)
 
       if (content) {
-        if (string.charCodeAt(content) === string.CODE_SLASH) {
+        if (string.charCodeAt(content) === char.CODE_SLASH) {
           popStack()
         }
         else {
@@ -851,18 +853,18 @@ export function compile(template, loose) {
 
     // 接下来必须是 < 开头（标签）
     // 如果不是标签，那就该结束了
-    if (mainScanner.charCodeAt(0) !== string.CODE_LEFT) {
+    if (mainScanner.charCodeAt(0) !== char.CODE_LEFT) {
       break
     }
 
     // 结束标签
-    if (mainScanner.charCodeAt(1) === string.CODE_SLASH) {
+    if (mainScanner.charCodeAt(1) === char.CODE_SLASH) {
       // 取出 </tagName
       content = mainScanner.nextAfter(elementPattern)
       name = content.slice(2)
 
       // 没有匹配到 >
-      if (mainScanner.charCodeAt(0) !== string.CODE_RIGHT) {
+      if (mainScanner.charCodeAt(0) !== char.CODE_RIGHT) {
         return throwError('Illegal tag name', mainScanner.pos)
       }
       else if (currentNode.type === nodeType.ELEMENT && name !== currentNode.name) {
