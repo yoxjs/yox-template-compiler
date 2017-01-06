@@ -35,7 +35,7 @@ export default class Scanner {
     let { tail } = this
     let matches = tail.match(pattern)
     if (!matches || matches.index) {
-      return env.EMPTY
+      return string.CHAR_BLANK
     }
     let result = matches[0]
     this.forward(result.length)
@@ -57,7 +57,7 @@ export default class Scanner {
     if (matches) {
       let { index } = matches
       if (!index) {
-        return env.EMPTY
+        return string.CHAR_BLANK
       }
       let result = tail.substr(0, index)
       this.forward(index)

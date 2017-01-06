@@ -7,7 +7,7 @@ import * as string from 'yox-common/util/string'
 /**
  * 指令节点
  *
- * on-click="submit"  name 是 event, subName 是 click，value 是 submit
+ * on-click="submit"  name 是 event, subName 是 click
  *
  * @param {string} name 指令名
  * @param {?string} subName 指令子名
