@@ -40,8 +40,8 @@ export default class Context {
     else {
       let lookup = env.TRUE, index = 0
       let levelMap = { }
-      levelMap[ keypathUtil.LEVEL_CURRENT ] = 0
-      levelMap[ keypathUtil.LEVEL_PARENT ] = 1
+      levelMap[ keypathUtil.LEVEL_CURRENT ] = env.FALSE
+      levelMap[ keypathUtil.LEVEL_PARENT ] = env.TRUE
 
       array.each(
         keys,
@@ -113,14 +113,16 @@ export default class Context {
         else {
           cache[keypath] = data
         }
-
       }
-
-      return {
-        keypath,
-        value: cache[keypath],
+      if (object.has(cache, keypath)) {
+        return {
+          keypath,
+          value: cache[keypath],
+        }
       }
     }
+
+    logger.warn(`Failed to lookup "${key}" data.`)
 
     return {
       keypath: key,

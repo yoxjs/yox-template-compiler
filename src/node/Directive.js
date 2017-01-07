@@ -7,18 +7,18 @@ import * as string from 'yox-common/util/string'
 /**
  * 指令节点
  *
- * on-click="submit"  name 是 event, subName 是 click
+ * on-click="submit"  name 是 event, modifier 是 click
  *
  * @param {string} name 指令名
- * @param {?string} subName 指令子名
+ * @param {?string} modifier 指令修饰符
  */
 export default class Directive extends Node {
 
-  constructor(name, subName) {
+  constructor(name, modifier) {
     super(nodeType.DIRECTIVE)
     this.name = string.camelCase(name)
-    if (subName) {
-      this.subName = string.camelCase(subName)
+    if (modifier) {
+      this.modifier = string.camelCase(modifier)
     }
   }
 

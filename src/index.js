@@ -79,9 +79,13 @@ const NODES_FLAG = '$nodes'
 
 function markNodes(nodes) {
   if (is.array(nodes)) {
-    nodes[NODES_FLAG] = env.TRUE
+    nodes[ NODES_FLAG ] = env.TRUE
   }
   return nodes
+}
+
+function isNodes(nodes) {
+  return nodes[ NODES_FLAG ] === env.TRUE
 }
 
 /**
@@ -152,7 +156,7 @@ function traverseList(nodes, recursion) {
   while (node = nodes[i]) {
     item = recursion(node)
     if (item !== env.UNDEFINED) {
-      if (is.array(item) && !item[NODES_FLAG]) {
+      if (is.array(item) && !isNodes(item)) {
         list.push(item)
       }
       else {
@@ -319,7 +323,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
       },
       function (node, children, attrs) {
 
-        let { type, name, subName, component, content } = node
+        let { type, name, modifier, component, content } = node
         let keypath = getKeypath()
 
         switch (type) {
@@ -362,7 +366,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
           case nodeType.DIRECTIVE:
             return {
               name,
-              subName,
+              modifier,
               keypath,
               value: mergeNodes(children),
             }
@@ -402,8 +406,8 @@ export function render(ast, createText, createElement, importTemplate, data) {
               array.each(
                 attrs,
                 function (node) {
-                  if (object.has(node, 'subName')) {
-                    if (node.name && node.subName !== char.CHAR_BLANK) {
+                  if (object.has(node, 'modifier')) {
+                    if (node.name && node.modifier !== char.CHAR_BLANK) {
                       array.push(directives, node)
                     }
                   }
@@ -499,11 +503,11 @@ const parsers = [
       return string.startsWith(source, syntax.ELSE_IF)
     },
     create(source, delimiter, popStack) {
-      let expr = source.slice(syntax.ELSE_IF.length)
-      if (expr) {
+      source = string.trim(source.slice(syntax.ELSE_IF.length))
+      if (source) {
         popStack()
         return new ElseIf(
-          expressionEnginer.compile(expr)
+          expressionEnginer.compile(source)
         )
       }
     }
@@ -522,10 +526,10 @@ const parsers = [
       return string.startsWith(source, syntax.SPREAD)
     },
     create(source) {
-      let expr = source.slice(syntax.SPREAD.length)
-      if (expr) {
+      source = string.trim(source.slice(syntax.SPREAD.length))
+      if (source) {
         return new Spread(
-          expressionEnginer.compile(expr)
+          expressionEnginer.compile(source)
         )
       }
     }
@@ -578,7 +582,7 @@ function getLocationByPos(str, pos) {
  */
 function isBreakline(content) {
   return content.indexOf(char.CHAR_BREAKLINE) >= 0
-    && string.trim(content) === char.CHAR_BLANK
+    && !string.trim(content)
 }
 
 /**
