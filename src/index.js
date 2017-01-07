@@ -1,8 +1,7 @@
 
-import char from 'yox-common/util/char'
-
 import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
+import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
 import * as string from 'yox-common/util/string'
@@ -47,6 +46,7 @@ const breaklineSuffixPattern = /\n[ \t]*$/
 const componentNamePattern = /[-A-Z]/
 const selfClosingTagNamePattern = /input|img|br/i
 
+// 如果传入的函数改写了 toString，就调用 toString() 求值
 const { toString } = Function.prototype
 
 // 2 种 level
@@ -336,7 +336,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
             let { expr, safe } = node
             content = executeExpr(expr)
             if (is.func(content) && content.toString !== toString) {
-              content = content()
+              content = content.toString()
             }
             content = createText({
               safe,
@@ -346,6 +346,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
             return safe
               ? content
               : markNodes(content)
+
 
           case nodeType.ATTRIBUTE:
             if (name.type === nodeType.EXPRESSION) {
@@ -615,7 +616,7 @@ function parseAttributeValue(content, quote) {
     result.value = match[0]
 
     let { length } = match[0]
-    if (string.charAt(content, length) === quote) {
+    if (char.charAt(content, length) === quote) {
       result.end = env.TRUE
       length++
     }
@@ -735,8 +736,8 @@ export function compile(template, loose) {
   let parseAttribute = function (content) {
 
     if (array.falsy(levelNode.children)) {
-      if (content && string.charCodeAt(content) === char.CODE_EQUAL) {
-        quote = string.charAt(content, 1)
+      if (content && char.codeAt(content) === char.CODE_EQUAL) {
+        quote = char.charAt(content, 1)
         content = content.slice(2)
       }
       else {
@@ -817,7 +818,7 @@ export function compile(template, loose) {
       delimiter = helperScanner.nextAfter(closingDelimiterPattern)
 
       if (content) {
-        if (string.charCodeAt(content) === char.CODE_SLASH) {
+        if (char.codeAt(content) === char.CODE_SLASH) {
           popStack()
         }
         else {
@@ -853,18 +854,18 @@ export function compile(template, loose) {
 
     // 接下来必须是 < 开头（标签）
     // 如果不是标签，那就该结束了
-    if (mainScanner.charCodeAt(0) !== char.CODE_LEFT) {
+    if (mainScanner.codeAt(0) !== char.CODE_LEFT) {
       break
     }
 
     // 结束标签
-    if (mainScanner.charCodeAt(1) === char.CODE_SLASH) {
+    if (mainScanner.codeAt(1) === char.CODE_SLASH) {
       // 取出 </tagName
       content = mainScanner.nextAfter(elementPattern)
       name = content.slice(2)
 
       // 没有匹配到 >
-      if (mainScanner.charCodeAt(0) !== char.CODE_RIGHT) {
+      if (mainScanner.codeAt(0) !== char.CODE_RIGHT) {
         return throwError('Illegal tag name', mainScanner.pos)
       }
       else if (currentNode.type === nodeType.ELEMENT && name !== currentNode.name) {

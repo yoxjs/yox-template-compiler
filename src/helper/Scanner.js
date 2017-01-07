@@ -1,7 +1,5 @@
 
-import char from 'yox-common/util/char'
-
-import * as string from 'yox-common/util/string'
+import * as char from 'yox-common/util/char'
 
 export default class Scanner {
 
@@ -76,11 +74,11 @@ export default class Scanner {
   }
 
   charAt(index) {
-    return string.charAt(this.tail, index)
+    return char.charAt(this.tail, index)
   }
 
-  charCodeAt(index) {
-    return string.charCodeAt(this.tail, index)
+  codeAt(index) {
+    return char.codeAt(this.tail, index)
   }
 
 }

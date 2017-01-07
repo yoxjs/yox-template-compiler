@@ -97,7 +97,7 @@ export default class Context {
               }
               else {
                 instance = instance.parent
-                keys.unshift(keypathUtil.LEVEL_PARENT)
+                array.unshift(keys, keypathUtil.LEVEL_PARENT)
               }
             }
             keypath = keys.join(keypathUtil.SEPARATOR_PATH)
