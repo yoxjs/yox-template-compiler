@@ -201,26 +201,20 @@ function stringifyExpr(expr) {
  * @param {Object} ast 编译出来的抽象语法树
  * @param {Function} createText 创建文本节点
  * @param {Function} createElement 创建元素节点
- * @param {?Function} importTemplate 导入子模板，如果是纯模板，可不传
- * @param {?Object} data 渲染模板的数据，如果渲染纯模板，可不传
+ * @param {Function} importTemplate 导入子模板，如果是纯模板，可不传
+ * @param {Object} data 渲染模板的数据，如果渲染纯模板，可不传
  * @return {Object} { node: x, deps: { } }
  */
 export function render(ast, createText, createElement, importTemplate, data) {
 
-  let context, keys
+  let keys = [ ]
   let getKeypath = function () {
-    return char.CHAR_BLANK
+    return keypathUtil.stringify(keys)
   }
+  getKeypath.toString = getKeypath
 
-  if (data) {
-    keys = [ ]
-    getKeypath = function () {
-      return keypathUtil.stringify(keys)
-    }
-    getKeypath.toString = getKeypath
-    data[ syntax.SPECIAL_KEYPATH ] = getKeypath
-    context = new Context(data)
-  }
+  data[ syntax.SPECIAL_KEYPATH ] = getKeypath
+  let context = new Context(data)
 
   let partials = { }
 
@@ -247,11 +241,11 @@ export function render(ast, createText, createElement, importTemplate, data) {
 
           // 用时定义的子模块无需注册到组件实例
           case nodeType.PARTIAL:
-            partials[name] = node
+            partials[ name ] = node
             return env.FALSE
 
           case nodeType.IMPORT:
-            let partial = partials[name] || importTemplate(name)
+            let partial = partials[ name ] || importTemplate(name)
             if (partial) {
               if (is.string(partial)) {
                 return traverseList(
@@ -637,14 +631,13 @@ function parseAttributeValue(content, quote) {
  * 把模板编译为抽象语法树
  *
  * @param {string} template
- * @param {?boolean} loose
  * @return {Object}
  */
-export function compile(template, loose) {
+export function compile(template) {
 
-  let result = compileCache[template]
+  let result = compileCache[ template ]
   if (result) {
-    return loose ? result : result[0]
+    return result
   }
 
   // 当前内容
@@ -718,11 +711,11 @@ export function compile(template, loose) {
       currentNode.addChild(node)
     }
 
-    if (!leafTypes[type]) {
+    if (!leafTypes[ type ]) {
       pushStack(node)
     }
 
-    if (attrTypes[type]) {
+    if (attrTypes[ type ]) {
       level = LEVEL_TEXT
     }
 
@@ -785,7 +778,7 @@ export function compile(template, loose) {
             content = content.slice(result.index + result[0].length)
             name = result[1]
 
-            if (buildInDirectives[name]) {
+            if (buildInDirectives[ name ]) {
               levelNode = new Directive(name)
             }
             else {
@@ -924,16 +917,11 @@ export function compile(template, loose) {
   }
 
   let { children } = rootNode
-  compileCache[template] = children
-
-  if (loose) {
-    return children
-  }
-
   result = children[0]
   if (children.length > 1 || result.type !== nodeType.ELEMENT) {
     logger.error('Template should contain exactly one root element.')
   }
-  return result
+
+  return compileCache[ template ] = result
 
 }
