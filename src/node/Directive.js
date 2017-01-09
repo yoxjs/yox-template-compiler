@@ -2,8 +2,6 @@
 import Node from './Node'
 import * as nodeType from '../nodeType'
 
-import * as string from 'yox-common/util/string'
-
 /**
  * 指令节点
  *
@@ -16,9 +14,9 @@ export default class Directive extends Node {
 
   constructor(name, modifier) {
     super(nodeType.DIRECTIVE)
-    this.name = string.camelCase(name)
+    this.name = name
     if (modifier) {
-      this.modifier = string.camelCase(modifier)
+      this.modifier = modifier
     }
   }
 

@@ -40,9 +40,6 @@ const attributePattern = /([-:@a-z0-9]+)(?==["'])?/i
 const nonSingleQuotePattern = /^[^']*/
 const nonDoubleQuotePattern = /^[^"]*/
 
-const breaklinePrefixPattern = /^[ \t]*\n/
-const breaklineSuffixPattern = /\n[ \t]*$/
-
 const componentNamePattern = /[-A-Z]/
 const selfClosingTagNamePattern = /input|img|br/i
 
@@ -75,17 +72,15 @@ buildInDirectives[ syntax.DIRECTIVE_MODEL ] =
 buildInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
 
 
-const NODES_FLAG = '$nodes'
-
 function markNodes(nodes) {
   if (is.array(nodes)) {
-    nodes[ NODES_FLAG ] = env.TRUE
+    nodes[ char.CHAR_DASH ] = env.TRUE
   }
   return nodes
 }
 
 function isNodes(nodes) {
-  return nodes[ NODES_FLAG ] === env.TRUE
+  return nodes[ char.CHAR_DASH ] === env.TRUE
 }
 
 /**
@@ -105,7 +100,7 @@ function mergeNodes(nodes) {
     }
     // name="{{value}}"
     else if (length === 1) {
-      return nodes[0]
+      return nodes[ 0 ]
     }
     // name="{{value1}}{{value2}}"
     else if (length > 1) {
@@ -347,9 +342,6 @@ export function render(ast, createText, createElement, importTemplate, data) {
 
 
           case nodeType.ATTRIBUTE:
-            if (name.type === nodeType.EXPRESSION) {
-              name = executeExpr(name.expr)
-            }
             return {
               name,
               keypath,
@@ -448,11 +440,11 @@ const parsers = [
     },
     create(source) {
       let terms = string.trim(source.slice(syntax.EACH.length)).split(char.CHAR_COLON)
-      let expr = string.trim(terms[0])
+      let expr = string.trim(terms[ 0 ])
       if (expr) {
         return new Each(
           expressionEnginer.compile(expr),
-          string.trim(terms[1])
+          string.trim(terms[ 1 ])
         )
       }
     }
@@ -586,9 +578,10 @@ function isBreakline(content) {
  * @return {boolean}
  */
 function trimBreakline(content) {
-  return content
-    .replace(breaklinePrefixPattern, char.CHAR_BLANK)
-    .replace(breaklineSuffixPattern, char.CHAR_BLANK)
+  return content.replace(
+    /^[ \t]*\n|\n[ \t]*$/g,
+    char.CHAR_BLANK
+  )
 }
 
 /**
@@ -611,9 +604,9 @@ function parseAttributeValue(content, quote) {
   )
 
   if (match) {
-    result.value = match[0]
+    result.value = match[ 0 ]
 
-    let { length } = match[0]
+    let { length } = match[ 0 ]
     if (char.charAt(content, length) === quote) {
       result.end = env.TRUE
       length++
@@ -695,12 +688,6 @@ export function compile(template) {
       }
       node.content = content
     }
-    else if (type === nodeType.EXPRESSION
-      && level === LEVEL_ATTRIBUTE
-    ) {
-      node = levelNode = new Attribute(node)
-      type = nodeType.ATTRIBUTE
-    }
 
     if (level === LEVEL_ATTRIBUTE
       && currentNode.addAttr
@@ -721,15 +708,11 @@ export function compile(template) {
 
   }
 
-  // 属性和指令支持以下 8 种写法：
+  // 属性和指令支持以下 4 种写法：
   // 1. name
   // 2. name="value"
   // 3. name="{{value}}"
   // 4. name="prefix{{value}}suffix"
-  // 5. {{name}}
-  // 6. {{name}}="value"
-  // 7. {{name}}="{{value}}"
-  // 8. {{name}}="prefix{{value}}suffix"
   let parseAttribute = function (content) {
 
     if (array.falsy(levelNode.children)) {
@@ -775,22 +758,32 @@ export function compile(template) {
 
         if (level === LEVEL_ATTRIBUTE) {
           while (content && (result = attributePattern.exec(content))) {
-            content = content.slice(result.index + result[0].length)
-            name = result[1]
+            content = content.slice(result.index + result[ 0 ].length)
+            name = result[ 1 ]
 
             if (buildInDirectives[ name ]) {
-              levelNode = new Directive(name)
+              levelNode = new Directive(
+                string.camelCase(name)
+              )
             }
             else {
               if (string.startsWith(name, syntax.DIRECTIVE_EVENT_PREFIX)) {
                 name = name.slice(syntax.DIRECTIVE_EVENT_PREFIX.length)
-                levelNode = new Directive('event', name)
+                levelNode = new Directive(
+                  'event',
+                  string.camelCase(name)
+                )
               }
               else if (string.startsWith(name, syntax.DIRECTIVE_CUSTOM_PREFIX)) {
                 name = name.slice(syntax.DIRECTIVE_CUSTOM_PREFIX.length)
-                levelNode = new Directive(name)
+                levelNode = new Directive(
+                  string.camelCase(name)
+                )
               }
               else {
+                if (levelNode.component) {
+                  name = string.camelCase(name)
+                }
                 levelNode = new Attribute(name)
               }
             }
@@ -913,11 +906,11 @@ export function compile(template) {
   }
 
   if (nodeStack.length) {
-    return throwError(`Expected end tag (</${nodeStack[0].name}>)`, mainScanner.pos)
+    return throwError(`Expected end tag (</${nodeStack[ 0 ].name}>)`, mainScanner.pos)
   }
 
   let { children } = rootNode
-  result = children[0]
+  result = children[ 0 ]
   if (children.length > 1 || result.type !== nodeType.ELEMENT) {
     logger.error('Template should contain exactly one root element.')
   }
