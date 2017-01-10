@@ -146,7 +146,7 @@ function traverseTree(node, enter, leave, traverseList, recursion) {
  * @return {Array}
  */
 function traverseList(nodes, recursion) {
-  let list = markNodes([ ]), item
+  let list = [ ], item
   let i = 0, node
   while (node = nodes[i]) {
     item = recursion(node)
@@ -175,7 +175,7 @@ function traverseList(nodes, recursion) {
     }
     i++
   }
-  return list
+  return markNodes(list)
 }
 
 /**
@@ -276,7 +276,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
               return env.FALSE
             }
 
-            let list = markNodes([ ])
+            let list = [ ]
 
             array.push(keys, stringifyExpr(expr))
             context = context.push(value)
@@ -305,7 +305,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
             keys.pop()
             context = context.pop()
 
-            return list
+            return markNodes(list)
 
         }
 
@@ -367,7 +367,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
           case nodeType.SPREAD:
             content = executeExpr(node.expr)
             if (is.object(content)) {
-              let list = markNodes([ ])
+              let list = [ ]
               object.each(
                 content,
                 function (value, name) {
@@ -381,7 +381,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
                   )
                 }
               )
-              return list
+              return markNodes(list)
             }
             break
 
@@ -536,30 +536,6 @@ const parsers = [
   }
 ]
 
-function getLocationByPos(str, pos) {
-
-  let line = 0, col = 0, index = 0
-
-  array.each(
-    str.split(char.CHAR_BREAKLINE),
-    function (lineStr) {
-      line++
-      col = 0
-
-      let { length } = lineStr
-      if (pos >= index && pos <= (index + length)) {
-        col = pos - index
-        return env.FALSE
-      }
-
-      index += length
-    }
-  )
-
-  return { line, col }
-
-}
-
 /**
  * 是否是纯粹的换行
  *
@@ -567,7 +543,7 @@ function getLocationByPos(str, pos) {
  * @return {boolean}
  */
 function isBreakline(content) {
-  return content.indexOf(char.CHAR_BREAKLINE) >= 0
+  return string.has(content, char.CHAR_BREAKLINE) >= 0
     && !string.trim(content)
 }
 
@@ -660,7 +636,22 @@ export function compile(template) {
       msg += char.CHAR_DOT
     }
     else {
-      let { line, col } = getLocationByPos(template, pos)
+      let line = 0, col = 0, index = 0
+      array.each(
+        template.split(char.CHAR_BREAKLINE),
+        function (lineStr) {
+          line++
+          col = 0
+
+          let { length } = lineStr
+          if (pos >= index && pos <= (index + length)) {
+            col = pos - index
+            return env.FALSE
+          }
+
+          index += length
+        }
+      )
       msg += `, at line ${line}, col ${col}.`
     }
     logger.error(`${msg}${char.CHAR_BREAKLINE}${template}`)
