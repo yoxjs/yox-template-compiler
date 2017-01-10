@@ -639,8 +639,6 @@ export function compile(template) {
   let name
   // 记录属性值、指令值的开始引号，方便匹配结束引号
   let quote
-  // 标签是否子闭合
-  let isSelfClosing
   // 分隔符
   let delimiter
 
@@ -873,15 +871,7 @@ export function compile(template) {
       content = mainScanner.nextAfter(elementPattern)
       name = content.slice(1)
 
-      if (componentNamePattern.test(name)) {
-        levelNode = new Element(name, env.TRUE)
-        isSelfClosing = env.TRUE
-      }
-      else {
-        levelNode = new Element(name)
-        isSelfClosing = selfClosingTagNamePattern.test(name)
-      }
-
+      levelNode = new Element(name, componentNamePattern.test(name))
       addChild(levelNode)
 
       // 截取 <name 和 > 之间的内容
@@ -899,7 +889,9 @@ export function compile(template) {
         return throwError('Illegal tag name', mainScanner.pos)
       }
 
-      if (isSelfClosing) {
+      if (levelNode.component
+        || selfClosingTagNamePattern.test(levelNode.name)
+      ) {
         popStack()
       }
     }

@@ -31,7 +31,7 @@ export default class Context {
 
   format(keypath) {
     let instance = this, keys = keypathUtil.parse(keypath)
-    if (keys[0] === 'this') {
+    if (keys[ 0 ] === 'this') {
       keys.shift()
       return {
         keypath: keypathUtil.stringify(keys),
@@ -49,7 +49,7 @@ export default class Context {
         function (key, i) {
           if (object.has(levelMap, key)) {
             lookup = env.FALSE
-            if (levelMap[key]) {
+            if (levelMap[ key ]) {
               instance = instance.parent
               if (!instance) {
                 return env.FALSE
@@ -74,7 +74,7 @@ export default class Context {
     let { instance, keypath } = this.format(key)
     if (instance && keypath) {
       if (object.has(instance.cache, keypath)) {
-        delete instance.cache[keypath]
+        delete instance.cache[ keypath ]
       }
       object.set(instance.data, keypath, value)
     }
@@ -108,17 +108,17 @@ export default class Context {
           }
 
           if (result) {
-            cache[keypath] = result.value
+            cache[ keypath ] = result.value
           }
         }
         else {
-          cache[keypath] = data
+          cache[ keypath ] = data
         }
       }
       if (object.has(cache, keypath)) {
         return {
           keypath,
-          value: cache[keypath],
+          value: cache[ keypath ],
         }
       }
     }

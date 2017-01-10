@@ -36,7 +36,7 @@ export default class Scanner {
     if (!matches || matches.index) {
       return char.CHAR_BLANK
     }
-    let result = matches[0]
+    let result = matches[ 0 ]
     this.forward(result.length)
     return result
   }
