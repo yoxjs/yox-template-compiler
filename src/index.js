@@ -641,6 +641,8 @@ export function compile(template) {
   let quote
   // 分隔符
   let delimiter
+  // 是否自闭合
+  let isSelfClosing
 
   // 主扫描器
   let mainScanner = new Scanner(template)
@@ -871,7 +873,14 @@ export function compile(template) {
       content = mainScanner.nextAfter(elementPattern)
       name = content.slice(1)
 
-      levelNode = new Element(name, componentNamePattern.test(name))
+      if (componentNamePattern.test(name)) {
+        levelNode = new Element(name, env.TRUE)
+        isSelfClosing = env.TRUE
+      }
+      else {
+        levelNode = new Element(name)
+        isSelfClosing = selfClosingTagNamePattern.test(name)
+      }
       addChild(levelNode)
 
       // 截取 <name 和 > 之间的内容
@@ -889,9 +898,7 @@ export function compile(template) {
         return throwError('Illegal tag name', mainScanner.pos)
       }
 
-      if (levelNode.component
-        || selfClosingTagNamePattern.test(levelNode.name)
-      ) {
+      if (isSelfClosing) {
         popStack()
       }
     }
