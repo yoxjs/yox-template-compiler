@@ -37,20 +37,15 @@ const elementEndPattern = /(?:\/)?>/
 
 const attributePattern = /([-:@a-z0-9]+)(?==["'])?/i
 
-const nonSingleQuotePattern = /^[^']*/
-const nonDoubleQuotePattern = /^[^"]*/
-
 const componentNamePattern = /[-A-Z]/
 const selfClosingTagNamePattern = /input|img|br/i
 
 // 如果传入的函数改写了 toString，就调用 toString() 求值
 const { toString } = Function.prototype
 
-// 2 种 level
-// 当 level 为 LEVEL_ATTRIBUTE 时，表示只可以处理属性和指令
-// 当 level 为 LEVEL_TEXT 时，表示只可以处理属性和指令的值
-const LEVEL_ATTRIBUTE = 1
-const LEVEL_TEXT = 2
+const elseTypes = { }
+elseTypes[ nodeType.ELSE_IF ] =
+elseTypes[ nodeType.ELSE ] = env.TRUE
 
 // 属性层级的节点类型
 const attrTypes = { }
@@ -72,6 +67,12 @@ buildInDirectives[ syntax.DIRECTIVE_MODEL ] =
 buildInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
 
 
+/**
+ * 标记节点数组，用于区分普通数组
+ *
+ * @param {*} nodes
+ * @return {*}
+ */
 function markNodes(nodes) {
   if (is.array(nodes)) {
     nodes[ char.CHAR_DASH ] = env.TRUE
@@ -79,8 +80,14 @@ function markNodes(nodes) {
   return nodes
 }
 
+/**
+ * 是否是节点数组
+ *
+ * @param {*} nodes
+ * @return {boolean}
+ */
 function isNodes(nodes) {
-  return nodes[ char.CHAR_DASH ] === env.TRUE
+  return is.array(nodes) && nodes[ char.CHAR_DASH ] === env.TRUE
 }
 
 /**
@@ -93,18 +100,16 @@ function isNodes(nodes) {
  */
 function mergeNodes(nodes) {
   if (is.array(nodes)) {
-    let { length } = nodes
-    // name=""
-    if (length === 0) {
-      return char.CHAR_BLANK
-    }
-    // name="{{value}}"
-    else if (length === 1) {
-      return nodes[ 0 ]
-    }
-    // name="{{value1}}{{value2}}"
-    else if (length > 1) {
-      return nodes.join(char.CHAR_BLANK)
+    switch (nodes.length) {
+      // name=""
+      case 0:
+        return char.CHAR_BLANK
+      // name="{{value}}"
+      case 1:
+        return nodes[ 0 ]
+      // name="{{value1}}{{value2}}"
+      default:
+        return nodes.join(char.CHAR_BLANK)
     }
   }
 }
@@ -125,10 +130,10 @@ function traverseTree(node, enter, leave, traverseList, recursion) {
   if (value !== env.FALSE) {
     if (!value) {
       let { children, attrs } = node
-      if (is.array(children)) {
+      if (children) {
         children = traverseList(children, recursion)
       }
-      if (is.array(attrs)) {
+      if (attrs) {
         attrs = traverseList(attrs, recursion)
       }
       value = leave(node, children, attrs)
@@ -151,20 +156,18 @@ function traverseList(nodes, recursion) {
   while (node = nodes[i]) {
     item = recursion(node)
     if (item !== env.UNDEFINED) {
-      if (is.array(item) && !isNodes(item)) {
-        list.push(item)
+      if (isNodes(item)) {
+        array.push(list, item)
       }
       else {
-        array.push(list, item)
+        list.push(item)
       }
       if (node.type === nodeType.IF
         || node.type === nodeType.ELSE_IF
       ) {
         // 跳过后面紧跟着的 elseif else
-        while (node = nodes[i + 1]) {
-          if (node.type === nodeType.ELSE_IF
-            || node.type === nodeType.ELSE
-          ) {
+        while (node = nodes[ i + 1 ]) {
+          if (elseTypes[ node.type ]) {
             i++
           }
           else {
@@ -176,18 +179,6 @@ function traverseList(nodes, recursion) {
     i++
   }
   return markNodes(list)
-}
-
-/**
- * 序列化表达式
- *
- * @param {Object} expr
- * @return {string}
- */
-function stringifyExpr(expr) {
-  return keypathUtil.normalize(
-    expressionEnginer.stringify(expr)
-  )
 }
 
 /**
@@ -278,7 +269,12 @@ export function render(ast, createText, createElement, importTemplate, data) {
 
             let list = [ ]
 
-            array.push(keys, stringifyExpr(expr))
+            array.push(
+              keys,
+              keypathUtil.normalize(
+                expressionEnginer.stringify(expr)
+              )
+            )
             context = context.push(value)
 
             iterate(
@@ -403,16 +399,13 @@ export function render(ast, createText, createElement, importTemplate, data) {
                 }
               )
             }
-            if (!children) {
-              children = [ ]
-            }
             return createElement(
               {
                 name,
+                keypath,
                 attributes,
                 directives,
-                children,
-                keypath,
+                children: children || [ ],
               },
               component
             )
@@ -424,9 +417,10 @@ export function render(ast, createText, createElement, importTemplate, data) {
     )
   }
 
-  let node = recursion(ast)
-
-  return { node, deps }
+  return {
+    node: recursion(ast),
+    deps,
+  }
 
 }
 
@@ -439,7 +433,7 @@ const parsers = [
       return string.startsWith(source, syntax.EACH)
     },
     create(source) {
-      let terms = string.trim(source.slice(syntax.EACH.length)).split(char.CHAR_COLON)
+      let terms = string.trim(string.slice(source, syntax.EACH.length)).split(char.CHAR_COLON)
       let expr = string.trim(terms[ 0 ])
       if (expr) {
         return new Each(
@@ -454,7 +448,7 @@ const parsers = [
        return string.startsWith(source, syntax.IMPORT)
     },
     create(source) {
-      let name = string.trim(source.slice(syntax.IMPORT.length))
+      let name = string.trim(string.slice(source, syntax.IMPORT.length))
       if (name) {
         return new Import(name)
       }
@@ -465,7 +459,7 @@ const parsers = [
        return string.startsWith(source, syntax.PARTIAL)
     },
     create(source) {
-      let name = string.trim(source.slice(syntax.PARTIAL.length))
+      let name = string.trim(string.slice(source, syntax.PARTIAL.length))
       if (name) {
         return new Partial(name)
       }
@@ -476,7 +470,7 @@ const parsers = [
        return string.startsWith(source, syntax.IF)
     },
     create(source) {
-      let expr = string.trim(source.slice(syntax.IF.length))
+      let expr = string.trim(string.slice(source, syntax.IF.length))
       if (expr) {
         return new If(
           expressionEnginer.compile(expr)
@@ -488,10 +482,9 @@ const parsers = [
     test(source) {
       return string.startsWith(source, syntax.ELSE_IF)
     },
-    create(source, delimiter, popStack) {
-      source = string.trim(source.slice(syntax.ELSE_IF.length))
+    create(source) {
+      source = string.trim(string.slice(source, syntax.ELSE_IF.length))
       if (source) {
-        popStack()
         return new ElseIf(
           expressionEnginer.compile(source)
         )
@@ -502,8 +495,7 @@ const parsers = [
     test(source) {
       return string.startsWith(source, syntax.ELSE)
     },
-    create(source, delimiter, popStack) {
-      popStack()
+    create(source) {
       return new Else()
     }
   },
@@ -512,7 +504,7 @@ const parsers = [
       return string.startsWith(source, syntax.SPREAD)
     },
     create(source) {
-      source = string.trim(source.slice(syntax.SPREAD.length))
+      source = string.trim(string.slice(source, syntax.SPREAD.length))
       if (source) {
         return new Spread(
           expressionEnginer.compile(source)
@@ -543,7 +535,7 @@ const parsers = [
  * @return {boolean}
  */
 function isBreakline(content) {
-  return string.has(content, char.CHAR_BREAKLINE) >= 0
+  return string.has(content, char.CHAR_BREAKLINE)
     && !string.trim(content)
 }
 
@@ -561,42 +553,6 @@ function trimBreakline(content) {
 }
 
 /**
- * 解析属性值，传入开始引号，匹配结束引号
- *
- * @param {string} content
- * @param {string} quote
- * @return {Object}
- */
-function parseAttributeValue(content, quote) {
-
-  let result = {
-    content,
-  }
-
-  let match = content.match(
-    quote === char.CHAR_DQUOTE
-    ? nonDoubleQuotePattern
-    : nonSingleQuotePattern
-  )
-
-  if (match) {
-    result.value = match[ 0 ]
-
-    let { length } = match[ 0 ]
-    if (char.charAt(content, length) === quote) {
-      result.end = env.TRUE
-      length++
-    }
-    if (length) {
-      result.content = content.slice(length)
-    }
-  }
-
-  return result
-
-}
-
-/**
  * 把模板编译为抽象语法树
  *
  * @param {string} template
@@ -609,27 +565,23 @@ export function compile(template) {
     return result
   }
 
+  // 第一级的所有节点
+  let nodes = [ ]
+
   // 当前内容
   let content
   // 记录标签名、属性名、指令名
   let name
-  // 记录属性值、指令值的开始引号，方便匹配结束引号
-  let quote
   // 分隔符
   let delimiter
-  // 是否自闭合
-  let isSelfClosing
 
   // 主扫描器
   let mainScanner = new Scanner(template)
   // 辅扫描器
   let helperScanner = new Scanner()
 
-  let level, levelNode
-
   let nodeStack = [ ]
-  let rootNode = new Element('root')
-  let currentNode = rootNode
+  let currentNode, levelNode
 
   let throwError = function (msg, pos) {
     if (pos == env.NULL) {
@@ -658,13 +610,32 @@ export function compile(template) {
   }
 
   let pushStack = function (node) {
-    array.push(nodeStack, currentNode)
+    if (currentNode) {
+      array.push(nodeStack, currentNode)
+    }
+    else {
+      array.push(nodes, node)
+    }
     currentNode = node
+    if (attrTypes[ node.type ]) {
+      levelNode = node
+    }
   }
 
   let popStack = function () {
+    if (attrTypes[ currentNode.type ]) {
+      array.each(
+        nodeStack,
+        function (node) {
+          if (node.type === nodeType.ELEMENT) {
+            levelNode = node
+            return env.FALSE
+          }
+        },
+        env.TRUE
+      )
+    }
     currentNode = nodeStack.pop()
-    return currentNode
   }
 
   let addChild = function (node) {
@@ -680,22 +651,23 @@ export function compile(template) {
       node.content = content
     }
 
-    if (level === LEVEL_ATTRIBUTE
-      && currentNode.addAttr
-    ) {
-      currentNode.addAttr(node)
-    }
-    else {
-      currentNode.addChild(node)
+    if (currentNode) {
+      if (levelNode
+        && levelNode.type === nodeType.ELEMENT
+        && currentNode.addAttr
+      ) {
+        currentNode.addAttr(node)
+      }
+      else {
+        currentNode.addChild(node)
+      }
     }
 
     if (!leafTypes[ type ]) {
       pushStack(node)
     }
 
-    if (attrTypes[ type ]) {
-      level = LEVEL_TEXT
-    }
+    return node
 
   }
 
@@ -708,27 +680,38 @@ export function compile(template) {
 
     if (array.falsy(levelNode.children)) {
       if (content && char.codeAt(content) === char.CODE_EQUAL) {
-        quote = char.charAt(content, 1)
-        content = content.slice(2)
+        // 第一个是引号
+        result = char.charAt(content, 1)
+        content = string.slice(content, 2)
       }
       else {
         popStack()
-        level = LEVEL_ATTRIBUTE
         return content
       }
     }
 
-    result = parseAttributeValue(content, quote)
-    if (result.value) {
+    let i = 0, currentChar, closed
+    while (currentChar = char.charAt(content, i)) {
+      // 如果是引号，属性值匹配结束
+      if (currentChar === result) {
+        closed = env.TRUE
+        break
+      }
+      i++
+    }
+
+    if (i) {
       addChild(
-        new Text(result.value)
+        new Text(string.slice(content, 0, i))
       )
+      content = string.slice(content, closed ? (i + 1) : i)
     }
-    if (result.end) {
+
+    if (closed) {
       popStack()
-      level = LEVEL_ATTRIBUTE
     }
-    return result.content
+
+    return content
 
   }
 
@@ -743,46 +726,50 @@ export function compile(template) {
 
       if (content) {
 
-        if (level === LEVEL_TEXT) {
+        if (levelNode && attrTypes[ levelNode.type ]) {
           content = parseAttribute(content)
         }
 
-        if (level === LEVEL_ATTRIBUTE) {
+        if (levelNode && levelNode.type === nodeType.ELEMENT) {
           while (content && (result = attributePattern.exec(content))) {
-            content = content.slice(result.index + result[ 0 ].length)
+            content = string.slice(content, result.index + result[ 0 ].length)
             name = result[ 1 ]
 
             if (buildInDirectives[ name ]) {
-              levelNode = new Directive(
-                string.camelCase(name)
+              addChild(
+                new Directive(
+                  string.camelCase(name)
+                )
               )
             }
             else {
               if (string.startsWith(name, syntax.DIRECTIVE_EVENT_PREFIX)) {
                 name = name.slice(syntax.DIRECTIVE_EVENT_PREFIX.length)
-                levelNode = new Directive(
-                  'event',
-                  string.camelCase(name)
+                addChild(
+                  new Directive(
+                    'event',
+                    string.camelCase(name)
+                  )
                 )
               }
               else if (string.startsWith(name, syntax.DIRECTIVE_CUSTOM_PREFIX)) {
                 name = name.slice(syntax.DIRECTIVE_CUSTOM_PREFIX.length)
-                levelNode = new Directive(
-                  string.camelCase(name)
+                addChild(
+                  new Directive(
+                    string.camelCase(name)
+                  )
                 )
               }
               else {
                 if (levelNode.component) {
                   name = string.camelCase(name)
                 }
-                levelNode = new Attribute(name)
+                addChild(
+                  new Attribute(name)
+                )
               }
             }
-
-            addChild(levelNode)
-
             content = parseAttribute(content)
-
           }
         }
         else if (content) {
@@ -807,9 +794,11 @@ export function compile(template) {
             parsers,
             function (parser, index) {
               if (parser.test(content, delimiter)) {
-                // 用 index 节省一个变量定义
-                index = parser.create(content, delimiter, popStack)
+                index = parser.create(content, delimiter)
                 if (index) {
+                  if (elseTypes[ index.type ]) {
+                    popStack()
+                  }
                   addChild(index)
                 }
                 else {
@@ -843,13 +832,13 @@ export function compile(template) {
     if (mainScanner.codeAt(1) === char.CODE_SLASH) {
       // 取出 </tagName
       content = mainScanner.nextAfter(elementPattern)
-      name = content.slice(2)
+      name = string.slice(content, 2)
 
       // 没有匹配到 >
       if (mainScanner.codeAt(0) !== char.CODE_RIGHT) {
         return throwError('Illegal tag name', mainScanner.pos)
       }
-      else if (currentNode.type === nodeType.ELEMENT && name !== currentNode.name) {
+      else if (name !== currentNode.name) {
         return throwError('Unexpected closing tag', mainScanner.pos)
       }
 
@@ -862,26 +851,23 @@ export function compile(template) {
     else {
       // 取出 <tagName
       content = mainScanner.nextAfter(elementPattern)
-      name = content.slice(1)
+      name = string.slice(content, 1)
 
-      if (componentNamePattern.test(name)) {
-        levelNode = new Element(name, env.TRUE)
-        isSelfClosing = env.TRUE
-      }
-      else {
-        levelNode = new Element(name)
-        isSelfClosing = selfClosingTagNamePattern.test(name)
-      }
-      addChild(levelNode)
+      levelNode = addChild(
+        new Element(
+          name,
+          componentNamePattern.test(name)
+        )
+      )
 
       // 截取 <name 和 > 之间的内容
       // 用于提取 Attribute 和 Directive
       content = mainScanner.nextBefore(elementEndPattern)
       if (content) {
-        level = LEVEL_ATTRIBUTE
         parseContent(content)
-        level = env.NULL
       }
+
+      levelNode = env.NULL
 
       content = mainScanner.nextAfter(elementEndPattern)
       // 没有匹配到 > 或 />
@@ -889,7 +875,9 @@ export function compile(template) {
         return throwError('Illegal tag name', mainScanner.pos)
       }
 
-      if (isSelfClosing) {
+      if (currentNode.component
+        || selfClosingTagNamePattern.test(currentNode.name)
+      ) {
         popStack()
       }
     }
@@ -899,12 +887,6 @@ export function compile(template) {
     return throwError(`Expected end tag (</${nodeStack[ 0 ].name}>)`, mainScanner.pos)
   }
 
-  let { children } = rootNode
-  result = children[ 0 ]
-  if (children.length > 1 || result.type !== nodeType.ELEMENT) {
-    logger.error('Template should contain exactly one root element.')
-  }
-
-  return compileCache[ template ] = result
+  return compileCache[ template ] = nodes[ 0 ]
 
 }

@@ -1,5 +1,6 @@
 
 import * as char from 'yox-common/util/char'
+import * as string from 'yox-common/util/string'
 
 export default class Scanner {
 
@@ -70,7 +71,7 @@ export default class Scanner {
 
   forward(offset) {
     this.pos += offset
-    this.tail = this.tail.slice(offset)
+    this.tail = string.slice(this.tail, offset)
   }
 
   charAt(index) {
