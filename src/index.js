@@ -32,8 +32,8 @@ import Text from './node/Text'
 const openingDelimiterPattern = new RegExp(syntax.DELIMITER_OPENING)
 const closingDelimiterPattern = new RegExp(syntax.DELIMITER_CLOSING)
 
-const elementPattern = /<(?:\/)?[-a-z]\w*/i
-const elementEndPattern = /(?:\/)?>/
+const openingTagPattern = /<(?:\/)?[-a-z]\w*/i
+const closingTagPattern = /(?:\/)?>/
 
 const attributePattern = /([-:@a-z0-9]+)(?==["'])?/i
 
@@ -42,6 +42,10 @@ const selfClosingTagNamePattern = /input|img|br/i
 
 // 如果传入的函数改写了 toString，就调用 toString() 求值
 const { toString } = Function.prototype
+
+const ifTypes = { }
+ifTypes[ nodeType.IF ] =
+ifTypes[ nodeType.ELSE_IF ] = env.TRUE
 
 const elseTypes = { }
 elseTypes[ nodeType.ELSE_IF ] =
@@ -151,20 +155,17 @@ function traverseTree(node, enter, leave, traverseList, recursion) {
  * @return {Array}
  */
 function traverseList(nodes, recursion) {
-  let list = [ ], item
-  let i = 0, node
-  while (node = nodes[i]) {
-    item = recursion(node)
-    if (item !== env.UNDEFINED) {
-      if (isNodes(item)) {
-        array.push(list, item)
+  let list = [ ], i = 0, node, value
+  while (node = nodes[ i ]) {
+    value = recursion(node)
+    if (value !== env.UNDEFINED) {
+      if (isNodes(value)) {
+        array.push(list, value)
       }
       else {
-        list.push(item)
+        list.push(value)
       }
-      if (node.type === nodeType.IF
-        || node.type === nodeType.ELSE_IF
-      ) {
+      if (ifTypes[ node.type ]) {
         // 跳过后面紧跟着的 elseif else
         while (node = nodes[ i + 1 ]) {
           if (elseTypes[ node.type ]) {
@@ -427,106 +428,16 @@ export function render(ast, createText, createElement, importTemplate, data) {
 // 缓存编译结果
 let compileCache = { }
 
-const parsers = [
-  {
-    test(source) {
-      return string.startsWith(source, syntax.EACH)
-    },
-    create(source) {
-      let terms = string.trim(string.slice(source, syntax.EACH.length)).split(char.CHAR_COLON)
-      let expr = string.trim(terms[ 0 ])
-      if (expr) {
-        return new Each(
-          expressionEnginer.compile(expr),
-          string.trim(terms[ 1 ])
-        )
-      }
-    }
-  },
-  {
-    test(source) {
-       return string.startsWith(source, syntax.IMPORT)
-    },
-    create(source) {
-      let name = string.trim(string.slice(source, syntax.IMPORT.length))
-      if (name) {
-        return new Import(name)
-      }
-    }
-  },
-  {
-    test(source) {
-       return string.startsWith(source, syntax.PARTIAL)
-    },
-    create(source) {
-      let name = string.trim(string.slice(source, syntax.PARTIAL.length))
-      if (name) {
-        return new Partial(name)
-      }
-    }
-  },
-  {
-    test(source) {
-       return string.startsWith(source, syntax.IF)
-    },
-    create(source) {
-      let expr = string.trim(string.slice(source, syntax.IF.length))
-      if (expr) {
-        return new If(
-          expressionEnginer.compile(expr)
-        )
-      }
-    }
-  },
-  {
-    test(source) {
-      return string.startsWith(source, syntax.ELSE_IF)
-    },
-    create(source) {
-      source = string.trim(string.slice(source, syntax.ELSE_IF.length))
-      if (source) {
-        return new ElseIf(
-          expressionEnginer.compile(source)
-        )
-      }
-    }
-  },
-  {
-    test(source) {
-      return string.startsWith(source, syntax.ELSE)
-    },
-    create(source) {
-      return new Else()
-    }
-  },
-  {
-    test(source) {
-      return string.startsWith(source, syntax.SPREAD)
-    },
-    create(source) {
-      source = string.trim(string.slice(source, syntax.SPREAD.length))
-      if (source) {
-        return new Spread(
-          expressionEnginer.compile(source)
-        )
-      }
-    }
-  },
-  {
-    test(source) {
-      return !string.startsWith(source, syntax.COMMENT)
-    },
-    create(source, delimiter) {
-      source = string.trim(source)
-      if (source) {
-        return new Expression(
-          expressionEnginer.compile(source),
-          !string.endsWith(delimiter, '}}}')
-        )
-      }
-    }
-  }
-]
+/**
+ * 截取前缀之后的字符串
+ *
+ * @param {string} str
+ * @param {string} prefix
+ * @return {string}
+ */
+function slicePrefix(str, prefix) {
+  return string.trim(string.slice(str, prefix.length))
+}
 
 /**
  * 是否是纯粹的换行
@@ -552,6 +463,107 @@ function trimBreakline(content) {
   )
 }
 
+const parsers = [
+  {
+    test(source) {
+      return string.startsWith(source, syntax.EACH)
+    },
+    create(source, terms) {
+      terms = slicePrefix(source, syntax.EACH).split(char.CHAR_COLON)
+      source = string.trim(terms[ 0 ])
+      if (source) {
+        return new Each(
+          expressionEnginer.compile(source),
+          string.trim(terms[ 1 ])
+        )
+      }
+    }
+  },
+  {
+    test(source) {
+       return string.startsWith(source, syntax.IMPORT)
+    },
+    create(source) {
+      source = slicePrefix(source, syntax.IMPORT)
+      if (source) {
+        return new Import(source)
+      }
+    }
+  },
+  {
+    test(source) {
+       return string.startsWith(source, syntax.PARTIAL)
+    },
+    create(source) {
+      source = slicePrefix(source, syntax.PARTIAL)
+      if (source) {
+        return new Partial(source)
+      }
+    }
+  },
+  {
+    test(source) {
+       return string.startsWith(source, syntax.IF)
+    },
+    create(source) {
+      source = slicePrefix(source, syntax.IF)
+      if (source) {
+        return new If(
+          expressionEnginer.compile(source)
+        )
+      }
+    }
+  },
+  {
+    test(source) {
+      return string.startsWith(source, syntax.ELSE_IF)
+    },
+    create(source) {
+      source = slicePrefix(source, syntax.ELSE_IF)
+      if (source) {
+        return new ElseIf(
+          expressionEnginer.compile(source)
+        )
+      }
+    }
+  },
+  {
+    test(source) {
+      return string.startsWith(source, syntax.ELSE)
+    },
+    create(source) {
+      return new Else()
+    }
+  },
+  {
+    test(source) {
+      return string.startsWith(source, syntax.SPREAD)
+    },
+    create(source) {
+      source = slicePrefix(source, syntax.SPREAD)
+      if (source) {
+        return new Spread(
+          expressionEnginer.compile(source)
+        )
+      }
+    }
+  },
+  {
+    test(source) {
+      return !string.startsWith(source, syntax.COMMENT)
+    },
+    create(source, delimiter) {
+      source = string.trim(source)
+      if (source) {
+        return new Expression(
+          expressionEnginer.compile(source),
+          !string.endsWith(delimiter, '}}}')
+        )
+      }
+    }
+  }
+]
+
 /**
  * 把模板编译为抽象语法树
  *
@@ -572,8 +584,6 @@ export function compile(template) {
   let content
   // 记录标签名、属性名、指令名
   let name
-  // 分隔符
-  let delimiter
 
   // 主扫描器
   let mainScanner = new Scanner(template)
@@ -783,7 +793,7 @@ export function compile(template) {
       // 分隔符之间的内容
       content = helperScanner.nextBefore(closingDelimiterPattern)
       // 结束分隔符
-      delimiter = helperScanner.nextAfter(closingDelimiterPattern)
+      name = helperScanner.nextAfter(closingDelimiterPattern)
 
       if (content) {
         if (char.codeAt(content) === char.CODE_SLASH) {
@@ -793,8 +803,8 @@ export function compile(template) {
           array.each(
             parsers,
             function (parser, index) {
-              if (parser.test(content, delimiter)) {
-                index = parser.create(content, delimiter)
+              if (parser.test(content, name)) {
+                index = parser.create(content, name)
                 if (index) {
                   if (elseTypes[ index.type ]) {
                     popStack()
@@ -815,7 +825,7 @@ export function compile(template) {
   }
 
   while (mainScanner.hasNext()) {
-    content = mainScanner.nextBefore(elementPattern)
+    content = mainScanner.nextBefore(openingTagPattern)
 
     // 处理标签之间的内容
     if (content) {
@@ -831,7 +841,7 @@ export function compile(template) {
     // 结束标签
     if (mainScanner.codeAt(1) === char.CODE_SLASH) {
       // 取出 </tagName
-      content = mainScanner.nextAfter(elementPattern)
+      content = mainScanner.nextAfter(openingTagPattern)
       name = string.slice(content, 2)
 
       // 没有匹配到 >
@@ -850,7 +860,7 @@ export function compile(template) {
     // 开始标签
     else {
       // 取出 <tagName
-      content = mainScanner.nextAfter(elementPattern)
+      content = mainScanner.nextAfter(openingTagPattern)
       name = string.slice(content, 1)
 
       levelNode = addChild(
@@ -862,24 +872,25 @@ export function compile(template) {
 
       // 截取 <name 和 > 之间的内容
       // 用于提取 Attribute 和 Directive
-      content = mainScanner.nextBefore(elementEndPattern)
+      content = mainScanner.nextBefore(closingTagPattern)
       if (content) {
         parseContent(content)
       }
 
-      levelNode = env.NULL
-
-      content = mainScanner.nextAfter(elementEndPattern)
+      content = mainScanner.nextAfter(closingTagPattern)
       // 没有匹配到 > 或 />
       if (!content) {
         return throwError('Illegal tag name', mainScanner.pos)
       }
 
-      if (currentNode.component
-        || selfClosingTagNamePattern.test(currentNode.name)
+      if (levelNode.component
+        || selfClosingTagNamePattern.test(levelNode.name)
       ) {
         popStack()
       }
+
+      levelNode = env.NULL
+
     }
   }
 
