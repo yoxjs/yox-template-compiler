@@ -14,6 +14,7 @@ JSON.stringify(ast)
 // 渲染
 templateCompiler.render(
   ast,
+  createComment,
   createText,
   createElement,
   importTemplate,

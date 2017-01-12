@@ -119,80 +119,17 @@ function mergeNodes(nodes) {
 }
 
 /**
- * 遍历节点树
- *
- * @param {Node} node
- * @param {Function} enter
- * @param {Function} leave
- * @param {Function} traverseList
- * @param {Function} recursion
- * @return {*}
- */
-function traverseTree(node, enter, leave, traverseList, recursion) {
-
-  let value = enter(node)
-  if (value !== env.FALSE) {
-    if (!value) {
-      let { children, attrs } = node
-      if (children) {
-        children = traverseList(children, recursion)
-      }
-      if (attrs) {
-        attrs = traverseList(attrs, recursion)
-      }
-      value = leave(node, children, attrs)
-    }
-    return value
-  }
-
-}
-
-/**
- * 遍历节点列表
- *
- * @param {Array.<Node>} nodes
- * @param {Function} recursion
- * @return {Array}
- */
-function traverseList(nodes, recursion) {
-  let list = [ ], i = 0, node, value
-  while (node = nodes[ i ]) {
-    value = recursion(node)
-    if (value !== env.UNDEFINED) {
-      if (isNodes(value)) {
-        array.push(list, value)
-      }
-      else {
-        list.push(value)
-      }
-      if (ifTypes[ node.type ]) {
-        // 跳过后面紧跟着的 elseif else
-        while (node = nodes[ i + 1 ]) {
-          if (elseTypes[ node.type ]) {
-            i++
-          }
-          else {
-            break
-          }
-        }
-      }
-    }
-    i++
-  }
-  return markNodes(list)
-}
-
-/**
  * 渲染抽象语法树
  *
  * @param {Object} ast 编译出来的抽象语法树
+ * @param {Function} createComment 创建注释节点
  * @param {Function} createText 创建文本节点
  * @param {Function} createElement 创建元素节点
  * @param {Function} importTemplate 导入子模板，如果是纯模板，可不传
  * @param {Object} data 渲染模板的数据，如果渲染纯模板，可不传
  * @return {Object} { node: x, deps: { } }
  */
-export function render(ast, createText, createElement, importTemplate, data) {
+export function render(ast, createComment, createText, createElement, importTemplate, data) {
 
   let keys = [ ]
   let getKeypath = function () {
@@ -217,7 +154,68 @@ export function render(ast, createText, createElement, importTemplate, data) {
     return result.value
   }
 
-  let recursion = function (node) {
+  /**
+   * 遍历节点树
+   *
+   * @param {Node} node
+   * @param {Function} enter
+   * @param {Function} leave
+   * @return {*}
+   */
+  let traverseTree = function (node, enter, leave) {
+
+    let value = enter(node)
+    if (value !== env.FALSE) {
+      if (!value) {
+        let { children, attrs } = node
+        if (children) {
+          children = traverseList(children)
+        }
+        if (attrs) {
+          attrs = traverseList(attrs)
+        }
+        value = leave(node, children, attrs)
+      }
+      return value
+    }
+
+  }
+
+  /**
+   * 遍历节点列表
+   *
+   * @param {Array.<Node>} nodes
+   * @return {Array}
+   */
+  let traverseList = function (nodes) {
+    let list = [ ], i = 0, node, value
+    while (node = nodes[ i ]) {
+      value = recursion(node, nodes[ i + 1 ])
+      if (value !== env.UNDEFINED) {
+        if (isNodes(value)) {
+          array.push(list, value)
+        }
+        else {
+          list.push(value)
+        }
+        if (ifTypes[ node.type ]) {
+          // 跳过后面紧跟着的 elseif else
+          while (node = nodes[ i + 1 ]) {
+            if (elseTypes[ node.type ]) {
+              i++
+            }
+            else {
+              break
+            }
+          }
+        }
+      }
+      i++
+    }
+    return markNodes(list)
+  }
+
+  let recursion = function (node, nextNode) {
     return traverseTree(
       node,
       function (node) {
@@ -236,11 +234,10 @@ export function render(ast, createText, createElement, importTemplate, data) {
             if (partial) {
               if (is.string(partial)) {
                 return traverseList(
-                  compile(partial, env.TRUE),
-                  recursion
+                  compile(partial, env.TRUE)
                 )
               }
-              return traverseList(partial.children, recursion)
+              return traverseList(partial.children)
             }
             logger.error(`Importing partial "${name}" is not found.`)
             break
@@ -249,7 +246,9 @@ export function render(ast, createText, createElement, importTemplate, data) {
           case nodeType.IF:
           case nodeType.ELSE_IF:
             if (!executeExpr(expr)) {
-              return env.FALSE
+              return !nextNode || elseTypes[ nextNode.type ]
+                ? env.FALSE
+                : markNodes(createComment())
             }
             break
 
@@ -290,7 +289,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
 
                 array.push(
                   list,
-                  traverseList(children, recursion)
+                  traverseList(children)
                 )
 
                 keys.pop()
@@ -412,9 +411,7 @@ export function render(ast, createText, createElement, importTemplate, data) {
             )
         }
 
-      },
-      traverseList,
-      recursion
+      }
     )
   }
 
