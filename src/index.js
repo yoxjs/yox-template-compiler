@@ -233,11 +233,14 @@ export function render(ast, createComment, createText, createElement, importTemp
             let partial = partials[ name ] || importTemplate(name)
             if (partial) {
               if (is.string(partial)) {
-                return traverseList(
-                  compile(partial, env.TRUE)
-                )
+                partial = compile(partial)
               }
-              return traverseList(partial.children)
+              else if (partial.type === nodeType.PARTIAL) {
+                partial = partial.children
+              }
+              return is.array(partial)
+                ? traverseList(partial)
+                : recursion(partial)
             }
             logger.error(`Importing partial "${name}" is not found.`)
             break
