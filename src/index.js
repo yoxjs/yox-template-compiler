@@ -140,6 +140,9 @@ export function render(ast, createComment, createText, createElement, importTemp
   data[ syntax.SPECIAL_KEYPATH ] = getKeypath
   let context = new Context(data)
 
+  // 是否正在渲染属性
+  let isAttrRendering
+
   let partials = { }
 
   let deps = { }
@@ -249,7 +252,7 @@ export function render(ast, createComment, createText, createElement, importTemp
           case nodeType.IF:
           case nodeType.ELSE_IF:
             if (!executeExpr(expr)) {
-              return !nextNode || elseTypes[ nextNode.type ]
+              return isAttrRendering || !nextNode || elseTypes[ nextNode.type ]
                 ? env.FALSE
                 : markNodes(createComment())
             }
@@ -308,11 +311,19 @@ export function render(ast, createComment, createText, createElement, importTemp
 
         }
 
+        if (attrTypes[ type ]) {
+          isAttrRendering = env.TRUE
+        }
+
       },
       function (node, children, attrs) {
 
         let { type, name, modifier, component, content } = node
         let keypath = getKeypath()
+
+        if (attrTypes[ type ]) {
+          isAttrRendering = env.FALSE
+        }
 
         switch (type) {
           case nodeType.TEXT:
