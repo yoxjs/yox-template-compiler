@@ -480,12 +480,11 @@ const parsers = [
       return string.startsWith(source, syntax.EACH)
     },
     create(source, terms) {
-      terms = slicePrefix(source, syntax.EACH).split(char.CHAR_COLON)
-      source = string.trim(terms[ 0 ])
-      if (source) {
+      terms = string.split(slicePrefix(source, syntax.EACH), char.CHAR_COLON)
+      if (terms[ 0 ]) {
         return new Each(
-          expressionEnginer.compile(source),
-          string.trim(terms[ 1 ])
+          expressionEnginer.compile(terms[ 0 ]),
+          terms[ 1 ]
         )
       }
     }
