@@ -895,6 +895,7 @@ export function compile(template) {
 
       if (levelNode.component
         || selfClosingTagNamePattern.test(levelNode.name)
+        || char.codeAt(content) === char.CODE_SLASH
       ) {
         popStack()
       }
