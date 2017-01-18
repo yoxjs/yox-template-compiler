@@ -578,7 +578,7 @@ const parsers = [
  * 把模板编译为抽象语法树
  *
  * @param {string} template
- * @return {Object}
+ * @return {Array}
  */
 export function compile(template) {
 
@@ -909,6 +909,6 @@ export function compile(template) {
     return throwError(`Expected end tag (</${nodeStack[ 0 ].name}>)`, mainScanner.pos)
   }
 
-  return compileCache[ template ] = nodes[ 0 ]
+  return compileCache[ template ] = nodes
 
 }
