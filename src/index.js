@@ -909,6 +909,14 @@ export function compile(template) {
     return throwError(`Expected end tag (</${nodeStack[ 0 ].name}>)`, mainScanner.pos)
   }
 
+  if (!nodes.length) {
+    array.push(
+      nodes,
+      new Text(template)
+    )
+  }
+
   return compileCache[ template ] = nodes
+
 
 }

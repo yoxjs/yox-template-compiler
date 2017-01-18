@@ -6,18 +6,23 @@ Template compiler for Yox.js
 import * as templateCompiler from 'yox-template-compiler'
 
 // 编译成抽象语法树
-let ast = templateCompiler.compile('<div>...</div>')
+let nodes = templateCompiler.compile('<div>...</div>')
 
 // 构建阶段可序列化到文件
-JSON.stringify(ast)
+JSON.stringify(nodes)
 
-// 渲染
-templateCompiler.render(
-  ast,
-  createComment,
-  createText,
-  createElement,
-  importTemplate,
-  data
+nodes.forEach(
+  function (node) {
+    // 渲染
+    templateCompiler.render(
+      node,
+      createComment,
+      createText,
+      createElement,
+      importTemplate,
+      data
+    )
+  }
 )
+
 ``
