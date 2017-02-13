@@ -123,7 +123,7 @@ export default class Context {
       }
     }
 
-    logger.warn(`Failed to lookup "${key}" data.`)
+    logger.warn(`Failed to lookup "${key}".`)
 
     return {
       keypath: key,

@@ -91,7 +91,8 @@ function markNodes(nodes) {
  * @return {boolean}
  */
 function isNodes(nodes) {
-  return is.array(nodes) && nodes[ char.CHAR_DASH ] === env.TRUE
+  return is.array(nodes)
+    && nodes[ char.CHAR_DASH ] === env.TRUE
 }
 
 /**
@@ -123,13 +124,12 @@ function mergeNodes(nodes) {
  *
  * @param {Object} ast 编译出来的抽象语法树
  * @param {Function} createComment 创建注释节点
- * @param {Function} createText 创建文本节点
  * @param {Function} createElement 创建元素节点
  * @param {Function} importTemplate 导入子模板，如果是纯模板，可不传
  * @param {Object} data 渲染模板的数据，如果渲染纯模板，可不传
  * @return {Object} { node: x, deps: { } }
  */
-export function render(ast, createComment, createText, createElement, importTemplate, data) {
+export function render(ast, createComment, createElement, importTemplate, data) {
 
   let keys = [ ]
   let getKeypath = function () {
@@ -146,7 +146,7 @@ export function render(ast, createComment, createText, createElement, importTemp
   let partials = { }
 
   let deps = { }
-  let executeExpr = function (expr) {
+  let executeExpression = function (expr) {
     let result = expressionEnginer.execute(expr, context)
     object.each(
       result.deps,
@@ -155,6 +155,14 @@ export function render(ast, createComment, createText, createElement, importTemp
       }
     )
     return result.value
+  }
+
+  let getExpressionContent = function (expr) {
+    let content = executeExpression(expr)
+    if (is.func(content) && content.toString !== toString) {
+      content = content.toString()
+    }
+    return content
   }
 
   /**
@@ -171,13 +179,26 @@ export function render(ast, createComment, createText, createElement, importTemp
     if (value !== env.FALSE) {
       if (!value) {
         let { children, attrs } = node
+        let props = { }
+
         if (children) {
-          children = traverseList(children)
+          if (node.type === nodeType.ELEMENT && children.length === 1) {
+            let child = children[ 0 ]
+            if (child.type === nodeType.EXPRESSION
+              && child.safe === env.FALSE
+            ) {
+              props.innerHTML = getExpressionContent(child.expr)
+              children = env.NULL
+            }
+          }
+          if (children) {
+            children = traverseList(children)
+          }
         }
         if (attrs) {
           attrs = traverseList(attrs)
         }
-        value = leave(node, children, attrs)
+        value = leave(node, children, attrs, props)
       }
       return value
     }
@@ -251,7 +272,7 @@ export function render(ast, createComment, createText, createElement, importTemp
           // 条件判断失败就没必要往下走了
           case nodeType.IF:
           case nodeType.ELSE_IF:
-            if (!executeExpr(expr)) {
+            if (!executeExpression(expr)) {
               return isAttrRendering || !nextNode || elseTypes[ nextNode.type ]
                 ? env.FALSE
                 : markNodes(createComment())
@@ -260,7 +281,7 @@ export function render(ast, createComment, createText, createElement, importTemp
 
           case nodeType.EACH:
             let { index, children } = node
-            let value = executeExpr(expr)
+            let value = executeExpression(expr)
 
             let iterate
             if (is.array(value)) {
@@ -316,7 +337,7 @@ export function render(ast, createComment, createText, createElement, importTemp
         }
 
       },
-      function (node, children, attrs) {
+      function (node, children, attrs, properties) {
 
         let { type, name, modifier, component, content } = node
         let keypath = getKeypath()
@@ -327,28 +348,11 @@ export function render(ast, createComment, createText, createElement, importTemp
 
         switch (type) {
           case nodeType.TEXT:
-            return markNodes(
-              createText({
-                keypath,
-                content,
-              })
-            )
+            return content
 
 
           case nodeType.EXPRESSION:
-            let { expr, safe } = node
-            content = executeExpr(expr)
-            if (is.func(content) && content.toString !== toString) {
-              content = content.toString()
-            }
-            content = createText({
-              safe,
-              keypath,
-              content,
-            })
-            return safe
-              ? content
-              : markNodes(content)
+            return getExpressionContent(node.expr)
 
 
           case nodeType.ATTRIBUTE:
@@ -375,7 +379,7 @@ export function render(ast, createComment, createText, createElement, importTemp
 
 
           case nodeType.SPREAD:
-            content = executeExpr(node.expr)
+            content = executeExpression(node.expr)
             if (is.object(content)) {
               let list = [ ]
               object.each(
@@ -417,6 +421,7 @@ export function render(ast, createComment, createText, createElement, importTemp
               {
                 name,
                 keypath,
+                properties,
                 attributes,
                 directives,
                 children: children || [ ],
