@@ -5,7 +5,7 @@ export const ELSE_IF = 'else if'
 export const EACH = '#each'
 export const PARTIAL = '#partial'
 export const IMPORT = '>'
-export const COMMENT = ':'
+export const COMMENT = '! '
 export const SPREAD = '...'
 
 export const SPECIAL_EVENT = '$event'
