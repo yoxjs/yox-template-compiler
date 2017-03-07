@@ -40,9 +40,6 @@ const attributePattern = /([-:@a-z0-9]+)(?==["'])?/i
 const componentNamePattern = /[-A-Z]/
 const selfClosingTagNamePattern = /input|img|br/i
 
-// 如果传入的函数改写了 toString，就调用 toString() 求值
-const { toString } = Function.prototype
-
 const ifTypes = { }
 ifTypes[ nodeType.IF ] =
 ifTypes[ nodeType.ELSE_IF ] = env.TRUE
@@ -157,14 +154,6 @@ export function render(ast, createComment, createElement, importTemplate, data) 
     return result.value
   }
 
-  let getExpressionContent = function (expr) {
-    let content = executeExpression(expr)
-    if (is.func(content) && content.toString !== toString) {
-      content = content.toString()
-    }
-    return content
-  }
-
   /**
    * 遍历节点树
    *
@@ -187,7 +176,7 @@ export function render(ast, createComment, createElement, importTemplate, data) 
             if (child.type === nodeType.EXPRESSION
               && child.safe === env.FALSE
             ) {
-              props.innerHTML = getExpressionContent(child.expr)
+              props.innerHTML = executeExpression(child.expr)
               children = env.NULL
             }
           }
@@ -352,7 +341,7 @@ export function render(ast, createComment, createElement, importTemplate, data) 
 
 
           case nodeType.EXPRESSION:
-            return getExpressionContent(node.expr)
+            return executeExpression(node.expr)
 
 
           case nodeType.ATTRIBUTE:

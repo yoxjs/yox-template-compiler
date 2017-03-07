@@ -5,6 +5,9 @@ import * as object from 'yox-common/util/object'
 import * as logger from 'yox-common/util/logger'
 import * as keypathUtil from 'yox-common/util/keypath'
 
+// 如果函数改写了 toString，就调用 toString() 求值
+const { toString } = Function.prototype
+
 /**
  * 如果取值/设值指定了 . 或 ..，表示无需 lookup，而是直接操作某个层级
  */
@@ -116,9 +119,13 @@ export default class Context {
         }
       }
       if (object.has(cache, keypath)) {
+        let value = cache[ keypath ]
+        if (is.func(value) && value.toString !== toString) {
+          value = value.toString()
+        }
         return {
           keypath,
-          value: cache[ keypath ],
+          value,
         }
       }
     }
