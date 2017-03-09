@@ -87,6 +87,8 @@ export default class Context {
   get(key) {
 
     let { instance, keypath, lookup } = this.format(key)
+    let originalKeypath = keypath
+
     if (instance) {
       let { data, cache } = instance
       if (!object.has(cache, keypath)) {
@@ -134,7 +136,7 @@ export default class Context {
     logger.warn(`Failed to lookup "${key}".`)
 
     return {
-      keypath: key,
+      keypath: originalKeypath,
     }
 
   }
