@@ -1,6 +1,6 @@
 {
   "name": "yox-template-compiler",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "Template compiler for Yox.js",
   "main": "src/index.js",
   "directories": {
@@ -8,8 +8,8 @@
     "test": "test"
   },
   "devDependencies": {
-    "yox-common": "^0.6.4",
-    "yox-expression-compiler": "^0.4.8"
+    "yox-common": "^0.6.7",
+    "yox-expression-compiler": "^0.5.2"
   },
   "repository": {
     "type": "git",
