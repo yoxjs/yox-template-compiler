@@ -364,7 +364,10 @@ export function render(ast, createComment, createElement, importTemplate, data) 
           case nodeType.IF:
           case nodeType.ELSE_IF:
           case nodeType.ELSE:
-            return children
+            // 如果是空，也得是个空数组
+            return children !== env.UNDEFINED
+              ? children
+              : markNodes([ ])
 
 
           case nodeType.SPREAD:
