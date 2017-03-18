@@ -5,7 +5,6 @@ import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
 import * as string from 'yox-common/util/string'
-import * as logger from 'yox-common/util/logger'
 import * as keypathUtil from 'yox-common/util/keypath'
 
 import * as expressionEnginer from 'yox-expression-compiler'
@@ -255,7 +254,7 @@ export function render(ast, createComment, createElement, importTemplate, data) 
                 ? traverseList(partial)
                 : recursion(partial)
             }
-            logger.error(`Importing partial "${name}" is not found.`)
+            throw new Error(`Importing partial "${name}" is not found.`)
             break
 
           // 条件判断失败就没必要往下走了
@@ -623,7 +622,7 @@ export function compile(template) {
       )
       msg += `, at line ${line}, col ${col}.`
     }
-    logger.error(`${msg}${char.CHAR_BREAKLINE}${template}`)
+    throw new Error(`${msg}${char.CHAR_BREAKLINE}${template}`)
   }
 
   let pushStack = function (node) {
