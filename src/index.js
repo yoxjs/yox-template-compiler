@@ -37,34 +37,37 @@ const closingTagPattern = /(?:\/)?>/
 const attributePattern = /([-:@a-z0-9]+)(?==["'])?/i
 
 const componentNamePattern = /[-A-Z]/
-const selfClosingTagNamePattern = /input|img|br/i
+const selfClosingTagNamePattern = /source|param|input|img|br/i
 
+// if 带条件的
 const ifTypes = { }
-ifTypes[ nodeType.IF ] =
-ifTypes[ nodeType.ELSE_IF ] = env.TRUE
-
+// if 分支的
 const elseTypes = { }
-elseTypes[ nodeType.ELSE_IF ] =
-elseTypes[ nodeType.ELSE ] = env.TRUE
-
 // 属性层级的节点类型
 const attrTypes = { }
-attrTypes[ nodeType.ATTRIBUTE ] =
-attrTypes[ nodeType.DIRECTIVE ] = env.TRUE
-
 // 叶子节点类型
 const leafTypes = { }
+// 内置指令，无需加前缀
+const builtInDirectives = { }
+
+ifTypes[ nodeType.IF ] =
+ifTypes[ nodeType.ELSE_IF ] =
+
+elseTypes[ nodeType.ELSE_IF ] =
+elseTypes[ nodeType.ELSE ] =
+
+attrTypes[ nodeType.ATTRIBUTE ] =
+attrTypes[ nodeType.DIRECTIVE ] =
+
 leafTypes[ nodeType.EXPRESSION ] =
 leafTypes[ nodeType.IMPORT ] =
 leafTypes[ nodeType.SPREAD ] =
-leafTypes[ nodeType.TEXT ] = env.TRUE
+leafTypes[ nodeType.TEXT ] =
 
-// 内置指令，无需加前缀
-const buildInDirectives = { }
-buildInDirectives[ syntax.DIRECTIVE_REF ] =
-buildInDirectives[ syntax.DIRECTIVE_LAZY ] =
-buildInDirectives[ syntax.DIRECTIVE_MODEL ] =
-buildInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
+builtInDirectives[ syntax.DIRECTIVE_REF ] =
+builtInDirectives[ syntax.DIRECTIVE_LAZY ] =
+builtInDirectives[ syntax.DIRECTIVE_MODEL ] =
+builtInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
 
 
 /**
@@ -73,7 +76,7 @@ buildInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
  * @param {*} nodes
  * @return {*}
  */
-function markNodes(nodes) {
+function makeNodes(nodes) {
   if (is.array(nodes)) {
     nodes[ char.CHAR_DASH ] = env.TRUE
   }
@@ -87,8 +90,7 @@ function markNodes(nodes) {
  * @return {boolean}
  */
 function isNodes(nodes) {
-  return is.array(nodes)
-    && nodes[ char.CHAR_DASH ] === env.TRUE
+  return is.array(nodes) && nodes[ char.CHAR_DASH ]
 }
 
 /**
@@ -224,7 +226,7 @@ export function render(ast, createComment, createElement, importTemplate, data) 
       }
       i++
     }
-    return markNodes(list)
+    return makeNodes(list)
   }
 
   let recursion = function (node, nextNode) {
@@ -263,7 +265,7 @@ export function render(ast, createComment, createElement, importTemplate, data) 
             if (!executeExpression(expr)) {
               return isAttrRendering || !nextNode || elseTypes[ nextNode.type ]
                 ? env.FALSE
-                : markNodes(createComment())
+                : makeNodes(createComment())
             }
             break
 
@@ -316,7 +318,7 @@ export function render(ast, createComment, createElement, importTemplate, data) 
             keys.pop()
             context = context.pop()
 
-            return markNodes(list)
+            return makeNodes(list)
 
         }
 
@@ -366,7 +368,7 @@ export function render(ast, createComment, createElement, importTemplate, data) 
             // 如果是空，也得是个空数组
             return children !== env.UNDEFINED
               ? children
-              : markNodes([ ])
+              : makeNodes([ ])
 
 
           case nodeType.SPREAD:
@@ -386,7 +388,7 @@ export function render(ast, createComment, createElement, importTemplate, data) 
                   )
                 }
               )
-              return markNodes(list)
+              return makeNodes(list)
             }
             break
 
@@ -461,7 +463,7 @@ function isBreakline(content) {
  * trim 文本开始和结束位置的换行符
  *
  * @param {string} content
- * @return {boolean}
+ * @return {string}
  */
 function trimBreakline(content) {
   return content.replace(
@@ -470,104 +472,91 @@ function trimBreakline(content) {
   )
 }
 
+const STATUS_UNMATCHED = 1
+const STATUS_FAILED = 2
+
 const parsers = [
-  {
-    test(source) {
-      return string.startsWith(source, syntax.EACH)
-    },
-    create(source, terms) {
+  function (source, terms) {
+    if (string.startsWith(source, syntax.EACH)) {
       terms = string.split(slicePrefix(source, syntax.EACH), char.CHAR_COLON)
-      if (terms[ 0 ]) {
-        return new Each(
-          expressionEnginer.compile(terms[ 0 ]),
-          terms[ 1 ]
+      return terms[ 0 ]
+        ? new Each(
+          expressionEnginer.compile(string.trim(terms[ 0 ])),
+          string.trim(terms[ 1 ])
         )
-      }
+        : STATUS_FAILED
     }
+    return STATUS_UNMATCHED
   },
-  {
-    test(source) {
-       return string.startsWith(source, syntax.IMPORT)
-    },
-    create(source) {
+  function (source) {
+    if (string.startsWith(source, syntax.IMPORT)) {
       source = slicePrefix(source, syntax.IMPORT)
-      if (source) {
-        return new Import(source)
-      }
+      return source
+        ? new Import(source)
+        : STATUS_FAILED
     }
+    return STATUS_UNMATCHED
   },
-  {
-    test(source) {
-       return string.startsWith(source, syntax.PARTIAL)
-    },
-    create(source) {
+  function (source) {
+    if (string.startsWith(source, syntax.PARTIAL)) {
       source = slicePrefix(source, syntax.PARTIAL)
-      if (source) {
-        return new Partial(source)
-      }
+      return source
+        ? new Partial(source)
+        : STATUS_FAILED
     }
+    return STATUS_UNMATCHED
   },
-  {
-    test(source) {
-       return string.startsWith(source, syntax.IF)
-    },
-    create(source) {
+  function (source) {
+    if (string.startsWith(source, syntax.IF)) {
       source = slicePrefix(source, syntax.IF)
-      if (source) {
-        return new If(
+      return source
+        ? new If(
           expressionEnginer.compile(source)
         )
-      }
+        : STATUS_FAILED
     }
+    return STATUS_UNMATCHED
   },
-  {
-    test(source) {
-      return string.startsWith(source, syntax.ELSE_IF)
-    },
-    create(source) {
+  function (source) {
+    if (string.startsWith(source, syntax.ELSE_IF)) {
       source = slicePrefix(source, syntax.ELSE_IF)
-      if (source) {
-        return new ElseIf(
+      return source
+        ? new ElseIf(
           expressionEnginer.compile(source)
         )
-      }
+        : STATUS_FAILED
     }
+    return STATUS_UNMATCHED
   },
-  {
-    test(source) {
-      return string.startsWith(source, syntax.ELSE)
-    },
-    create(source) {
+  function (source) {
+    if (string.startsWith(source, syntax.ELSE)) {
       return new Else()
     }
+    return STATUS_UNMATCHED
   },
-  {
-    test(source) {
-      return string.startsWith(source, syntax.SPREAD)
-    },
-    create(source) {
+  function (source) {
+    if (string.startsWith(source, syntax.SPREAD)) {
       source = slicePrefix(source, syntax.SPREAD)
-      if (source) {
-        return new Spread(
+      return source
+        ? new Spread(
           expressionEnginer.compile(source)
         )
-      }
+        : STATUS_FAILED
     }
+    return STATUS_UNMATCHED
   },
-  {
-    test(source) {
-      return !string.startsWith(source, syntax.COMMENT)
-    },
-    create(source, delimiter) {
+  function (source, delimiter) {
+    if (!string.startsWith(source, syntax.COMMENT)) {
       source = string.trim(source)
-      if (source) {
-        return new Expression(
+      return source
+        ? new Expression(
           expressionEnginer.compile(source),
           !string.endsWith(delimiter, '}}}')
         )
-      }
+        : STATUS_FAILED
     }
-  }
+    return STATUS_UNMATCHED
+  },
 ]
 
 /**
@@ -751,7 +740,7 @@ export function compile(template) {
             content = string.slice(content, result.index + result[ 0 ].length)
             name = result[ 1 ]
 
-            if (buildInDirectives[ name ]) {
+            if (builtInDirectives[ name ]) {
               addChild(
                 new Directive(
                   string.camelCase(name)
@@ -808,17 +797,17 @@ export function compile(template) {
         else {
           array.each(
             parsers,
-            function (parser, index) {
-              if (parser.test(content, name)) {
-                index = parser.create(content, name)
-                if (index) {
+            function (parse, index) {
+              index = parse(content, name)
+              if (index !== STATUS_UNMATCHED) {
+                if (index === STATUS_FAILED) {
+                  throwError('Expected expression', mainScanner.pos + helperScanner.pos)
+                }
+                else {
                   if (elseTypes[ index.type ]) {
                     popStack()
                   }
                   addChild(index)
-                }
-                else {
-                  throwError('Expected expression', mainScanner.pos + helperScanner.pos)
                 }
                 return env.FALSE
               }
@@ -877,7 +866,10 @@ export function compile(template) {
       )
 
       // 截取 <name 和 > 之间的内容
+      // [TODO]
       // 用于提取 Attribute 和 Directive
+      // 如果这段内容包含 >，如表达式里有 "a > b"，会有问题
+      // 因此必须区分 "..." 或 {{...}} 里的 >
       content = mainScanner.nextBefore(closingTagPattern)
       if (content) {
         parseContent(content)
