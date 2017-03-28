@@ -32,7 +32,7 @@ export default class Context {
 
   format(keypath) {
     let instance = this, keys = keypathUtil.parse(keypath)
-    if (keys[ 0 ] === 'this') {
+    if (keys[ 0 ] === env.THIS) {
       keys.shift()
       return {
         keypath: keypathUtil.stringify(keys),
