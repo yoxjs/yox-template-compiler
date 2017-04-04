@@ -19,6 +19,3 @@ export const DIRECTIVE_LAZY = 'lazy'
 export const DIRECTIVE_MODEL = 'model'
 
 export const KEYWORD_UNIQUE = 'key'
-
-export const DELIMITER_OPENING = '(?:\\{)?\\{\\{\\s*'
-export const DELIMITER_CLOSING = '\\s*\\}\\}(?:\\})?'

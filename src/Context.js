@@ -40,8 +40,7 @@ export default class Context {
       }
     }
     else {
-      let lookup = env.TRUE, index = 0
-      let levelMap = { }
+      let lookup = env.TRUE, index = 0, levelMap = { }
       levelMap[ keypathUtil.LEVEL_CURRENT ] = env.FALSE
       levelMap[ keypathUtil.LEVEL_PARENT ] = env.TRUE
 
