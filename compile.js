@@ -9,8 +9,6 @@ import compileExpression from 'yox-expression-compiler/compile'
 import * as syntax from './src/syntax'
 import * as nodeType from './src/nodeType'
 
-import Scanner from './src/helper/Scanner'
-
 import Attribute from './src/node/Attribute'
 import Directive from './src/node/Directive'
 import Each from './src/node/Each'
@@ -23,17 +21,6 @@ import Import from './src/node/Import'
 import Partial from './src/node/Partial'
 import Spread from './src/node/Spread'
 import Text from './src/node/Text'
-
-const openingDelimiterPattern = /\{?\{\{\s*/
-const closingDelimiterPattern = /\s*\}\}\}?/
-
-const openingTagPattern = /<(?:\/)?[-a-z]\w*/i
-const closingTagPattern = /(?:\/)?>/
-
-const attributePattern = /([-:@a-z0-9]+)(?==["'])?/i
-
-const componentNamePattern = /[-A-Z]/
-const selfClosingTagNamePattern = /source|param|input|img|br/i
 
 // if 分支的
 const elseTypes = { }
@@ -102,7 +89,7 @@ function trimBreakline(content) {
 /**
  * 把模板编译为抽象语法树
  *
- * @param {string} template
+ * @param {string} content
  * @return {Array}
  */
 export default function compile(content) {
@@ -112,69 +99,224 @@ export default function compile(content) {
     return result
   }
 
-  let currentNode, currentQuote
+  let nodeList = [ ], nodeStack = [ ], currentNode, currentQuote, htmlNode
+
+  let throwError = function (msg, showPosition) {
+    if (showPosition) {
+      let line = 0, col = 0, index = 0, pos = str.length
+      array.each(
+        content.split(char.CHAR_BREAKLINE),
+        function (lineStr) {
+          line++
+          col = 0
+
+          let { length } = lineStr
+          if (pos >= index && pos <= (index + length)) {
+            col = pos - index
+            return env.FALSE
+          }
+
+          index += length
+        }
+      )
+      msg += `, at line ${line}, col ${col}.`
+    }
+    else {
+      msg += char.CHAR_DOT
+    }
+    throw new Error(`${msg}${char.CHAR_BREAKLINE}${content}`)
+  }
+
+  let pushStack = function (node) {
+    if (currentNode) {
+      array.push(nodeStack, currentNode)
+    }
+    else {
+      array.push(nodeList, node)
+    }
+    currentNode = node
+    if (attrTypes[ node.type ]) {
+      htmlNode = node
+    }
+  }
+
+  let popStack = function (type) {
+    let filter
+    if (is.number(type)) {
+      filter = function (node) {
+        return node.type === type
+      }
+    }
+    else {
+      filter = function (node) {
+        return node.type !== nodeType.ELEMENT
+         && !attrTypes[ node.type ]
+      }
+    }
+
+    let index
+    for (let i = nodeStack.length; i >= 0; i--){
+      if (filter(nodeStack[ i ])) {
+        index = i
+        break
+      }
+    }
+
+    if (index >= 0) {
+
+    }
+
+    if (attrTypes[ currentNode.type ]) {
+      array.each(
+        nodeStack,
+        function (node) {
+          if (node.type === nodeType.ELEMENT) {
+            htmlNode = node
+            return env.FALSE
+          }
+        },
+        env.TRUE
+      )
+    }
+    currentNode = nodeStack.pop()
+  }
+
+  let addChild = function (node) {
+
+    let { type, content } = node
+
+    if (type === nodeType.TEXT) {
+      if (isBreakline(content)
+        || !(content = trimBreakline(content))
+      ) {
+        return
+      }
+      node.content = content
+    }
+
+    if (currentNode) {
+      if (htmlNode
+        && currentNode.addAttr
+      ) {
+        currentNode.addAttr(node)
+      }
+      else {
+        currentNode.addChild(node)
+      }
+    }
+
+    if (!leafTypes[ type ]) {
+      pushStack(node)
+    }
+
+  }
+
   const tplParsers = [
     function (content) {
-      let match = content.match(/^\s*([-\w]+)=(['"])/)
-      if (match) {
-        let name = match[ 1 ], node
-        if (string.startsWith(name, syntax.DIRECTIVE_EVENT_PREFIX)) {
-          name = string.slice(name, syntax.DIRECTIVE_EVENT_PREFIX.length)
-          node = new Directive(
-            'event',
-            string.camelCase(name)
-          )
-        }
-        else if (string.startsWith(name, syntax.DIRECTIVE_CUSTOM_PREFIX)) {
-          name = string.slice(name, syntax.DIRECTIVE_CUSTOM_PREFIX.length)
-          node = new Directive(
-            string.camelCase(name)
-          )
-        }
-        else {
-          if (levelNode.component) {
-            name = string.camelCase(name)
+      if (!htmlNode) {
+        let match = content.match(/^\s*<(\/)?([a-z][-a-z0-9]*)/i)
+        if (match) {
+          let tagName = match[ 2 ]
+          if (match[ 1 ] === '/') {
+            popStack(
+              nodeType.ELEMENT
+            )
           }
-          node = new Attribute(name)
-        }
-        return node
-      }
-    },
-    function (content) {
-      let match = content.match(/^([^'"]+)['"]/)
-      if (match) {
-        return new Text(
-          match[ 1 ]
-        )
-      }
-    },
-    function (content) {
-      let match = content.match(/^\s*<(\/?[a-z][-a-z0-9]*)/i)
-      if (match) {
-        let tagName = match[ 1 ]
-        if (string.startsWith(tagName, '/')) {
-          popStack(
-            string.slice(tagName, 1)
-          )
-        }
-        else {
-          return new Element(
-            tagName,
-            /[-A-Z]/.test(tagName)
-          )
+          else {
+            addChild(
+              new Element(
+                tagName,
+                /[-A-Z]/.test(tagName)
+              )
+            )
+          }
+          return match[ 0 ]
         }
       }
     },
     function () {
-      let match = content.match(/^\s*\/?>/)
-      if (match) {
-        if (string.endsWith(match[ 0 ], '/>')
-          || /source|param|input|img|br/.test(levelNode.name)
-        ) {
-          popStack()
+      if (htmlNode && htmlNode.type === nodeType.ELEMENT) {
+        let match = content.match(/^\s*(\/)?>/)
+        if (match) {
+          if (match[ 1 ] === '/'
+            || /source|param|input|img|br/.test(htmlNode.name)
+          ) {
+            popStack(
+              nodeType.ELEMENT
+            )
+          }
+          return match[ 0 ]
         }
       }
-    }
+    },
+    function (content) {
+      if (htmlNode && htmlNode.type === nodeType.ELEMENT) {
+        let match = content.match(/^\s*([-\w]+)(?:=(['"]))?/)
+        if (match) {
+          let name = match[ 1 ], node
+          if (string.startsWith(name, syntax.DIRECTIVE_EVENT_PREFIX)) {
+            name = string.slice(name, syntax.DIRECTIVE_EVENT_PREFIX.length)
+            addChild(
+              new Directive(
+                'event',
+                string.camelCase(name)
+              )
+            )
+          }
+          else if (string.startsWith(name, syntax.DIRECTIVE_CUSTOM_PREFIX)) {
+            name = string.slice(name, syntax.DIRECTIVE_CUSTOM_PREFIX.length)
+            addChild(
+              new Directive(
+                string.camelCase(name)
+              )
+            )
+          }
+          else {
+            addChild(
+              new Attribute(
+                htmlNode.component
+                ? string.camelCase(name)
+                : name
+              )
+            )
+          }
+          currentQuote = match[ 2 ]
+          return match[ 0 ]
+        }
+      }
+    },
+    function (content) {
+      if (htmlNode) {
+        if (attrTypes[ htmlNode.type ]) {
+          let index = 0, currentChar, closed
+          while (currentChar = char.chatAt(index)) {
+            if (currentChar === currentQuote) {
+              closed = env.TRUE
+              break
+            }
+            index++
+          }
+          let text = char.CHAR_BLANK
+          if (index) {
+            text = string.slice(content, 0, index)
+            addChild(
+              new Text(text)
+            )
+          }
+          if (closed) {
+            text += currentQuote
+            popStack(htmlNode.type)
+          }
+          return text
+        }
+      }
+      else {
+        addChild(
+          new Text(content)
+        )
+        return content
+      }
+    },
   ]
 
   const delimiterParsers = [
@@ -186,7 +328,7 @@ export default function compile(content) {
             compileExpression(string.trim(terms[ 0 ])),
             string.trim(terms[ 1 ])
           )
-          : throwError('Expected each name')
+          : throwError('Expected each name', env.TRUE)
       }
     },
     function (source) {
@@ -194,7 +336,7 @@ export default function compile(content) {
         source = slicePrefix(source, syntax.IMPORT)
         return source
           ? new Import(source)
-          : throwError('Expected import name')
+          : throwError('Expected import name', env.TRUE)
       }
     },
     function (source) {
@@ -202,7 +344,7 @@ export default function compile(content) {
         source = slicePrefix(source, syntax.PARTIAL)
         return source
           ? new Partial(source)
-          : throwError('Expected partial name')
+          : throwError('Expected partial name', env.TRUE)
       }
     },
     function (source) {
@@ -212,7 +354,7 @@ export default function compile(content) {
           ? new If(
             compileExpression(source)
           )
-          : throwError('Expected if expression')
+          : throwError('Expected if expression', env.TRUE)
       }
     },
     function (source) {
@@ -222,7 +364,7 @@ export default function compile(content) {
           ? new ElseIf(
             compileExpression(source)
           )
-          : throwError('Expected else if expression')
+          : throwError('Expected else if expression', env.TRUE)
       }
     },
     function (source) {
@@ -237,7 +379,7 @@ export default function compile(content) {
           ? new Spread(
             compileExpression(source)
           )
-          : throwError('Expected spread name')
+          : throwError('Expected spread name', env.TRUE)
       }
     },
     function (source, all) {
@@ -248,7 +390,7 @@ export default function compile(content) {
             compileExpression(source),
             !string.endsWith(all, '}}}')
           )
-          : throwError('Expected expression')
+          : throwError('Expected expression', env.TRUE)
       }
     },
   ]
@@ -274,9 +416,7 @@ export default function compile(content) {
   let parseDelimiter = function (content, all) {
     if (content) {
       if (char.charAt(content) === '/') {
-        popStack(
-          string.slice(content, 1)
-        )
+        popStack()
       }
       else {
         array.each(
@@ -297,8 +437,6 @@ export default function compile(content) {
     str = string.slice(str, 0, all.length)
   }
 
-  let nodes = [ ], nodeStack = [ ]
-
   let str = content, match
   while (str) {
     match = str.match(delimiterPattern)
@@ -314,16 +452,17 @@ export default function compile(content) {
   }
 
   if (nodeStack.length) {
-    return throwError(`Expected end tag (</${nodeStack[ 0 ].name}>)`, mainScanner.pos)
+    let node = nodeStack[ 0 ]
+    throwError(`Expected end tag (</${node.name}>)`)
   }
 
-  if (!nodes.length) {
+  if (!nodeList.length) {
     array.push(
-      nodes,
+      nodeList,
       new Text(content)
     )
   }
 
-  return compileCache[ content ] = nodes
+  return compileCache[ content ] = nodeList
 
 }
