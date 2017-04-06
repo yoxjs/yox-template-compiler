@@ -259,14 +259,14 @@ export default function render(ast, createComment, createElement, importTemplate
                   traverseList(children)
                 )
 
-                keys.pop()
-                context = context.pop()
+                array.pop(keys)
+                context = array.pop(context)
 
               }
             )
 
-            keys.pop()
-            context = context.pop()
+            array.pop(keys)
+            context = array.pop(context)
 
             return makeNodes(list)
 

@@ -205,7 +205,7 @@ export default function compile(content) {
               nodeType.ELEMENT
             )
           }
-          htmlStack.pop()
+          array.pop(htmlStack)
         }
         return match[ 0 ]
       }
@@ -275,7 +275,7 @@ export default function compile(content) {
         if (closed) {
           text += currentQuote
           popStack(
-            htmlStack.pop().type
+            array.pop(htmlStack).type
           )
         }
         return text
@@ -394,7 +394,7 @@ export default function compile(content) {
         let type = helper.name2Type[ string.slice(content, 1) ]
         popStack(type)
         if (ifStack[ type ]) {
-          ifStack.pop()
+          array.pop(ifStack)
         }
       }
       else {
@@ -405,7 +405,7 @@ export default function compile(content) {
             if (node) {
               if (helper.elseTypes[ node.type ]) {
                 popStack(
-                  ifStack.pop().type
+                  array.pop(ifStack).type
                 )
               }
               addChild(node)
