@@ -223,6 +223,8 @@ export default function compile(content) {
       pushStack(node)
     }
 
+    return node
+
   }
 
   const htmlParsers = [
@@ -237,30 +239,29 @@ export default function compile(content) {
             )
           }
           else {
-            htmlNode = new Element(
-              tagName,
-              /[-A-Z]/.test(tagName)
+            htmlNode = addChild(
+              new Element(
+                tagName,
+                /[-A-Z]/.test(tagName)
+              )
             )
-            addChild(htmlNode)
           }
           return match[ 0 ]
         }
       }
     },
     function (content) {
-      if (htmlNode && htmlNode.type === nodeType.ELEMENT) {
-        let match = content.match(closingTagPattern)
-        if (match) {
-          if (match[ 1 ] === '/'
-            || /source|param|input|img|br/.test(htmlNode.name)
-          ) {
-            popStack(
-              nodeType.ELEMENT
-            )
-          }
-          htmlNode = env.NULL
-          return match[ 0 ]
+      let match = content.match(closingTagPattern)
+      if (match) {
+        if (match[ 1 ] === '/'
+          || htmlNode && /source|param|input|img|br/.test(htmlNode.name)
+        ) {
+          popStack(
+            nodeType.ELEMENT
+          )
         }
+        htmlNode = env.NULL
+        return match[ 0 ]
       }
     },
     function (content) {
@@ -418,10 +419,11 @@ export default function compile(content) {
       while (tpl) {
         array.each(
           htmlParsers,
-          function (parse, match) {
+          function (parse, index) {
             console.log('parseHtml part', tpl)
-            match = parse(tpl)
+            let match = parse(tpl)
             if (match) {
+              console.log('命中', index, match)
               tpl = string.slice(tpl, match.length)
               return env.FALSE
             }
