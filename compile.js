@@ -25,7 +25,7 @@ import Spread from './src/node/Spread'
 import Text from './src/node/Text'
 
 const delimiterPattern = /\{?\{\{\s*([^\}]+?)\s*\}\}\}?/
-const openingTagPattern = /\s*<(\/)?([a-z][-a-z0-9]*)/i
+const openingTagPattern = /<(\/)?([a-z][-a-z0-9]*)/i
 const closingTagPattern = /^\s*(\/)?>/
 const attributePattern = /^\s*([-\w]+)(?:=(['"]))?/
 const componentNamePattern = /[-A-Z]/
@@ -112,21 +112,24 @@ export default function compile(content) {
 
   let popStack = function (type) {
 
-    let index, target
-
-    array.each(
-      nodeStack,
-      function (node, i) {
-        if (node.type === type) {
-          index = i
-          target = nodeStack.splice(i, 1)[ 0 ]
-          return env.FALSE
-        }
-      },
-      env.TRUE
-    )
-
-    currentNode = index === nodeStack.length ? target : env.NULL
+    if (currentNode.type === type) {
+      currentNode = array.pop(nodeStack)
+    }
+    else {
+      let index, target
+      array.each(
+        nodeStack,
+        function (node, i) {
+          if (node.type === type) {
+            index = i
+            target = nodeStack.splice(i, 1)[ 0 ]
+            return env.FALSE
+          }
+        },
+        env.TRUE
+      )
+      currentNode = index === nodeStack.length ? target : env.NULL
+    }
 
   }
 
@@ -258,7 +261,7 @@ export default function compile(content) {
     function (content) {
       if (htmlStack.length === 2) {
         let index = 0, currentChar, closed
-        while (currentChar = char.chatAt(index)) {
+        while (currentChar = char.charAt(content, index)) {
           if (currentChar === currentQuote) {
             closed = env.TRUE
             break

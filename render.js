@@ -7,6 +7,7 @@ import * as object from 'yox-common/util/object'
 import * as keypathUtil from 'yox-common/util/keypath'
 
 import executeExpression from 'yox-expression-compiler/execute'
+import stringifyExpression from 'yox-expression-compiler/stringify'
 
 import Context from './src/Context'
 import * as helper from './src/helper'
@@ -242,7 +243,7 @@ export default function render(ast, createComment, createElement, importTemplate
             array.push(
               keypaths,
               keypathUtil.normalize(
-                expressionEnginer.stringify(expr)
+                stringifyExpression(expr)
               )
             )
             context = context.push(value)

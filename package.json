@@ -1,6 +1,6 @@
 {
   "name": "yox-template-compiler",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Template compiler for Yox.js",
   "main": "index.js",
   "directories": {
@@ -15,7 +15,7 @@
     "babel-polyfill": "^6.23.0",
     "babel-preset-es2015": "^6.24.0",
     "babel-register": "^6.24.0",
-    "yox-common": "^0.7.5",
+    "yox-common": "^0.7.6",
     "yox-expression-compiler": "^0.7.3"
   },
   "repository": {
