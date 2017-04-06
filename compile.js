@@ -144,55 +144,34 @@ export default function compile(content) {
     throw new Error(`${msg}${char.CHAR_BREAKLINE}${content}`)
   }
 
-  let pushStack = function (node) {
-    if (currentNode) {
-      array.push(nodeStack, currentNode)
-    }
-    else {
-      array.push(nodeList, node)
-    }
-    currentNode = node
-    if (node.type === nodeType.ELEMENT || attrTypes[ node.type ]) {
-      htmlNode = node
-    }
-  }
+  let popStack = function (popNodeType) {
 
-  let popStack = function (type) {
+    let target, isLast
 
-    let index = -1
     array.each(
       nodeStack,
-      function (node, i) {
-        if (node.type === type) {
-          index = i
-          return env.FALSE
+      function (node, index) {
+        if (target) {
+          if (node.type === nodeType.ELEMENT) {
+            htmlNode = node
+            return env.FALSE
+          }
+        }
+        else if (node.type === popNodeType) {
+          target = node
+          nodeStack.splice(index, 1)
+          isLast = index === nodeStack.length
+          // 如果 pop 掉的是最后一个节点，并且该节点是属性节点
+          // 需要找回上一个 html 节点
+          if (!isLast || !attrTypes[ node.type ]) {
+            return env.FALSE
+          }
         }
       },
       env.TRUE
     )
 
-    if (index < 0 && nodeStack.length) {
-      throwError('start node is not found.' + type)
-    }
-
-    if (index === nodeStack.length - 1) {
-      if (attrTypes[ currentNode.type ]) {
-        array.each(
-          nodeStack,
-          function (node) {
-            if (node.type === nodeType.ELEMENT) {
-              htmlNode = node
-              return env.FALSE
-            }
-          },
-          env.TRUE
-        )
-      }
-      currentNode = nodeStack.pop()
-    }
-    else {
-      nodeStack.splice(index, 1)
-    }
+    currentNode = isLast ? target : env.NULL
 
   }
 
@@ -210,19 +189,25 @@ export default function compile(content) {
     }
 
     if (currentNode) {
-      if (htmlNode
-        && htmlNode.type === nodeType.ELEMENT
-        && currentNode.addAttr
-      ) {
+      if (htmlNode && currentNode.addAttr) {
         currentNode.addAttr(node)
       }
       else {
         currentNode.addChild(node)
       }
     }
+    else {
+      array.push(nodeList, node)
+    }
 
     if (!leafTypes[ type ]) {
-      pushStack(node)
+      if (currentNode) {
+        array.push(nodeStack, currentNode)
+      }
+      currentNode = node
+      if (node.type === nodeType.ELEMENT || attrTypes[ node.type ]) {
+        htmlNode = node
+      }
     }
 
   }
@@ -421,16 +406,13 @@ export default function compile(content) {
 
   let parseHtml = function (content) {
     if (content) {
-      console.log('parseHtml', content)
       let tpl = content
       while (tpl) {
         array.each(
           htmlParsers,
           function (parse, index) {
-            console.log('parseHtml part', tpl)
             let match = parse(tpl)
             if (match) {
-              console.log('命中', index, match)
               tpl = string.slice(tpl, match.length)
               return env.FALSE
             }
@@ -443,7 +425,6 @@ export default function compile(content) {
 
   let parseDelimiter = function (content, all) {
     if (content) {
-      console.log('parseDelimiter', content)
       if (char.charAt(content) === '/') {
         popStack(
           name2Type[ string.slice(content, 1) ]
@@ -488,13 +469,6 @@ export default function compile(content) {
   if (nodeStack.length) {
     let node = nodeStack[ 0 ]
     throwError(`Expected end tag (</${node.name}>)`)
-  }
-
-  if (!nodeList.length) {
-    array.push(
-      nodeList,
-      new Text(content)
-    )
   }
 
   return compileCache[ content ] = nodeList
