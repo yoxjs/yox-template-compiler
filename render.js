@@ -4,7 +4,6 @@ import * as env from 'yox-common/util/env'
 import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
-import * as logger from 'yox-common/util/logger'
 import * as keypathUtil from 'yox-common/util/keypath'
 
 import executeExpression from 'yox-expression-compiler/execute'
@@ -14,11 +13,7 @@ import * as helper from './src/helper'
 import * as syntax from './src/syntax'
 import * as nodeType from './src/nodeType'
 
-// 属性层级的节点类型
-const attrTypes = { }
-
-attrTypes[ nodeType.ATTRIBUTE ] =
-attrTypes[ nodeType.DIRECTIVE ] = env.TRUE
+import compile from './compile'
 
 /**
  * 标记节点数组，用于区分普通数组
@@ -79,30 +74,31 @@ function mergeNodes(nodes) {
  */
 export default function render(ast, createComment, createElement, importTemplate, data) {
 
-  let keys = [ ]
+  let keypaths = [ ]
   let getKeypath = function () {
-    return keypathUtil.stringify(keys)
+    return keypathUtil.stringify(keypaths)
   }
   getKeypath.toString = getKeypath
 
   data[ syntax.SPECIAL_KEYPATH ] = getKeypath
   let context = new Context(data)
 
-  // 是否正在渲染属性
-  let isAttrRendering
+  // 正在渲染的 html 层级
+  let htmlStack = [ ]
 
+  // 用时定义的模板片段
   let partials = { }
 
   let deps = { }
   let executeExpr = function (expr) {
-    let result = executeExpression(expr, context)
+    let { value, deps } = executeExpression(expr, context)
     object.each(
-      result.deps,
+      deps,
       function (value, key) {
         deps[ keypathUtil.resolve(getKeypath(), key) ] = value
       }
     )
-    return result.value
+    return value
   }
 
   /**
@@ -117,7 +113,7 @@ export default function render(ast, createComment, createElement, importTemplate
 
     let value = enter(node)
     if (value !== env.FALSE) {
-      if (!value) {
+      if (value === env.UNDEFINED) {
         let { children, attrs } = node
         let props = { }
 
@@ -135,9 +131,11 @@ export default function render(ast, createComment, createElement, importTemplate
             children = traverseList(children)
           }
         }
+
         if (attrs) {
           attrs = traverseList(attrs)
         }
+
         value = leave(node, children, attrs, props)
       }
       return value
@@ -206,16 +204,21 @@ export default function render(ast, createComment, createElement, importTemplate
                 ? traverseList(partial)
                 : recursion(partial)
             }
-            logger.fatal(`Importing partial "${name}" is not found.`)
             break
 
           // 条件判断失败就没必要往下走了
+          // 但如果失败的点原本是一个 DOM 元素
+          // 就需要用注释节点来占位，否则 virtual dom 无法正常工作
           case nodeType.IF:
           case nodeType.ELSE_IF:
             if (!executeExpr(expr)) {
-              return isAttrRendering || !nextNode || helper.elseTypes[ nextNode.type ]
-                ? env.FALSE
-                : makeNodes(createComment())
+              name = array.last(htmlStack)
+              return name === nodeType.ATTRIBUTE
+                || name === nodeType.DIRECTIVE
+                || !nextNode
+                || helper.elseTypes[ nextNode.type ]
+                  ? env.FALSE
+                  : makeNodes(createComment())
             }
             break
 
@@ -237,7 +240,7 @@ export default function render(ast, createComment, createElement, importTemplate
             let list = [ ]
 
             array.push(
-              keys,
+              keypaths,
               keypathUtil.normalize(
                 expressionEnginer.stringify(expr)
               )
@@ -251,7 +254,7 @@ export default function render(ast, createComment, createElement, importTemplate
                   context.set(index, i)
                 }
 
-                array.push(keys, i)
+                array.push(keypaths, i)
                 context = context.push(item)
 
                 array.push(
@@ -259,31 +262,31 @@ export default function render(ast, createComment, createElement, importTemplate
                   traverseList(children)
                 )
 
-                array.pop(keys)
+                array.pop(keypaths)
                 context = array.pop(context)
 
               }
             )
 
-            array.pop(keys)
+            array.pop(keypaths)
             context = array.pop(context)
 
             return makeNodes(list)
 
         }
 
-        if (attrTypes[ type ]) {
-          isAttrRendering = env.TRUE
+        if (helper.htmlTypes[ type ]) {
+          array.push(htmlStack, type)
         }
 
       },
-      function (node, children, attrs, properties) {
+      function (node, children, attrs, props) {
 
         let { type, name, modifier, component, content } = node
         let keypath = getKeypath()
 
-        if (attrTypes[ type ]) {
-          isAttrRendering = env.FALSE
+        if (helper.htmlTypes[ type ]) {
+          array.pop(htmlStack)
         }
 
         switch (type) {
@@ -316,7 +319,7 @@ export default function render(ast, createComment, createElement, importTemplate
           case nodeType.ELSE_IF:
           case nodeType.ELSE:
             // 如果是空，也得是个空数组
-            return children !== env.UNDEFINED
+            return is.array(children)
               ? children
               : makeNodes([ ])
 
@@ -364,9 +367,9 @@ export default function render(ast, createComment, createElement, importTemplate
               {
                 name,
                 keypath,
-                properties,
                 attributes,
                 directives,
+                properties: props,
                 children: children || [ ],
               },
               component
