@@ -3,9 +3,11 @@ import * as env from 'yox-common/util/env'
 import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
 import * as string from 'yox-common/util/string'
+import * as logger from 'yox-common/util/logger'
 
 import compileExpression from 'yox-expression-compiler/compile'
 
+import * as helper from './src/helper'
 import * as syntax from './src/syntax'
 import * as nodeType from './src/nodeType'
 
@@ -21,42 +23,6 @@ import Import from './src/node/Import'
 import Partial from './src/node/Partial'
 import Spread from './src/node/Spread'
 import Text from './src/node/Text'
-
-// if 带条件的
-const ifTypes = { }
-// if 分支的
-const elseTypes = { }
-// 属性层级的节点类型
-const attrTypes = { }
-// 叶子节点类型
-const leafTypes = { }
-// 内置指令，无需加前缀
-const builtInDirectives = { }
-// 名称和类型的映射
-const name2Type = { }
-
-ifTypes[ nodeType.IF ] =
-ifTypes[ nodeType.ELSE_IF ] =
-
-elseTypes[ nodeType.ELSE_IF ] =
-elseTypes[ nodeType.ELSE ] =
-
-attrTypes[ nodeType.ATTRIBUTE ] =
-attrTypes[ nodeType.DIRECTIVE ] =
-
-leafTypes[ nodeType.EXPRESSION ] =
-leafTypes[ nodeType.IMPORT ] =
-leafTypes[ nodeType.SPREAD ] =
-leafTypes[ nodeType.TEXT ] =
-
-builtInDirectives[ syntax.DIRECTIVE_REF ] =
-builtInDirectives[ syntax.DIRECTIVE_LAZY ] =
-builtInDirectives[ syntax.DIRECTIVE_MODEL ] =
-builtInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
-
-name2Type[ 'if' ] = nodeType.IF
-name2Type[ 'each' ] = nodeType.EACH
-name2Type[ 'partial' ] = nodeType.PARTIAL
 
 const delimiterPattern = /\{?\{\{\s*([^\}]+?)\s*\}\}\}?/
 const openingTagPattern = /\s*<(\/)?([a-z][-a-z0-9]*)/i
@@ -116,7 +82,7 @@ export default function compile(content) {
     return result
   }
 
-  let nodeList = [ ], nodeStack = [ ], currentNode, currentQuote, htmlNode, ifNode
+  let nodeList = [ ], nodeStack = [ ], ifStack = [ ], htmlStack = [ ], currentNode, currentQuote
 
   let throwError = function (msg, showPosition) {
     if (showPosition) {
@@ -141,37 +107,26 @@ export default function compile(content) {
     else {
       msg += char.CHAR_DOT
     }
-    throw new Error(`${msg}${char.CHAR_BREAKLINE}${content}`)
+    logger.fatal(`${msg}${char.CHAR_BREAKLINE}${content}`)
   }
 
-  let popStack = function (popNodeType) {
+  let popStack = function (type) {
 
-    let target, isLast
+    let index, target
 
     array.each(
       nodeStack,
-      function (node, index) {
-        if (target) {
-          if (node.type === nodeType.ELEMENT) {
-            htmlNode = node
-            return env.FALSE
-          }
-        }
-        else if (node.type === popNodeType) {
-          target = node
-          nodeStack.splice(index, 1)
-          isLast = index === nodeStack.length
-          // 如果 pop 掉的是最后一个节点，并且该节点是属性节点
-          // 需要找回上一个 html 节点
-          if (!isLast || !attrTypes[ node.type ]) {
-            return env.FALSE
-          }
+      function (node, i) {
+        if (node.type === type) {
+          index = i
+          target = nodeStack.splice(i, 1)[ 0 ]
+          return env.FALSE
         }
       },
       env.TRUE
     )
 
-    currentNode = isLast ? target : env.NULL
+    currentNode = index === nodeStack.length ? target : env.NULL
 
   }
 
@@ -189,7 +144,7 @@ export default function compile(content) {
     }
 
     if (currentNode) {
-      if (htmlNode && currentNode.addAttr) {
+      if (htmlStack.length === 1 && currentNode.addAttr) {
         currentNode.addAttr(node)
       }
       else {
@@ -200,13 +155,16 @@ export default function compile(content) {
       array.push(nodeList, node)
     }
 
-    if (!leafTypes[ type ]) {
+    if (!helper.leafTypes[ type ]) {
       if (currentNode) {
         array.push(nodeStack, currentNode)
       }
       currentNode = node
-      if (node.type === nodeType.ELEMENT || attrTypes[ node.type ]) {
-        htmlNode = node
+      if (helper.htmlTypes[ type ]) {
+        array.push(htmlStack, node)
+      }
+      else if (helper.ifTypes[ type ]) {
+        array.push(ifStack, node)
       }
     }
 
@@ -214,7 +172,7 @@ export default function compile(content) {
 
   const htmlParsers = [
     function (content) {
-      if (!htmlNode) {
+      if (!htmlStack.length) {
         let match = content.match(openingTagPattern)
         // 必须以 <tag 开头才能继续
         if (match && !match.index) {
@@ -239,35 +197,25 @@ export default function compile(content) {
     function (content) {
       let match = content.match(closingTagPattern)
       if (match) {
-        if (htmlNode) {
+        if (htmlStack.length === 1) {
           if (match[ 1 ] === '/'
-            || selfClosingTagNamePattern.test(htmlNode.name)
+            || selfClosingTagNamePattern.test(htmlStack[ 0 ].name)
           ) {
             popStack(
               nodeType.ELEMENT
             )
           }
-          htmlNode = env.NULL
+          htmlStack.pop()
         }
         return match[ 0 ]
       }
     },
     function (content) {
-      if (htmlNode && htmlNode.type === nodeType.ELEMENT) {
+      if (htmlStack.length === 1) {
         let match = content.match(attributePattern)
         if (match) {
           let name = match[ 1 ], node
-          if (string.startsWith(name, syntax.DIRECTIVE_EVENT_PREFIX)) {
-            name = string.slice(name, syntax.DIRECTIVE_EVENT_PREFIX.length)
-            addChild(
-              new Directive(
-                'event',
-                string.camelCase(name)
-              )
-            )
-          }
-          else if (string.startsWith(name, syntax.DIRECTIVE_CUSTOM_PREFIX)) {
-            name = string.slice(name, syntax.DIRECTIVE_CUSTOM_PREFIX.length)
+          if (helper.builtInDirectives[ name ]) {
             addChild(
               new Directive(
                 string.camelCase(name)
@@ -275,13 +223,32 @@ export default function compile(content) {
             )
           }
           else {
-            addChild(
-              new Attribute(
-                htmlNode.component
-                ? string.camelCase(name)
-                : name
+            if (string.startsWith(name, syntax.DIRECTIVE_EVENT_PREFIX)) {
+              name = string.slice(name, syntax.DIRECTIVE_EVENT_PREFIX.length)
+              addChild(
+                new Directive(
+                  'event',
+                  string.camelCase(name)
+                )
               )
-            )
+            }
+            else if (string.startsWith(name, syntax.DIRECTIVE_CUSTOM_PREFIX)) {
+              name = string.slice(name, syntax.DIRECTIVE_CUSTOM_PREFIX.length)
+              addChild(
+                new Directive(
+                  string.camelCase(name)
+                )
+              )
+            }
+            else {
+              addChild(
+                new Attribute(
+                  htmlStack[ 0 ].component
+                  ? string.camelCase(name)
+                  : name
+                )
+              )
+            }
           }
           currentQuote = match[ 2 ]
           return match[ 0 ]
@@ -289,31 +256,29 @@ export default function compile(content) {
       }
     },
     function (content) {
-      if (htmlNode) {
-        if (attrTypes[ htmlNode.type ]) {
-          let index = 0, currentChar, closed
-          while (currentChar = char.chatAt(index)) {
-            if (currentChar === currentQuote) {
-              closed = env.TRUE
-              break
-            }
-            index++
+      if (htmlStack.length === 2) {
+        let index = 0, currentChar, closed
+        while (currentChar = char.chatAt(index)) {
+          if (currentChar === currentQuote) {
+            closed = env.TRUE
+            break
           }
-          let text = char.CHAR_BLANK
-          if (index) {
-            text = string.slice(content, 0, index)
-            addChild(
-              new Text(text)
-            )
-          }
-          if (closed) {
-            text += currentQuote
-            popStack(
-              htmlNode.type
-            )
-          }
-          return text
+          index++
         }
+        let text = char.CHAR_BLANK
+        if (index) {
+          text = string.slice(content, 0, index)
+          addChild(
+            new Text(text)
+          )
+        }
+        if (closed) {
+          text += currentQuote
+          popStack(
+            htmlStack.pop().type
+          )
+        }
+        return text
       }
       else {
         let match = content.match(openingTagPattern)
@@ -410,8 +375,8 @@ export default function compile(content) {
       while (tpl) {
         array.each(
           htmlParsers,
-          function (parse, index) {
-            let match = parse(tpl)
+          function (parse, match) {
+            match = parse(tpl)
             if (match) {
               tpl = string.slice(tpl, match.length)
               return env.FALSE
@@ -426,9 +391,11 @@ export default function compile(content) {
   let parseDelimiter = function (content, all) {
     if (content) {
       if (char.charAt(content) === '/') {
-        popStack(
-          name2Type[ string.slice(content, 1) ]
-        )
+        let type = helper.name2Type[ string.slice(content, 1) ]
+        popStack(type)
+        if (ifStack[ type ]) {
+          ifStack.pop()
+        }
       }
       else {
         array.each(
@@ -436,20 +403,19 @@ export default function compile(content) {
           function (parse, node) {
             node = parse(content, all)
             if (node) {
+              if (helper.elseTypes[ node.type ]) {
+                popStack(
+                  ifStack.pop().type
+                )
+              }
               addChild(node)
-              if (ifNode && elseTypes[ node.type ]) {
-                ifNode.then = node
-              }
-              if (ifTypes[ node.type ]) {
-                ifNode = node
-              }
               return env.FALSE
             }
           }
         )
       }
     }
-    str = string.slice(str, 0, all.length)
+    str = string.slice(str, all.length)
   }
 
   let str = content, match
@@ -467,8 +433,7 @@ export default function compile(content) {
   }
 
   if (nodeStack.length) {
-    let node = nodeStack[ 0 ]
-    throwError(`Expected end tag (</${node.name}>)`)
+    throwError(`Expected end tag (</${nodeStack[ 0 ].name}>)`)
   }
 
   return compileCache[ content ] = nodeList

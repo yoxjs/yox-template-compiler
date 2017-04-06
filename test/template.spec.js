@@ -1,5 +1,7 @@
 
 import compile from '../compile'
+import render from '../render'
+
 import * as nodeType from '../src/nodeType'
 
 describe('template', () => {
@@ -59,6 +61,28 @@ describe('template', () => {
 
     expect(ast[0].children[0].type).toBe(nodeType.ELEMENT)
     expect(ast[0].children[0].name).toBe('br')
+
+  })
+
+  it('if', () => {
+
+    let ast = compile('{{#if x > 1}}a{{else if x < 0}}b{{else}}c{{/if}}')
+
+    expect(ast.length).toBe(3)
+    expect(ast[0].type).toBe(nodeType.IF)
+    expect(ast[0].children.length).toBe(1)
+    expect(ast[0].children[0].type).toBe(nodeType.TEXT)
+    expect(ast[0].children[0].content).toBe('a')
+
+    expect(ast[1].type).toBe(nodeType.ELSE_IF)
+    expect(ast[1].children.length).toBe(1)
+    expect(ast[1].children[0].type).toBe(nodeType.TEXT)
+    expect(ast[1].children[0].content).toBe('b')
+
+    expect(ast[2].type).toBe(nodeType.ELSE)
+    expect(ast[2].children.length).toBe(1)
+    expect(ast[2].children[0].type).toBe(nodeType.TEXT)
+    expect(ast[2].children[0].content).toBe('c')
 
   })
 

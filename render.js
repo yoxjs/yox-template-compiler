@@ -4,29 +4,21 @@ import * as env from 'yox-common/util/env'
 import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
+import * as logger from 'yox-common/util/logger'
 import * as keypathUtil from 'yox-common/util/keypath'
 
 import executeExpression from 'yox-expression-compiler/execute'
 
 import Context from './src/Context'
+import * as helper from './src/helper'
 import * as syntax from './src/syntax'
 import * as nodeType from './src/nodeType'
 
-// if 带条件的
-const ifTypes = { }
-// if 分支的
-const elseTypes = { }
 // 属性层级的节点类型
 const attrTypes = { }
 
-ifTypes[ nodeType.IF ] =
-ifTypes[ nodeType.ELSE_IF ] =
-
-elseTypes[ nodeType.ELSE_IF ] =
-elseTypes[ nodeType.ELSE ] =
-
 attrTypes[ nodeType.ATTRIBUTE ] =
-attrTypes[ nodeType.DIRECTIVE ] =
+attrTypes[ nodeType.DIRECTIVE ] = env.TRUE
 
 /**
  * 标记节点数组，用于区分普通数组
@@ -170,10 +162,10 @@ export default function render(ast, createComment, createElement, importTemplate
         else {
           list.push(value)
         }
-        if (ifTypes[ node.type ]) {
+        if (helper.ifTypes[ node.type ]) {
           // 跳过后面紧跟着的 elseif else
           while (node = nodes[ i + 1 ]) {
-            if (elseTypes[ node.type ]) {
+            if (helper.elseTypes[ node.type ]) {
               i++
             }
             else {
@@ -214,14 +206,14 @@ export default function render(ast, createComment, createElement, importTemplate
                 ? traverseList(partial)
                 : recursion(partial)
             }
-            throw new Error(`Importing partial "${name}" is not found.`)
+            logger.fatal(`Importing partial "${name}" is not found.`)
             break
 
           // 条件判断失败就没必要往下走了
           case nodeType.IF:
           case nodeType.ELSE_IF:
             if (!executeExpr(expr)) {
-              return isAttrRendering || !nextNode || elseTypes[ nextNode.type ]
+              return isAttrRendering || !nextNode || helper.elseTypes[ nextNode.type ]
                 ? env.FALSE
                 : makeNodes(createComment())
             }
