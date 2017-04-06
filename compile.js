@@ -59,9 +59,11 @@ name2Type[ 'each' ] = nodeType.EACH
 name2Type[ 'partial' ] = nodeType.PARTIAL
 
 const delimiterPattern = /\{?\{\{\s*([^\}]+?)\s*\}\}\}?/
-const openingTagPattern = /^\s*<(\/)?([a-z][-a-z0-9]*)/i
+const openingTagPattern = /\s*<(\/)?([a-z][-a-z0-9]*)/i
 const closingTagPattern = /^\s*(\/)?>/
 const attributePattern = /^\s*([-\w]+)(?:=(['"]))?/
+const componentNamePattern = /[-A-Z]/
+const selfClosingTagNamePattern = /source|param|input|img|br/
 
 // 缓存编译结果
 let compileCache = { }
@@ -150,7 +152,7 @@ export default function compile(content) {
       array.push(nodeList, node)
     }
     currentNode = node
-    if (attrTypes[ node.type ]) {
+    if (node.type === nodeType.ELEMENT || attrTypes[ node.type ]) {
       htmlNode = node
     }
   }
@@ -223,15 +225,14 @@ export default function compile(content) {
       pushStack(node)
     }
 
-    return node
-
   }
 
   const htmlParsers = [
     function (content) {
       if (!htmlNode) {
         let match = content.match(openingTagPattern)
-        if (match) {
+        // 必须以 <tag 开头才能继续
+        if (match && !match.index) {
           let tagName = match[ 2 ]
           if (match[ 1 ] === '/') {
             popStack(
@@ -239,10 +240,10 @@ export default function compile(content) {
             )
           }
           else {
-            htmlNode = addChild(
+            addChild(
               new Element(
                 tagName,
-                /[-A-Z]/.test(tagName)
+                componentNamePattern.test(tagName)
               )
             )
           }
@@ -255,7 +256,7 @@ export default function compile(content) {
       if (match) {
         if (htmlNode) {
           if (match[ 1 ] === '/'
-            || /source|param|input|img|br/.test(htmlNode.name)
+            || selfClosingTagNamePattern.test(htmlNode.name)
           ) {
             popStack(
               nodeType.ELEMENT
@@ -330,6 +331,10 @@ export default function compile(content) {
         }
       }
       else {
+        let match = content.match(openingTagPattern)
+        if (match && match.index) {
+          content = string.slice(content, 0, match.index)
+        }
         addChild(
           new Text(content)
         )
