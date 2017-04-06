@@ -9,7 +9,7 @@ import * as nodeType from '../nodeType'
  */
 export default class ElseIf extends Node {
 
-  constructor(expr) {
+  constructor(expr, then) {
     super(nodeType.ELSE_IF)
     this.expr = expr
   }

@@ -22,6 +22,8 @@ import Partial from './src/node/Partial'
 import Spread from './src/node/Spread'
 import Text from './src/node/Text'
 
+// if 带条件的
+const ifTypes = { }
 // if 分支的
 const elseTypes = { }
 // 属性层级的节点类型
@@ -30,6 +32,11 @@ const attrTypes = { }
 const leafTypes = { }
 // 内置指令，无需加前缀
 const builtInDirectives = { }
+// 名称和类型的映射
+const name2Type = { }
+
+ifTypes[ nodeType.IF ] =
+ifTypes[ nodeType.ELSE_IF ] =
 
 elseTypes[ nodeType.ELSE_IF ] =
 elseTypes[ nodeType.ELSE ] =
@@ -47,6 +54,14 @@ builtInDirectives[ syntax.DIRECTIVE_LAZY ] =
 builtInDirectives[ syntax.DIRECTIVE_MODEL ] =
 builtInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
 
+name2Type[ 'if' ] = nodeType.IF
+name2Type[ 'each' ] = nodeType.EACH
+name2Type[ 'partial' ] = nodeType.PARTIAL
+
+const delimiterPattern = /\{?\{\{\s*([^\}]+?)\s*\}\}\}?/
+const openingTagPattern = /^\s*<(\/)?([a-z][-a-z0-9]*)/i
+const closingTagPattern = /^\s*(\/)?>/
+const attributePattern = /^\s*([-\w]+)(?:=(['"]))?/
 
 // 缓存编译结果
 let compileCache = { }
@@ -99,7 +114,7 @@ export default function compile(content) {
     return result
   }
 
-  let nodeList = [ ], nodeStack = [ ], currentNode, currentQuote, htmlNode
+  let nodeList = [ ], nodeStack = [ ], currentNode, currentQuote, htmlNode, ifNode
 
   let throwError = function (msg, showPosition) {
     if (showPosition) {
@@ -141,44 +156,42 @@ export default function compile(content) {
   }
 
   let popStack = function (type) {
-    let filter
-    if (is.number(type)) {
-      filter = function (node) {
-        return node.type === type
+
+    let index = -1
+    array.each(
+      nodeStack,
+      function (node, i) {
+        if (node.type === type) {
+          index = i
+          return env.FALSE
+        }
+      },
+      env.TRUE
+    )
+
+    if (index < 0 && nodeStack.length) {
+      throwError('start node is not found.' + type)
+    }
+
+    if (index === nodeStack.length - 1) {
+      if (attrTypes[ currentNode.type ]) {
+        array.each(
+          nodeStack,
+          function (node) {
+            if (node.type === nodeType.ELEMENT) {
+              htmlNode = node
+              return env.FALSE
+            }
+          },
+          env.TRUE
+        )
       }
+      currentNode = nodeStack.pop()
     }
     else {
-      filter = function (node) {
-        return node.type !== nodeType.ELEMENT
-         && !attrTypes[ node.type ]
-      }
+      nodeStack.splice(index, 1)
     }
 
-    let index
-    for (let i = nodeStack.length; i >= 0; i--){
-      if (filter(nodeStack[ i ])) {
-        index = i
-        break
-      }
-    }
-
-    if (index >= 0) {
-
-    }
-
-    if (attrTypes[ currentNode.type ]) {
-      array.each(
-        nodeStack,
-        function (node) {
-          if (node.type === nodeType.ELEMENT) {
-            htmlNode = node
-            return env.FALSE
-          }
-        },
-        env.TRUE
-      )
-    }
-    currentNode = nodeStack.pop()
   }
 
   let addChild = function (node) {
@@ -196,6 +209,7 @@ export default function compile(content) {
 
     if (currentNode) {
       if (htmlNode
+        && htmlNode.type === nodeType.ELEMENT
         && currentNode.addAttr
       ) {
         currentNode.addAttr(node)
@@ -211,10 +225,10 @@ export default function compile(content) {
 
   }
 
-  const tplParsers = [
+  const htmlParsers = [
     function (content) {
       if (!htmlNode) {
-        let match = content.match(/^\s*<(\/)?([a-z][-a-z0-9]*)/i)
+        let match = content.match(openingTagPattern)
         if (match) {
           let tagName = match[ 2 ]
           if (match[ 1 ] === '/') {
@@ -223,20 +237,19 @@ export default function compile(content) {
             )
           }
           else {
-            addChild(
-              new Element(
-                tagName,
-                /[-A-Z]/.test(tagName)
-              )
+            htmlNode = new Element(
+              tagName,
+              /[-A-Z]/.test(tagName)
             )
+            addChild(htmlNode)
           }
           return match[ 0 ]
         }
       }
     },
-    function () {
+    function (content) {
       if (htmlNode && htmlNode.type === nodeType.ELEMENT) {
-        let match = content.match(/^\s*(\/)?>/)
+        let match = content.match(closingTagPattern)
         if (match) {
           if (match[ 1 ] === '/'
             || /source|param|input|img|br/.test(htmlNode.name)
@@ -245,13 +258,14 @@ export default function compile(content) {
               nodeType.ELEMENT
             )
           }
+          htmlNode = env.NULL
           return match[ 0 ]
         }
       }
     },
     function (content) {
       if (htmlNode && htmlNode.type === nodeType.ELEMENT) {
-        let match = content.match(/^\s*([-\w]+)(?:=(['"]))?/)
+        let match = content.match(attributePattern)
         if (match) {
           let name = match[ 1 ], node
           if (string.startsWith(name, syntax.DIRECTIVE_EVENT_PREFIX)) {
@@ -305,7 +319,9 @@ export default function compile(content) {
           }
           if (closed) {
             text += currentQuote
-            popStack(htmlNode.type)
+            popStack(
+              htmlNode.type
+            )
           }
           return text
         }
@@ -395,16 +411,19 @@ export default function compile(content) {
     },
   ]
 
-  let parseTpl = function (content) {
+  let parseHtml = function (content) {
     if (content) {
+      console.log('parseHtml', content)
       let tpl = content
       while (tpl) {
         array.each(
-          tplParsers,
+          htmlParsers,
           function (parse, match) {
+            console.log('parseHtml part', tpl)
             match = parse(tpl)
             if (match) {
               tpl = string.slice(tpl, match.length)
+              return env.FALSE
             }
           }
         )
@@ -415,8 +434,11 @@ export default function compile(content) {
 
   let parseDelimiter = function (content, all) {
     if (content) {
+      console.log('parseDelimiter', content)
       if (char.charAt(content) === '/') {
-        popStack()
+        popStack(
+          name2Type[ string.slice(content, 1) ]
+        )
       }
       else {
         array.each(
@@ -424,10 +446,13 @@ export default function compile(content) {
           function (parse, node) {
             node = parse(content, all)
             if (node) {
-              if (elseTypes[ node.type ]) {
-                popStack()
-              }
               addChild(node)
+              if (ifNode && elseTypes[ node.type ]) {
+                ifNode.then = node
+              }
+              if (ifTypes[ node.type ]) {
+                ifNode = node
+              }
               return env.FALSE
             }
           }
@@ -441,13 +466,13 @@ export default function compile(content) {
   while (str) {
     match = str.match(delimiterPattern)
     if (match) {
-      parseTpl(
+      parseHtml(
         string.slice(str, 0, match.index)
       )
       parseDelimiter(match[ 1 ], match[ 0 ])
     }
     else {
-      parseTpl(str)
+      parseHtml(str)
     }
   }
 
