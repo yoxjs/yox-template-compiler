@@ -253,14 +253,16 @@ export default function compile(content) {
     function (content) {
       let match = content.match(closingTagPattern)
       if (match) {
-        if (match[ 1 ] === '/'
-          || htmlNode && /source|param|input|img|br/.test(htmlNode.name)
-        ) {
-          popStack(
-            nodeType.ELEMENT
-          )
+        if (htmlNode) {
+          if (match[ 1 ] === '/'
+            || /source|param|input|img|br/.test(htmlNode.name)
+          ) {
+            popStack(
+              nodeType.ELEMENT
+            )
+          }
+          htmlNode = env.NULL
         }
-        htmlNode = env.NULL
         return match[ 0 ]
       }
     },
