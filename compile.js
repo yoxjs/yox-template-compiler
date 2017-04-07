@@ -27,7 +27,7 @@ import Text from './src/node/Text'
 const delimiterPattern = /\{?\{\{\s*([^\}]+?)\s*\}\}\}?/
 const openingTagPattern = /<(\/)?([a-z][-a-z0-9]*)/i
 const closingTagPattern = /^\s*(\/)?>/
-const attributePattern = /^\s*([-\w]+)(?:=(['"]))?/
+const attributePattern = /^\s*([-:\w]+)(?:=(['"]))?/
 const componentNamePattern = /[-A-Z]/
 const selfClosingTagNamePattern = /source|param|input|img|br/
 
@@ -82,7 +82,7 @@ export default function compile(content) {
     return result
   }
 
-  let nodeList = [ ], nodeStack = [ ], ifStack = [ ], htmlStack = [ ], currentNode, currentQuote
+  let nodeList = [ ], nodeStack = [ ], ifStack = [ ], htmlStack = [ ], currentQuote
 
   let throwError = function (msg, showPosition) {
     if (showPosition) {
@@ -112,21 +112,19 @@ export default function compile(content) {
 
   let popStack = function (type) {
 
-    if (currentNode.type === type) {
-      currentNode = array.pop(nodeStack)
-    }
-    else {
-      array.each(
-        nodeStack,
-        function (node, i) {
-          if (node.type === type) {
-            nodeStack.splice(i, 1)
-            return env.FALSE
-          }
-        },
-        env.TRUE
-      )
-    }
+    let index, target
+
+    array.each(
+      nodeStack,
+      function (node, i) {
+        if (node.type === type) {
+          index = i
+          target = nodeStack.splice(i, 1)[ 0 ]
+          return env.FALSE
+        }
+      },
+      env.TRUE
+    )
 
   }
 
@@ -143,6 +141,7 @@ export default function compile(content) {
       node.content = content
     }
 
+    let currentNode = array.last(nodeStack)
     if (currentNode) {
       if (htmlStack.length === 1 && currentNode.addAttr) {
         currentNode.addAttr(node)
@@ -156,10 +155,7 @@ export default function compile(content) {
     }
 
     if (!helper.leafTypes[ type ]) {
-      if (currentNode) {
-        array.push(nodeStack, currentNode)
-      }
-      currentNode = node
+      array.push(nodeStack, node)
       if (helper.htmlTypes[ type ]) {
         array.push(htmlStack, node)
       }
@@ -214,7 +210,7 @@ export default function compile(content) {
       if (htmlStack.length === 1) {
         let match = content.match(attributePattern)
         if (match) {
-          let name = match[ 1 ], node
+          let name = match[ 1 ]
           if (helper.builtInDirectives[ name ]) {
             addChild(
               new Directive(
@@ -251,6 +247,11 @@ export default function compile(content) {
             }
           }
           currentQuote = match[ 2 ]
+          if (!currentQuote) {
+            popStack(
+              array.pop(htmlStack).type
+            )
+          }
           return match[ 0 ]
         }
       }
@@ -392,10 +393,15 @@ export default function compile(content) {
     if (content) {
       if (char.charAt(content) === '/') {
         let type = helper.name2Type[ string.slice(content, 1) ]
-        popStack(type)
-        if (ifStack[ type ]) {
-          array.pop(ifStack)
+        if (helper.ifTypes[ type ]) {
+          if (ifStack.length) {
+            type = array.pop(ifStack).type
+          }
+          else {
+            type = nodeType.ELSE
+          }
         }
+        popStack(type)
       }
       else {
         array.each(

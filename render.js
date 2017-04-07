@@ -92,14 +92,14 @@ export default function render(ast, createComment, createElement, importTemplate
 
   let deps = { }
   let executeExpr = function (expr) {
-    let { value, deps } = executeExpression(expr, context)
+    let result = executeExpression(expr, context)
     object.each(
-      deps,
+      result.deps,
       function (value, key) {
         deps[ keypathUtil.resolve(getKeypath(), key) ] = value
       }
     )
-    return value
+    return result.value
   }
 
   /**
