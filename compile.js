@@ -116,19 +116,16 @@ export default function compile(content) {
       currentNode = array.pop(nodeStack)
     }
     else {
-      let index, target
       array.each(
         nodeStack,
         function (node, i) {
           if (node.type === type) {
-            index = i
-            target = nodeStack.splice(i, 1)[ 0 ]
+            nodeStack.splice(i, 1)
             return env.FALSE
           }
         },
         env.TRUE
       )
-      currentNode = index === nodeStack.length ? target : env.NULL
     }
 
   }

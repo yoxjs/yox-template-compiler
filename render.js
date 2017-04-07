@@ -213,9 +213,9 @@ export default function render(ast, createComment, createElement, importTemplate
           case nodeType.IF:
           case nodeType.ELSE_IF:
             if (!executeExpr(expr)) {
-              name = array.last(htmlStack)
-              return name === nodeType.ATTRIBUTE
-                || name === nodeType.DIRECTIVE
+              type = array.last(htmlStack)
+              return type === nodeType.ATTRIBUTE
+                || type === nodeType.DIRECTIVE
                 || !nextNode
                 || helper.elseTypes[ nextNode.type ]
                   ? env.FALSE
