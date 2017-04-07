@@ -141,6 +141,12 @@ export default function compile(content) {
       node.content = content
     }
 
+    if (helper.elseTypes[ type ]) {
+      popStack(
+        array.pop(ifStack).type
+      )
+    }
+
     let currentNode = array.last(nodeStack)
     if (currentNode) {
       if (htmlStack.length === 1 && currentNode.addAttr) {
@@ -154,14 +160,15 @@ export default function compile(content) {
       array.push(nodeList, node)
     }
 
+    if (helper.ifTypes[ type ] || helper.elseTypes[ type ]) {
+      array.push(ifStack, node)
+    }
+    else if (helper.htmlTypes[ type ]) {
+      array.push(htmlStack, node)
+    }
+
     if (!helper.leafTypes[ type ]) {
       array.push(nodeStack, node)
-      if (helper.htmlTypes[ type ]) {
-        array.push(htmlStack, node)
-      }
-      else if (helper.ifTypes[ type ]) {
-        array.push(ifStack, node)
-      }
     }
 
   }
@@ -394,12 +401,7 @@ export default function compile(content) {
       if (char.charAt(content) === '/') {
         let type = helper.name2Type[ string.slice(content, 1) ]
         if (helper.ifTypes[ type ]) {
-          if (ifStack.length) {
-            type = array.pop(ifStack).type
-          }
-          else {
-            type = nodeType.ELSE
-          }
+          type = array.pop(ifStack).type
         }
         popStack(type)
       }
@@ -409,11 +411,6 @@ export default function compile(content) {
           function (parse, node) {
             node = parse(content, all)
             if (node) {
-              if (helper.elseTypes[ node.type ]) {
-                popStack(
-                  array.pop(ifStack).type
-                )
-              }
               addChild(node)
               return env.FALSE
             }
