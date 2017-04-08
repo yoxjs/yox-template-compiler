@@ -1,5 +1,6 @@
 
 import * as env from 'yox-common/util/env'
+import * as object from 'yox-common/util/object'
 
 import * as syntax from './syntax'
 import * as nodeType from './nodeType'
@@ -14,8 +15,10 @@ export const htmlTypes = { }
 export const leafTypes = { }
 // 内置指令，无需加前缀
 export const builtInDirectives = { }
-// 名称和类型的映射
+// 名称 -> 类型的映射
 export const name2Type = { }
+// 类型 -> 名称的映射
+export const type2Name = { }
 
 ifTypes[ nodeType.IF ] =
 ifTypes[ nodeType.ELSE_IF ] =
@@ -40,3 +43,10 @@ builtInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
 name2Type[ 'if' ] = nodeType.IF
 name2Type[ 'each' ] = nodeType.EACH
 name2Type[ 'partial' ] = nodeType.PARTIAL
+
+object.each(
+  name2Type,
+  function (type, name) {
+    type2Name[ type ] = name
+  }
+)
