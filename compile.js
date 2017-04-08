@@ -104,12 +104,12 @@ export default function compile(content) {
     )
 
     if (target) {
-      if (target.type === nodeType.ELEMENT && target.name !== name) {
-        throwError(`end tag expected ${name} to be ${target.name}.`)
+      if (target.type === nodeType.ELEMENT && name && target.name !== name) {
+        throwError(`end tag expected </${target.name}> to be </${name}>.`)
       }
     }
     else {
-      throwError(`ending {{/${helper.type2Name[ type ]}}} is not matched.`)
+      throwError(`{{/${helper.type2Name[ type ]}}} is not a pair.`)
     }
 
   }
@@ -297,7 +297,7 @@ export default function compile(content) {
             compileExpression(string.trim(terms[ 0 ])),
             string.trim(terms[ 1 ])
           )
-          : throwError('invalid each: ${all}')
+          : throwError(`invalid each: ${all}`)
       }
     },
     function (source, all) {
@@ -305,7 +305,7 @@ export default function compile(content) {
         source = slicePrefix(source, syntax.IMPORT)
         return source
           ? new Import(source)
-          : throwError('invalid import: ${all}')
+          : throwError(`invalid import: ${all}`)
       }
     },
     function (source, all) {
@@ -313,7 +313,7 @@ export default function compile(content) {
         source = slicePrefix(source, syntax.PARTIAL)
         return source
           ? new Partial(source)
-          : throwError('invalid partial: ${all}')
+          : throwError(`invalid partial: ${all}`)
       }
     },
     function (source, all) {
@@ -323,7 +323,7 @@ export default function compile(content) {
           ? new If(
             compileExpression(source)
           )
-          : throwError('invalid if: ${all}')
+          : throwError(`invalid if: ${all}`)
       }
     },
     function (source, all) {
@@ -333,7 +333,7 @@ export default function compile(content) {
           ? new ElseIf(
             compileExpression(source)
           )
-          : throwError('invalid else if: ${all}')
+          : throwError(`invalid else if: ${all}`)
       }
     },
     function (source) {
@@ -348,7 +348,7 @@ export default function compile(content) {
           ? new Spread(
             compileExpression(source)
           )
-          : throwError('invalid spread: ${all}')
+          : throwError(`invalid spread: ${all}`)
       }
     },
     function (source, all) {
@@ -359,7 +359,7 @@ export default function compile(content) {
             compileExpression(source),
             !string.endsWith(all, '}}}')
           )
-          : throwError('invalid expression: ${all}')
+          : throwError(`invalid expression: ${all}`)
       }
     },
   ]
@@ -426,10 +426,6 @@ export default function compile(content) {
     else {
       parseHtml(str)
     }
-  }
-
-  if (nodeStack.length) {
-    throwError(`expected end tag (</${nodeStack[ 0 ].name}>)`)
   }
 
   return compileCache[ content ] = nodeList

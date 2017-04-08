@@ -14,8 +14,6 @@ import * as helper from './src/helper'
 import * as syntax from './src/syntax'
 import * as nodeType from './src/nodeType'
 
-import compile from './compile'
-
 /**
  * 标记节点数组，用于区分普通数组
  *
@@ -195,10 +193,7 @@ export default function render(ast, createComment, createElement, importTemplate
           case nodeType.IMPORT:
             let partial = partials[ name ] || importTemplate(name)
             if (partial) {
-              if (is.string(partial)) {
-                partial = compile(partial)
-              }
-              else if (partial.type === nodeType.PARTIAL) {
+              if (partial.type === nodeType.PARTIAL) {
                 partial = partial.children
               }
               return is.array(partial)
