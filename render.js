@@ -4,6 +4,7 @@ import * as env from 'yox-common/util/env'
 import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
+import * as string from 'yox-common/util/string'
 import * as keypathUtil from 'yox-common/util/keypath'
 
 import executeExpression from 'yox-expression-compiler/execute'
@@ -73,14 +74,14 @@ function mergeNodes(nodes) {
  */
 export default function render(ast, createComment, createElement, importTemplate, data) {
 
-  let keypaths = [ ]
+  let keypathList = [ ]
   let getKeypath = function () {
-    return keypathUtil.stringify(keypaths)
+    return keypathUtil.stringify(keypathList)
   }
   getKeypath.toString = getKeypath
 
   data[ syntax.SPECIAL_KEYPATH ] = getKeypath
-  let context = new Context(data)
+  let context = new Context(data, getKeypath())
 
   // 正在渲染的 html 层级
   let htmlStack = [ ]
@@ -88,15 +89,12 @@ export default function render(ast, createComment, createElement, importTemplate
   // 用时定义的模板片段
   let partials = { }
 
+  // 渲染模板收集的依赖
   let deps = { }
+
   let executeExpr = function (expr) {
     let result = executeExpression(expr, context)
-    object.each(
-      result.deps,
-      function (value, key) {
-        deps[ keypathUtil.resolve(getKeypath(), key) ] = value
-      }
-    )
+    object.extend(deps, result.deps)
     return result.value
   }
 
@@ -236,12 +234,12 @@ export default function render(ast, createComment, createElement, importTemplate
             let list = [ ]
 
             array.push(
-              keypaths,
+              keypathList,
               keypathUtil.normalize(
                 stringifyExpression(expr)
               )
             )
-            context = context.push(value)
+            context = context.push(value, getKeypath())
 
             iterate(
               value,
@@ -250,21 +248,21 @@ export default function render(ast, createComment, createElement, importTemplate
                   context.set(index, i)
                 }
 
-                array.push(keypaths, i)
-                context = context.push(item)
+                array.push(keypathList, i)
+                context = context.push(item, getKeypath())
 
                 array.push(
                   list,
                   traverseList(children)
                 )
 
-                array.pop(keypaths)
+                array.pop(keypathList)
                 context = array.pop(context)
 
               }
             )
 
-            array.pop(keypaths)
+            array.pop(keypathList)
             context = array.pop(context)
 
             return makeNodes(list)

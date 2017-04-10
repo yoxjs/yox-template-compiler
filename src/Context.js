@@ -10,68 +10,59 @@ import * as keypathUtil from 'yox-common/util/keypath'
  * 如果取值/设值指定了 . 或 ..，表示无需 lookup，而是直接操作某个层级
  */
 
+function formatKeypath(keypath) {
+  let keys = keypathUtil.parse(keypath)
+  if (keys[ 0 ] === env.THIS) {
+    keys.shift()
+    return {
+      keypath: keypathUtil.stringify(keys),
+    }
+  }
+  else {
+    return {
+      keypath: keypathUtil.stringify(keys),
+      lookup: env.TRUE,
+    }
+  }
+}
+
+function joinKeypath(keypath1, keypath2) {
+  if (keypath1 && keypath2) {
+    return keypath1 + keypathUtil.SEPARATOR_KEY + keypath2
+  }
+  else if (keypath1) {
+    return keypath1
+  }
+  else if (keypath2) {
+    return keypath2
+  }
+}
+
 export default class Context {
 
   /**
    * @param {Object} data
+   * @param {string} keypath
    * @param {?Context} parent
    */
-  constructor(data, parent) {
+  constructor(data, keypath, parent) {
     this.data = object.copy(data)
+    this.keypath = keypath
     this.parent = parent
     this.cache = { }
   }
 
-  push(data) {
-    return new Context(data, this)
+  push(data, keypath) {
+    return new Context(data, keypath, this)
   }
 
   pop() {
     return this.parent
   }
 
-  format(keypath) {
-    let instance = this, keys = keypathUtil.parse(keypath)
-    if (keys[ 0 ] === env.THIS) {
-      keys.shift()
-      return {
-        keypath: keypathUtil.stringify(keys),
-        instance,
-      }
-    }
-    else {
-      let lookup = env.TRUE, index = 0, levelMap = { }
-      levelMap[ keypathUtil.LEVEL_CURRENT ] = env.FALSE
-      levelMap[ keypathUtil.LEVEL_PARENT ] = env.TRUE
-
-      array.each(
-        keys,
-        function (key, i) {
-          if (object.has(levelMap, key)) {
-            lookup = env.FALSE
-            if (levelMap[ key ]) {
-              instance = instance.parent
-              if (!instance) {
-                return env.FALSE
-              }
-            }
-          }
-          else {
-            index = i
-            return env.FALSE
-          }
-        }
-      )
-      return {
-        keypath: keypathUtil.stringify(keys.slice(index)),
-        instance,
-        lookup,
-      }
-    }
-  }
-
   set(key, value) {
-    let { instance, keypath } = this.format(key)
+    let instance = this
+    let { keypath } = formatKeypath(key)
     if (instance && keypath) {
       if (object.has(instance.cache, keypath)) {
         delete instance.cache[ keypath ]
@@ -82,8 +73,8 @@ export default class Context {
 
   get(key) {
 
-    let { instance, keypath, lookup } = this.format(key)
-    let originalKeypath = keypath
+    let { keypath, lookup } = formatKeypath(key)
+    let instance = this, originalKeypath = keypath
 
     if (instance) {
       let { data, cache } = instance
@@ -92,7 +83,6 @@ export default class Context {
           let result
 
           if (lookup) {
-            let keys = [ keypath ]
             while (instance) {
               result = object.get(instance.data, keypath)
               if (result) {
@@ -100,28 +90,29 @@ export default class Context {
               }
               else {
                 instance = instance.parent
-                array.unshift(keys, keypathUtil.LEVEL_PARENT)
               }
             }
-            keypath = keys.join(keypathUtil.SEPARATOR_PATH)
           }
           else {
             result = object.get(data, keypath)
           }
 
           if (result) {
-            cache[ keypath ] = result.value
+            cache[ keypath ] = {
+              keypath: joinKeypath(instance.keypath, keypath),
+              value: result.value,
+            }
           }
         }
         else {
-          cache[ keypath ] = data
+          cache[ keypath ] = {
+            keypath: instance.keypath,
+            value: data,
+          }
         }
       }
       if (object.has(cache, keypath)) {
-        return {
-          keypath,
-          value: cache[ keypath ],
-        }
+        return cache[ keypath ]
       }
     }
 
