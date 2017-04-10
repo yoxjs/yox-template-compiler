@@ -6,38 +6,6 @@ import * as object from 'yox-common/util/object'
 import * as logger from 'yox-common/util/logger'
 import * as keypathUtil from 'yox-common/util/keypath'
 
-/**
- * 如果取值/设值指定了 . 或 ..，表示无需 lookup，而是直接操作某个层级
- */
-
-function formatKeypath(keypath) {
-  let keys = keypathUtil.parse(keypath)
-  if (keys[ 0 ] === env.THIS) {
-    keys.shift()
-    return {
-      keypath: keypathUtil.stringify(keys),
-    }
-  }
-  else {
-    return {
-      keypath: keypathUtil.stringify(keys),
-      lookup: env.TRUE,
-    }
-  }
-}
-
-function joinKeypath(keypath1, keypath2) {
-  if (keypath1 && keypath2) {
-    return keypath1 + keypathUtil.SEPARATOR_KEY + keypath2
-  }
-  else if (keypath1) {
-    return keypath1
-  }
-  else if (keypath2) {
-    return keypath2
-  }
-}
-
 export default class Context {
 
   /**
@@ -74,53 +42,80 @@ export default class Context {
   get(key) {
 
     let { keypath, lookup } = formatKeypath(key)
-    let instance = this, originalKeypath = keypath
+    let instance = this, contextKeypath = instance.keypath, originalKeypath = keypath
 
-    if (instance) {
-      let { data, cache } = instance
-      if (!object.has(cache, keypath)) {
-        if (keypath) {
-          let result
+    let { data, cache } = instance
+    if (!object.has(cache, keypath)) {
+      if (keypath) {
+        let result
 
-          if (lookup) {
-            while (instance) {
-              result = object.get(instance.data, keypath)
-              if (result) {
-                break
-              }
-              else {
-                instance = instance.parent
-              }
+        if (lookup) {
+          while (instance) {
+            result = object.get(instance.data, keypath)
+            if (result) {
+              break
             }
-          }
-          else {
-            result = object.get(data, keypath)
-          }
-
-          if (result) {
-            cache[ keypath ] = {
-              keypath: joinKeypath(instance.keypath, keypath),
-              value: result.value,
+            else {
+              instance = instance.parent
             }
           }
         }
         else {
+          result = object.get(data, keypath)
+        }
+
+        if (result) {
           cache[ keypath ] = {
-            keypath: instance.keypath,
-            value: data,
+            keypath: joinKeypath(instance.keypath, keypath),
+            value: result.value,
           }
         }
       }
-      if (object.has(cache, keypath)) {
-        return cache[ keypath ]
+      else {
+        cache[ keypath ] = {
+          keypath: contextKeypath,
+          value: data,
+        }
       }
+    }
+    if (object.has(cache, keypath)) {
+      return cache[ keypath ]
     }
 
     logger.warn(`Failed to lookup "${key}".`)
 
+    // 找不到就用当前的 keypath 吧
     return {
-      keypath: originalKeypath,
+      keypath: joinKeypath(contextKeypath, originalKeypath),
     }
 
+  }
+}
+
+function formatKeypath(keypath) {
+  let keys = keypathUtil.parse(keypath)
+  if (keys[ 0 ] === env.THIS) {
+    keys.shift()
+    return {
+      keypath: keypathUtil.stringify(keys),
+    }
+  }
+  else {
+    return {
+      keypath: keypathUtil.stringify(keys),
+      lookup: env.TRUE,
+    }
+  }
+}
+
+function joinKeypath(keypath1, keypath2) {
+  if (keypath1 && keypath2) {
+    return keypath1 + keypathUtil.SEPARATOR_KEY + keypath2
+  }
+  else if (keypath1) {
+    return keypath1
+  }
+  else if (keypath2) {
+    return keypath2
   }
 }
