@@ -19,3 +19,4 @@ export const DIRECTIVE_LAZY = 'lazy'
 export const DIRECTIVE_MODEL = 'model'
 
 export const KEYWORD_UNIQUE = 'key'
+export const KEYWORD_STATIC = 'static'
