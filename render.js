@@ -138,8 +138,7 @@ export default function render(ast, createComment, createElement, importTemplate
         nodeStack,
         {
           node,
-          attrIndex: -1,
-          childIndex: -1,
+          index: -1,
           attributes: makeNodes([ ]),
           directives: makeNodes([ ]),
           children: makeNodes([ ]),
@@ -311,15 +310,17 @@ export default function render(ast, createComment, createElement, importTemplate
       // ================ enter end ==================
 
 
-      if (attrs) {
-        // 依次遍历 children
-        while (node = attrs[ ++current.attrIndex ]) {
+      if (attrs && !current.attrs) {
+        // 依次遍历 attrs
+        while (node = attrs[ ++current.index ]) {
           if (!filter || filter(node)) {
-            sibling = attrs[ current.attrIndex + 1 ]
+            sibling = attrs[ current.index + 1 ]
             pushStack(node)
             continue main
           }
         }
+        current.index = -1
+        current.attrs = env.TRUE
       }
 
       if (children) {
@@ -330,9 +331,9 @@ export default function render(ast, createComment, createElement, importTemplate
         }
         else {
           // 依次遍历 children
-          while (node = children[ ++current.childIndex ]) {
+          while (node = children[ ++current.index ]) {
             if (!filter || filter(node)) {
-              sibling = children[ current.childIndex + 1 ]
+              sibling = children[ current.index + 1 ]
               pushStack(node)
               continue main
             }
@@ -433,9 +434,9 @@ export default function render(ast, createComment, createElement, importTemplate
               {
                 name,
                 keypath: getKeypath(),
-                attributes: attributes,
-                directives: directives,
-                properties: properties || { },
+                attributes,
+                directives,
+                properties,
                 children: current.children,
               },
               component
