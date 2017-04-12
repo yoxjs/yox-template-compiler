@@ -76,14 +76,17 @@ function mergeNodes(nodes) {
  */
 export default function render(ast, createComment, createElement, importTemplate, data) {
 
-  let keypathList = [ ]
-  let getKeypath = function () {
+  let keypathList = [ ],
+  getKeypath = function () {
     return keypathUtil.stringify(keypathList)
-  }
+  },
+  keypath = getKeypath()
+
   getKeypath.toString = getKeypath
 
-  data[ syntax.SPECIAL_KEYPATH ] = getKeypath
-  let context = new Context(data, getKeypath())
+
+  data[ syntax.SPECIAL_KEYPATH ] = keypath
+  let context = new Context(data, keypath)
 
   // 渲染模板收集的依赖
   let deps = { }
@@ -94,7 +97,7 @@ export default function render(ast, createComment, createElement, importTemplate
     return result.value
   }
 
-  let getUnescaped = function (type, children) {
+  let getUnescapedProps = function (type, children) {
     if (type === nodeType.ELEMENT && children.length === 1) {
       let child = children[ 0 ]
       if (child.type === nodeType.EXPRESSION
@@ -167,9 +170,7 @@ export default function render(ast, createComment, createElement, importTemplate
       }
     }
 
-    pushNode(node)
-
-    let keypath, value,
+    let value,
     // 当前处理的栈节点
     current,
     // 过滤某些节点的函数
@@ -181,7 +182,8 @@ export default function render(ast, createComment, createElement, importTemplate
     // 用时定义的模板片段
     partials = { }
 
-    main:
+    pushNode(node)
+
     while (nodeStack.length) {
       current = array.last(nodeStack)
 
@@ -209,7 +211,7 @@ export default function render(ast, createComment, createElement, importTemplate
           // 注册即可，无需往下走了
           partials[ name ] = children
           popStack()
-          continue main
+          continue
 
         // 导入子模板
         case nodeType.IMPORT:
@@ -218,7 +220,7 @@ export default function render(ast, createComment, createElement, importTemplate
           if (content) {
             popStack()
             pushNode(content)
-            continue main
+            continue
           }
           logger.fatal(`Partial "${name}" is not found.`)
 
@@ -241,7 +243,7 @@ export default function render(ast, createComment, createElement, importTemplate
             )
           }
           popStack()
-          continue main
+          continue
 
         // 循环
         case nodeType.EACH:
@@ -255,7 +257,7 @@ export default function render(ast, createComment, createElement, importTemplate
           }
           else {
             popStack()
-            continue main
+            continue
           }
 
           content = children
@@ -288,7 +290,7 @@ export default function render(ast, createComment, createElement, importTemplate
             forward: value,
           })
 
-          continue main
+          continue
 
       }
 
@@ -302,7 +304,7 @@ export default function render(ast, createComment, createElement, importTemplate
 
       if (children) {
 
-        props = getUnescaped(type, children)
+        props = getUnescapedProps(type, children)
         if (props) {
           children = env.NULL
         }
@@ -313,8 +315,11 @@ export default function render(ast, createComment, createElement, importTemplate
               current.index = index
               sibling = children[ index + 1 ]
               pushStack(node)
-              continue main
+              break
             }
+          }
+          if (array.last(nodeStack) !== current) {
+            continue
           }
         }
 
