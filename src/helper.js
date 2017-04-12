@@ -11,6 +11,8 @@ export const ifTypes = { }
 export const elseTypes = { }
 // html 层级的节点类型
 export const htmlTypes = { }
+// 属性层级的节点类型
+export const attrTypes = { }
 // 叶子节点类型
 export const leafTypes = { }
 // 内置指令，无需加前缀
@@ -29,6 +31,9 @@ elseTypes[ nodeType.ELSE ] =
 htmlTypes[ nodeType.ELEMENT ] =
 htmlTypes[ nodeType.ATTRIBUTE ] =
 htmlTypes[ nodeType.DIRECTIVE ] =
+
+attrTypes[ nodeType.ATTRIBUTE ] =
+attrTypes[ nodeType.DIRECTIVE ] =
 
 leafTypes[ nodeType.TEXT ] =
 leafTypes[ nodeType.IMPORT ] =
