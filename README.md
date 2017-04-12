@@ -13,17 +13,11 @@ let ast = compile('<div>...</div>')
 // Maybe it is useful during the build phase
 JSON.stringify(ast)
 
-ast.forEach(
-  function (node) {
-    // render
-    render(
-      node,
-      createComment,
-      createElement,
-      importTemplate,
-      data
-    )
-  }
+let { nodes, deps } = render(
+  ast,
+  createComment,
+  createElement,
+  importTemplate,
+  data
 )
-
 ``

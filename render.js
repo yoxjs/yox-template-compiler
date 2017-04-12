@@ -112,7 +112,7 @@ export default function render(ast, createComment, createElement, importTemplate
 
   let traverseNode = function (node) {
 
-    let nodeStack = [ ]
+    let nodeStack = [ ], result = [ ]
 
     let pushStack = function (node) {
       if (object.has(node, 'context')) {
@@ -139,7 +139,7 @@ export default function render(ast, createComment, createElement, importTemplate
         {
           node,
           index: -1,
-          result: makeNodes([ ]),
+          children: makeNodes([ ]),
         }
       )
     }
@@ -184,7 +184,7 @@ export default function render(ast, createComment, createElement, importTemplate
 
     pushNode(node)
 
-    while (nodeStack.length) {
+    main: while (nodeStack.length) {
       current = array.last(nodeStack)
 
       let { node, index, props } = current
@@ -192,11 +192,13 @@ export default function render(ast, createComment, createElement, importTemplate
 
       let addValue = function (value) {
         if (value !== env.UNDEFINED) {
+          current = nodeStack[ nodeStack.length - 2 ]
+          children = current ? current.children : result
           if (isNodes(value)) {
-            array.push(result, value)
+            array.push(children, value)
           }
           else {
-            result.push(value)
+            children.push(value)
           }
         }
       }
@@ -211,7 +213,7 @@ export default function render(ast, createComment, createElement, importTemplate
           // 注册即可，无需往下走了
           partials[ name ] = children
           popStack()
-          continue
+          continue main
 
         // 导入子模板
         case nodeType.IMPORT:
@@ -220,7 +222,7 @@ export default function render(ast, createComment, createElement, importTemplate
           if (content) {
             popStack()
             pushNode(content)
-            continue
+            continue main
           }
           logger.fatal(`Partial "${name}" is not found.`)
 
@@ -243,12 +245,13 @@ export default function render(ast, createComment, createElement, importTemplate
             )
           }
           popStack()
-          continue
+          continue main
 
         // 循环
         case nodeType.EACH:
-          value = executeExpr(expr)
+          popStack()
 
+          value = executeExpr(expr)
           if (is.array(value)) {
             name = array.each
           }
@@ -256,8 +259,7 @@ export default function render(ast, createComment, createElement, importTemplate
             name = object.each
           }
           else {
-            popStack()
-            continue
+            continue main
           }
 
           content = children
@@ -265,19 +267,19 @@ export default function render(ast, createComment, createElement, importTemplate
 
           name(
             value,
-            function (forward, index, node) {
+            function (forward, index) {
 
-              node = {
+              value = {
                 children: content,
                 keypath: index,
                 forward,
               }
 
               if (node.index) {
-                node.context = [ node.index, index ]
+                value.context = [ node.index, index ]
               }
 
-              array.push(children, node)
+              array.push(children, value)
 
             }
           )
@@ -290,7 +292,7 @@ export default function render(ast, createComment, createElement, importTemplate
             forward: value,
           })
 
-          continue
+          continue main
 
       }
 
@@ -315,11 +317,8 @@ export default function render(ast, createComment, createElement, importTemplate
               current.index = index
               sibling = children[ index + 1 ]
               pushStack(node)
-              break
+              continue main
             }
-          }
-          if (array.last(nodeStack) !== current) {
-            continue
           }
         }
 
@@ -348,7 +347,7 @@ export default function render(ast, createComment, createElement, importTemplate
           addValue({
             name,
             keypath: getKeypath(),
-            value: mergeNodes(children),
+            value: mergeNodes(current.children),
           })
           break
 
@@ -358,7 +357,7 @@ export default function render(ast, createComment, createElement, importTemplate
             name,
             modifier,
             keypath: getKeypath(),
-            value: mergeNodes(children),
+            value: mergeNodes(current.children),
           })
           break
 
@@ -366,10 +365,7 @@ export default function render(ast, createComment, createElement, importTemplate
         case nodeType.IF:
         case nodeType.ELSE_IF:
         case nodeType.ELSE:
-          // 如果是空，也得是个空数组
-          addValue(
-            is.array(children) ? children : makeNodes([ ])
-          )
+          addValue(current.children)
           // 跳过后面紧跟着的 else if / else
           filter = function (node) {
             if (helper.elseTypes[ node.type ]) {
@@ -381,7 +377,6 @@ export default function render(ast, createComment, createElement, importTemplate
             }
           }
           break
-
 
         case nodeType.SPREAD:
           value = executeExpr(expr)
@@ -434,11 +429,15 @@ export default function render(ast, createComment, createElement, importTemplate
                 attributes,
                 directives,
                 properties: props || { },
-                children: children || [ ],
+                children: current.children,
               },
               component
             )
           )
+          break
+
+        default:
+          addValue(current.children)
           break
 
       }
@@ -448,7 +447,7 @@ export default function render(ast, createComment, createElement, importTemplate
 
     }
 
-    return current ? current.result : [ ]
+    return result
 
   }
 
