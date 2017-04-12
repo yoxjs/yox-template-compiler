@@ -138,7 +138,10 @@ export default function render(ast, createComment, createElement, importTemplate
         nodeStack,
         {
           node,
-          index: -1,
+          attrIndex: -1,
+          childIndex: -1,
+          attributes: makeNodes([ ]),
+          directives: makeNodes([ ]),
           children: makeNodes([ ]),
         }
       )
@@ -170,6 +173,19 @@ export default function render(ast, createComment, createElement, importTemplate
       }
     }
 
+    let addValue = function (value, collection = 'children') {
+      if (value !== env.UNDEFINED) {
+        node = nodeStack[ nodeStack.length - 2 ]
+        collection = node ? node[ collection ] : result
+        if (isNodes(value)) {
+          array.push(collection, value)
+        }
+        else {
+          collection.push(value)
+        }
+      }
+    }
+
     let value,
     // 当前处理的栈节点
     current,
@@ -187,135 +203,136 @@ export default function render(ast, createComment, createElement, importTemplate
     main: while (nodeStack.length) {
       current = array.last(nodeStack)
 
-      let { node, index, props } = current
-      let { type, name, expr, modifier, component, content, attrs, children } = node
-
-      let addValue = function (value) {
-        if (value !== env.UNDEFINED) {
-          current = nodeStack[ nodeStack.length - 2 ]
-          children = current ? current.children : result
-          if (isNodes(value)) {
-            array.push(children, value)
-          }
-          else {
-            children.push(value)
-          }
-        }
-      }
+      let { node, properties, attributes, directives } = current
+      let { type, name, expr, index, modifier, component, content, attrs, children } = node
 
       // 检查是否有必要处理这个节点
       // 如果没有必要，需拦截后面的逻辑
       // ================ enter start ==================
-      switch (type) {
+      if (!current.enter) {
+        current.enter = env.TRUE
 
-        // 用时定义的子模板无需注册到组件实例
-        case nodeType.PARTIAL:
-          // 注册即可，无需往下走了
-          partials[ name ] = children
-          popStack()
-          continue main
+        switch (type) {
 
-        // 导入子模板
-        case nodeType.IMPORT:
-          // 用时定义的子模板优先
-          content = partials[ name ] || importTemplate(name)
-          if (content) {
+          // 用时定义的子模板无需注册到组件实例
+          case nodeType.PARTIAL:
+            // 注册即可，无需往下走了
+            partials[ name ] = children
             popStack()
-            pushNode(content)
             continue main
-          }
-          logger.fatal(`Partial "${name}" is not found.`)
 
-        // 条件判断失败就没必要往下走了
-        // 但如果失败的点原本是一个 DOM 元素
-        // 就需要用注释节点来占位，否则 virtual dom 无法正常工作
-        case nodeType.IF:
-        case nodeType.ELSE_IF:
-          if (executeExpr(expr)) {
-            break
-          }
-          if (sibling
-            && !helper.elseTypes[ sibling.type ]
-            && !helper.attrTypes[ array.last(htmlStack) ]
-          ) {
-            addValue(
-              makeNodes(
-                createComment()
-              )
-            )
-          }
-          popStack()
-          continue main
-
-        // 循环
-        case nodeType.EACH:
-          popStack()
-
-          value = executeExpr(expr)
-          if (is.array(value)) {
-            name = array.each
-          }
-          else if (is.object(value)) {
-            name = object.each
-          }
-          else {
-            continue main
-          }
-
-          content = children
-          children = [ ]
-
-          name(
-            value,
-            function (data, index) {
-
-              value = {
-                children: content,
-                keypath: index,
-                data,
-              }
-
-              if (node.index) {
-                value.context = [ node.index, index ]
-              }
-
-              array.push(children, value)
-
+          // 导入子模板
+          case nodeType.IMPORT:
+            // 用时定义的子模板优先
+            content = partials[ name ] || importTemplate(name)
+            if (content) {
+              popStack()
+              pushNode(content)
+              continue main
             }
-          )
+            logger.fatal(`Partial "${name}" is not found.`)
 
-          pushStack({
-            children,
-            keypath: keypathUtil.normalize(
-              stringifyExpression(expr)
-            ),
-            data: value,
-          })
+          // 条件判断失败就没必要往下走了
+          // 但如果失败的点原本是一个 DOM 元素
+          // 就需要用注释节点来占位，否则 virtual dom 无法正常工作
+          case nodeType.IF:
+          case nodeType.ELSE_IF:
+            if (executeExpr(expr)) {
+              break
+            }
+            if (sibling
+              && !helper.elseTypes[ sibling.type ]
+              && !helper.attrTypes[ array.last(htmlStack) ]
+            ) {
+              addValue(
+                makeNodes(
+                  createComment()
+                )
+              )
+            }
+            popStack()
+            continue main
 
-          continue main
+          // 循环
+          case nodeType.EACH:
+            popStack()
 
-      }
+            value = executeExpr(expr)
+            if (is.array(value)) {
+              name = array.each
+            }
+            else if (is.object(value)) {
+              name = object.each
+            }
+            else {
+              continue main
+            }
 
-      // 记录 html 层级
-      // 方便判断当前处于元素层级还是属性层级
-      if (helper.htmlTypes[ type ]) {
-        array.push(htmlStack, type)
+            content = children
+            children = [ ]
+
+            name(
+              value,
+              function (data, i) {
+
+                value = {
+                  children: content,
+                  keypath: i,
+                  data,
+                }
+
+                if (index) {
+                  value.context = [ index, i ]
+                }
+
+                array.push(children, value)
+
+              }
+            )
+
+            pushStack({
+              children,
+              keypath: keypathUtil.normalize(
+                stringifyExpression(expr)
+              ),
+              data: value,
+            })
+
+            continue main
+
+        }
+
+        // 记录 html 层级
+        // 方便判断当前处于元素层级还是属性层级
+        if (helper.htmlTypes[ type ]) {
+          array.push(htmlStack, type)
+        }
       }
       // ================ enter end ==================
 
 
+      if (attrs) {
+        // 依次遍历 children
+        while (node = attrs[ ++current.attrIndex ]) {
+          if (!filter || filter(node)) {
+            sibling = attrs[ current.attrIndex + 1 ]
+            pushStack(node)
+            continue main
+          }
+        }
+      }
+
       if (children) {
 
-        props = getUnescapedProps(type, children)
-        if (props) {
+        properties = getUnescapedProps(type, children)
+        if (properties) {
           children = env.NULL
         }
         else {
           // 依次遍历 children
-          while (node = children[ ++index ]) {
+          while (node = children[ ++current.childIndex ]) {
             if (!filter || filter(node)) {
-              current.index = index
-              sibling = children[ index + 1 ]
+              sibling = children[ current.childIndex + 1 ]
               pushStack(node)
               continue main
             }
@@ -344,21 +361,27 @@ export default function render(ast, createComment, createElement, importTemplate
 
 
         case nodeType.ATTRIBUTE:
-          addValue({
-            name,
-            keypath: getKeypath(),
-            value: mergeNodes(current.children),
-          })
+          addValue(
+            {
+              name,
+              keypath: getKeypath(),
+              value: mergeNodes(current.children),
+            },
+            'attributes'
+          )
           break
 
 
         case nodeType.DIRECTIVE:
-          addValue({
-            name,
-            modifier,
-            keypath: getKeypath(),
-            value: mergeNodes(current.children),
-          })
+          addValue(
+            {
+              name,
+              modifier,
+              keypath: getKeypath(),
+              value: mergeNodes(current.children),
+            },
+            'directives'
+          )
           break
 
 
@@ -405,30 +428,14 @@ export default function render(ast, createComment, createElement, importTemplate
 
 
         case nodeType.ELEMENT:
-          let attributes = [ ], directives = [ ]
-          if (attrs) {
-            array.each(
-              traverseNode(attrs),
-              function (node) {
-                if (object.has(node, 'modifier')) {
-                  if (node.name && node.modifier !== char.CHAR_BLANK) {
-                    array.push(directives, node)
-                  }
-                }
-                else {
-                  array.push(attributes, node)
-                }
-              }
-            )
-          }
           addValue(
             createElement(
               {
                 name,
                 keypath: getKeypath(),
-                attributes,
-                directives,
-                properties: props || { },
+                attributes: attributes,
+                directives: directives,
+                properties: properties || { },
                 children: current.children,
               },
               component
@@ -451,8 +458,10 @@ export default function render(ast, createComment, createElement, importTemplate
 
   }
 
+  let nodes = traverseNode(ast)
+
   return {
-    nodes: traverseNode(ast),
+    nodes,
     deps,
   }
 
