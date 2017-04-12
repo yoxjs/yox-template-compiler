@@ -104,7 +104,7 @@ export default function render(ast, createComment, createElement, importTemplate
         && child.safe === env.FALSE
       ) {
         return {
-          innerHTML: executeExpr(child.expr)
+          innerHTML: executeExpr(child.expr),
         }
       }
     }
@@ -128,9 +128,9 @@ export default function render(ast, createComment, createElement, importTemplate
           node.keypath
         )
       }
-      if (object.has(node, 'forward')) {
+      if (object.has(node, 'data')) {
         context = context.push(
-          node.forward,
+          node.data,
           getKeypath()
         )
       }
@@ -146,7 +146,7 @@ export default function render(ast, createComment, createElement, importTemplate
 
     let popStack = function () {
       let { node } = array.pop(nodeStack)
-      if (object.has(node, 'forward')) {
+      if (object.has(node, 'data')) {
         context = context.pop()
       }
       if (object.has(node, 'keypath')) {
@@ -267,12 +267,12 @@ export default function render(ast, createComment, createElement, importTemplate
 
           name(
             value,
-            function (forward, index) {
+            function (data, index) {
 
               value = {
                 children: content,
                 keypath: index,
-                forward,
+                data,
               }
 
               if (node.index) {
@@ -289,7 +289,7 @@ export default function render(ast, createComment, createElement, importTemplate
             keypath: keypathUtil.normalize(
               stringifyExpression(expr)
             ),
-            forward: value,
+            data: value,
           })
 
           continue main
