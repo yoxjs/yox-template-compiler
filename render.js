@@ -150,9 +150,6 @@ export default function render(ast, createComment, createElement, importTemplate
         array.pop(keypathList)
         updateKeypath()
       }
-      if (filter) {
-        filter = env.NULL
-      }
       if (sibling) {
         sibling = env.NULL
       }
