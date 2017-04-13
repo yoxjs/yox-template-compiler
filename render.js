@@ -84,8 +84,7 @@ export default function render(ast, createComment, createElement, importTemplate
 
   getKeypath.toString = getKeypath
 
-
-  data[ syntax.SPECIAL_KEYPATH ] = keypath
+  data[ syntax.SPECIAL_KEYPATH ] = getKeypath
   let context = new Context(data, keypath)
 
   // 渲染模板收集的依赖
@@ -97,7 +96,7 @@ export default function render(ast, createComment, createElement, importTemplate
     return result.value
   }
 
-  let getUnescapedProps = function (type, children) {
+  let getUnescapedProps = function ({ type, children }) {
     if (type === nodeType.ELEMENT && children.length === 1) {
       let child = children[ 0 ]
       if (child.type === nodeType.EXPRESSION
@@ -127,20 +126,22 @@ export default function render(ast, createComment, createElement, importTemplate
           keypathList,
           node.keypath
         )
+        keypath = getKeypath()
       }
       if (object.has(node, 'data')) {
         context = context.push(
           node.data,
-          getKeypath()
+          keypath
         )
+      }
+      if (helper.htmlTypes[ node.type ]) {
+        array.push(htmlStack, node.type)
       }
       array.push(
         nodeStack,
         {
           node,
           index: -1,
-          attributes: makeNodes([ ]),
-          directives: makeNodes([ ]),
           children: makeNodes([ ]),
         }
       )
@@ -151,11 +152,18 @@ export default function render(ast, createComment, createElement, importTemplate
       if (object.has(node, 'data')) {
         context = context.pop()
       }
+      if (helper.htmlTypes[ node.type ]) {
+        array.pop(htmlStack)
+      }
       if (object.has(node, 'keypath')) {
         array.pop(keypathList)
+        keypath = getKeypath()
       }
       if (filter) {
         filter = env.NULL
+      }
+      if (sibling) {
+        sibling = env.NULL
       }
     }
 
@@ -172,10 +180,10 @@ export default function render(ast, createComment, createElement, importTemplate
       }
     }
 
-    let addValue = function (value, collection = 'children') {
+    let addValue = function (value) {
       if (value !== env.UNDEFINED) {
-        node = nodeStack[ nodeStack.length - 2 ]
-        collection = node ? node[ collection ] : result
+        let node = nodeStack[ nodeStack.length - 2 ]
+        let collection = node ? node.children : result
         if (isNodes(value)) {
           array.push(collection, value)
         }
@@ -185,9 +193,219 @@ export default function render(ast, createComment, createElement, importTemplate
       }
     }
 
-    let value,
+    let filterElse = function (node) {
+      if (helper.elseTypes[ node.type ]) {
+        return env.FALSE
+      }
+      else {
+        filter = env.NULL
+        return env.TRUE
+      }
+    }
+
+    let enter = { }, leave = { }
+
+    enter[ nodeType.PARTIAL ] = function (node) {
+      partials[ node.name ] = node.children
+      popStack()
+      return env.FALSE
+    }
+
+    enter[ nodeType.IMPORT ] = function (node) {
+      let { name } = node
+      let partial = partials[ name ] || importTemplate(name)
+      if (partial) {
+        popStack()
+        pushNode(partial)
+        return env.FALSE
+      }
+      logger.fatal(`Partial "${name}" is not found.`)
+    }
+
+    // 条件判断失败就没必要往下走了
+    // 但如果失败的点原本是一个 DOM 元素
+    // 就需要用注释节点来占位，否则 virtual dom 无法正常工作
+    enter[ nodeType.IF ] =
+    enter[ nodeType.ELSE_IF ] = function (node) {
+      if (!executeExpr(node.expr)) {
+        if (sibling
+          && !helper.elseTypes[ sibling.type ]
+          && !helper.attrTypes[ array.last(htmlStack) ]
+        ) {
+          addValue(
+            makeNodes(
+              createComment()
+            )
+          )
+        }
+        popStack()
+        return env.FALSE
+      }
+    }
+
+    enter[ nodeType.EACH ] = function (node) {
+
+      popStack()
+
+      let value = executeExpr(node.expr), list = [ ], each
+
+      if (is.array(value)) {
+        each = array.each
+      }
+      else if (is.object(value)) {
+        each = object.each
+      }
+
+      if (each) {
+        each(
+          value,
+          function (data, i, item) {
+
+            item = {
+              data,
+              keypath: i,
+              children: node.children,
+            }
+
+            if (node.index) {
+              item.context = [ node.index, i ]
+            }
+
+            array.push(list, item)
+
+          }
+        )
+
+        pushStack({
+          children: list,
+          keypath: keypathUtil.normalize(
+            stringifyExpression(node.expr)
+          ),
+          data: value,
+        })
+      }
+
+      return env.FALSE
+
+    }
+
+
+    leave[ nodeType.TEXT ] = function (node) {
+      addValue(
+        node.content
+      )
+    }
+
+    leave[ nodeType.EXPRESSION ] = function (node) {
+      addValue(
+        executeExpr(node.expr)
+      )
+    }
+
+    leave[ nodeType.ATTRIBUTE ] = function (node, current) {
+      addValue({
+        keypath,
+        name: node.name,
+        type: nodeType.ATTRIBUTE,
+        value: mergeNodes(current.children),
+      })
+    }
+
+    leave[ nodeType.DIRECTIVE ] = function (node, current) {
+      addValue({
+        keypath,
+        name: node.name,
+        type: nodeType.DIRECTIVE,
+        modifier: node.modifier,
+        value: mergeNodes(current.children),
+      })
+    }
+
+    leave[ nodeType.IF ] =
+    leave[ nodeType.ELSE_IF ] =
+    leave[ nodeType.ELSE ] = function (node, current) {
+      addValue(
+        current.children
+      )
+      filter = filterElse
+    }
+
+    leave[ nodeType.SPREAD ] = function (node) {
+      let value = executeExpr(node.expr)
+      if (is.object(value)) {
+        let children = [ ]
+        object.each(
+          value,
+          function (value, name) {
+            array.push(
+              children,
+              {
+                name,
+                value,
+                keypath,
+              }
+            )
+          }
+        )
+        addValue(
+          makeNodes(children)
+        )
+      }
+      logger.fatal(`Spread "${stringifyExpression(expr)}" must be an object.`)
+    }
+
+    leave[ nodeType.ELEMENT ] = function (node, current) {
+      let attributes = [ ], directives = [ ], children = [ ]
+      array.each(
+        current.children,
+        function (node) {
+          switch (node.type) {
+            case nodeType.ATTRIBUTE:
+              array.push(attributes, node)
+              break
+            case nodeType.DIRECTIVE:
+              array.push(directives, node)
+              break
+            default:
+              array.push(children, node)
+              break
+          }
+        }
+      )
+      addValue(
+        createElement(
+          {
+            keypath,
+            attributes,
+            directives,
+            children,
+            name: node.name,
+            properties: current.properties,
+          },
+          node.component
+        )
+      )
+    }
+
+    leave[ env.UNDEFINED ] = function (node, current) {
+      addValue(
+        current.children
+      )
+    }
+
+    let traverseList = function (current, list, node) {
+      while (node = list[ ++current.index ]) {
+        if (!filter || filter(node)) {
+          sibling = list[ current.index + 1 ]
+          pushStack(node)
+          return env.FALSE
+        }
+      }
+    }
+
+
     // 当前处理的栈节点
-    current,
+    let current,
     // 过滤某些节点的函数
     filter,
     // 相邻节点
@@ -199,257 +417,49 @@ export default function render(ast, createComment, createElement, importTemplate
 
     pushNode(node)
 
-    main: while (nodeStack.length) {
+
+    while (nodeStack.length) {
+
       current = array.last(nodeStack)
 
-      let { node, properties, attributes, directives } = current
-      let { type, name, expr, index, modifier, component, content, attrs, children } = node
+      let { node } = current
+      let { type, attrs, children } = node
 
-      // 检查是否有必要处理这个节点
-      // 如果没有必要，需拦截后面的逻辑
-      // ================ enter start ==================
       if (!current.enter) {
         current.enter = env.TRUE
-
-        switch (type) {
-
-          // 用时定义的子模板无需注册到组件实例
-          case nodeType.PARTIAL:
-            // 注册即可，无需往下走了
-            partials[ name ] = children
-            popStack()
-            continue main
-
-          // 导入子模板
-          case nodeType.IMPORT:
-            // 用时定义的子模板优先
-            content = partials[ name ] || importTemplate(name)
-            if (content) {
-              popStack()
-              pushNode(content)
-              continue main
-            }
-            logger.fatal(`Partial "${name}" is not found.`)
-
-          // 条件判断失败就没必要往下走了
-          // 但如果失败的点原本是一个 DOM 元素
-          // 就需要用注释节点来占位，否则 virtual dom 无法正常工作
-          case nodeType.IF:
-          case nodeType.ELSE_IF:
-            if (executeExpr(expr)) {
-              break
-            }
-            if (sibling
-              && !helper.elseTypes[ sibling.type ]
-              && !helper.attrTypes[ array.last(htmlStack) ]
-            ) {
-              addValue(
-                makeNodes(
-                  createComment()
-                )
-              )
-            }
-            popStack()
-            continue main
-
-          // 循环
-          case nodeType.EACH:
-            popStack()
-
-            value = executeExpr(expr)
-            if (is.array(value)) {
-              name = array.each
-            }
-            else if (is.object(value)) {
-              name = object.each
-            }
-            else {
-              continue main
-            }
-
-            content = children
-            children = [ ]
-
-            name(
-              value,
-              function (data, i) {
-
-                value = {
-                  children: content,
-                  keypath: i,
-                  data,
-                }
-
-                if (index) {
-                  value.context = [ index, i ]
-                }
-
-                array.push(children, value)
-
-              }
-            )
-
-            pushStack({
-              children,
-              keypath: keypathUtil.normalize(
-                stringifyExpression(expr)
-              ),
-              data: value,
-            })
-
-            continue main
-
-        }
-
-        // 记录 html 层级
-        // 方便判断当前处于元素层级还是属性层级
-        if (helper.htmlTypes[ type ]) {
-          array.push(htmlStack, type)
+        if (
+          executeFunction(
+            enter[ type ],
+            env.NULL,
+            [ node, current ]
+          ) === env.FALSE
+        ) {
+          continue
         }
       }
-      // ================ enter end ==================
-
 
       if (attrs && !current.attrs) {
-        // 依次遍历 attrs
-        while (node = attrs[ ++current.index ]) {
-          if (!filter || filter(node)) {
-            sibling = attrs[ current.index + 1 ]
-            pushStack(node)
-            continue main
-          }
+        if (traverseList(current, attrs) === env.FALSE) {
+          continue
         }
         current.index = -1
         current.attrs = env.TRUE
       }
 
       if (children) {
-
-        properties = getUnescapedProps(type, children)
-        if (properties) {
-          children = env.NULL
+        if (current.properties = getUnescapedProps(node)) {
+          current.children = [ ]
         }
-        else {
-          // 依次遍历 children
-          while (node = children[ ++current.index ]) {
-            if (!filter || filter(node)) {
-              sibling = children[ current.index + 1 ]
-              pushStack(node)
-              continue main
-            }
-          }
+        else if (traverseList(current, children) === env.FALSE) {
+          continue
         }
-
       }
 
-
-      // ==================== leave start =====================
-      if (helper.htmlTypes[ type ]) {
-        array.pop(htmlStack)
-      }
-
-      switch (type) {
-        case nodeType.TEXT:
-          addValue(content)
-          break
-
-
-        case nodeType.EXPRESSION:
-          addValue(
-            executeExpr(expr)
-          )
-          break
-
-
-        case nodeType.ATTRIBUTE:
-          addValue(
-            {
-              name,
-              keypath: getKeypath(),
-              value: mergeNodes(current.children),
-            },
-            'attributes'
-          )
-          break
-
-
-        case nodeType.DIRECTIVE:
-          addValue(
-            {
-              name,
-              modifier,
-              keypath: getKeypath(),
-              value: mergeNodes(current.children),
-            },
-            'directives'
-          )
-          break
-
-
-        case nodeType.IF:
-        case nodeType.ELSE_IF:
-        case nodeType.ELSE:
-          addValue(current.children)
-          // 跳过后面紧跟着的 else if / else
-          filter = function (node) {
-            if (helper.elseTypes[ node.type ]) {
-              return env.FALSE
-            }
-            else {
-              filter = env.NULL
-              return env.TRUE
-            }
-          }
-          break
-
-        case nodeType.SPREAD:
-          value = executeExpr(expr)
-          if (is.object(value)) {
-            children = [ ]
-            keypath = getKeypath()
-            object.each(
-              value,
-              function (value, name) {
-                array.push(
-                  children,
-                  {
-                    name,
-                    value,
-                    keypath,
-                  }
-                )
-              }
-            )
-            addValue(
-              makeNodes(children)
-            )
-            break
-          }
-          logger.fatal(`Spread "${stringifyExpression(expr)}" must be an object.`)
-
-
-        case nodeType.ELEMENT:
-          addValue(
-            createElement(
-              {
-                name,
-                keypath: getKeypath(),
-                attributes,
-                directives,
-                properties,
-                children: current.children,
-              },
-              component
-            )
-          )
-          break
-
-        default:
-          addValue(current.children)
-          break
-
-      }
-      // ==================== leave end =====================
+      executeFunction(
+        leave[ type ],
+        env.NULL,
+        [ node, current ]
+      )
 
       popStack()
 
@@ -459,10 +469,8 @@ export default function render(ast, createComment, createElement, importTemplate
 
   }
 
-  let nodes = traverseNode(ast)
-
   return {
-    nodes,
+    nodes: traverseNode(ast),
     deps,
   }
 
