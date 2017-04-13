@@ -100,19 +100,6 @@ export default function render(ast, createComment, createElement, importTemplate
     return result.value
   }
 
-  let getUnescapedProps = function ({ type, children }) {
-    if (type === nodeType.ELEMENT && children.length === 1) {
-      let child = children[ 0 ]
-      if (child.type === nodeType.EXPRESSION
-        && child.safe === env.FALSE
-      ) {
-        return {
-          innerHTML: executeExpr(child.expr),
-        }
-      }
-    }
-  }
-
   let traverseNode = function (node) {
 
     let nodeStack = [ ], result = [ ]
@@ -355,7 +342,7 @@ export default function render(ast, createComment, createElement, importTemplate
 
     leave[ nodeType.ELEMENT ] = function (node, current) {
 
-      let attributes = [ ], directives = [ ], children = [ ]
+      let attributes = [ ], directives = [ ], children = [ ], properties, child
 
       array.each(
         current.children,
@@ -372,9 +359,17 @@ export default function render(ast, createComment, createElement, importTemplate
         }
       )
 
-      let properties = getUnescapedProps(node)
-      if (properties) {
-        children = [ ]
+      let nodeChildren = node.children
+      if (nodeChildren && nodeChildren.length === 1) {
+        child = nodeChildren[ 0 ]
+        if (child.type === nodeType.EXPRESSION
+          && child.safe === env.FALSE
+        ) {
+          properties = {
+            innerHTML: children[ 0 ],
+          }
+          children.length = 0
+        }
       }
 
       addValue(
