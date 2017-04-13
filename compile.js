@@ -280,9 +280,15 @@ export default function compile(content) {
         if (match && match.index) {
           content = string.slice(content, 0, match.index)
         }
-        addChild(
-          new Text(content)
-        )
+        // 属性级别的空字符串是没有意义的
+        // 比如 <div      class="xx">
+        if (htmlStack.length !== 1
+          || string.trim(content)
+        ) {
+          addChild(
+            new Text(content)
+          )
+        }
         return content
       }
     },

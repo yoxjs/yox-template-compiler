@@ -76,15 +76,19 @@ function mergeNodes(nodes) {
  */
 export default function render(ast, createComment, createElement, importTemplate, data) {
 
-  let keypathList = [ ],
-  getKeypath = function () {
-    return keypathUtil.stringify(keypathList)
+  let keypath, keypathList = [ ],
+  updateKeypath = function () {
+    keypath = keypathUtil.stringify(keypathList)
   },
-  keypath = getKeypath()
+  getKeypath = function () {
+    return keypath
+  }
+
+  updateKeypath()
 
   getKeypath.toString = getKeypath
-
   data[ syntax.SPECIAL_KEYPATH ] = getKeypath
+
   let context = new Context(data, keypath)
 
   // 渲染模板收集的依赖
@@ -126,7 +130,7 @@ export default function render(ast, createComment, createElement, importTemplate
           keypathList,
           node.keypath
         )
-        keypath = getKeypath()
+        updateKeypath()
       }
       if (object.has(node, 'data')) {
         context = context.push(
@@ -149,15 +153,15 @@ export default function render(ast, createComment, createElement, importTemplate
 
     let popStack = function () {
       let { node } = array.pop(nodeStack)
-      if (object.has(node, 'data')) {
-        context = context.pop()
-      }
       if (helper.htmlTypes[ node.type ]) {
         array.pop(htmlStack)
       }
+      if (object.has(node, 'data')) {
+        context = context.pop()
+      }
       if (object.has(node, 'keypath')) {
         array.pop(keypathList)
-        keypath = getKeypath()
+        updateKeypath()
       }
       if (filter) {
         filter = env.NULL
@@ -305,8 +309,8 @@ export default function render(ast, createComment, createElement, importTemplate
     leave[ nodeType.ATTRIBUTE ] = function (node, current) {
       addValue({
         keypath,
-        name: node.name,
         type: nodeType.ATTRIBUTE,
+        name: node.name,
         value: mergeNodes(current.children),
       })
     }
@@ -333,54 +337,55 @@ export default function render(ast, createComment, createElement, importTemplate
     leave[ nodeType.SPREAD ] = function (node) {
       let value = executeExpr(node.expr)
       if (is.object(value)) {
-        let children = [ ]
         object.each(
           value,
           function (value, name) {
-            array.push(
-              children,
-              {
-                name,
-                value,
-                keypath,
-              }
-            )
+            addValue({
+              name,
+              value,
+              keypath,
+              type: nodeType.ATTRIBUTE,
+            })
           }
         )
-        addValue(
-          makeNodes(children)
-        )
+        return
       }
-      logger.fatal(`Spread "${stringifyExpression(expr)}" must be an object.`)
+      logger.fatal(`Spread "${stringifyExpression(node.expr)}" must be an object.`)
     }
 
     leave[ nodeType.ELEMENT ] = function (node, current) {
+
       let attributes = [ ], directives = [ ], children = [ ]
+
       array.each(
         current.children,
         function (node) {
-          switch (node.type) {
-            case nodeType.ATTRIBUTE:
-              array.push(attributes, node)
-              break
-            case nodeType.DIRECTIVE:
-              array.push(directives, node)
-              break
-            default:
-              array.push(children, node)
-              break
+          if (node.type === nodeType.ATTRIBUTE) {
+            array.push(attributes, node)
+          }
+          else if (node.type === nodeType.DIRECTIVE) {
+            array.push(directives, node)
+          }
+          else {
+            array.push(children, node)
           }
         }
       )
+
+      let properties = getUnescapedProps(node)
+      if (properties) {
+        children = [ ]
+      }
+
       addValue(
         createElement(
           {
+            name: node.name,
             keypath,
             attributes,
             directives,
+            properties,
             children,
-            name: node.name,
-            properties: current.properties,
           },
           node.component
         )
@@ -393,11 +398,11 @@ export default function render(ast, createComment, createElement, importTemplate
       )
     }
 
-    let traverseList = function (current, list, node) {
-      while (node = list[ ++current.index ]) {
-        if (!filter || filter(node)) {
+    let traverseList = function (current, list, item) {
+      while (item = list[ ++current.index ]) {
+        if (!filter || filter(item)) {
           sibling = list[ current.index + 1 ]
-          pushStack(node)
+          pushStack(item)
           return env.FALSE
         }
       }
@@ -446,13 +451,8 @@ export default function render(ast, createComment, createElement, importTemplate
         current.attrs = env.TRUE
       }
 
-      if (children) {
-        if (current.properties = getUnescapedProps(node)) {
-          current.children = [ ]
-        }
-        else if (traverseList(current, children) === env.FALSE) {
-          continue
-        }
+      if (children && traverseList(current, children) === env.FALSE) {
+        continue
       }
 
       executeFunction(
