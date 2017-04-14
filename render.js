@@ -137,6 +137,7 @@ export default function render(ast, createComment, createElement, importTemplate
           children: makeNodes([ ]),
         }
       )
+      current = array.last(nodeStack)
     }
 
     let popStack = function () {
@@ -154,6 +155,7 @@ export default function render(ast, createComment, createElement, importTemplate
       if (sibling) {
         sibling = env.NULL
       }
+      current = array.last(nodeStack)
     }
 
     let pushNode = function (node) {
@@ -387,7 +389,6 @@ export default function render(ast, createComment, createElement, importTemplate
       )
     }
 
-    leave[ nodeType.EACH ] =
     leave[ env.UNDEFINED ] = function (node, current) {
       return current.children
     }
@@ -422,8 +423,6 @@ export default function render(ast, createComment, createElement, importTemplate
 
 
     while (nodeStack.length) {
-
-      current = array.last(nodeStack)
 
       let { node } = current
       let { type, attrs, children, trackBy } = node
