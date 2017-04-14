@@ -326,6 +326,18 @@ export default function render(ast, createComment, createElement, importTemplate
 
   }
 
+  let createAttribute = function (name, value, bindTo) {
+    let attribute = {
+      name,
+      value,
+      keypath,
+      type: nodeType.ATTRIBUTE,
+    }
+    if (is.string(bindTo)) {
+      attribute.bindTo = bindTo
+    }
+    return attribute
+  }
 
   leave[ nodeType.TEXT ] = function (node) {
     return node.content
@@ -336,12 +348,20 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   leave[ nodeType.ATTRIBUTE ] = function (node, current) {
-    return {
-      keypath,
-      name: node.name,
-      type: nodeType.ATTRIBUTE,
-      value: mergeNodes(current.children),
+    let children = node.children, child, bindTo
+    if (children && children.length === 1) {
+      child = children[ 0 ]
+      if (child.type === nodeType.EXPRESSION && child.safe) {
+        bindTo = context.get(
+          stringifyExpression(child.expr)
+        )
+      }
     }
+    return createAttribute(
+      node.name,
+      mergeNodes(current.children),
+      bindTo && bindTo.keypath
+    )
   }
 
   leave[ nodeType.DIRECTIVE ] = function (node, current) {
@@ -362,26 +382,28 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   leave[ nodeType.SPREAD ] = function (node) {
-    let value = executeExpr(node.expr)
+    let expr = node.expr, value = executeExpr(expr)
     if (is.object(value)) {
-      let list = makeNodes([ ])
+      let list = makeNodes([ ]), stringify = stringifyExpression(expr)
       object.each(
         value,
-        function (value, name) {
+        function (value, name, bindTo) {
+          bindTo = context.get(
+            context.joinKeypath(stringify, name)
+          )
           array.push(
             list,
-            {
+            createAttribute(
               name,
               value,
-              keypath,
-              type: nodeType.ATTRIBUTE,
-            }
+              bindTo.keypath
+            )
           )
         }
       )
       return list
     }
-    logger.fatal(`Spread "${stringifyExpression(node.expr)}" must be an object.`)
+    logger.fatal(`Spread "${stringifyExpression(expr)}" must be an object.`)
   }
 
   leave[ nodeType.ELEMENT ] = function (node, current) {
