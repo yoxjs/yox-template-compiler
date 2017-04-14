@@ -263,13 +263,12 @@ export default function render(ast, createComment, createElement, importTemplate
 
           }
         )
-
         pushStack({
+          data: value,
           children: list,
           keypath: keypathUtil.normalize(
             stringifyExpression(node.expr)
           ),
-          data: value,
         })
       }
 
@@ -293,8 +292,8 @@ export default function render(ast, createComment, createElement, importTemplate
     leave[ nodeType.ATTRIBUTE ] = function (node, current) {
       addValue({
         keypath,
-        type: nodeType.ATTRIBUTE,
         name: node.name,
+        type: nodeType.ATTRIBUTE,
         value: mergeNodes(current.children),
       })
     }

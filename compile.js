@@ -29,7 +29,7 @@ const openingTagPattern = /<(\/)?([a-z][-a-z0-9]*)/i
 const closingTagPattern = /^\s*(\/)?>/
 const attributePattern = /^\s*([-:\w]+)(?:=(['"]))?/
 const componentNamePattern = /[-A-Z]/
-const selfClosingTagNamePattern = /source|param|input|img|br/
+const selfClosingTagNamePattern = /source|param|input|img|br|hr/
 
 // 缓存编译结果
 let compileCache = { }
