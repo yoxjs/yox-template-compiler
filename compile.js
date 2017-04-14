@@ -297,13 +297,20 @@ export default function compile(content) {
   const delimiterParsers = [
     function (source, all) {
       if (string.startsWith(source, syntax.EACH)) {
-        let terms = string.split(slicePrefix(source, syntax.EACH), char.CHAR_COLON)
-        return terms[ 0 ]
-          ? new Each(
-            compileExpression(string.trim(terms[ 0 ])),
-            string.trim(terms[ 1 ])
-          )
-          : throwError(`invalid each: ${all}`)
+        // {{#each list:index trackBy }}
+        let terms = string.split(slicePrefix(source, syntax.EACH), char.CHAR_WHITESPACE)
+        let pair = terms[ 0 ], trackBy = terms[ 1 ]
+        if (pair) {
+          let terms = string.split(pair, char.CHAR_COLON)
+          if (terms[ 0 ]) {
+            return new Each(
+              compileExpression(string.trim(terms[ 0 ])),
+              string.trim(terms[ 1 ]),
+              string.trim(trackBy)
+            )
+          }
+        }
+        throwError(`invalid each: ${all}`)
       }
     },
     function (source, all) {

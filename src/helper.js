@@ -43,8 +43,7 @@ leafTypes[ nodeType.EXPRESSION ] =
 builtInDirectives[ syntax.DIRECTIVE_REF ] =
 builtInDirectives[ syntax.DIRECTIVE_LAZY ] =
 builtInDirectives[ syntax.DIRECTIVE_MODEL ] =
-builtInDirectives[ syntax.KEYWORD_UNIQUE ] =
-builtInDirectives[ syntax.KEYWORD_STATIC ] = env.TRUE
+builtInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
 
 name2Type[ 'if' ] = nodeType.IF
 name2Type[ 'each' ] = nodeType.EACH

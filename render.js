@@ -133,6 +133,7 @@ export default function render(ast, createComment, createElement, importTemplate
         {
           node,
           index: -1,
+          parent: current,
           children: makeNodes([ ]),
         }
       )
@@ -169,15 +170,12 @@ export default function render(ast, createComment, createElement, importTemplate
     }
 
     let addValue = function (value) {
-      if (value !== env.UNDEFINED) {
-        let node = nodeStack[ nodeStack.length - 2 ]
-        let collection = node ? node.children : result
-        if (isNodes(value)) {
-          array.push(collection, value)
-        }
-        else {
-          collection.push(value)
-        }
+      let collection = current.parent ? current.parent.children : result
+      if (isNodes(value)) {
+        array.push(collection, value)
+      }
+      else {
+        collection.push(value)
       }
     }
 
@@ -235,7 +233,9 @@ export default function render(ast, createComment, createElement, importTemplate
 
       popStack()
 
-      let value = executeExpr(node.expr), list = [ ], each
+      let { expr, index, trackBy, children } = node
+
+      let value = executeExpr(expr), each
 
       if (is.array(value)) {
         each = array.each
@@ -245,18 +245,23 @@ export default function render(ast, createComment, createElement, importTemplate
       }
 
       if (each) {
+        let list = [ ]
         each(
           value,
           function (data, i, item) {
 
             item = {
               data,
+              children,
               keypath: i,
-              children: node.children,
             }
 
-            if (node.index) {
-              item.context = [ node.index, i ]
+            if (index) {
+              item.context = [ index, i ]
+            }
+
+            if (trackBy) {
+              item.trackBy = trackBy
             }
 
             array.push(list, item)
@@ -267,7 +272,7 @@ export default function render(ast, createComment, createElement, importTemplate
           data: value,
           children: list,
           keypath: keypathUtil.normalize(
-            stringifyExpression(node.expr)
+            stringifyExpression(expr)
           ),
         })
       }
@@ -278,60 +283,58 @@ export default function render(ast, createComment, createElement, importTemplate
 
 
     leave[ nodeType.TEXT ] = function (node) {
-      addValue(
-        node.content
-      )
+      return node.content
     }
 
     leave[ nodeType.EXPRESSION ] = function (node) {
-      addValue(
-        executeExpr(node.expr)
-      )
+      return executeExpr(node.expr)
     }
 
     leave[ nodeType.ATTRIBUTE ] = function (node, current) {
-      addValue({
+      return {
         keypath,
         name: node.name,
         type: nodeType.ATTRIBUTE,
         value: mergeNodes(current.children),
-      })
+      }
     }
 
     leave[ nodeType.DIRECTIVE ] = function (node, current) {
-      addValue({
+      return {
         keypath,
         name: node.name,
         type: nodeType.DIRECTIVE,
         modifier: node.modifier,
         value: mergeNodes(current.children),
-      })
+      }
     }
 
     leave[ nodeType.IF ] =
     leave[ nodeType.ELSE_IF ] =
     leave[ nodeType.ELSE ] = function (node, current) {
-      addValue(
-        current.children
-      )
       filter = filterElse
+      return current.children
     }
 
     leave[ nodeType.SPREAD ] = function (node) {
       let value = executeExpr(node.expr)
       if (is.object(value)) {
+        let list = makeNodes([ ])
         object.each(
           value,
           function (value, name) {
-            addValue({
-              name,
-              value,
-              keypath,
-              type: nodeType.ATTRIBUTE,
-            })
+            array.push(
+              list,
+              {
+                name,
+                value,
+                keypath,
+                type: nodeType.ATTRIBUTE,
+              }
+            )
           }
         )
-        return
+        return list
       }
       logger.fatal(`Spread "${stringifyExpression(node.expr)}" must be an object.`)
     }
@@ -368,25 +371,25 @@ export default function render(ast, createComment, createElement, importTemplate
         }
       }
 
-      addValue(
-        createElement(
-          {
-            name: node.name,
-            keypath,
-            attributes,
-            directives,
-            properties,
-            children,
-          },
-          node.component
-        )
+      cache = current.parent && current.parent.cache
+
+      return createElement(
+        {
+          name: node.name,
+          keypath,
+          attributes,
+          directives,
+          properties,
+          children,
+        },
+        node.component,
+        cache ? cache.key : env.UNDEFINED
       )
     }
 
+    leave[ nodeType.EACH ] =
     leave[ env.UNDEFINED ] = function (node, current) {
-      addValue(
-        current.children
-      )
+      return current.children
     }
 
     let traverseList = function (current, list, item) {
@@ -402,10 +405,14 @@ export default function render(ast, createComment, createElement, importTemplate
 
     // 当前处理的栈节点
     let current,
-    // 过滤某些节点的函数
-    filter,
     // 相邻节点
     sibling,
+    // 过滤某些节点的函数
+    filter,
+    // 缓存
+    cache,
+    cacheKey,
+    cacheValue,
     // 正在渲染的 html 层级
     htmlStack = [ ],
     // 用时定义的模板片段
@@ -419,10 +426,31 @@ export default function render(ast, createComment, createElement, importTemplate
       current = array.last(nodeStack)
 
       let { node } = current
-      let { type, attrs, children } = node
+      let { type, attrs, children, trackBy } = node
 
       if (!current.enter) {
         current.enter = env.TRUE
+
+        if (trackBy) {
+          trackBy = context.get(trackBy).value
+          if (trackBy != env.NULL) {
+            cacheKey = `cache-${keypath}-${trackBy}`
+            cacheValue = context.get(keypath).value
+            cache = ast[ cacheKey ]
+            if (cache && cache.value === cacheValue) {
+              addValue(cache.result)
+              popStack()
+              continue
+            }
+            else {
+              current.cache = {
+                key: cacheKey,
+                value: cacheValue,
+              }
+            }
+          }
+        }
+
         if (
           executeFunction(
             enter[ type ],
@@ -446,11 +474,20 @@ export default function render(ast, createComment, createElement, importTemplate
         continue
       }
 
-      executeFunction(
+      cache = executeFunction(
         leave[ type ],
         env.NULL,
         [ node, current ]
       )
+
+      if (cache !== env.UNDEFINED) {
+        addValue(cache)
+        cacheValue = current.cache
+        if (cacheValue) {
+          cacheValue.result = cache
+          ast[ cacheValue.key ] = cacheValue
+        }
+      }
 
       popStack()
 
