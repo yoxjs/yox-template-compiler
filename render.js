@@ -45,22 +45,26 @@ function isNodes(nodes) {
  *
  * 用于处理属性值和指令值
  *
- * @param {?Array} nodes
+ * @param {?Array} outputNodes
+ * @param {?Array} sourceNodes
  * @return {*}
  */
-function mergeNodes(nodes) {
-  if (is.array(nodes)) {
-    switch (nodes.length) {
+function mergeNodes(outputNodes, sourceNodes) {
+  if (is.array(outputNodes)) {
+    switch (outputNodes.length) {
       // name=""
       case 0:
         return char.CHAR_BLANK
       // name="{{value}}"
       case 1:
-        return nodes[ 0 ]
+        return outputNodes[ 0 ]
       // name="{{value1}}{{value2}}"
       default:
-        return nodes.join(char.CHAR_BLANK)
+        return outputNodes.join(char.CHAR_BLANK)
     }
+  }
+  else if (!array.falsy(sourceNodes)) {
+    return char.CHAR_BLANK
   }
 }
 
@@ -125,7 +129,6 @@ export default function render(ast, createComment, createElement, importTemplate
         index: -1,
         deps: { },
         parent: current,
-        children: makeNodes([ ]),
       }
     )
     current = array.last(nodeStack)
@@ -168,7 +171,13 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   let addValue = function (value) {
-    let collection = current.parent ? current.parent.children : nodes
+    let parent = current.parent, collection
+    if (parent) {
+      collection = parent.children || (parent.children = makeNodes([ ]))
+    }
+    else {
+      collection = nodes
+    }
     if (isNodes(value)) {
       array.push(collection, value)
     }
@@ -359,7 +368,7 @@ export default function render(ast, createComment, createElement, importTemplate
     }
     return createAttribute(
       node.name,
-      mergeNodes(current.children),
+      mergeNodes(current.children, children),
       bindTo
     )
   }
@@ -370,7 +379,7 @@ export default function render(ast, createComment, createElement, importTemplate
       name: node.name,
       type: nodeType.DIRECTIVE,
       modifier: node.modifier,
-      value: mergeNodes(current.children),
+      value: mergeNodes(current.children, node.children),
     }
   }
 
@@ -407,20 +416,22 @@ export default function render(ast, createComment, createElement, importTemplate
 
     let attributes = [ ], directives = [ ], children = [ ], properties, child
 
-    array.each(
-      current.children,
-      function (node) {
-        if (node.type === nodeType.ATTRIBUTE) {
-          array.push(attributes, node)
+    if (current.children) {
+      array.each(
+        current.children,
+        function (node) {
+          if (node.type === nodeType.ATTRIBUTE) {
+            array.push(attributes, node)
+          }
+          else if (node.type === nodeType.DIRECTIVE) {
+            array.push(directives, node)
+          }
+          else {
+            array.push(children, node)
+          }
         }
-        else if (node.type === nodeType.DIRECTIVE) {
-          array.push(directives, node)
-        }
-        else {
-          array.push(children, node)
-        }
-      }
-    )
+      )
+    }
 
     let nodeChildren = node.children
     if (nodeChildren && nodeChildren.length === 1) {
