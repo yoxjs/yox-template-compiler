@@ -11,6 +11,7 @@ import * as keypathUtil from 'yox-common/util/keypath'
 import executeFunction from 'yox-common/function/execute'
 import executeExpression from 'yox-expression-compiler/execute'
 import stringifyExpression from 'yox-expression-compiler/stringify'
+import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
 
 import Context from './src/Context'
 import * as helper from './src/helper'
@@ -348,12 +349,16 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   leave[ nodeType.ATTRIBUTE ] = function (node, current) {
-    let children = node.children, child, bindTo
+    let children = node.children, bindTo
     if (children && children.length === 1) {
-      child = children[ 0 ]
-      if (child.type === nodeType.EXPRESSION && child.safe) {
+      let { type, expr, safe } = children[ 0 ]
+      if (safe
+        && type === nodeType.EXPRESSION
+        && expr.type === expressionNodeType.MEMBER
+        && expr.type === expressionNodeType.IDENTIFIER
+      ) {
         bindTo = context.get(
-          stringifyExpression(child.expr)
+          stringifyExpression(expr)
         )
       }
     }
