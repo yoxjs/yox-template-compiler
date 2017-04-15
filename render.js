@@ -352,8 +352,7 @@ export default function render(ast, createComment, createElement, importTemplate
       let { type, expr, safe } = children[ 0 ]
       if (safe
         && type === nodeType.EXPRESSION
-        && expr.type === expressionNodeType.MEMBER
-        && expr.type === expressionNodeType.IDENTIFIER
+        && (expr.type === expressionNodeType.MEMBER || expr.type === expressionNodeType.IDENTIFIER)
       ) {
         bindTo = expr.keypath
       }
