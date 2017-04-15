@@ -10,7 +10,6 @@ import * as keypathUtil from 'yox-common/util/keypath'
 
 import executeFunction from 'yox-common/function/execute'
 import executeExpression from 'yox-expression-compiler/execute'
-import stringifyExpression from 'yox-expression-compiler/stringify'
 import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
 
 import Context from './src/Context'
@@ -180,6 +179,7 @@ export default function render(ast, createComment, createElement, importTemplate
 
   let executeExpr = function (expr) {
     let result = executeExpression(expr, context)
+    expr.keypath = result.keypath
     object.extend(
       current.deps,
       result.deps
@@ -317,9 +317,7 @@ export default function render(ast, createComment, createElement, importTemplate
       pushStack({
         data: value,
         children: list,
-        keypath: keypathUtil.normalize(
-          stringifyExpression(expr)
-        ),
+        keypath: expr.keypath,
       })
     }
 
@@ -357,15 +355,13 @@ export default function render(ast, createComment, createElement, importTemplate
         && expr.type === expressionNodeType.MEMBER
         && expr.type === expressionNodeType.IDENTIFIER
       ) {
-        bindTo = context.get(
-          stringifyExpression(expr)
-        )
+        bindTo = expr.keypath
       }
     }
     return createAttribute(
       node.name,
       mergeNodes(current.children),
-      bindTo && bindTo.keypath
+      bindTo
     )
   }
 
@@ -387,28 +383,25 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   leave[ nodeType.SPREAD ] = function (node) {
-    let expr = node.expr, value = executeExpr(expr)
+    let expr = node.expr, value = executeExpr(expr), keypath = expr.keypath
     if (is.object(value)) {
-      let list = makeNodes([ ]), stringify = stringifyExpression(expr)
+      let list = makeNodes([ ])
       object.each(
         value,
-        function (value, name, bindTo) {
-          bindTo = context.get(
-            context.joinKeypath(stringify, name)
-          )
+        function (value, name) {
           array.push(
             list,
             createAttribute(
               name,
               value,
-              bindTo.keypath
+              keypathUtil.join(keypath, name)
             )
           )
         }
       )
       return list
     }
-    logger.fatal(`Spread "${stringifyExpression(expr)}" must be an object.`)
+    logger.fatal(`Spread "${keypath}" must be an object.`)
   }
 
   leave[ nodeType.ELEMENT ] = function (node, current) {

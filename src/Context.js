@@ -30,7 +30,7 @@ export default class Context {
 
   set(key, value) {
     let instance = this
-    let { keypath } = instance.formatKeypath(key)
+    let { keypath } = formatKeypath(key)
     if (instance && keypath) {
       if (object.has(instance.cache, keypath)) {
         delete instance.cache[ keypath ]
@@ -42,7 +42,7 @@ export default class Context {
   get(key) {
 
     let instance = this
-    let { keypath, lookup } = instance.formatKeypath(key)
+    let { keypath, lookup } = formatKeypath(key)
     let contextKeypath = instance.keypath, originalKeypath = keypath
 
     let { data, cache } = instance
@@ -67,7 +67,7 @@ export default class Context {
 
         if (result) {
           cache[ keypath ] = {
-            keypath: instance.joinKeypath(instance.keypath, keypath),
+            keypath: keypathUtil.join(instance.keypath, keypath),
             value: result.value,
           }
         }
@@ -87,37 +87,25 @@ export default class Context {
 
     // 找不到就用当前的 keypath 吧
     return {
-      keypath: instance.joinKeypath(contextKeypath, originalKeypath),
+      keypath: keypathUtil.join(contextKeypath, originalKeypath),
     }
 
-  },
-
-  formatKeypath(keypath) {
-    let keys = keypathUtil.parse(keypath)
-    if (keys[ 0 ] === env.THIS) {
-      keys.shift()
-      return {
-        keypath: keypathUtil.stringify(keys),
-      }
-    }
-    else {
-      return {
-        keypath: keypathUtil.stringify(keys),
-        lookup: env.TRUE,
-      }
-    }
-  },
-
-  joinKeypath(keypath1, keypath2) {
-    if (keypath1 && keypath2) {
-      return keypath1 + keypathUtil.SEPARATOR_KEY + keypath2
-    }
-    else if (keypath1) {
-      return keypath1
-    }
-    else if (keypath2) {
-      return keypath2
-    }
   }
 
+}
+
+function formatKeypath(keypath) {
+  let keys = keypathUtil.parse(keypath)
+  if (keys[ 0 ] === env.THIS) {
+    keys.shift()
+    return {
+      keypath: keypathUtil.stringify(keys),
+    }
+  }
+  else {
+    return {
+      keypath: keypathUtil.stringify(keys),
+      lookup: env.TRUE,
+    }
+  }
 }
