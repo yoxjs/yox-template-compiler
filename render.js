@@ -113,9 +113,9 @@ export default function render(ast, createComment, createElement, importTemplate
       )
       updateKeypath()
     }
-    if (object.has(node, 'data')) {
+    if (object.has(node, 'value')) {
       context = context.push(
-        node.data,
+        node.value,
         keypath
       )
     }
@@ -139,7 +139,7 @@ export default function render(ast, createComment, createElement, importTemplate
     if (helper.htmlTypes[ node.type ]) {
       array.pop(htmlStack)
     }
-    if (object.has(node, 'data')) {
+    if (object.has(node, 'value')) {
       context = context.pop()
     }
     if (object.has(node, 'keypath')) {
@@ -303,10 +303,10 @@ export default function render(ast, createComment, createElement, importTemplate
       let list = [ ]
       each(
         value,
-        function (data, i, item) {
+        function (value, i, item) {
 
           item = {
-            data,
+            value,
             children,
             keypath: i,
           }
@@ -324,7 +324,7 @@ export default function render(ast, createComment, createElement, importTemplate
         }
       )
       pushStack({
-        data: value,
+        value,
         children: list,
         keypath: expr.keypath,
       })
@@ -486,7 +486,6 @@ export default function render(ast, createComment, createElement, importTemplate
   // 缓存
   cacheMap,
   cacheKey,
-  cacheValue,
   // 正在渲染的 html 层级
   htmlStack = [ ],
   // 用时定义的模板片段
@@ -498,28 +497,27 @@ export default function render(ast, createComment, createElement, importTemplate
   while (nodeStack.length) {
 
     let { node } = current
-    let { type, attrs, children, trackBy, cache } = node
+    let { type, attrs, children, trackBy, value, cache } = node
 
     if (!current.enter) {
       current.enter = env.TRUE
 
-      if (trackBy) {
+      if (trackBy && value) {
         if (!cacheMap) {
           readCache()
         }
         trackBy = context.get(trackBy).value
         if (trackBy != env.NULL) {
           cacheKey = `${keypath}-${trackBy}`
-          cacheValue = context.get(keypath).value
           cache = cacheMap[ cacheKey ]
-          if (cache && cache.value === cacheValue) {
+          if (cache && cache.value === value) {
             hitCache(cache)
             continue
           }
           else {
             current.cache = {
               key: cacheKey,
-              value: cacheValue,
+              value,
             }
           }
         }
@@ -556,11 +554,11 @@ export default function render(ast, createComment, createElement, importTemplate
 
     if (cache !== env.UNDEFINED) {
       addValue(cache)
-      cacheValue = current.cache
-      if (cacheValue) {
-        cacheValue.result = cache
-        cacheValue.deps = current.deps
-        cacheMap[ cacheValue.key ] = cacheValue
+      cacheKey = current.cache
+      if (cacheKey) {
+        cacheKey.result = cache
+        cacheKey.deps = current.deps
+        cacheMap[ cacheKey.key ] = cacheKey
       }
     }
 
