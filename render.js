@@ -99,21 +99,21 @@ export default function render(ast, createComment, createElement, importTemplate
   let nodeStack = [ ], nodes = [ ], deps = { }
 
   let pushStack = function (node) {
-    if (object.has(node, 'context')) {
+    if (is.array(node.context)) {
       executeFunction(
         context.set,
         context,
         node.context
       )
     }
-    if (object.has(node, 'keypath')) {
+    if (node.keypath !== env.UNDEFINED) {
       array.push(
         keypathList,
         node.keypath
       )
       updateKeypath()
     }
-    if (object.has(node, 'value')) {
+    if (node.value !== env.UNDEFINED) {
       context = context.push(
         node.value,
         keypath
@@ -139,10 +139,10 @@ export default function render(ast, createComment, createElement, importTemplate
     if (helper.htmlTypes[ node.type ]) {
       array.pop(htmlStack)
     }
-    if (object.has(node, 'value')) {
+    if (node.value !== env.UNDEFINED) {
       context = context.pop()
     }
-    if (object.has(node, 'keypath')) {
+    if (node.keypath !== env.UNDEFINED) {
       array.pop(keypathList)
       updateKeypath()
     }
@@ -363,7 +363,7 @@ export default function render(ast, createComment, createElement, importTemplate
       let { type, expr, safe } = children[ 0 ]
       if (safe
         && type === nodeType.EXPRESSION
-        && (expr.type === expressionNodeType.MEMBER || expr.type === expressionNodeType.IDENTIFIER)
+        && is.string(expr.keypath)
       ) {
         bindTo = expr.keypath
         current.binding = env.TRUE
@@ -418,7 +418,7 @@ export default function render(ast, createComment, createElement, importTemplate
 
   leave[ nodeType.ELEMENT ] = function (node, current) {
 
-    let attributes = [ ], directives = [ ], children = [ ], properties, child
+    let attributes = [ ], directives = [ ], children = [ ]
 
     if (current.children) {
       array.each(
@@ -437,19 +437,7 @@ export default function render(ast, createComment, createElement, importTemplate
       )
     }
 
-    let nodeChildren = node.children
-    if (nodeChildren && nodeChildren.length === 1) {
-      child = nodeChildren[ 0 ]
-      if (child.type === nodeType.EXPRESSION
-        && child.safe === env.FALSE
-      ) {
-        properties = {
-          innerHTML: children[ 0 ],
-        }
-        children.length = 0
-      }
-    }
-
+    // 父节点是一个虚拟节点
     let cache = current.parent && current.parent.cache
 
     return createElement(
@@ -458,10 +446,9 @@ export default function render(ast, createComment, createElement, importTemplate
         keypath,
         attributes,
         directives,
-        properties,
         children,
       },
-      node.component,
+      node,
       cache ? cache.key : env.UNDEFINED
     )
   }
@@ -506,7 +493,7 @@ export default function render(ast, createComment, createElement, importTemplate
     if (!current.enter) {
       current.enter = env.TRUE
 
-      if (trackBy && value) {
+      if (trackBy && value !== env.UNDEFINED) {
         if (!cacheMap) {
           readCache()
         }
