@@ -149,10 +149,12 @@ export default function render(ast, createComment, createElement, importTemplate
     if (sibling) {
       sibling = env.NULL
     }
-    object.extend(
-      current.parent ? current.parent.deps : deps,
-      current.deps
-    )
+    if (!current.binding) {
+      object.extend(
+        current.parent ? current.parent.deps : deps,
+        current.deps
+      )
+    }
     current = current.parent
     array.pop(nodeStack)
   }
@@ -364,6 +366,7 @@ export default function render(ast, createComment, createElement, importTemplate
         && (expr.type === expressionNodeType.MEMBER || expr.type === expressionNodeType.IDENTIFIER)
       ) {
         bindTo = expr.keypath
+        current.binding = env.TRUE
       }
     }
     return createAttribute(
@@ -390,7 +393,7 @@ export default function render(ast, createComment, createElement, importTemplate
     return current.children
   }
 
-  leave[ nodeType.SPREAD ] = function (node) {
+  leave[ nodeType.SPREAD ] = function (node, current) {
     let expr = node.expr, value = executeExpr(expr), keypath = expr.keypath
     if (is.object(value)) {
       let list = makeNodes([ ])
@@ -407,6 +410,7 @@ export default function render(ast, createComment, createElement, importTemplate
           )
         }
       )
+      current.binding = env.TRUE
       return list
     }
     logger.fatal(`Spread "${keypath}" must be an object.`)
