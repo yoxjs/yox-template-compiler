@@ -10,6 +10,7 @@ import * as keypathUtil from 'yox-common/util/keypath'
 
 import executeFunction from 'yox-common/function/execute'
 import executeExpression from 'yox-expression-compiler/execute'
+import stringifyExpression from 'yox-expression-compiler/stringify'
 import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
 
 import Context from './src/Context'
@@ -93,10 +94,7 @@ export default function render(ast, createComment, createElement, importTemplate
   getKeypath.toString = getKeypath
   data[ syntax.SPECIAL_KEYPATH ] = getKeypath
 
-  let context = new Context(data, keypath)
-
-
-  let nodeStack = [ ], nodes = [ ], deps = { }
+  let context = new Context(data, keypath), nodeStack = [ ], nodes = [ ], deps = { }
 
   let pushStack = function (node) {
     if (is.array(node.context)) {
@@ -394,9 +392,9 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   leave[ nodeType.SPREAD ] = function (node, current) {
-    let expr = node.expr, value = executeExpr(expr), keypath = expr.keypath
+    let expr = node.expr, value = executeExpr(expr)
     if (is.object(value)) {
-      let list = makeNodes([ ])
+      let keypath = expr.keypath, hasKeypath = is.string(keypath), list = makeNodes([ ])
       object.each(
         value,
         function (value, name) {
@@ -405,15 +403,15 @@ export default function render(ast, createComment, createElement, importTemplate
             createAttribute(
               name,
               value,
-              keypathUtil.join(keypath, name)
+              hasKeypath ? keypathUtil.join(keypath, name) : env.UNDEFINED
             )
           )
         }
       )
-      current.binding = env.TRUE
+      current.binding = hasKeypath
       return list
     }
-    logger.fatal(`Spread "${keypath}" must be an object.`)
+    logger.fatal(`Spread "${stringifyExpression(expr)}" must be an object.`)
   }
 
   leave[ nodeType.ELEMENT ] = function (node, current) {
