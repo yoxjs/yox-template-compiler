@@ -43,10 +43,27 @@ export default class Context {
 
     let instance = this
     let { keypath, lookup } = formatKeypath(key)
-    let contextKeypath = instance.keypath, originalKeypath = keypath
+    let originalKeypath = keypath, deps = { }
 
     let { data, cache } = instance
+    let joinKeypath = function (context, keypath) {
+      return keypathUtil.join(context.keypath, keypath)
+    }
+    let addDep = function (context, keypath, value) {
+      let list = [ ]
+      array.each(
+        keypathUtil.parse(keypath),
+        function (item, subpath) {
+          array.push(list, item)
+          subpath = keypathUtil.stringify(list)
+          deps[ joinKeypath(context, subpath) ] = subpath === keypath ? value : context.get(subpath).value
+        }
+      )
+    }
+
     if (!object.has(cache, keypath)) {
+      addDep(instance, keypath, data)
+
       if (keypath) {
         let result
 
@@ -54,9 +71,11 @@ export default class Context {
           while (instance) {
             result = object.get(instance.data, keypath)
             if (result) {
+              addDep(instance, keypath, result.value)
               break
             }
             else {
+              addDep(instance, keypath, env.UNDEFINED)
               instance = instance.parent
             }
           }
@@ -67,15 +86,17 @@ export default class Context {
 
         if (result) {
           cache[ keypath ] = {
-            keypath: keypathUtil.join(instance.keypath, keypath),
+            keypath: joinKeypath(instance, keypath),
             value: result.value,
+            deps,
           }
         }
       }
       else {
         cache[ keypath ] = {
-          keypath: contextKeypath,
+          keypath: instance.keypath,
           value: data,
+          deps,
         }
       }
     }
@@ -87,7 +108,8 @@ export default class Context {
 
     // 找不到就用当前的 keypath 吧
     return {
-      keypath: keypathUtil.join(contextKeypath, originalKeypath),
+      keypath: joinKeypath(this, keypath),
+      deps,
     }
 
   }
