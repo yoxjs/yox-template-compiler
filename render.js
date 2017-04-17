@@ -300,7 +300,16 @@ export default function render(ast, createComment, createElement, importTemplate
     }
 
     if (each) {
+
       let list = [ ]
+      // push 之后 keypath 会更新
+      // 这样 each 的 children 才能取到正确的 keypath
+      pushStack({
+        value,
+        children: list,
+        keypath: expr.keypath,
+      })
+
       each(
         value,
         function (value, i, item) {
@@ -317,17 +326,14 @@ export default function render(ast, createComment, createElement, importTemplate
 
           if (trackBy) {
             item.trackBy = trackBy
+            item.trackBase = keypath
           }
 
           array.push(list, item)
 
         }
       )
-      pushStack({
-        value,
-        children: list,
-        keypath: expr.keypath,
-      })
+
     }
 
     return env.FALSE
@@ -482,11 +488,10 @@ export default function render(ast, createComment, createElement, importTemplate
 
   pushNode(ast)
 
-
   while (nodeStack.length) {
 
     let { node } = current
-    let { type, attrs, children, trackBy, value, cache } = node
+    let { type, attrs, children, trackBy, trackBase, value, cache } = node
 
     if (!current.enter) {
       current.enter = env.TRUE
@@ -497,7 +502,7 @@ export default function render(ast, createComment, createElement, importTemplate
         }
         trackBy = context.get(trackBy).value
         if (trackBy != env.NULL) {
-          cacheKey = `${keypath}-${trackBy}`
+          cacheKey = `${trackBase}-${trackBy}`
           cache = cacheMap[ cacheKey ]
           if (cache && cache.value === value) {
             hitCache(cache)
