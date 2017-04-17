@@ -447,6 +447,7 @@ export default function render(ast, createComment, createElement, importTemplate
     return createElement(
       {
         name: node.name,
+        component: node.component,
         keypath,
         attributes,
         directives,
