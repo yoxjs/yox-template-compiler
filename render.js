@@ -199,7 +199,7 @@ export default function render(ast, createComment, createElement, importTemplate
   let readCache = function () {
     cacheMap = ast.cacheMap
     if (cacheMap) {
-      array.each(
+      object.each(
         cacheMap,
         function (cache) {
           cache.flag = env.TRUE
@@ -225,13 +225,6 @@ export default function render(ast, createComment, createElement, importTemplate
     else if (cacheMap) {
       ast.cacheMap = cacheMap
     }
-  }
-
-  let hitCache = function (cache) {
-    cache.flag = env.NULL
-    object.extend(deps, cache.deps)
-    addValue(cache.result)
-    popStack()
   }
 
   let filterElse = function (node) {
@@ -288,7 +281,7 @@ export default function render(ast, createComment, createElement, importTemplate
 
     popStack()
 
-    let { expr, index, trackBy, children } = node
+    let { expr, index, children } = node
 
     let value = executeExpr(expr), each
 
@@ -324,11 +317,6 @@ export default function render(ast, createComment, createElement, importTemplate
             item.context = [ index, i ]
           }
 
-          if (trackBy) {
-            item.trackBy = trackBy
-            item.trackBase = keypath
-          }
-
           array.push(list, item)
 
         }
@@ -361,8 +349,9 @@ export default function render(ast, createComment, createElement, importTemplate
     return executeExpr(node.expr)
   }
 
-  leave[ nodeType.ATTRIBUTE ] = function (node, current) {
-    let children = node.children, bindTo
+  leave[ nodeType.ATTRIBUTE ] = function (node) {
+    let { name, children } = node
+    let value = mergeNodes(current.children, children), bindTo
     if (children && children.length === 1) {
       let { type, expr, safe } = children[ 0 ]
       if (safe
@@ -373,31 +362,61 @@ export default function render(ast, createComment, createElement, importTemplate
         current.binding = env.TRUE
       }
     }
-    return createAttribute(
-      node.name,
-      mergeNodes(current.children, children),
-      bindTo
-    )
+    return createAttribute(name, value, bindTo)
   }
 
-  leave[ nodeType.DIRECTIVE ] = function (node, current) {
+  leave[ nodeType.DIRECTIVE ] = function (node) {
+    let { name, modifier, children } = node
+    let value = mergeNodes(current.children, children)
+
+    if (name === syntax.KEYWORD_UNIQUE) {
+      if (value != env.NULL) {
+        if (!cacheMap) {
+          readCache()
+        }
+        cache = cacheMap[ value ]
+        if (cache) {
+          // 回退到元素层级
+          while (current.node.type !== nodeType.ELEMENT) {
+            popStack()
+          }
+          cache.flag = env.NULL
+          object.extend(current.deps, cache.deps)
+          return cache.result
+        }
+        else {
+          // 缓存挂在元素上
+          let parent
+          while (parent = current.parent) {
+            if (parent.node.type === nodeType.ELEMENT) {
+              parent.cache = {
+                key: value,
+              }
+              break
+            }
+          }
+        }
+      }
+      return
+    }
+
     return {
       keypath,
-      name: node.name,
+      name,
+      value,
+      modifier,
       type: nodeType.DIRECTIVE,
-      modifier: node.modifier,
-      value: mergeNodes(current.children, node.children),
     }
   }
 
   leave[ nodeType.IF ] =
   leave[ nodeType.ELSE_IF ] =
-  leave[ nodeType.ELSE ] = function (node, current) {
+  leave[ nodeType.ELSE ] = function (node) {
     filter = filterElse
     return current.children
   }
 
-  leave[ nodeType.SPREAD ] = function (node, current) {
+  leave[ nodeType.SPREAD ] = function (node) {
     let expr = node.expr, value = executeExpr(expr)
     if (is.object(value)) {
       let keypath = expr.keypath, hasKeypath = is.string(keypath), list = makeNodes([ ])
@@ -420,7 +439,7 @@ export default function render(ast, createComment, createElement, importTemplate
     logger.fatal(`Spread "${stringifyExpression(expr)}" must be an object.`)
   }
 
-  leave[ nodeType.ELEMENT ] = function (node, current) {
+  leave[ nodeType.ELEMENT ] = function (node) {
 
     let attributes = [ ], directives = [ ], children = [ ]
 
@@ -441,20 +460,17 @@ export default function render(ast, createComment, createElement, importTemplate
       )
     }
 
-    // 父节点是一个虚拟节点
-    let cache = current.parent && current.parent.cache
-
     return createElement(
       {
         name: node.name,
+        key: current.cache ? current.cache.key : env.UNDEFINED,
         component: node.component,
         keypath,
         attributes,
         directives,
         children,
       },
-      node,
-      cache ? cache.key : env.UNDEFINED
+      node
     )
   }
 
@@ -479,9 +495,11 @@ export default function render(ast, createComment, createElement, importTemplate
   sibling,
   // 过滤某些节点的函数
   filter,
+  // 节点的值
+  value,
   // 缓存
+  cache,
   cacheMap,
-  cacheKey,
   // 正在渲染的 html 层级
   htmlStack = [ ],
   // 用时定义的模板片段
@@ -492,31 +510,10 @@ export default function render(ast, createComment, createElement, importTemplate
   while (nodeStack.length) {
 
     let { node } = current
-    let { type, attrs, children, trackBy, trackBase, value, cache } = node
+    let { type, attrs, children } = node
 
     if (!current.enter) {
       current.enter = env.TRUE
-
-      if (trackBy && value !== env.UNDEFINED) {
-        if (!cacheMap) {
-          readCache()
-        }
-        trackBy = context.get(trackBy).value
-        if (trackBy != env.NULL) {
-          cacheKey = `${trackBase}-${trackBy}`
-          cache = cacheMap[ cacheKey ]
-          if (cache && cache.value === value) {
-            hitCache(cache)
-            continue
-          }
-          else {
-            current.cache = {
-              key: cacheKey,
-              value,
-            }
-          }
-        }
-      }
 
       if (
         executeFunction(
@@ -527,6 +524,7 @@ export default function render(ast, createComment, createElement, importTemplate
       ) {
         continue
       }
+
     }
 
     if (attrs && !current.attrs) {
@@ -541,19 +539,19 @@ export default function render(ast, createComment, createElement, importTemplate
       continue
     }
 
-    cache = executeFunction(
+    value = executeFunction(
       leave[ type ],
       env.NULL,
       [ node, current ]
     )
 
-    if (cache !== env.UNDEFINED) {
-      addValue(cache)
-      cacheKey = current.cache
-      if (cacheKey) {
-        cacheKey.result = cache
-        cacheKey.deps = current.deps
-        cacheMap[ cacheKey.key ] = cacheKey
+    if (value !== env.UNDEFINED) {
+      addValue(value)
+      cache = current.cache
+      if (cache) {
+        cache.result = value
+        cache.deps = current.deps
+        cacheMap[ cache.key ] = cache
       }
     }
 

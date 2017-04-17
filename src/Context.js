@@ -75,7 +75,6 @@ export default class Context {
               break
             }
             else {
-              addDep(instance, keypath, env.UNDEFINED)
               instance = instance.parent
             }
           }

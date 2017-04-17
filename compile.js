@@ -212,33 +212,31 @@ export default function compile(content) {
               )
             )
           }
+          else if (string.startsWith(name, syntax.DIRECTIVE_EVENT_PREFIX)) {
+            name = string.slice(name, syntax.DIRECTIVE_EVENT_PREFIX.length)
+            addChild(
+              new Directive(
+                'event',
+                string.camelCase(name)
+              )
+            )
+          }
+          else if (string.startsWith(name, syntax.DIRECTIVE_CUSTOM_PREFIX)) {
+            name = string.slice(name, syntax.DIRECTIVE_CUSTOM_PREFIX.length)
+            addChild(
+              new Directive(
+                string.camelCase(name)
+              )
+            )
+          }
           else {
-            if (string.startsWith(name, syntax.DIRECTIVE_EVENT_PREFIX)) {
-              name = string.slice(name, syntax.DIRECTIVE_EVENT_PREFIX.length)
-              addChild(
-                new Directive(
-                  'event',
-                  string.camelCase(name)
-                )
+            addChild(
+              new Attribute(
+                htmlStack[ 0 ].component
+                ? string.camelCase(name)
+                : name
               )
-            }
-            else if (string.startsWith(name, syntax.DIRECTIVE_CUSTOM_PREFIX)) {
-              name = string.slice(name, syntax.DIRECTIVE_CUSTOM_PREFIX.length)
-              addChild(
-                new Directive(
-                  string.camelCase(name)
-                )
-              )
-            }
-            else {
-              addChild(
-                new Attribute(
-                  htmlStack[ 0 ].component
-                  ? string.camelCase(name)
-                  : name
-                )
-              )
-            }
+            )
           }
           currentQuote = match[ 2 ]
           if (!currentQuote) {
@@ -297,18 +295,12 @@ export default function compile(content) {
   const delimiterParsers = [
     function (source, all) {
       if (string.startsWith(source, syntax.EACH)) {
-        // {{#each list:index trackBy }}
-        let terms = string.split(slicePrefix(source, syntax.EACH), char.CHAR_WHITESPACE)
-        let pair = terms[ 0 ], trackBy = terms[ 1 ]
-        if (pair) {
-          let terms = string.split(pair, char.CHAR_COLON)
-          if (terms[ 0 ]) {
-            return new Each(
-              compileExpression(string.trim(terms[ 0 ])),
-              string.trim(terms[ 1 ]),
-              string.trim(trackBy)
-            )
-          }
+        let terms = string.split(slicePrefix(source, syntax.EACH), char.CHAR_COLON)
+        if (terms[ 0 ]) {
+          return new Each(
+            compileExpression(string.trim(terms[ 0 ])),
+            string.trim(terms[ 1 ])
+          )
         }
         throwError(`invalid each: ${all}`)
       }
