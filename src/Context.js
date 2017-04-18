@@ -56,13 +56,14 @@ export default class Context {
         function (item, subpath) {
           array.push(list, item)
           subpath = keypathUtil.stringify(list)
-          deps[ joinKeypath(context, subpath) ] = subpath === keypath ? value : context.get(subpath).value
+          deps[
+            joinKeypath(context, subpath)
+          ] = subpath === keypath ? value : context.get(subpath).value
         }
       )
     }
 
     if (!object.has(cache, keypath)) {
-      addDep(instance, keypath, data)
 
       if (keypath) {
         let result
@@ -71,7 +72,6 @@ export default class Context {
           while (instance) {
             result = object.get(instance.data, keypath)
             if (result) {
-              addDep(instance, keypath, result.value)
               break
             }
             else {
@@ -84,6 +84,7 @@ export default class Context {
         }
 
         if (result) {
+          addDep(instance, keypath, result.value)
           cache[ keypath ] = {
             keypath: joinKeypath(instance, keypath),
             value: result.value,
@@ -92,6 +93,7 @@ export default class Context {
         }
       }
       else {
+        addDep(instance, keypath, data)
         cache[ keypath ] = {
           keypath: instance.keypath,
           value: data,
@@ -99,9 +101,12 @@ export default class Context {
         }
       }
     }
-    if (object.has(cache, keypath)) {
-      return cache[ keypath ]
+    cache = cache[ keypath ]
+    if (cache) {
+      return cache
     }
+
+    addDep(this, keypath, env.UNDEFINED)
 
     logger.warn(`Failed to lookup "${key}".`)
 
