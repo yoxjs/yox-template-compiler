@@ -196,37 +196,6 @@ export default function render(ast, createComment, createElement, importTemplate
     return result.value
   }
 
-  let readCache = function () {
-    cacheMap = ast.cacheMap
-    if (cacheMap) {
-      object.each(
-        cacheMap,
-        function (cache) {
-          cache.flag = env.TRUE
-        }
-      )
-    }
-    else {
-      cacheMap = { }
-    }
-  }
-
-  let updateCache = function () {
-    if (ast.cacheMap) {
-      object.each(
-        cacheMap,
-        function (cache, key) {
-          if (cache.flag) {
-            delete cacheMap[ key ]
-          }
-        }
-      )
-    }
-    else if (cacheMap) {
-      ast.cacheMap = cacheMap
-    }
-  }
-
   let filterElse = function (node) {
     if (helper.elseTypes[ node.type ]) {
       return env.FALSE
@@ -371,16 +340,17 @@ export default function render(ast, createComment, createElement, importTemplate
 
     if (name === syntax.KEYWORD_UNIQUE) {
       if (value != env.NULL) {
-        if (!cacheMap) {
-          readCache()
+        if (!currentCache) {
+          prevCache = ast.cache
+          currentCache = ast.cache = { }
         }
-        cache = cacheMap[ value ]
+        cache = prevCache && prevCache[ value ]
         if (cache) {
+          currentCache[ value ] = cache
           // 回退到元素层级
           while (current.node.type !== nodeType.ELEMENT) {
             popStack()
           }
-          cache.flag = env.NULL
           object.extend(current.deps, cache.deps)
           return cache.result
         }
@@ -499,7 +469,8 @@ export default function render(ast, createComment, createElement, importTemplate
   value,
   // 缓存
   cache,
-  cacheMap,
+  prevCache,
+  currentCache,
   // 正在渲染的 html 层级
   htmlStack = [ ],
   // 用时定义的模板片段
@@ -551,15 +522,13 @@ export default function render(ast, createComment, createElement, importTemplate
       if (cache) {
         cache.result = value
         cache.deps = current.deps
-        cacheMap[ cache.key ] = cache
+        currentCache[ cache.key ] = cache
       }
     }
 
     popStack()
 
   }
-
-  updateCache()
 
   return { nodes, deps }
 
