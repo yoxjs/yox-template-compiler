@@ -77,12 +77,13 @@ function trimBreakline(content) {
  */
 export default function compile(content) {
 
-  let result = compileCache[ content ]
-  if (result) {
-    return result
+  let nodeList = compileCache[ content ]
+  if (nodeList) {
+    return nodeList
   }
+  nodeList = [ ]
 
-  let nodeList = [ ], nodeStack = [ ], ifStack = [ ], htmlStack = [ ], currentQuote
+  let nodeStack = [ ], ifStack = [ ], htmlStack = [ ], currentQuote
 
   let throwError = function (msg) {
     logger.fatal(`Error compiling template:${char.CHAR_BREAKLINE}${content}${char.CHAR_BREAKLINE}- ${msg}`)
@@ -216,7 +217,7 @@ export default function compile(content) {
             name = string.slice(name, syntax.DIRECTIVE_EVENT_PREFIX.length)
             addChild(
               new Directive(
-                'event',
+                syntax.DIRECTIVE_EVENT,
                 string.camelCase(name)
               )
             )

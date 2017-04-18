@@ -17,5 +17,6 @@ export const DIRECTIVE_EVENT_PREFIX = 'on-'
 export const DIRECTIVE_REF = 'ref'
 export const DIRECTIVE_LAZY = 'lazy'
 export const DIRECTIVE_MODEL = 'model'
+export const DIRECTIVE_EVENT = 'event'
 
 export const KEYWORD_UNIQUE = 'key'
