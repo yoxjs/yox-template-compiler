@@ -95,7 +95,7 @@ export default function render(ast, createComment, createElement, importTemplate
   getKeypath.toString = getKeypath
   data[ syntax.SPECIAL_KEYPATH ] = getKeypath
 
-  let context = new Context(data, keypath), nodeStack = [ ], nodeList = [ ], binding = env.FALSE
+  let context = new Context(data, keypath), nodeStack = [ ], nodeList = [ ]
 
   let pushStack = function (node) {
     if (is.array(node.context)) {
@@ -180,17 +180,18 @@ export default function render(ast, createComment, createElement, importTemplate
     }
   }
 
+  let expressionKeypath, needExpressionKeypath = env.TRUE, needDep = env.TRUE
   let executeExpr = function (expr) {
     return executeExpression(
       expr,
       context,
       function (keypath) {
-        if (binding === env.TRUE) {
-          binding = keypath
+        if (needExpressionKeypath) {
+          expressionKeypath = keypath
         }
       },
       function (key, value) {
-        if (binding === env.FALSE) {
+        if (needDep) {
           addDep(key, value)
         }
       }
@@ -249,6 +250,8 @@ export default function render(ast, createComment, createElement, importTemplate
 
   enter[ nodeType.EACH ] = function (node) {
 
+    needExpressionKeypath = env.TRUE
+
     popStack()
 
     let { expr, index, children } = node
@@ -270,7 +273,7 @@ export default function render(ast, createComment, createElement, importTemplate
       pushStack({
         value,
         children: list,
-        keypath: expr.keypath,
+        keypath: expressionKeypath,
       })
 
       each(
@@ -294,14 +297,18 @@ export default function render(ast, createComment, createElement, importTemplate
 
     }
 
+    expressionKeypath =
+    needExpressionKeypath = env.FALSE
+
     return env.FALSE
 
   }
 
   enter[ nodeType.ATTRIBUTE ] = function (node) {
     let { children } = node
-    if (children && children.length === 1) {
-      binding = children[ 0 ].bindable || env.FALSE
+    if (children && children.length === 1 && children[ 0 ].bindable) {
+      needExpressionKeypath = env.TRUE
+      needDep = env.FALSE
     }
   }
 
@@ -330,9 +337,11 @@ export default function render(ast, createComment, createElement, importTemplate
     node = createAttribute(
       node.name,
       mergeNodes(current.children, node.children),
-      binding
+      expressionKeypath
     )
-    binding = env.FALSE
+    expressionKeypath =
+    needExpressionKeypath = env.FALSE
+    needDep = env.TRUE
     return node
   }
 
@@ -391,10 +400,13 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   leave[ nodeType.SPREAD ] = function (node) {
-    binding = env.TRUE
+
+    needExpressionKeypath = env.TRUE
+    needDep = env.FALSE
+
     let value = executeExpr(node.expr), list = makeNodes([ ])
     if (is.object(value)) {
-      let hasBinding = is.string(binding)
+      let hasBinding = is.string(expressionKeypath)
       object.each(
         value,
         function (value, name) {
@@ -403,7 +415,7 @@ export default function render(ast, createComment, createElement, importTemplate
             createAttribute(
               name,
               value,
-              hasBinding ? keypathUtil.join(binding, name) : env.UNDEFINED
+              hasBinding ? keypathUtil.join(expressionKeypath, name) : env.UNDEFINED
             )
           )
         }
@@ -412,7 +424,11 @@ export default function render(ast, createComment, createElement, importTemplate
     else {
       logger.fatal(`Spread "${stringifyExpression(node.expr)}" must be an object.`)
     }
-    binding = env.FALSE
+
+    expressionKeypath =
+    needExpressionKeypath = env.FALSE
+    needDep = env.TRUE
+
     return list
   }
 
