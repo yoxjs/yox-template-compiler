@@ -18,7 +18,7 @@ export const attrTypes = { }
 // 叶子节点类型
 export const leafTypes = { }
 // 支持绑定的表达式
-const bindableTypes = { }
+export const bindableTypes = { }
 // 内置指令，无需加前缀
 export const builtInDirectives = { }
 // 名称 -> 类型的映射

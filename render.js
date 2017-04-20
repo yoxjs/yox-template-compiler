@@ -75,11 +75,12 @@ function mergeNodes(outputNodes, sourceNodes) {
  * @param {Object} ast 编译出来的抽象语法树
  * @param {Function} createComment 创建注释节点
  * @param {Function} createElement 创建元素节点
- * @param {Function} importTemplate 导入子模板，如果是纯模板，可不传
+ * @param {?Function} importTemplate 导入子模板，如果是纯模板，可不传
+ * @param {?Function} addDep 渲染模板过程中使用的数据依赖，如果是纯模板，可不传
  * @param {Object} data 渲染模板的数据，如果渲染纯模板，可不传
- * @return {Object} { nodes: x, deps: { } }
+ * @return {Array}
  */
-export default function render(ast, createComment, createElement, importTemplate, data) {
+export default function render(ast, createComment, createElement, importTemplate, addDep, data) {
 
   let keypath, keypathList = [ ],
   updateKeypath = function () {
@@ -94,7 +95,7 @@ export default function render(ast, createComment, createElement, importTemplate
   getKeypath.toString = getKeypath
   data[ syntax.SPECIAL_KEYPATH ] = getKeypath
 
-  let context = new Context(data, keypath), nodeStack = [ ], nodes = [ ], deps = { }, binding = env.FALSE
+  let context = new Context(data, keypath), nodeStack = [ ], nodeList = [ ], binding = env.FALSE
 
   let pushStack = function (node) {
     if (is.array(node.context)) {
@@ -125,7 +126,6 @@ export default function render(ast, createComment, createElement, importTemplate
       {
         node,
         index: -1,
-        deps: { },
         parent: current,
       }
     )
@@ -170,7 +170,7 @@ export default function render(ast, createComment, createElement, importTemplate
       collection = parent.children || (parent.children = makeNodes([ ]))
     }
     else {
-      collection = nodes
+      collection = nodeList
     }
     if (isNodes(value)) {
       array.push(collection, value)
@@ -185,11 +185,13 @@ export default function render(ast, createComment, createElement, importTemplate
       expr,
       context,
       function (keypath) {
-        binding = keypath
+        if (binding === env.TRUE) {
+          binding = keypath
+        }
       },
       function (key, value) {
         if (binding === env.FALSE) {
-          deps[ key ] = value
+          addDep(key, value)
         }
       }
     )
@@ -299,7 +301,7 @@ export default function render(ast, createComment, createElement, importTemplate
   enter[ nodeType.ATTRIBUTE ] = function (node) {
     let { children } = node
     if (children && children.length === 1) {
-      binding = children[ 0 ].bindable
+      binding = children[ 0 ].bindable || env.FALSE
     }
   }
 
@@ -307,6 +309,7 @@ export default function render(ast, createComment, createElement, importTemplate
     let attribute = {
       name,
       value,
+      keypath,
       type: nodeType.ATTRIBUTE,
     }
     if (is.string(binding)) {
@@ -350,7 +353,7 @@ export default function render(ast, createComment, createElement, importTemplate
           while (current.node.type !== nodeType.ELEMENT) {
             popStack()
           }
-          deps[ result.keypath ] = result.value
+          addDep(result.keypath, result.value)
           return cache.result
         }
         else {
@@ -531,6 +534,6 @@ export default function render(ast, createComment, createElement, importTemplate
 
   }
 
-  return { nodes, deps }
+  return nodeList
 
 }
