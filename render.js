@@ -337,18 +337,19 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   leave[ nodeType.DIRECTIVE ] = function (node) {
-    let { name, modifier, children } = node
-    let key = mergeNodes(current.children, children)
+    let { name } = node
+    let value = mergeNodes(current.children, node.children)
+    let result = context.get(keypath)
+
     if (name === syntax.KEYWORD_UNIQUE) {
-      if (key != env.NULL) {
+      if (value != env.NULL) {
         if (!currentCache) {
           prevCache = ast.cache
           currentCache = ast.cache = { }
         }
-        cache = prevCache && prevCache[ key ]
-        let result = context.get(keypath)
+        cache = prevCache && prevCache[ value ]
         if (cache && cache.value === result.value) {
-          currentCache[ key ] = cache
+          currentCache[ value ] = cache
           // 回退到元素层级
           while (current.node.type !== nodeType.ELEMENT) {
             popStack()
@@ -361,7 +362,7 @@ export default function render(ast, createComment, createElement, importTemplate
           while (node = current.parent) {
             if (node.node.type === nodeType.ELEMENT) {
               node.cache = {
-                key,
+                key: value,
                 value: result.value,
               }
               break
@@ -373,10 +374,11 @@ export default function render(ast, createComment, createElement, importTemplate
     }
 
     return {
-      keypath,
       name,
       value,
-      modifier,
+      keypath,
+      modifier: node.modifier,
+      context: result.value,
       type: nodeType.DIRECTIVE,
     }
   }
