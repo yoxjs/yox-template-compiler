@@ -35,7 +35,7 @@ export default class Context {
       if (object.has(instance.cache, keypath)) {
         delete instance.cache[ keypath ]
       }
-      object.set(instance.data, keypath, value)
+      instance.data[ keypath ] = value
     }
   }
 

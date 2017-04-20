@@ -94,7 +94,7 @@ export default function render(ast, createComment, createElement, importTemplate
   getKeypath.toString = getKeypath
   data[ syntax.SPECIAL_KEYPATH ] = getKeypath
 
-  let context = new Context(data, keypath), nodeStack = [ ], nodes = [ ], deps = { }
+  let context = new Context(data, keypath), nodeStack = [ ], nodes = [ ], deps = { }, binding = env.FALSE
 
   let pushStack = function (node) {
     if (is.array(node.context)) {
@@ -147,12 +147,6 @@ export default function render(ast, createComment, createElement, importTemplate
     if (sibling) {
       sibling = env.NULL
     }
-    if (!current.binding) {
-      object.extend(
-        current.parent ? current.parent.deps : deps,
-        current.deps
-      )
-    }
     current = current.parent
     array.pop(nodeStack)
   }
@@ -187,13 +181,18 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   let executeExpr = function (expr) {
-    let result = executeExpression(expr, context)
-    expr.keypath = result.keypath
-    object.extend(
-      current.deps,
-      result.deps
+    return executeExpression(
+      expr,
+      context,
+      function (keypath) {
+        binding = keypath
+      },
+      function (key, value) {
+        if (binding === env.FALSE) {
+          deps[ key ] = value
+        }
+      }
     )
-    return result.value
   }
 
   let filterElse = function (node) {
@@ -297,15 +296,21 @@ export default function render(ast, createComment, createElement, importTemplate
 
   }
 
-  let createAttribute = function (name, value, bindTo) {
+  enter[ nodeType.ATTRIBUTE ] = function (node) {
+    let { children } = node
+    if (children && children.length === 1) {
+      binding = children[ 0 ].bindable
+    }
+  }
+
+  let createAttribute = function (name, value, binding) {
     let attribute = {
       name,
       value,
-      keypath,
       type: nodeType.ATTRIBUTE,
     }
-    if (is.string(bindTo)) {
-      attribute.bindTo = bindTo
+    if (is.string(binding)) {
+      attribute.binding = binding
     }
     return attribute
   }
@@ -319,48 +324,42 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   leave[ nodeType.ATTRIBUTE ] = function (node) {
-    let { name, children } = node
-    let value = mergeNodes(current.children, children), bindTo
-    if (children && children.length === 1) {
-      let { type, expr, safe } = children[ 0 ]
-      if (safe
-        && type === nodeType.EXPRESSION
-        && is.string(expr.keypath)
-      ) {
-        bindTo = expr.keypath
-        current.binding = env.TRUE
-      }
-    }
-    return createAttribute(name, value, bindTo)
+    node = createAttribute(
+      node.name,
+      mergeNodes(current.children, node.children),
+      binding
+    )
+    binding = env.FALSE
+    return node
   }
 
   leave[ nodeType.DIRECTIVE ] = function (node) {
     let { name, modifier, children } = node
-    let value = mergeNodes(current.children, children)
-
+    let key = mergeNodes(current.children, children)
     if (name === syntax.KEYWORD_UNIQUE) {
-      if (value != env.NULL) {
+      if (key != env.NULL) {
         if (!currentCache) {
           prevCache = ast.cache
           currentCache = ast.cache = { }
         }
-        cache = prevCache && prevCache[ value ]
-        if (cache) {
-          currentCache[ value ] = cache
+        cache = prevCache && prevCache[ key ]
+        let result = context.get(keypath)
+        if (cache && cache.value === result.value) {
+          currentCache[ key ] = cache
           // 回退到元素层级
           while (current.node.type !== nodeType.ELEMENT) {
             popStack()
           }
-          object.extend(current.deps, cache.deps)
+          deps[ result.keypath ] = result.value
           return cache.result
         }
         else {
           // 缓存挂在元素上
-          let parent
-          while (parent = current.parent) {
-            if (parent.node.type === nodeType.ELEMENT) {
-              parent.cache = {
-                key: value,
+          while (node = current.parent) {
+            if (node.node.type === nodeType.ELEMENT) {
+              node.cache = {
+                key,
+                value: result.value,
               }
               break
             }
@@ -387,9 +386,10 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   leave[ nodeType.SPREAD ] = function (node) {
-    let expr = node.expr, value = executeExpr(expr)
+    binding = env.TRUE
+    let value = executeExpr(node.expr), list = makeNodes([ ])
     if (is.object(value)) {
-      let keypath = expr.keypath, hasKeypath = is.string(keypath), list = makeNodes([ ])
+      let hasBinding = is.string(binding)
       object.each(
         value,
         function (value, name) {
@@ -398,15 +398,17 @@ export default function render(ast, createComment, createElement, importTemplate
             createAttribute(
               name,
               value,
-              hasKeypath ? keypathUtil.join(keypath, name) : env.UNDEFINED
+              hasBinding ? keypathUtil.join(binding, name) : env.UNDEFINED
             )
           )
         }
       )
-      current.binding = hasKeypath
-      return list
     }
-    logger.fatal(`Spread "${stringifyExpression(expr)}" must be an object.`)
+    else {
+      logger.fatal(`Spread "${stringifyExpression(node.expr)}" must be an object.`)
+    }
+    binding = env.FALSE
+    return list
   }
 
   leave[ nodeType.ELEMENT ] = function (node) {
@@ -521,7 +523,6 @@ export default function render(ast, createComment, createElement, importTemplate
       cache = current.cache
       if (cache) {
         cache.result = value
-        cache.deps = current.deps
         currentCache[ cache.key ] = cache
       }
     }

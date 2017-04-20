@@ -5,6 +5,8 @@ import * as object from 'yox-common/util/object'
 import * as syntax from './syntax'
 import * as nodeType from './nodeType'
 
+import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
+
 // if 带条件的
 export const ifTypes = { }
 // if 分支的
@@ -15,6 +17,8 @@ export const htmlTypes = { }
 export const attrTypes = { }
 // 叶子节点类型
 export const leafTypes = { }
+// 支持绑定的表达式
+const bindableTypes = { }
 // 内置指令，无需加前缀
 export const builtInDirectives = { }
 // 名称 -> 类型的映射
@@ -39,6 +43,9 @@ leafTypes[ nodeType.TEXT ] =
 leafTypes[ nodeType.IMPORT ] =
 leafTypes[ nodeType.SPREAD ] =
 leafTypes[ nodeType.EXPRESSION ] =
+
+bindableTypes[ expressionNodeType.MEMBER ] =
+bindableTypes[ expressionNodeType.IDENTIFIER ] =
 
 builtInDirectives[ syntax.DIRECTIVE_REF ] =
 builtInDirectives[ syntax.DIRECTIVE_LAZY ] =
