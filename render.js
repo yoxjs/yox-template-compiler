@@ -118,9 +118,6 @@ export default function render(ast, createComment, createElement, importTemplate
         keypath
       )
     }
-    if (helper.htmlTypes[ node.type ]) {
-      array.push(htmlStack, node.type)
-    }
     array.push(
       nodeStack,
       {
@@ -134,9 +131,6 @@ export default function render(ast, createComment, createElement, importTemplate
 
   let popStack = function () {
     let { node } = current
-    if (helper.htmlTypes[ node.type ]) {
-      array.pop(htmlStack)
-    }
     if (node.value !== env.UNDEFINED) {
       context = context.pop()
     }
@@ -180,15 +174,13 @@ export default function render(ast, createComment, createElement, importTemplate
     }
   }
 
-  let expressionKeypath, needExpressionKeypath = env.TRUE, needDep = env.TRUE
+  let exprKeypath, needDep = env.TRUE
   let executeExpr = function (expr) {
     return executeExpression(
       expr,
       context,
       function (keypath) {
-        if (needExpressionKeypath) {
-          expressionKeypath = keypath
-        }
+        exprKeypath = keypath
       },
       function (key, value) {
         if (needDep) {
@@ -235,7 +227,7 @@ export default function render(ast, createComment, createElement, importTemplate
     if (!executeExpr(node.expr)) {
       if (sibling
         && !helper.elseTypes[ sibling.type ]
-        && !helper.attrTypes[ array.last(htmlStack) ]
+        && !attributeRending
       ) {
         addValue(
           makeNodes(
@@ -249,8 +241,6 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   enter[ nodeType.EACH ] = function (node) {
-
-    needExpressionKeypath = env.TRUE
 
     popStack()
 
@@ -273,7 +263,7 @@ export default function render(ast, createComment, createElement, importTemplate
       pushStack({
         value,
         children: list,
-        keypath: expressionKeypath,
+        keypath: exprKeypath,
       })
 
       each(
@@ -297,9 +287,6 @@ export default function render(ast, createComment, createElement, importTemplate
 
     }
 
-    expressionKeypath =
-    needExpressionKeypath = env.FALSE
-
     return env.FALSE
 
   }
@@ -307,7 +294,6 @@ export default function render(ast, createComment, createElement, importTemplate
   enter[ nodeType.ATTRIBUTE ] = function (node) {
     let { children } = node
     if (children && children.length === 1 && children[ 0 ].bindable) {
-      needExpressionKeypath = env.TRUE
       needDep = env.FALSE
     }
   }
@@ -337,10 +323,8 @@ export default function render(ast, createComment, createElement, importTemplate
     node = createAttribute(
       node.name,
       mergeNodes(current.children, node.children),
-      expressionKeypath
+      exprKeypath
     )
-    expressionKeypath =
-    needExpressionKeypath = env.FALSE
     needDep = env.TRUE
     return node
   }
@@ -401,12 +385,11 @@ export default function render(ast, createComment, createElement, importTemplate
 
   leave[ nodeType.SPREAD ] = function (node) {
 
-    needExpressionKeypath = env.TRUE
     needDep = env.FALSE
 
     let value = executeExpr(node.expr), list = makeNodes([ ])
     if (is.object(value)) {
-      let hasBinding = is.string(expressionKeypath)
+      let hasBinding = is.string(exprKeypath)
       object.each(
         value,
         function (value, name) {
@@ -415,7 +398,7 @@ export default function render(ast, createComment, createElement, importTemplate
             createAttribute(
               name,
               value,
-              hasBinding ? keypathUtil.join(expressionKeypath, name) : env.UNDEFINED
+              hasBinding ? keypathUtil.join(exprKeypath, name) : env.UNDEFINED
             )
           )
         }
@@ -425,8 +408,6 @@ export default function render(ast, createComment, createElement, importTemplate
       logger.fatal(`Spread "${stringifyExpression(node.expr)}" must be an object.`)
     }
 
-    expressionKeypath =
-    needExpressionKeypath = env.FALSE
     needDep = env.TRUE
 
     return list
@@ -494,8 +475,8 @@ export default function render(ast, createComment, createElement, importTemplate
   cache,
   prevCache,
   currentCache,
-  // 正在渲染的 html 层级
-  htmlStack = [ ],
+  // 是否正在渲染 attribute
+  attributeRending,
   // 用时定义的模板片段
   partials = { }
 
@@ -506,8 +487,8 @@ export default function render(ast, createComment, createElement, importTemplate
     let { node } = current
     let { type, attrs, children } = node
 
-    if (!current.enter) {
-      current.enter = env.TRUE
+    if (!current.enterNode) {
+      current.enterNode = env.TRUE
 
       if (
         executeFunction(
@@ -521,12 +502,17 @@ export default function render(ast, createComment, createElement, importTemplate
 
     }
 
-    if (attrs && !current.attrs) {
+    if (attrs && !current.leaveAttrs) {
+      if (!current.enterAttrs) {
+        attributeRending =
+        current.enterAttrs = env.TRUE
+      }
       if (traverseList(current, attrs) === env.FALSE) {
         continue
       }
+      attributeRending = env.FALSE
+      current.leaveAttrs = env.TRUE
       current.index = -1
-      current.attrs = env.TRUE
     }
 
     if (children && traverseList(current, children) === env.FALSE) {
