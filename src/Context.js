@@ -49,6 +49,11 @@ export default class Context {
     let joinKeypath = function (context, keypath) {
       return keypathUtil.join(context.keypath, keypath)
     }
+    let getValue = function (data, keypath) {
+      if (!is.primitive(data)) {
+        return object.get(data, keypath)
+      }
+    }
 
     if (!object.has(cache, keypath)) {
 
@@ -57,7 +62,7 @@ export default class Context {
 
         if (lookup) {
           while (instance) {
-            result = object.get(instance.data, keypath)
+            result = getValue(instance.data, keypath)
             if (result) {
               break
             }
@@ -67,7 +72,7 @@ export default class Context {
           }
         }
         else {
-          result = object.get(data, keypath)
+          result = getValue(data, keypath)
         }
 
         if (result) {
