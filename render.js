@@ -174,13 +174,15 @@ export default function render(ast, createComment, createElement, importTemplate
     }
   }
 
-  let exprKeypath, needDep = env.TRUE
+  let exprKeypath, needExprKeypath = env.FALSE, needDep = env.TRUE
   let executeExpr = function (expr) {
     return executeExpression(
       expr,
       context,
       function (keypath) {
-        exprKeypath = keypath
+        if (needExprKeypath) {
+          exprKeypath = keypath
+        }
       },
       function (key, value) {
         if (needDep) {
@@ -242,6 +244,8 @@ export default function render(ast, createComment, createElement, importTemplate
 
   enter[ nodeType.EACH ] = function (node) {
 
+    needExprKeypath = env.TRUE
+
     popStack()
 
     let { expr, index, children } = node
@@ -287,6 +291,9 @@ export default function render(ast, createComment, createElement, importTemplate
 
     }
 
+    exprKeypath =
+    needExprKeypath = env.FALSE
+
     return env.FALSE
 
   }
@@ -294,6 +301,7 @@ export default function render(ast, createComment, createElement, importTemplate
   enter[ nodeType.ATTRIBUTE ] = function (node) {
     let { children } = node
     if (children && children.length === 1 && children[ 0 ].bindable) {
+      needExprKeypath = env.TRUE
       needDep = env.FALSE
     }
   }
@@ -325,6 +333,8 @@ export default function render(ast, createComment, createElement, importTemplate
       mergeNodes(current.children, node.children),
       exprKeypath
     )
+    exprKeypath =
+    needExprKeypath = env.FALSE
     needDep = env.TRUE
     return node
   }
@@ -385,6 +395,7 @@ export default function render(ast, createComment, createElement, importTemplate
 
   leave[ nodeType.SPREAD ] = function (node) {
 
+    needExprKeypath = env.TRUE
     needDep = env.FALSE
 
     let value = executeExpr(node.expr), list = makeNodes([ ])
@@ -408,6 +419,8 @@ export default function render(ast, createComment, createElement, importTemplate
       logger.fatal(`Spread "${stringifyExpression(node.expr)}" must be an object.`)
     }
 
+    exprKeypath =
+    needExprKeypath = env.FALSE
     needDep = env.TRUE
 
     return list
