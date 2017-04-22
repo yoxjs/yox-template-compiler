@@ -106,21 +106,29 @@ export default function compile(content) {
 
     if (target) {
       let { name, children } = target
-      if (type === nodeType.DIRECTIVE) {
-        if (children) {
-          if (children.length === 1 && children[ 0 ].type === nodeType.TEXT) {
-            target.expr = compileExpression(children[ 0 ].content)
-            delete target.children
-          }
-          else {
-            throwError(`directive "${name}" expected value to be a literal string.`)
-          }
+      let child = children && children.length === 1 && children[ 0 ]
+      if (child) {
+        if (type === nodeType.DIRECTIVE
+          && child.type === nodeType.TEXT
+        ) {
+          target.expr = compileExpression(child.content)
+          delete target.children
+        }
+        else if (type === nodeType.ATTRIBUTE
+          && child.type === nodeType.EXPRESSION
+          && child.safe
+          && helper.bindableTypes[ child.expr.type ]
+        ) {
+          target.name = syntax.DIRECTIVE_MODEL
+          target.type = nodeType.DIRECTIVE
+          target.modifier = name
         }
       }
-      else if (type === nodeType.ELEMENT) {
-        if (expectedName && name !== expectedName) {
-          throwError(`end tag expected </${name}> to be </${expectedName}>.`)
-        }
+      else if (expectedName
+        && type === nodeType.ELEMENT
+        && name !== expectedName
+      ) {
+        throwError(`end tag expected </${name}> to be </${expectedName}>.`)
       }
     }
     else {
@@ -150,12 +158,7 @@ export default function compile(content) {
 
     let currentNode = array.last(nodeStack)
     if (currentNode) {
-      if (htmlStack.length === 1 && currentNode.addAttr) {
-        currentNode.addAttr(node)
-      }
-      else {
-        currentNode.addChild(node)
-      }
+      currentNode.addChild(node)
     }
     else {
       array.push(nodeList, node)
