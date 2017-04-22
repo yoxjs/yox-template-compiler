@@ -106,29 +106,39 @@ export default function compile(content) {
 
     if (target) {
       let { name, children } = target
-      let child = children && children.length === 1 && children[ 0 ]
-      if (child) {
-        if (type === nodeType.DIRECTIVE
-          && child.type === nodeType.TEXT
-        ) {
-          target.expr = compileExpression(child.content)
-          delete target.children
-        }
-        else if (type === nodeType.ATTRIBUTE
-          && child.type === nodeType.EXPRESSION
-          && child.safe
-          && helper.bindableTypes[ child.expr.type ]
-        ) {
-          target.name = syntax.DIRECTIVE_MODEL
-          target.type = nodeType.DIRECTIVE
-          target.modifier = name
-        }
-      }
-      else if (expectedName
-        && type === nodeType.ELEMENT
+      if (type === nodeType.ELEMENT
+        && expectedName
         && name !== expectedName
       ) {
         throwError(`end tag expected </${name}> to be </${expectedName}>.`)
+      }
+      else if (type === nodeType.ATTRIBUTE
+        && name === syntax.KEYWORD_UNIQUE
+        && !array.falsy(children)
+      ) {
+        array.last(htmlStack).key = children
+      }
+      else {
+        let child = children && children.length === 1 && children[ 0 ]
+        if (child) {
+          // 预编译表达式，提升性能
+          if (type === nodeType.DIRECTIVE
+            && child.type === nodeType.TEXT
+          ) {
+            target.expr = compileExpression(child.content)
+            delete target.children
+          }
+          // 属性绑定，把 Attribute 转成 单向绑定 指令
+          else if (type === nodeType.ATTRIBUTE
+            && child.type === nodeType.EXPRESSION
+            && child.safe
+            && helper.bindableTypes[ child.expr.type ]
+          ) {
+            target.name = syntax.DIRECTIVE_MODEL
+            target.type = nodeType.DIRECTIVE
+            target.modifier = name
+          }
+        }
       }
     }
     else {
@@ -245,11 +255,6 @@ export default function compile(content) {
               new Directive(
                 string.camelCase(name)
               )
-            )
-          }
-          else if (helper.builtInAttributes[ name ]) {
-            addChild(
-              new Attribute(name)
             )
           }
           else {

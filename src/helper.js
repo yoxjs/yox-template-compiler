@@ -19,8 +19,6 @@ export const leafTypes = { }
 export const bindableTypes = { }
 // 内置指令，无需加前缀
 export const builtInDirectives = { }
-// 内置属性
-export const builtInAttributes = { }
 // 名称 -> 类型的映射
 export const name2Type = { }
 // 类型 -> 名称的映射
@@ -46,8 +44,7 @@ bindableTypes[ expressionNodeType.IDENTIFIER ] =
 
 builtInDirectives[ syntax.DIRECTIVE_REF ] =
 builtInDirectives[ syntax.DIRECTIVE_LAZY ] =
-builtInDirectives[ syntax.DIRECTIVE_MODEL ] =
-builtInAttributes[ syntax.KEYWORD_UNIQUE ] = env.TRUE
+builtInDirectives[ syntax.DIRECTIVE_MODEL ] = env.TRUE
 
 name2Type[ 'if' ] = nodeType.IF
 name2Type[ 'each' ] = nodeType.EACH
