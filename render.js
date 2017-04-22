@@ -10,7 +10,6 @@ import * as keypathUtil from 'yox-common/util/keypath'
 
 import executeFunction from 'yox-common/function/execute'
 import executeExpression from 'yox-expression-compiler/execute'
-import stringifyExpression from 'yox-expression-compiler/stringify'
 import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
 
 import Context from './src/Context'
@@ -328,22 +327,8 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   leave[ nodeType.ATTRIBUTE ] = function (node) {
-    node = createAttribute(
-      node.name,
-      mergeNodes(current.children, node.children),
-      exprKeypath
-    )
-    exprKeypath =
-    needExprKeypath = env.FALSE
-    needDep = env.TRUE
-    return node
-  }
-
-  leave[ nodeType.DIRECTIVE ] = function (node) {
     let { name } = node
     let value = mergeNodes(current.children, node.children)
-    let result = context.get(keypath)
-
     if (name === syntax.KEYWORD_UNIQUE) {
       if (value != env.NULL) {
         if (!currentCache) {
@@ -351,6 +336,8 @@ export default function render(ast, createComment, createElement, importTemplate
           currentCache = ast.cache = { }
         }
         cache = prevCache && prevCache[ value ]
+
+        let result = context.get(keypath)
         if (cache && cache.value === result.value) {
           currentCache[ value ] = cache
           // 回退到元素层级
@@ -375,13 +362,21 @@ export default function render(ast, createComment, createElement, importTemplate
       }
       return
     }
+    node = createAttribute(name, value, exprKeypath)
+    exprKeypath =
+    needExprKeypath = env.FALSE
+    needDep = env.TRUE
+    return node
+  }
 
+  leave[ nodeType.DIRECTIVE ] = function (node) {
+    let { name, expr, modifier } = node
     return {
       name,
-      value,
+      expr,
       keypath,
-      modifier: node.modifier,
-      context: result.value,
+      modifier,
+      context: context.get(keypath).value,
       type: nodeType.DIRECTIVE,
     }
   }
@@ -416,7 +411,7 @@ export default function render(ast, createComment, createElement, importTemplate
       )
     }
     else {
-      logger.fatal(`Spread "${stringifyExpression(node.expr)}" must be an object.`)
+      logger.fatal(`Spread "${node.expr.source}" must be an object.`)
     }
 
     exprKeypath =

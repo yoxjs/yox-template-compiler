@@ -89,7 +89,7 @@ export default function compile(content) {
     logger.fatal(`Error compiling template:${char.CHAR_BREAKLINE}${content}${char.CHAR_BREAKLINE}- ${msg}`)
   }
 
-  let popStack = function (type, name) {
+  let popStack = function (type, expectedName) {
 
     let target
 
@@ -105,8 +105,22 @@ export default function compile(content) {
     )
 
     if (target) {
-      if (target.type === nodeType.ELEMENT && name && target.name !== name) {
-        throwError(`end tag expected </${target.name}> to be </${name}>.`)
+      let { name, children } = target
+      if (type === nodeType.DIRECTIVE) {
+        if (children) {
+          if (children.length === 1 && children[ 0 ].type === nodeType.TEXT) {
+            target.expr = compileExpression(children[ 0 ].content)
+            delete target.children
+          }
+          else {
+            throwError(`directive "${name}" expected value to be a literal string.`)
+          }
+        }
+      }
+      else if (type === nodeType.ELEMENT) {
+        if (expectedName && name !== expectedName) {
+          throwError(`end tag expected </${name}> to be </${expectedName}>.`)
+        }
       }
     }
     else {
@@ -228,6 +242,11 @@ export default function compile(content) {
               new Directive(
                 string.camelCase(name)
               )
+            )
+          }
+          else if (helper.builtInAttributes[ name ]) {
+            addChild(
+              new Attribute(name)
             )
           }
           else {

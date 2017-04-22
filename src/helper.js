@@ -13,14 +13,14 @@ export const ifTypes = { }
 export const elseTypes = { }
 // html 层级的节点类型
 export const htmlTypes = { }
-// 属性层级的节点类型
-export const attrTypes = { }
 // 叶子节点类型
 export const leafTypes = { }
 // 支持绑定的表达式
 export const bindableTypes = { }
 // 内置指令，无需加前缀
 export const builtInDirectives = { }
+// 内置属性
+export const builtInAttributes = { }
 // 名称 -> 类型的映射
 export const name2Type = { }
 // 类型 -> 名称的映射
@@ -36,9 +36,6 @@ htmlTypes[ nodeType.ELEMENT ] =
 htmlTypes[ nodeType.ATTRIBUTE ] =
 htmlTypes[ nodeType.DIRECTIVE ] =
 
-attrTypes[ nodeType.ATTRIBUTE ] =
-attrTypes[ nodeType.DIRECTIVE ] =
-
 leafTypes[ nodeType.TEXT ] =
 leafTypes[ nodeType.IMPORT ] =
 leafTypes[ nodeType.SPREAD ] =
@@ -50,7 +47,7 @@ bindableTypes[ expressionNodeType.IDENTIFIER ] =
 builtInDirectives[ syntax.DIRECTIVE_REF ] =
 builtInDirectives[ syntax.DIRECTIVE_LAZY ] =
 builtInDirectives[ syntax.DIRECTIVE_MODEL ] =
-builtInDirectives[ syntax.KEYWORD_UNIQUE ] = env.TRUE
+builtInAttributes[ syntax.KEYWORD_UNIQUE ] = env.TRUE
 
 name2Type[ 'if' ] = nodeType.IF
 name2Type[ 'each' ] = nodeType.EACH
