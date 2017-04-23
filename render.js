@@ -131,7 +131,7 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   let attributeRendering
-  let pushStack = function (source) {
+  let pushStack = function (source, silent) {
 
     let { type, attrs, children } = source
 
@@ -193,7 +193,7 @@ export default function render(ast, createComment, createElement, importTemplate
       [ source, output ]
     )
 
-    if (isDefined(value)) {
+    if (!silent && isDefined(value)) {
       addValue(value, parent)
     }
 
@@ -211,21 +211,17 @@ export default function render(ast, createComment, createElement, importTemplate
       updateKeypath()
     }
 
-    return output
+    return value
 
   }
 
-  let pushNode = function (node) {
+  let pushNode = function (node, silent) {
     if (is.array(node)) {
-      if (node.length) {
-        pushStack({
-          children: node,
-        })
+      node = {
+        children: node,
       }
     }
-    else {
-      pushStack(node)
-    }
+    return pushStack(node, silent)
   }
 
   let createDirective = function (name, modifier, value, expr) {
@@ -291,7 +287,7 @@ export default function render(ast, createComment, createElement, importTemplate
   leave[ nodeType.IF ] =
   leave[ nodeType.ELSE_IF ] =
   leave[ nodeType.ELSE ] = function (source, output) {
-    filter = filterElse
+    filterNode = filterElse
     return output.children
   }
 
@@ -350,7 +346,7 @@ export default function render(ast, createComment, createElement, importTemplate
         trackBy = key
       }
       else if (is.array(key)) {
-        trackBy = mergeNodes(pushNode(key).children, key)
+        trackBy = mergeNodes(pushNode(key, env.TRUE), key)
       }
       if (trackBy) {
 
@@ -405,6 +401,38 @@ export default function render(ast, createComment, createElement, importTemplate
 
   }
 
+  enter[ nodeType.ATTRIBUTE ] = function (source) {
+    let { name, children, bindTo } = source
+    if (is.string(bindTo)) {
+      addExpressionDep = env.noop
+    }
+  }
+
+  leave[ nodeType.ATTRIBUTE ] = function (source, output) {
+    let element = htmlStack[ htmlStack.length - 2 ]
+    let { name, children, bindTo } = source
+    addValue(
+      {
+        name,
+        value: mergeNodes(output.children, children),
+      },
+      element,
+      'attrs'
+    )
+    if (is.string(bindTo)) {
+      addValue(
+        createDirective(
+          syntax.DIRECTIVE_MODEL,
+          name,
+          bindTo
+        ),
+        element,
+        'directives'
+      )
+      addExpressionDep = addDep
+    }
+  }
+
 
 
   leave[ nodeType.TEXT ] = function (source) {
@@ -413,17 +441,6 @@ export default function render(ast, createComment, createElement, importTemplate
 
   leave[ nodeType.EXPRESSION ] = function (source) {
     return executeExpr(source.expr)
-  }
-
-  leave[ nodeType.ATTRIBUTE ] = function (source, output) {
-    addValue(
-      {
-        name: source.name
-        value: mergeNodes(output.children, source.children),
-      },
-      htmlStack[ htmlStack.length - 2 ],
-      'attrs'
-    )
   }
 
   leave[ nodeType.DIRECTIVE ] = function (source, output) {
@@ -444,7 +461,7 @@ export default function render(ast, createComment, createElement, importTemplate
     }
 
     addValue(
-      createDirective(name, modifier, value, expr)
+      createDirective(name, modifier, value, expr),
       htmlStack[ htmlStack.length - 2 ],
       'directives'
     )
@@ -460,8 +477,8 @@ export default function render(ast, createComment, createElement, importTemplate
     //    复杂的表达式，需要收集依赖
     //
 
-    let expr = source.expr, bindable = helper.bindableTypes[ expr.type ], value
-    if (bindable) {
+    let expr = source.expr, hasKeypath = is.string(expr.keypath), value
+    if (hasKeypath) {
       addExpressionDep = env.noop
       value = executeExpr(expr)
       addExpressionDep = addDep
@@ -476,7 +493,7 @@ export default function render(ast, createComment, createElement, importTemplate
         value,
         function (value, name) {
 
-          if (bindable) {
+          if (hasKeypath) {
             addValue(
               createDirective(
                 syntax.DIRECTIVE_MODEL,

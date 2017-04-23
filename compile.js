@@ -1,4 +1,5 @@
 
+import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
 import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
@@ -90,21 +91,6 @@ export default function compile(content) {
     logger.fatal(`Error compiling template:${char.CHAR_BREAKLINE}${content}${char.CHAR_BREAKLINE}- ${msg}`)
   }
 
-  let replaceAttr = function (element, oldAttr, newAttr) {
-    let attrs = element.attrs, index = array.indexOf(attrs, oldAttr)
-    if (index >= 0) {
-      if (newAttr) {
-        attrs.splice(index, 1, newAttr)
-      }
-      else {
-        attrs.splice(index, 1)
-        if (!attrs.length) {
-          delete element.attrs
-        }
-      }
-    }
-  }
-
   let getSingleChild = function (children) {
     return children && children.length === 1 && children[ 0 ]
   }
@@ -136,7 +122,11 @@ export default function compile(content) {
         && name === syntax.KEYWORD_UNIQUE
       ) {
         let element = array.last(htmlStack)
-        replaceAttr(element, target)
+        let { attrs } = element
+        array.remove(attrs, target)
+        if (!attrs.length) {
+          delete element.attrs
+        }
         if (!array.falsy(children)) {
           let child = getSingleChild(children)
           element.key = child.type === nodeType.TEXT
@@ -167,16 +157,9 @@ export default function compile(content) {
           else if (type === nodeType.ATTRIBUTE
             && child.type === nodeType.EXPRESSION
             && child.safe
-            && helper.bindableTypes[ child.expr.type ]
+            && is.string(child.expr.keypath)
           ) {
-            replaceAttr(
-              array.last(htmlStack),
-              target,
-              new Directive(
-                syntax.DIRECTIVE_MODEL,
-                name
-              )
-            )
+            target.bindTo = child.expr.keypath
           }
         }
       }
@@ -208,7 +191,7 @@ export default function compile(content) {
 
     let currentNode = array.last(nodeStack)
     if (currentNode) {
-      if (htmlStack.length === 1) {
+      if (htmlStack.length === 1 && currentNode.addAttr) {
         currentNode.addAttr(node)
       }
       else {
