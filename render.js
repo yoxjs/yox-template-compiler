@@ -144,19 +144,12 @@ export default function render(ast, createComment, createElement, importTemplate
     )
 
     if (isDefined(value)) {
-      if (value !== env.FALSE) {
+      if (!silent && value !== env.FALSE) {
         addValue(value, parent)
       }
-      return
+      return value
     }
 
-    if (is.array(source.context)) {
-      executeFunction(
-        context.set,
-        context,
-        source.context
-      )
-    }
     if (isDefined(source.keypath)) {
       array.push(
         keypathList,
@@ -168,6 +161,13 @@ export default function render(ast, createComment, createElement, importTemplate
       context = context.push(
         source.value,
         keypath
+      )
+    }
+    if (is.array(source.context)) {
+      executeFunction(
+        context.set,
+        context,
+        source.context
       )
     }
 
