@@ -1,4 +1,6 @@
 
+import * as array from 'yox-common/util/array'
+
 import Node from './Node'
 import * as nodeType from '../nodeType'
 
@@ -16,6 +18,13 @@ export default class Element extends Node {
     if (component) {
       this.component = component
     }
+  }
+
+  addAttr(child) {
+    array.push(
+      this.attrs || (this.attrs = [ ]),
+      child,
+    )
   }
 
 }

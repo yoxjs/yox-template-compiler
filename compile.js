@@ -5,6 +5,7 @@ import * as array from 'yox-common/util/array'
 import * as string from 'yox-common/util/string'
 import * as logger from 'yox-common/util/logger'
 
+import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
 import compileExpression from 'yox-expression-compiler/compile'
 
 import * as helper from './src/helper'
@@ -89,6 +90,25 @@ export default function compile(content) {
     logger.fatal(`Error compiling template:${char.CHAR_BREAKLINE}${content}${char.CHAR_BREAKLINE}- ${msg}`)
   }
 
+  let replaceAttr = function (element, oldAttr, newAttr) {
+    let attrs = element.attrs, index = array.indexOf(attrs, oldAttr)
+    if (index >= 0) {
+      if (newAttr) {
+        attrs.splice(index, 1, newAttr)
+      }
+      else {
+        attrs.splice(index, 1)
+        if (!attrs.length) {
+          delete element.attrs
+        }
+      }
+    }
+  }
+
+  let getSingleChild = function (children) {
+    return children && children.length === 1 && children[ 0 ]
+  }
+
   let popStack = function (type, expectedName) {
 
     let target
@@ -114,18 +134,33 @@ export default function compile(content) {
       }
       else if (type === nodeType.ATTRIBUTE
         && name === syntax.KEYWORD_UNIQUE
-        && !array.falsy(children)
       ) {
-        array.last(htmlStack).key = children
+        let element = array.last(htmlStack)
+        replaceAttr(element, target)
+        if (!array.falsy(children)) {
+          let child = getSingleChild(children)
+          element.key = child.type === nodeType.TEXT
+            ? child.content
+            : children
+        }
       }
       else {
-        let child = children && children.length === 1 && children[ 0 ]
+        let child = getSingleChild(children)
         if (child) {
           // 预编译表达式，提升性能
           if (type === nodeType.DIRECTIVE
             && child.type === nodeType.TEXT
           ) {
-            target.expr = compileExpression(child.content)
+            let expr = compileExpression(child.content)
+            if (expr.type === expressionNodeType.LITERAL) {
+              target.value = expr.value
+            }
+            else if (expr.type === expressionNodeType.IDENTIFIER) {
+              target.value = expr.name
+            }
+            else {
+              target.expr = expr
+            }
             delete target.children
           }
           // 属性绑定，把 Attribute 转成 单向绑定 指令
@@ -134,9 +169,14 @@ export default function compile(content) {
             && child.safe
             && helper.bindableTypes[ child.expr.type ]
           ) {
-            target.name = syntax.DIRECTIVE_MODEL
-            target.type = nodeType.DIRECTIVE
-            target.modifier = name
+            replaceAttr(
+              array.last(htmlStack),
+              target,
+              new Directive(
+                syntax.DIRECTIVE_MODEL,
+                name
+              )
+            )
           }
         }
       }
@@ -168,7 +208,12 @@ export default function compile(content) {
 
     let currentNode = array.last(nodeStack)
     if (currentNode) {
-      currentNode.addChild(node)
+      if (htmlStack.length === 1) {
+        currentNode.addAttr(node)
+      }
+      else {
+        currentNode.addChild(node)
+      }
     }
     else {
       array.push(nodeList, node)

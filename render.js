@@ -94,54 +94,125 @@ export default function render(ast, createComment, createElement, importTemplate
   getKeypath.toString = getKeypath
   data[ syntax.SPECIAL_KEYPATH ] = getKeypath
 
-  let context = new Context(data, keypath), nodeStack = [ ], nodeList = [ ]
+  let context = new Context(data, keypath), nodeStack = [ ], nodeList = [ ], htmlStack = [ ], partials = { }
 
-  let pushStack = function (node) {
-    if (is.array(node.context)) {
+  let sibling, cache, prevCache, currentCache
+
+  let isDefined = function (value) {
+    return value !== env.UNDEFINED
+  }
+
+  let traverseList = function (list) {
+    array.each(
+      list,
+      function (node, index) {
+        if (!filterNode || filterNode(node)) {
+          sibling = list[ index + 1 ]
+          pushStack(node)
+        }
+      }
+    )
+  }
+
+  let addValue = function (value, parent, name = 'children') {
+    let collection
+    if (parent) {
+      collection = parent[ name ] || (parent[ name ] = makeNodes([ ]))
+    }
+    else {
+      collection = nodeList
+    }
+    if (isNodes(value)) {
+      array.push(collection, value)
+    }
+    else {
+      collection.push(value)
+    }
+  }
+
+  let attributeRendering
+  let pushStack = function (source) {
+
+    let { type, attrs, children } = source
+
+    let parent = array.last(nodeStack), output = { type, source, parent }
+
+    let value = executeFunction(
+      enter[ type ],
+      env.NULL,
+      [ source, output ]
+    )
+
+    if (isDefined(value)) {
+      if (value !== env.FALSE) {
+        addValue(value, parent)
+      }
+      return
+    }
+
+    if (is.array(source.context)) {
       executeFunction(
         context.set,
         context,
-        node.context
+        source.context
       )
     }
-    if (node.keypath !== env.UNDEFINED) {
+    if (isDefined(source.keypath)) {
       array.push(
         keypathList,
-        node.keypath
+        source.keypath
       )
       updateKeypath()
     }
-    if (node.value !== env.UNDEFINED) {
+    if (isDefined(source.value)) {
       context = context.push(
-        node.value,
+        source.value,
         keypath
       )
     }
-    array.push(
-      nodeStack,
-      {
-        node,
-        index: -1,
-        parent: current,
-      }
-    )
-    current = array.last(nodeStack)
-  }
 
-  let popStack = function () {
-    let { node } = current
-    if (node.value !== env.UNDEFINED) {
+    array.push(nodeStack, output)
+
+    if (helper.htmlTypes[ type ]) {
+      array.push(htmlStack, output)
+    }
+
+    if (attrs) {
+      attributeRendering = env.TRUE
+      traverseList(attrs)
+      attributeRendering = env.NULL
+    }
+
+    if (children) {
+      traverseList(children)
+    }
+
+    value = executeFunction(
+      leave[ type ],
+      env.NULL,
+      [ source, output ]
+    )
+
+    if (isDefined(value)) {
+      addValue(value, parent)
+    }
+
+    array.pop(nodeStack)
+
+    if (helper.htmlTypes[ source.type ]) {
+      array.pop(htmlStack)
+    }
+
+    if (isDefined(source.value)) {
       context = context.pop()
     }
-    if (node.keypath !== env.UNDEFINED) {
+    if (isDefined(source.keypath)) {
       array.pop(keypathList)
       updateKeypath()
     }
-    if (sibling) {
-      sibling = env.NULL
-    }
-    current = current.parent
-    array.pop(nodeStack)
+
+    return output
+
   }
 
   let pushNode = function (node) {
@@ -157,63 +228,44 @@ export default function render(ast, createComment, createElement, importTemplate
     }
   }
 
-  let addValue = function (value) {
-    let parent = current.parent, collection
-    if (parent) {
-      collection = parent.children || (parent.children = makeNodes([ ]))
-    }
-    else {
-      collection = nodeList
-    }
-    if (isNodes(value)) {
-      array.push(collection, value)
-    }
-    else {
-      collection.push(value)
-    }
-  }
-
-  let exprKeypath, needExprKeypath = env.FALSE, needDep = env.TRUE
-  let executeExpr = function (expr) {
-    return executeExpression(
-      expr,
+  let createDirective = function (name, modifier, value, expr) {
+    return {
+      name,
+      modifier,
       context,
-      function (keypath) {
-        if (needExprKeypath) {
-          exprKeypath = keypath
-        }
-      },
-      function (key, value) {
-        if (needDep) {
-          addDep(key, value)
-        }
-      }
-    )
+      keypath,
+      value,
+      expr,
+    }
   }
 
+  let filterNode
   let filterElse = function (node) {
     if (helper.elseTypes[ node.type ]) {
       return env.FALSE
     }
     else {
-      filter = env.NULL
+      filterNode = env.NULL
       return env.TRUE
     }
   }
 
+  let addExpressionDep = addDep
+  let executeExpr = function (expr) {
+    return executeExpression(expr, context, addExpressionDep)
+  }
+
   let enter = { }, leave = { }
 
-  enter[ nodeType.PARTIAL ] = function (node) {
-    partials[ node.name ] = node.children
-    popStack()
+  enter[ nodeType.PARTIAL ] = function (source) {
+    partials[ source.name ] = source.children
     return env.FALSE
   }
 
-  enter[ nodeType.IMPORT ] = function (node) {
-    let { name } = node
+  enter[ nodeType.IMPORT ] = function (source) {
+    let { name } = source
     let partial = partials[ name ] || importTemplate(name)
     if (partial) {
-      popStack()
       pushNode(partial)
       return env.FALSE
     }
@@ -224,31 +276,28 @@ export default function render(ast, createComment, createElement, importTemplate
   // 但如果失败的点原本是一个 DOM 元素
   // 就需要用注释节点来占位，否则 virtual dom 无法正常工作
   enter[ nodeType.IF ] =
-  enter[ nodeType.ELSE_IF ] = function (node) {
-    if (!executeExpr(node.expr)) {
+  enter[ nodeType.ELSE_IF ] = function (source) {
+    if (!executeExpr(source.expr)) {
       if (sibling
         && !helper.elseTypes[ sibling.type ]
-        && !attributeRending
+        && !attributeRendering
       ) {
-        addValue(
-          makeNodes(
-            createComment()
-          )
-        )
+        return makeNodes(createComment())
       }
-      popStack()
       return env.FALSE
     }
   }
 
-  enter[ nodeType.EACH ] = function (node) {
+  leave[ nodeType.IF ] =
+  leave[ nodeType.ELSE_IF ] =
+  leave[ nodeType.ELSE ] = function (source, output) {
+    filter = filterElse
+    return output.children
+  }
 
-    needExprKeypath = env.TRUE
+  enter[ nodeType.EACH ] = function (source) {
 
-    popStack()
-
-    let { expr, index, children } = node
-
+    let { expr, index, children } = source
     let value = executeExpr(expr), each
 
     if (is.array(value)) {
@@ -261,290 +310,208 @@ export default function render(ast, createComment, createElement, importTemplate
     if (each) {
 
       let list = [ ]
-      // push 之后 keypath 会更新
-      // 这样 each 的 children 才能取到正确的 keypath
-      pushStack({
-        value,
-        children: list,
-        keypath: exprKeypath,
-      })
 
       each(
         value,
-        function (value, i, item) {
+        function (value, i) {
 
-          item = {
+          let child = {
             value,
             children,
             keypath: i,
           }
 
           if (index) {
-            item.context = [ index, i ]
+            child.context = [ index, i ]
           }
 
-          array.push(list, item)
+          array.push(list, child)
 
         }
       )
 
-    }
+      pushStack({
+        value,
+        children: list,
+        keypath: expr.keypath,
+      })
 
-    exprKeypath =
-    needExprKeypath = env.FALSE
+    }
 
     return env.FALSE
 
   }
 
-  enter[ nodeType.ATTRIBUTE ] = function (node) {
-    let { children } = node
-    if (children && children.length === 1 && children[ 0 ].bindable) {
-      needExprKeypath = env.TRUE
-      needDep = env.FALSE
-    }
-  }
+  enter[ nodeType.ELEMENT ] = function (source, output) {
+    let { key } = source
+    if (key) {
+      let trackBy
+      if (is.string(key)) {
+        trackBy = key
+      }
+      else if (is.array(key)) {
+        trackBy = mergeNodes(pushNode(key).children, key)
+      }
+      if (trackBy) {
 
-  let createAttribute = function (name, value, binding) {
-    let attribute = {
-      name,
-      value,
-      keypath,
-      type: nodeType.ATTRIBUTE,
-    }
-    if (is.string(binding)) {
-      attribute.binding = binding
-    }
-    return attribute
-  }
-
-  leave[ nodeType.TEXT ] = function (node) {
-    return node.content
-  }
-
-  leave[ nodeType.EXPRESSION ] = function (node) {
-    return executeExpr(node.expr)
-  }
-
-  leave[ nodeType.ATTRIBUTE ] = function (node) {
-    let { name } = node
-    let value = mergeNodes(current.children, node.children)
-    if (name === syntax.KEYWORD_UNIQUE) {
-      if (value != env.NULL) {
         if (!currentCache) {
-          prevCache = ast.cache
+          prevCache = ast.cache || { }
           currentCache = ast.cache = { }
         }
-        cache = prevCache && prevCache[ value ]
 
+        let cache = prevCache[ trackBy ]
         let result = context.get(keypath)
+
+        // 有缓存，且数据没有变化才算命中
         if (cache && cache.value === result.value) {
-          currentCache[ value ] = cache
-          // 回退到元素层级
-          while (current.node.type !== nodeType.ELEMENT) {
-            popStack()
-          }
+          currentCache[ trackBy ] = cache
           addDep(result.keypath, result.value)
           return cache.result
         }
         else {
-          // 缓存挂在元素上
-          while (node = current.parent) {
-            if (node.node.type === nodeType.ELEMENT) {
-              node.cache = {
-                key: value,
-                value: result.value,
-              }
-              break
-            }
+          output.cache = {
+            key: trackBy,
+            value: result.value,
           }
         }
+
       }
-      return
-    }
-    node = createAttribute(name, value, exprKeypath)
-    exprKeypath =
-    needExprKeypath = env.FALSE
-    needDep = env.TRUE
-    return node
-  }
-
-  leave[ nodeType.DIRECTIVE ] = function (node) {
-    let { name, expr, modifier } = node
-    return {
-      name,
-      expr,
-      keypath,
-      modifier,
-      context: context.get(keypath).value,
-      type: nodeType.DIRECTIVE,
     }
   }
 
-  leave[ nodeType.IF ] =
-  leave[ nodeType.ELSE_IF ] =
-  leave[ nodeType.ELSE ] = function (node) {
-    filter = filterElse
-    return current.children
+  leave[ nodeType.ELEMENT ] = function (source, output) {
+
+    let { cache } = output
+
+    let value = createElement(
+      source,
+      {
+        name: source.name,
+        component: source.component,
+        key: cache ? cache.key : env.UNDEFINED,
+        attrs: output.attrs,
+        directives: output.directives,
+        children: output.children,
+        keypath,
+      }
+    )
+
+    if (cache) {
+      cache.result = value
+      currentCache[ cache.key ] = cache
+    }
+
+    return value
+
   }
 
-  leave[ nodeType.SPREAD ] = function (node) {
 
-    needExprKeypath = env.TRUE
-    needDep = env.FALSE
 
-    let value = executeExpr(node.expr), list = makeNodes([ ])
+  leave[ nodeType.TEXT ] = function (source) {
+    return source.content
+  }
+
+  leave[ nodeType.EXPRESSION ] = function (source) {
+    return executeExpr(source.expr)
+  }
+
+  leave[ nodeType.ATTRIBUTE ] = function (source, output) {
+    addValue(
+      {
+        name: source.name
+        value: mergeNodes(output.children, source.children),
+      },
+      htmlStack[ htmlStack.length - 2 ],
+      'attrs'
+    )
+  }
+
+  leave[ nodeType.DIRECTIVE ] = function (source, output) {
+
+    // 1.如果指令的值是纯文本，会在编译阶段转成表达式抽象语法树
+    //   on-click="submit()"
+    //   ref="child"
+    //
+    // 2.如果指令的值包含插值语法，则会 merge 出最终值
+    //   on-click="haha{{name}}"
+    //
+    // model="xxx"
+    // model=""
+    //
+    let { name, modifier, expr, value } = source
+    if (output.children) {
+      value = mergeNodes(output.children, source.children)
+    }
+
+    addValue(
+      createDirective(name, modifier, value, expr)
+      htmlStack[ htmlStack.length - 2 ],
+      'directives'
+    )
+
+  }
+
+  leave[ nodeType.SPREAD ] = function (source, output) {
+
+    // 1. <Component {{...props}} />
+    //    把 props.xx 当做单向绑定指令，无需收集依赖
+    //
+    // 2. <Component {{... a ? aProps : bProps }}/>
+    //    复杂的表达式，需要收集依赖
+    //
+
+    let expr = source.expr, bindable = helper.bindableTypes[ expr.type ], value
+    if (bindable) {
+      addExpressionDep = env.noop
+      value = executeExpr(expr)
+      addExpressionDep = addDep
+    }
+    else {
+      value = executeExpr(expr)
+    }
+
     if (is.object(value)) {
-      let hasBinding = is.string(exprKeypath)
+      let element = array.last(htmlStack)
       object.each(
         value,
         function (value, name) {
-          array.push(
-            list,
-            createAttribute(
-              name,
-              value,
-              hasBinding ? keypathUtil.join(exprKeypath, name) : env.UNDEFINED
+
+          if (bindable) {
+            addValue(
+              createDirective(
+                syntax.DIRECTIVE_MODEL,
+                name,
+                keypathUtil.join(expr.keypath, name)
+              ),
+              element,
+              'directives'
             )
-          )
+          }
+          else {
+            addValue(
+              {
+                name,
+                value,
+              },
+              element,
+              'attrs'
+            )
+          }
+
         }
       )
     }
     else {
-      logger.fatal(`Spread "${node.expr.source}" must be an object.`)
+      logger.fatal(`Spread "${expr.source}" must be an object.`)
     }
 
-    exprKeypath =
-    needExprKeypath = env.FALSE
-    needDep = env.TRUE
-
-    return list
   }
 
-  leave[ nodeType.ELEMENT ] = function (node) {
-
-    let attributes = [ ], directives = [ ], children = [ ]
-
-    if (current.children) {
-      array.each(
-        current.children,
-        function (node) {
-          if (node.type === nodeType.ATTRIBUTE) {
-            array.push(attributes, node)
-          }
-          else if (node.type === nodeType.DIRECTIVE) {
-            array.push(directives, node)
-          }
-          else {
-            array.push(children, node)
-          }
-        }
-      )
-    }
-
-    return createElement(
-      {
-        name: node.name,
-        key: current.cache ? current.cache.key : env.UNDEFINED,
-        component: node.component,
-        keypath,
-        attributes,
-        directives,
-        children,
-      },
-      node
-    )
+  leave[ env.UNDEFINED ] = function (source, output) {
+    return output.children
   }
-
-  leave[ env.UNDEFINED ] = function (node, current) {
-    return current.children
-  }
-
-  let traverseList = function (current, list, item) {
-    while (item = list[ ++current.index ]) {
-      if (!filter || filter(item)) {
-        sibling = list[ current.index + 1 ]
-        pushStack(item)
-        return env.FALSE
-      }
-    }
-  }
-
-
-  // 当前处理的栈节点
-  let current,
-  // 相邻节点
-  sibling,
-  // 过滤某些节点的函数
-  filter,
-  // 节点的值
-  value,
-  // 缓存
-  cache,
-  prevCache,
-  currentCache,
-  // 是否正在渲染 attribute
-  attributeRending,
-  // 用时定义的模板片段
-  partials = { }
 
   pushNode(ast)
-
-  while (nodeStack.length) {
-
-    let { node } = current
-    let { type, attrs, children } = node
-
-    if (!current.enterNode) {
-      current.enterNode = env.TRUE
-
-      if (
-        executeFunction(
-          enter[ type ],
-          env.NULL,
-          [ node, current ]
-        ) === env.FALSE
-      ) {
-        continue
-      }
-
-    }
-
-    if (attrs && !current.leaveAttrs) {
-      if (!current.enterAttrs) {
-        attributeRending =
-        current.enterAttrs = env.TRUE
-      }
-      if (traverseList(current, attrs) === env.FALSE) {
-        continue
-      }
-      attributeRending = env.FALSE
-      current.leaveAttrs = env.TRUE
-      current.index = -1
-    }
-
-    if (children && traverseList(current, children) === env.FALSE) {
-      continue
-    }
-
-    value = executeFunction(
-      leave[ type ],
-      env.NULL,
-      [ node, current ]
-    )
-
-    if (value !== env.UNDEFINED) {
-      addValue(value)
-      cache = current.cache
-      if (cache) {
-        cache.result = value
-        currentCache[ cache.key ] = cache
-      }
-    }
-
-    popStack()
-
-  }
 
   return nodeList
 

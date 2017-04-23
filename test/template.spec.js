@@ -1,6 +1,5 @@
 
 import compile from '../compile'
-import render from '../render'
 
 import * as nodeType from '../src/nodeType'
 
@@ -84,6 +83,12 @@ describe('template', () => {
     expect(ast[2].children[0].type).toBe(nodeType.TEXT)
     expect(ast[2].children[0].content).toBe('c')
 
+  })
+
+  it('瞎测', () => {
+
+    let ast = compile('<div key="ah{{a}}b" ref="haha" lazy="100" model="name{{name}}">text</div>')
+    console.log(JSON.stringify(ast, 4, 4))
   })
 
 })
