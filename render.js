@@ -358,7 +358,9 @@ export default function render(ast, createComment, createElement, importTemplate
         trackBy = key
       }
       else if (is.array(key)) {
+        attributeRendering = env.TRUE
         trackBy = mergeNodes(pushNode(key, env.TRUE), key)
+        attributeRendering = env.NULL
       }
       if (trackBy) {
 
