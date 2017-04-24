@@ -142,15 +142,8 @@ export default function compile(content) {
             && child.type === nodeType.TEXT
           ) {
             let expr = compileExpression(child.text)
-            if (expr.type === expressionNodeType.LITERAL) {
-              target.value = expr.value
-            }
-            else if (expr.type === expressionNodeType.IDENTIFIER) {
-              target.value = expr.name
-            }
-            else {
-              target.expr = expr
-            }
+            target.expr = expr
+            target.value = expr.source
             delete target.children
           }
           // 属性绑定，把 Attribute 转成 单向绑定 指令
