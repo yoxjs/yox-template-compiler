@@ -169,9 +169,9 @@ export default function render(ast, createComment, createElement, importTemplate
       )
       updateKeypath()
     }
-    if (isDefined(source.value)) {
+    if (isDefined(source.forward)) {
       context = context.push(
-        source.value,
+        source.forward,
         keypath
       )
     }
@@ -215,7 +215,7 @@ export default function render(ast, createComment, createElement, importTemplate
       array.pop(htmlStack)
     }
 
-    if (isDefined(source.value)) {
+    if (isDefined(source.forward)) {
       context = context.pop()
     }
     if (isDefined(source.keypath)) {
@@ -306,12 +306,12 @@ export default function render(ast, createComment, createElement, importTemplate
   enter[ nodeType.EACH ] = function (source) {
 
     let { expr, index, children } = source
-    let value = executeExpr(expr), each
+    let forward = executeExpr(expr), each
 
-    if (is.array(value)) {
+    if (is.array(forward)) {
       each = array.each
     }
-    else if (is.object(value)) {
+    else if (is.object(forward)) {
       each = object.each
     }
 
@@ -320,11 +320,11 @@ export default function render(ast, createComment, createElement, importTemplate
       let list = [ ]
 
       each(
-        value,
-        function (value, i) {
+        forward,
+        function (forward, i) {
 
           let child = {
-            value,
+            forward,
             children,
             keypath: i,
           }
@@ -339,7 +339,7 @@ export default function render(ast, createComment, createElement, importTemplate
       )
 
       pushStack({
-        value,
+        forward,
         children: list,
         keypath: expr.keypath,
       })
