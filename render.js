@@ -17,6 +17,8 @@ import * as helper from './src/helper'
 import * as syntax from './src/syntax'
 import * as nodeType from './src/nodeType'
 
+import Text from './src/node/Text'
+
 /**
  * 标记节点数组，用于区分普通数组
  *
@@ -114,10 +116,10 @@ export default function render(ast, createComment, createElement, importTemplate
     )
   }
 
-  let addValue = function (value, parent, name = 'children') {
+  let addChild = function (value, parent) {
     let collection
     if (parent) {
-      collection = parent[ name ] || (parent[ name ] = makeNodes([ ]))
+      collection = parent.children || (parent.children = makeNodes([ ]))
     }
     else {
       collection = nodeList
@@ -128,6 +130,16 @@ export default function render(ast, createComment, createElement, importTemplate
     else {
       collection.push(value)
     }
+  }
+
+  let addAttr = function (key, value, parent) {
+    let attrs = parent.attrs || (parent.attrs = { })
+    attrs[ key ] = value
+  }
+
+  let addDirective = function (directive, parent) {
+    let directives = parent.directives || (parent.directives = { })
+    directives[ keypathUtil.join(directive.name, directive.modifier) ] = directive
   }
 
   let attributeRendering
@@ -145,7 +157,7 @@ export default function render(ast, createComment, createElement, importTemplate
 
     if (isDefined(value)) {
       if (!silent && value !== env.FALSE) {
-        addValue(value, parent)
+        addChild(value, parent)
       }
       return value
     }
@@ -194,7 +206,7 @@ export default function render(ast, createComment, createElement, importTemplate
     )
 
     if (!silent && isDefined(value)) {
-      addValue(value, parent)
+      addChild(value, parent)
     }
 
     array.pop(nodeStack)
@@ -365,36 +377,25 @@ export default function render(ast, createComment, createElement, importTemplate
           return cache.result
         }
         else {
-          output.cache = {
-            key: trackBy,
+          output.key = trackBy
+          currentCache[ trackBy ] = {
             value: result.value,
           }
         }
 
       }
     }
+    output.name = source.name
+    output.component = source.component
   }
 
   leave[ nodeType.ELEMENT ] = function (source, output) {
 
-    let { cache } = output
+    let value = createElement(source, output)
 
-    let value = createElement(
-      source,
-      {
-        name: source.name,
-        component: source.component,
-        key: cache ? cache.key : env.UNDEFINED,
-        attrs: output.attrs,
-        directives: output.directives,
-        children: output.children,
-        keypath,
-      }
-    )
-
-    if (cache) {
-      cache.result = value
-      currentCache[ cache.key ] = cache
+    let { key } = output
+    if (key) {
+      currentCache[ key ].result = value
     }
 
     return value
@@ -411,23 +412,19 @@ export default function render(ast, createComment, createElement, importTemplate
   leave[ nodeType.ATTRIBUTE ] = function (source, output) {
     let element = htmlStack[ htmlStack.length - 2 ]
     let { name, children, bindTo } = source
-    addValue(
-      {
-        name,
-        value: mergeNodes(output.children, children),
-      },
+    addAttr(
+      name,
+      mergeNodes(output.children, children),
       element,
-      'attrs'
     )
     if (is.string(bindTo)) {
-      addValue(
+      addDirective(
         createDirective(
           syntax.DIRECTIVE_MODEL,
           name,
           bindTo
         ),
-        element,
-        'directives'
+        element
       )
       addExpressionDep = addDep
     }
@@ -444,7 +441,10 @@ export default function render(ast, createComment, createElement, importTemplate
   }
 
   leave[ nodeType.EXPRESSION ] = function (source) {
-    return executeExpr(source.expr)
+    let text = executeExpr(source.expr)
+    return attributeRendering
+      ? text
+      : new Text(text)
   }
 
   leave[ nodeType.DIRECTIVE ] = function (source, output) {
@@ -464,10 +464,9 @@ export default function render(ast, createComment, createElement, importTemplate
       value = mergeNodes(output.children, source.children)
     }
 
-    addValue(
+    addDirective(
       createDirective(name, modifier, value, expr),
-      htmlStack[ htmlStack.length - 2 ],
-      'directives'
+      htmlStack[ htmlStack.length - 2 ]
     )
 
   }
@@ -498,24 +497,20 @@ export default function render(ast, createComment, createElement, importTemplate
         function (value, name) {
 
           if (hasKeypath) {
-            addValue(
+            addDirective(
               createDirective(
                 syntax.DIRECTIVE_MODEL,
                 name,
                 keypathUtil.join(expr.keypath, name)
               ),
-              element,
-              'directives'
+              element
             )
           }
           else {
-            addValue(
-              {
-                name,
-                value,
-              },
-              element,
-              'attrs'
+            addAttr(
+              name,
+              value,
+              element
             )
           }
 
