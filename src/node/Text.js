@@ -1,4 +1,6 @@
 
+import toString from 'yox-common/function/toString'
+
 import Node from './Node'
 import * as nodeType from '../nodeType'
 
@@ -11,7 +13,7 @@ export default class Text extends Node {
 
   constructor(text) {
     super(nodeType.TEXT)
-    this.text = text
+    this.text = toString(text)
   }
 
 }
