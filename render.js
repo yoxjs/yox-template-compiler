@@ -436,7 +436,11 @@ export default function render(ast, createComment, createElement, importTemplate
 
 
   leave[ nodeType.TEXT ] = function (source) {
-    return source.content
+    // 如果是元素的文本，而不是属性的文本
+    // 直接保持原样，因为 snabbdom 文本节点的结构和模板文本节点结构是一致的
+    return attributeRendering
+      ? source.text
+      : source
   }
 
   leave[ nodeType.EXPRESSION ] = function (source) {

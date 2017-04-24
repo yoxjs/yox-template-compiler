@@ -130,7 +130,7 @@ export default function compile(content) {
         if (!array.falsy(children)) {
           let child = getSingleChild(children)
           element.key = child.type === nodeType.TEXT
-            ? child.content
+            ? child.text
             : children
         }
       }
@@ -141,7 +141,7 @@ export default function compile(content) {
           if (type === nodeType.DIRECTIVE
             && child.type === nodeType.TEXT
           ) {
-            let expr = compileExpression(child.content)
+            let expr = compileExpression(child.text)
             if (expr.type === expressionNodeType.LITERAL) {
               target.value = expr.value
             }
@@ -172,15 +172,15 @@ export default function compile(content) {
 
   let addChild = function (node) {
 
-    let { type, content } = node
+    let { type, text } = node
 
     if (type === nodeType.TEXT) {
-      if (isBreakline(content)
-        || !(content = trimBreakline(content))
+      if (isBreakline(text)
+        || !(text = trimBreakline(text))
       ) {
         return
       }
-      node.content = content
+      node.text = text
     }
 
     if (helper.elseTypes[ type ]) {
