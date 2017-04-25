@@ -12,12 +12,12 @@ import executeFunction from 'yox-common/function/execute'
 import executeExpression from 'yox-expression-compiler/execute'
 import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
 
+import * as snabbdom from 'yox-snabbdom'
+
 import Context from './src/Context'
 import * as helper from './src/helper'
 import * as syntax from './src/syntax'
 import * as nodeType from './src/nodeType'
-
-import Text from './src/node/Text'
 
 /**
  * 标记节点数组，用于区分普通数组
@@ -75,13 +75,12 @@ function mergeNodes(outputNodes, sourceNodes) {
  *
  * @param {Object} ast 编译出来的抽象语法树
  * @param {Object} data 渲染模板的数据
- * @param {Function} createComment 创建注释节点
  * @param {Function} createElement 创建元素节点
  * @param {?Function} importTemplate 导入子模板，如果是纯模板，可不传
  * @param {?Function} addDep 渲染模板过程中使用的数据依赖，如果是纯模板，可不传
  * @return {Array}
  */
-export default function render(ast, data, createComment, createElement, importTemplate, addDep) {
+export default function render(ast, data, createElement, importTemplate, addDep) {
 
   let keypath, keypathList = [ ],
   updateKeypath = function () {
@@ -116,7 +115,19 @@ export default function render(ast, data, createComment, createElement, importTe
     )
   }
 
-  let addChild = function (value, parent) {
+  let addChildNative = function (children, child) {
+    let prevChild = array.last(children)
+    if (is.object(prevChild) && is.object(child)) {
+      let prop = 'text'
+      if (is.string(prevChild[ prop ]) && is.string(child[ prop ])) {
+        prevChild[ prop ] += child[ prop ]
+        return
+      }
+    }
+    children.push(child)
+  }
+
+  let addChild = function (child, parent) {
     let collection
     if (parent) {
       collection = parent.children || (parent.children = makeNodes([ ]))
@@ -124,11 +135,16 @@ export default function render(ast, data, createComment, createElement, importTe
     else {
       collection = nodeList
     }
-    if (isNodes(value)) {
-      array.push(collection, value)
+    if (isNodes(child)) {
+      array.each(
+        child,
+        function (child) {
+          addChildNative(collection, child)
+        }
+      )
     }
     else {
-      collection.push(value)
+      addChildNative(collection, child)
     }
   }
 
@@ -290,7 +306,7 @@ export default function render(ast, data, createComment, createElement, importTe
         && !helper.elseTypes[ sibling.type ]
         && !attributeRendering
       ) {
-        return makeNodes(createComment())
+        return snabbdom.createCommentVnode()
       }
       return env.FALSE
     }
@@ -435,18 +451,19 @@ export default function render(ast, data, createComment, createElement, importTe
 
 
   leave[ nodeType.TEXT ] = function (source) {
+    let { text } = source
     // 如果是元素的文本，而不是属性的文本
     // 直接保持原样，因为 snabbdom 文本节点的结构和模板文本节点结构是一致的
     return attributeRendering
-      ? source.text
-      : source
+      ? text
+      : snabbdom.createTextVnode(text)
   }
 
   leave[ nodeType.EXPRESSION ] = function (source) {
     let text = executeExpr(source.expr)
     return attributeRendering
       ? text
-      : new Text(text)
+      : snabbdom.createTextVnode(text)
   }
 
   leave[ nodeType.DIRECTIVE ] = function (source, output) {
