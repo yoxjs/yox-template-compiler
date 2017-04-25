@@ -75,11 +75,11 @@ function mergeNodes(outputNodes, sourceNodes) {
  *
  * @param {Object} ast 编译出来的抽象语法树
  * @param {Object} data 渲染模板的数据
- * @param {?Function} importTemplate 导入子模板，如果是纯模板，可不传
+ * @param {Yox} instance 组件实例
  * @param {?Function} addDep 渲染模板过程中使用的数据依赖，如果是纯模板，可不传
  * @return {Array}
  */
-export default function render(ast, data, importTemplate, addDep) {
+export default function render(ast, data, instance, addDep) {
 
   let keypath, keypathList = [ ],
   updateKeypath = function () {
@@ -91,7 +91,7 @@ export default function render(ast, data, importTemplate, addDep) {
 
   updateKeypath()
 
-  getKeypath.toString = getKeypath
+  getKeypath.toString =
   data[ syntax.SPECIAL_KEYPATH ] = getKeypath
 
   let context = new Context(data, keypath), nodeStack = [ ], nodeList = [ ], htmlStack = [ ], partials = { }
@@ -275,7 +275,7 @@ export default function render(ast, data, importTemplate, addDep) {
 
   let addExpressionDep = addDep
   let executeExpr = function (expr) {
-    return executeExpression(expr, context, addExpressionDep)
+    return executeExpression(expr, context, instance, addExpressionDep)
   }
 
   let enter = { }, leave = { }
@@ -287,7 +287,7 @@ export default function render(ast, data, importTemplate, addDep) {
 
   enter[ nodeType.IMPORT ] = function (source) {
     let { name } = source
-    let partial = partials[ name ] || importTemplate(name)
+    let partial = partials[ name ] || instance.importPartial(name)
     if (partial) {
       pushNode(partial)
       return env.FALSE
@@ -422,7 +422,7 @@ export default function render(ast, data, importTemplate, addDep) {
     let vnode = snabbdom.createElementVnode(
       source.name,
       {
-        instance: data.$context,
+        instance,
         props,
         attrs: output.attrs,
         directives: output.directives,
