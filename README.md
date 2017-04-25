@@ -15,9 +15,9 @@ JSON.stringify(ast)
 
 let { nodes, deps } = render(
   ast,
+  data,
   createComment,
   createElement,
-  importTemplate,
-  data
+  importTemplate
 )
 ``

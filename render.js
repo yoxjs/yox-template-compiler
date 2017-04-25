@@ -74,14 +74,14 @@ function mergeNodes(outputNodes, sourceNodes) {
  * 渲染抽象语法树
  *
  * @param {Object} ast 编译出来的抽象语法树
+ * @param {Object} data 渲染模板的数据
  * @param {Function} createComment 创建注释节点
  * @param {Function} createElement 创建元素节点
  * @param {?Function} importTemplate 导入子模板，如果是纯模板，可不传
  * @param {?Function} addDep 渲染模板过程中使用的数据依赖，如果是纯模板，可不传
- * @param {Object} data 渲染模板的数据，如果渲染纯模板，可不传
  * @return {Array}
  */
-export default function render(ast, createComment, createElement, importTemplate, addDep, data) {
+export default function render(ast, data, createComment, createElement, importTemplate, addDep) {
 
   let keypath, keypathList = [ ],
   updateKeypath = function () {
