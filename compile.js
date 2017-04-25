@@ -112,11 +112,23 @@ export default function compile(content) {
 
     if (target) {
       let { name, children } = target
-      if (type === nodeType.ELEMENT
-        && expectedName
-        && name !== expectedName
-      ) {
-        throwError(`end tag expected </${name}> to be </${expectedName}>.`)
+      let child = getSingleChild(children)
+
+      if (type === nodeType.ELEMENT) {
+        if (expectedName
+          && name !== expectedName
+        ) {
+          throwError(`end tag expected </${name}> to be </${expectedName}>.`)
+        }
+        if (child
+          && child.type === nodeType.EXPRESSION
+          && child.safe === env.FALSE
+        ) {
+          target.props = {
+            innerHTML: child.expr,
+          }
+          delete target.children
+        }
       }
       else if (type === nodeType.ATTRIBUTE
         && name === syntax.KEYWORD_UNIQUE
@@ -128,32 +140,28 @@ export default function compile(content) {
           delete element.attrs
         }
         if (!array.falsy(children)) {
-          let child = getSingleChild(children)
           element.key = child.type === nodeType.TEXT
             ? child.text
             : children
         }
       }
-      else {
-        let child = getSingleChild(children)
-        if (child) {
-          // 预编译表达式，提升性能
-          if (type === nodeType.DIRECTIVE
-            && child.type === nodeType.TEXT
-          ) {
-            let expr = compileExpression(child.text)
-            target.expr = expr
-            target.value = expr.source
-            delete target.children
-          }
-          // 属性绑定，把 Attribute 转成 单向绑定 指令
-          else if (type === nodeType.ATTRIBUTE
-            && child.type === nodeType.EXPRESSION
-            && child.safe
-            && is.string(child.expr.keypath)
-          ) {
-            target.bindTo = child.expr.keypath
-          }
+      else if (child) {
+        // 预编译表达式，提升性能
+        if (type === nodeType.DIRECTIVE
+          && child.type === nodeType.TEXT
+        ) {
+          let expr = compileExpression(child.text)
+          target.expr = expr
+          target.value = expr.source
+          delete target.children
+        }
+        // 属性绑定，把 Attribute 转成 单向绑定 指令
+        else if (type === nodeType.ATTRIBUTE
+          && child.type === nodeType.EXPRESSION
+          && child.safe
+          && is.string(child.expr.keypath)
+        ) {
+          target.bindTo = child.expr.keypath
         }
       }
     }

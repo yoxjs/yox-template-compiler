@@ -75,12 +75,11 @@ function mergeNodes(outputNodes, sourceNodes) {
  *
  * @param {Object} ast 编译出来的抽象语法树
  * @param {Object} data 渲染模板的数据
- * @param {Function} createElement 创建元素节点
  * @param {?Function} importTemplate 导入子模板，如果是纯模板，可不传
  * @param {?Function} addDep 渲染模板过程中使用的数据依赖，如果是纯模板，可不传
  * @return {Array}
  */
-export default function render(ast, data, createElement, importTemplate, addDep) {
+export default function render(ast, data, importTemplate, addDep) {
 
   let keypath, keypathList = [ ],
   updateKeypath = function () {
@@ -403,20 +402,41 @@ export default function render(ast, data, createElement, importTemplate, addDep)
 
       }
     }
-    output.name = source.name
-    output.component = source.component
   }
 
   leave[ nodeType.ELEMENT ] = function (source, output) {
 
-    let value = createElement(source, output)
-
     let { key } = output
-    if (key) {
-      currentCache[ key ].result = value
+    let props
+
+    if (source.props) {
+      props = { }
+      object.each(
+        source.props,
+        function (expr, key) {
+          props[ key ] = executeExpr(expr)
+        }
+      )
     }
 
-    return value
+    let vnode = snabbdom.createElementVnode(
+      source.name,
+      {
+        instance: data.$context,
+        props,
+        attrs: output.attrs,
+        directives: output.directives,
+      },
+      output.children,
+      key,
+      source.component
+    )
+
+    if (key) {
+      currentCache[ key ].result = vnode
+    }
+
+    return vnode
 
   }
 
