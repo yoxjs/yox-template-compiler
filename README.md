@@ -13,10 +13,5 @@ let ast = compile('<div>...</div>')
 // Maybe it is useful during the build phase
 JSON.stringify(ast)
 
-let nodes = render(
-  ast,
-  data,
-  instance,
-  addDep
-)
+let { nodes, deps } = render(ast, data, instance)
 ``

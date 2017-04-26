@@ -76,10 +76,9 @@ function mergeNodes(outputNodes, sourceNodes) {
  * @param {Object} ast 编译出来的抽象语法树
  * @param {Object} data 渲染模板的数据
  * @param {Yox} instance 组件实例
- * @param {?Function} addDep 渲染模板过程中使用的数据依赖，如果是纯模板，可不传
  * @return {Array}
  */
-export default function render(ast, data, instance, addDep) {
+export default function render(ast, data, instance) {
 
   let keypath, keypathList = [ ],
   updateKeypath = function () {
@@ -94,7 +93,7 @@ export default function render(ast, data, instance, addDep) {
   getKeypath.toString =
   data[ syntax.SPECIAL_KEYPATH ] = getKeypath
 
-  let context = new Context(data, keypath), nodeStack = [ ], nodeList = [ ], htmlStack = [ ], partials = { }
+  let context = new Context(data, keypath), nodeStack = [ ], htmlStack = [ ], partials = { }, nodes = [ ], deps = { }
 
   let sibling, cache, prevCache, currentCache
 
@@ -127,13 +126,11 @@ export default function render(ast, data, instance, addDep) {
   }
 
   let addChild = function (child, parent) {
-    let collection
-    if (parent) {
-      collection = parent.children || (parent.children = makeNodes([ ]))
-    }
-    else {
-      collection = nodeList
-    }
+
+    let collection = parent
+      ? (parent.children || (parent.children = makeNodes([ ])))
+      : nodes
+
     if (isNodes(child)) {
       array.each(
         child,
@@ -145,6 +142,7 @@ export default function render(ast, data, instance, addDep) {
     else {
       addChildNative(collection, child)
     }
+
   }
 
   let addAttr = function (key, value, parent) {
@@ -273,9 +271,18 @@ export default function render(ast, data, instance, addDep) {
     }
   }
 
-  let addExpressionDep = addDep
-  let executeExpr = function (expr) {
-    return executeExpression(expr, context, instance, addExpressionDep)
+  let executeExpr = function (expr, needDep) {
+    return executeExpression(
+      expr,
+      function (keypath) {
+        let result = context.get(keypath)
+        if (needDep !== env.FALSE) {
+          deps[ result.keypath ] = result.value
+        }
+        return result.value
+      },
+      instance
+    )
   }
 
   let enter = { }, leave = { }
@@ -390,7 +397,7 @@ export default function render(ast, data, instance, addDep) {
         // 有缓存，且数据没有变化才算命中
         if (cache && cache.value === result.value) {
           currentCache[ trackBy ] = cache
-          addDep(result.keypath, result.value)
+          deps[ result.keypath ] = result.value
           return cache.result
         }
         else {
@@ -440,34 +447,6 @@ export default function render(ast, data, instance, addDep) {
 
   }
 
-  enter[ nodeType.ATTRIBUTE ] = function (source) {
-    let { name, children, bindTo } = source
-    if (is.string(bindTo)) {
-      addExpressionDep = env.noop
-    }
-  }
-
-  leave[ nodeType.ATTRIBUTE ] = function (source, output) {
-    let element = htmlStack[ htmlStack.length - 2 ]
-    let { name, children, bindTo } = source
-    addAttr(
-      name,
-      mergeNodes(output.children, children),
-      element,
-    )
-    if (is.string(bindTo)) {
-      addDirective(
-        createDirective(
-          syntax.DIRECTIVE_MODEL,
-          name,
-          bindTo
-        ),
-        element
-      )
-      addExpressionDep = addDep
-    }
-  }
-
 
 
   leave[ nodeType.TEXT ] = function (source) {
@@ -480,10 +459,31 @@ export default function render(ast, data, instance, addDep) {
   }
 
   leave[ nodeType.EXPRESSION ] = function (source) {
-    let text = executeExpr(source.expr)
+    let htmlNode = array.last(htmlStack)
+    let text = executeExpr(source.expr, htmlNode && htmlNode.binding ? env.FALSE : env.TRUE)
     return attributeRendering
       ? text
       : snabbdom.createTextVnode(text)
+  }
+
+  leave[ nodeType.ATTRIBUTE ] = function (source, output) {
+    let element = htmlStack[ htmlStack.length - 2 ]
+    let { name, children, binding } = source
+    addAttr(
+      name,
+      mergeNodes(output.children, children),
+      element,
+    )
+    if (is.string(binding)) {
+      addDirective(
+        createDirective(
+          syntax.DIRECTIVE_MODEL,
+          name,
+          binding
+        ),
+        element
+      )
+    }
   }
 
   leave[ nodeType.DIRECTIVE ] = function (source, output) {
@@ -521,9 +521,7 @@ export default function render(ast, data, instance, addDep) {
 
     let expr = source.expr, hasKeypath = is.string(expr.keypath), value
     if (hasKeypath) {
-      addExpressionDep = env.noop
-      value = executeExpr(expr)
-      addExpressionDep = addDep
+      value = executeExpr(expr, env.FALSE)
     }
     else {
       value = executeExpr(expr)
@@ -568,6 +566,6 @@ export default function render(ast, data, instance, addDep) {
 
   pushNode(ast)
 
-  return nodeList
+  return { nodes, deps }
 
 }

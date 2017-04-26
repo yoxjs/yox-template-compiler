@@ -161,7 +161,7 @@ export default function compile(content) {
           && child.safe
           && is.string(child.expr.keypath)
         ) {
-          target.bindTo = child.expr.keypath
+          target.binding = child.expr.keypath
         }
       }
     }
