@@ -92,11 +92,12 @@ export default class Context {
       return cache
     }
 
-    logger.warn(`Failed to lookup "${key}".`)
+    keypath = joinKeypath(this, keypath)
 
-    // 找不到就用当前的 keypath 吧
+    logger.warn(`Failed to lookup "${keypath}".`)
+
     return {
-      keypath: joinKeypath(this, keypath),
+      keypath,
     }
 
   }

@@ -371,7 +371,7 @@ export default function render(ast, data, instance) {
           currentCache[ trackBy ] = cache
           deps[ result.keypath ] = result.value
           addChild(
-            htmlStack[ htmlStack.length - 2 ],
+            array.last(htmlStack),
             cache.result
           )
           return env.FALSE
