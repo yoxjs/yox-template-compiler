@@ -81,7 +81,7 @@ export default function render(ast, data, instance) {
         let prevChild = array.last(children), prop = 'text'
 
         if (is.primitive(child) || !object.has(child, prop)) {
-          if (is.object(prevChild) && object.has(child, prop)) {
+          if (is.object(prevChild) && is.string(prevChild[ prop ])) {
             prevChild[ prop ] += child
             return
           }
