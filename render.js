@@ -115,18 +115,20 @@ export default function render(ast, data, instance) {
   }
 
   let getValue = function (source, output) {
+    let value
     if (object.has(output, 'value')) {
-      return output.value
+      value = output.value
     }
-    if (object.has(source, 'value')) {
-      return source.value
+    else if (object.has(source, 'value')) {
+      value = source.value
     }
-    if (object.has(source, 'expr')) {
-      return executeExpr(source.expr, source.binding)
+    else if (source.expr) {
+      value = executeExpr(source.expr, source.binding)
     }
-    if (source.children) {
-      return char.CHAR_BLANK
+    if (value == env.NULL && (source.expr || source.children)) {
+      value = char.CHAR_BLANK
     }
+    return value
   }
 
   let attributeRendering
