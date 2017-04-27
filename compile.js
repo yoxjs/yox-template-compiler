@@ -163,9 +163,13 @@ export default function compile(content) {
         else if (type === nodeType.ATTRIBUTE
           && child.type === nodeType.EXPRESSION
           && child.safe
-          && is.string(child.expr.keypath)
         ) {
-          target.binding = child.expr.keypath
+          let { expr } = child
+          if (is.string(expr.keypath)) {
+            target.expr = expr
+            target.binding = expr.keypath
+            delete target.children
+          }
         }
       }
     }

@@ -121,6 +121,9 @@ export default function render(ast, data, instance) {
     if (object.has(source, 'value')) {
       return source.value
     }
+    if (object.has(source, 'expr')) {
+      return executeExpr(source.expr, source.binding)
+    }
     if (source.children) {
       return char.CHAR_BLANK
     }
@@ -429,31 +432,31 @@ export default function render(ast, data, instance) {
   }
 
   leave[ nodeType.EXPRESSION ] = function (source) {
-    let htmlNode = array.last(htmlStack)
     addChild(
-      htmlNode,
-      executeExpr(
-        source.expr,
-        htmlNode && htmlNode.source.binding
-      )
+      array.last(htmlStack),
+      executeExpr(source.expr)
     )
   }
 
   leave[ nodeType.ATTRIBUTE ] = function (source, output) {
     let element = htmlStack[ htmlStack.length - 2 ]
-    let { name, children, binding } = source
-    addAttr(
-      element,
-      name,
-      getValue(source, output)
-    )
-    if (binding) {
-      addDirective(
+    let { name, binding } = source
+    // key="xx" 是作为一个虚拟属性来求值的
+    // 它并没有 name
+    if (name) {
+      addAttr(
         element,
-        syntax.DIRECTIVE_MODEL,
         name,
-        binding
+        getValue(source, output)
       )
+      if (binding) {
+        addDirective(
+          element,
+          syntax.DIRECTIVE_MODEL,
+          name,
+          binding
+        )
+      }
     }
   }
 
