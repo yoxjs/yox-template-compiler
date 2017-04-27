@@ -146,14 +146,18 @@ export default function compile(content) {
         }
       }
       else if (child) {
-        // 预编译表达式，提升性能
-        if (type === nodeType.DIRECTIVE
-          && child.type === nodeType.TEXT
-        ) {
-          let expr = compileExpression(child.text)
-          target.expr = expr
-          target.value = expr.source
-          delete target.children
+        if (child.type === nodeType.TEXT) {
+          // 预编译表达式，提升性能
+          if (type === nodeType.DIRECTIVE) {
+            let expr = compileExpression(child.text)
+            target.expr = expr
+            target.value = child.text
+            delete target.children
+          }
+          else if (type === nodeType.ATTRIBUTE) {
+            target.value = child.text
+            delete target.children
+          }
         }
         // 属性绑定，把 Attribute 转成 单向绑定 指令
         else if (type === nodeType.ATTRIBUTE
@@ -324,9 +328,11 @@ export default function compile(content) {
         }
         if (closed) {
           text += currentQuote
-          popStack(
-            array.pop(htmlStack).type
-          )
+          closed = array.pop(htmlStack)
+          if (!closed.children) {
+            closed.value = char.CHAR_BLANK
+          }
+          popStack(closed.type)
         }
         return text
       }

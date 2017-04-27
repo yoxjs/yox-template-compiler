@@ -10,7 +10,6 @@ import * as keypathUtil from 'yox-common/util/keypath'
 
 import executeFunction from 'yox-common/function/execute'
 import executeExpression from 'yox-expression-compiler/execute'
-import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
 
 import * as snabbdom from 'yox-snabbdom'
 
@@ -18,57 +17,6 @@ import Context from './src/Context'
 import * as helper from './src/helper'
 import * as syntax from './src/syntax'
 import * as nodeType from './src/nodeType'
-
-/**
- * 标记节点数组，用于区分普通数组
- *
- * @param {*} nodes
- * @return {*}
- */
-function makeNodes(nodes) {
-  if (is.array(nodes)) {
-    nodes[ char.CHAR_DASH ] = env.TRUE
-  }
-  return nodes
-}
-
-/**
- * 是否是节点数组
- *
- * @param {*} nodes
- * @return {boolean}
- */
-function isNodes(nodes) {
-  return is.array(nodes) && nodes[ char.CHAR_DASH ]
-}
-
-/**
- * 合并多个节点
- *
- * 用于处理属性值和指令值
- *
- * @param {?Array} outputNodes
- * @param {?Array} sourceNodes
- * @return {*}
- */
-function mergeNodes(outputNodes, sourceNodes) {
-  if (is.array(outputNodes)) {
-    switch (outputNodes.length) {
-      // name=""
-      case 0:
-        return char.CHAR_BLANK
-      // name="{{value}}"
-      case 1:
-        return outputNodes[ 0 ]
-      // name="{{value1}}{{value2}}"
-      default:
-        return outputNodes.join(char.CHAR_BLANK)
-    }
-  }
-  else if (!array.falsy(sourceNodes)) {
-    return char.CHAR_BLANK
-  }
-}
 
 /**
  * 渲染抽象语法树
@@ -93,8 +41,7 @@ export default function render(ast, data, instance) {
   getKeypath.toString =
   data[ syntax.SPECIAL_KEYPATH ] = getKeypath
 
-  let context = new Context(data, keypath), nodeStack = [ ], htmlStack = [ ], partials = { }, nodes = [ ], deps = { }
-
+  let context = new Context(data, keypath), nodeStack = [ ], htmlStack = [ ], partials = { }, deps = { }
   let sibling, cache, prevCache, currentCache
 
   let isDefined = function (value) {
@@ -113,66 +60,87 @@ export default function render(ast, data, instance) {
     )
   }
 
-  let addChildNative = function (children, child) {
-    let prevChild = array.last(children)
-    if (is.object(prevChild) && is.object(child)) {
-      let prop = 'text'
-      if (is.string(prevChild[ prop ]) && is.string(child[ prop ])) {
-        prevChild[ prop ] += child[ prop ]
-        return
-      }
-    }
-    children.push(child)
-  }
+  let addChild = function (parent, child) {
 
-  let addChild = function (child, parent) {
+    if (parent && isDefined(child)) {
 
-    let collection = parent
-      ? (parent.children || (parent.children = makeNodes([ ])))
-      : nodes
-
-    if (isNodes(child)) {
-      array.each(
-        child,
-        function (child) {
-          addChildNative(collection, child)
+      if (attributeRendering) {
+        if (object.has(parent, 'value')) {
+          parent.value += child
         }
-      )
-    }
-    else {
-      addChildNative(collection, child)
+        else {
+          parent.value = child
+        }
+      }
+      else {
+        // 文本节点需要拼接
+        // <div>123{{name}}456</div>
+        // <div>123{{user}}456</div>
+
+        let children = (parent.children || (parent.children = [ ]))
+        let prevChild = array.last(children), prop = 'text'
+
+        if (is.primitive(child) || !object.has(child, prop)) {
+          if (is.object(prevChild) && object.has(child, prop)) {
+            prevChild[ prop ] += child
+            return
+          }
+          else {
+            child = snabbdom.createTextVnode(child)
+          }
+        }
+
+        children.push(child)
+      }
+
     }
 
   }
 
-  let addAttr = function (key, value, parent) {
+  let addAttr = function (parent, key, value) {
     let attrs = parent.attrs || (parent.attrs = { })
     attrs[ key ] = value
   }
 
-  let addDirective = function (directive, parent) {
+  let addDirective = function (parent, name, modifier, value, expr) {
     let directives = parent.directives || (parent.directives = { })
-    directives[ keypathUtil.join(directive.name, directive.modifier) ] = directive
+    directives[ keypathUtil.join(name, modifier) ] = {
+      name,
+      modifier,
+      context,
+      keypath,
+      value,
+      expr,
+    }
+  }
+
+  let getValue = function (source, output) {
+    if (object.has(output, 'value')) {
+      return output.value
+    }
+    if (object.has(source, 'value')) {
+      return source.value
+    }
+    if (source.children) {
+      return char.CHAR_BLANK
+    }
   }
 
   let attributeRendering
-  let pushStack = function (source, silent) {
+  let pushStack = function (source) {
 
     let { type, attrs, children } = source
 
     let parent = array.last(nodeStack), output = { type, source, parent }
 
-    let value = executeFunction(
-      enter[ type ],
-      env.NULL,
-      [ source, output ]
-    )
-
-    if (isDefined(value)) {
-      if (!silent && value !== env.FALSE) {
-        addChild(value, parent)
-      }
-      return value
+    if (
+      executeFunction(
+        enter[ type ],
+        env.NULL,
+        [ source, output ]
+      ) === env.FALSE
+    ) {
+      return
     }
 
     if (isDefined(source.keypath)) {
@@ -212,21 +180,17 @@ export default function render(ast, data, instance) {
       traverseList(children)
     }
 
-    value = executeFunction(
+    executeFunction(
       leave[ type ],
       env.NULL,
       [ source, output ]
     )
 
-    if (!silent && isDefined(value)) {
-      addChild(value, parent)
-    }
-
-    array.pop(nodeStack)
-
     if (helper.htmlTypes[ source.type ]) {
       array.pop(htmlStack)
     }
+
+    array.pop(nodeStack)
 
     if (isDefined(source.forward)) {
       context = context.pop()
@@ -236,28 +200,8 @@ export default function render(ast, data, instance) {
       updateKeypath()
     }
 
-    return value
+    return output
 
-  }
-
-  let pushNode = function (node, silent) {
-    if (is.array(node)) {
-      node = {
-        children: node,
-      }
-    }
-    return pushStack(node, silent)
-  }
-
-  let createDirective = function (name, modifier, value, expr) {
-    return {
-      name,
-      modifier,
-      context,
-      keypath,
-      value,
-      expr,
-    }
   }
 
   let filterNode
@@ -271,12 +215,12 @@ export default function render(ast, data, instance) {
     }
   }
 
-  let executeExpr = function (expr, needDep) {
+  let executeExpr = function (expr, filterDep) {
     return executeExpression(
       expr,
       function (keypath) {
         let result = context.get(keypath)
-        if (needDep !== env.FALSE) {
+        if (!filterDep) {
           deps[ result.keypath ] = result.value
         }
         return result.value
@@ -296,7 +240,14 @@ export default function render(ast, data, instance) {
     let { name } = source
     let partial = partials[ name ] || instance.importPartial(name)
     if (partial) {
-      pushNode(partial)
+      if (is.array(partial)) {
+        pushStack({
+          children: partial,
+        })
+      }
+      else {
+        pushStack(partial)
+      }
       return env.FALSE
     }
     logger.fatal(`Partial "${name}" is not found.`)
@@ -312,7 +263,10 @@ export default function render(ast, data, instance) {
         && !helper.elseTypes[ sibling.type ]
         && !attributeRendering
       ) {
-        return snabbdom.createCommentVnode()
+        addChild(
+          array.last(htmlStack),
+          snabbdom.createCommentVnode()
+        )
       }
       return env.FALSE
     }
@@ -322,7 +276,16 @@ export default function render(ast, data, instance) {
   leave[ nodeType.ELSE_IF ] =
   leave[ nodeType.ELSE ] = function (source, output) {
     filterNode = filterElse
-    return output.children
+    let { children } = output
+    if (children) {
+      let htmlNode = array.last(htmlStack)
+      array.each(
+        children,
+        function (child) {
+          addChild(htmlNode, child)
+        }
+      )
+    }
   }
 
   enter[ nodeType.EACH ] = function (source) {
@@ -381,10 +344,14 @@ export default function render(ast, data, instance) {
       }
       else if (is.array(key)) {
         attributeRendering = env.TRUE
-        trackBy = mergeNodes(pushNode(key, env.TRUE), key)
+        source = {
+          type: nodeType.ATTRIBUTE,
+          children: key,
+        }
+        trackBy = getValue(source, pushStack(source))
         attributeRendering = env.NULL
       }
-      if (trackBy) {
+      if (trackBy != env.NULL) {
 
         if (!currentCache) {
           prevCache = ast.cache || { }
@@ -398,7 +365,11 @@ export default function render(ast, data, instance) {
         if (cache && cache.value === result.value) {
           currentCache[ trackBy ] = cache
           deps[ result.keypath ] = result.value
-          return cache.result
+          addChild(
+            htmlStack[ htmlStack.length - 2 ],
+            cache.result
+          )
+          return env.FALSE
         }
         else {
           output.key = trackBy
@@ -413,9 +384,7 @@ export default function render(ast, data, instance) {
 
   leave[ nodeType.ELEMENT ] = function (source, output) {
 
-    let { key } = output
-    let props
-
+    let { key } = output, props
     if (source.props) {
       props = { }
       object.each(
@@ -443,45 +412,47 @@ export default function render(ast, data, instance) {
       currentCache[ key ].result = vnode
     }
 
-    return vnode
+    addChild(
+      htmlStack[ htmlStack.length - 2 ],
+      vnode
+    )
 
   }
 
 
 
   leave[ nodeType.TEXT ] = function (source) {
-    let { text } = source
-    // 如果是元素的文本，而不是属性的文本
-    // 直接保持原样，因为 snabbdom 文本节点的结构和模板文本节点结构是一致的
-    return attributeRendering
-      ? text
-      : snabbdom.createTextVnode(text)
+    addChild(
+      array.last(htmlStack),
+      source.text
+    )
   }
 
   leave[ nodeType.EXPRESSION ] = function (source) {
     let htmlNode = array.last(htmlStack)
-    let text = executeExpr(source.expr, htmlNode && htmlNode.binding ? env.FALSE : env.TRUE)
-    return attributeRendering
-      ? text
-      : snabbdom.createTextVnode(text)
+    addChild(
+      htmlNode,
+      executeExpr(
+        source.expr,
+        htmlNode && htmlNode.source.binding
+      )
+    )
   }
 
   leave[ nodeType.ATTRIBUTE ] = function (source, output) {
     let element = htmlStack[ htmlStack.length - 2 ]
     let { name, children, binding } = source
     addAttr(
-      name,
-      mergeNodes(output.children, children),
       element,
+      name,
+      getValue(source, output)
     )
-    if (is.string(binding)) {
+    if (binding) {
       addDirective(
-        createDirective(
-          syntax.DIRECTIVE_MODEL,
-          name,
-          binding
-        ),
-        element
+        element,
+        syntax.DIRECTIVE_MODEL,
+        name,
+        binding
       )
     }
   }
@@ -497,15 +468,13 @@ export default function render(ast, data, instance) {
     //
     // model="xxx"
     // model=""
-    //
-    let { name, modifier, expr, value } = source
-    if (output.children) {
-      value = mergeNodes(output.children, source.children)
-    }
 
     addDirective(
-      createDirective(name, modifier, value, expr),
-      htmlStack[ htmlStack.length - 2 ]
+      htmlStack[ htmlStack.length - 2 ],
+      source.name,
+      source.modifier,
+      getValue(source, output),
+      source.expr
     )
 
   }
@@ -517,40 +486,27 @@ export default function render(ast, data, instance) {
     //
     // 2. <Component {{... a ? aProps : bProps }}/>
     //    复杂的表达式，需要收集依赖
-    //
 
-    let expr = source.expr, hasKeypath = is.string(expr.keypath), value
-    if (hasKeypath) {
-      value = executeExpr(expr, env.FALSE)
-    }
-    else {
-      value = executeExpr(expr)
-    }
+    let expr = source.expr, hasKeypath = is.string(expr.keypath), value = executeExpr(expr, hasKeypath)
 
     if (is.object(value)) {
       let element = array.last(htmlStack)
       object.each(
         value,
         function (value, name) {
-
+          addAttr(
+            element,
+            name,
+            value
+          )
           if (hasKeypath) {
             addDirective(
-              createDirective(
-                syntax.DIRECTIVE_MODEL,
-                name,
-                keypathUtil.join(expr.keypath, name)
-              ),
-              element
-            )
-          }
-          else {
-            addAttr(
+              element,
+              syntax.DIRECTIVE_MODEL,
               name,
-              value,
-              element
+              keypathUtil.join(expr.keypath, name)
             )
           }
-
         }
       )
     }
@@ -560,12 +516,14 @@ export default function render(ast, data, instance) {
 
   }
 
-  leave[ env.UNDEFINED ] = function (source, output) {
-    return output.children
+  let result = pushStack({
+    type: nodeType.ELEMENT,
+    children: is.array(ast) ? ast : [ ast ]
+  })
+
+  return {
+    nodes: result.children,
+    deps,
   }
-
-  pushNode(ast)
-
-  return { nodes, deps }
 
 }
