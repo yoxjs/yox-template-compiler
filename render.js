@@ -220,15 +220,24 @@ export default function render(ast, data, instance) {
     }
   }
 
-  let executeExpr = function (expr, filterDep) {
+  let executeExpr = function (expr, filter) {
     return executeExpression(
       expr,
-      function (keypath) {
-        let result = context.get(keypath)
-        if (!filterDep) {
-          deps[ result.keypath ] = result.value
+      function (key) {
+        let { keypath, value } = context.get(key)
+        if (!filter
+          && !is.numeric(keypath)
+          && !is.func(value)
+          && key !== syntax.SPECIAL_EVENT
+          && key !== syntax.SPECIAL_KEYPATH
+        ) {
+          deps[ keypath ] = value
+          // 响应数组长度的变化是个很普遍的需求
+          if (is.array(value)) {
+            deps[ keypathUtil.join(keypath, 'length') ] = value.length
+          }
         }
-        return result.value
+        return value
       },
       instance
     )
@@ -516,7 +525,7 @@ export default function render(ast, data, instance) {
       )
     }
     else {
-      logger.fatal(`Spread "${expr.source}" must be an object.`)
+      logger.fatal(`Spread "${expr.source}" expected to be an object.`)
     }
 
   }
