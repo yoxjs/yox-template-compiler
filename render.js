@@ -119,11 +119,11 @@ export default function render(ast, data, instance) {
     if (object.has(output, 'value')) {
       value = output.value
     }
-    else if (object.has(source, 'value')) {
-      value = source.value
-    }
     else if (source.expr) {
       value = executeExpr(source.expr, source.binding)
+    }
+    else if (object.has(source, 'value')) {
+      value = source.value
     }
     if (value == env.NULL && (source.expr || source.children)) {
       value = char.CHAR_BLANK
