@@ -134,10 +134,9 @@ export default function compile(content) {
         && name === syntax.KEYWORD_UNIQUE
       ) {
         let element = array.last(htmlStack)
-        let { attrs } = element
-        array.remove(attrs, target)
-        if (!attrs.length) {
-          delete element.attrs
+        array.remove(element.children, target)
+        if (!element.children.length) {
+          delete element.children
         }
         if (!array.falsy(children)) {
           element.key = child.type === nodeType.TEXT
@@ -199,12 +198,7 @@ export default function compile(content) {
 
     let currentNode = array.last(nodeStack)
     if (currentNode) {
-      if (htmlStack.length === 1 && currentNode.addAttr) {
-        currentNode.addAttr(node)
-      }
-      else {
-        currentNode.addChild(node)
-      }
+      currentNode.addChild(node)
     }
     else {
       array.push(nodeList, node)
@@ -252,6 +246,8 @@ export default function compile(content) {
       let match = content.match(closingTagPattern)
       if (match) {
         if (htmlStack.length === 1) {
+          let element = array.last(htmlStack)
+          element.divider = element.children ? element.children.length : 0
           if (match[ 1 ] === char.CHAR_SLASH
             || selfClosingTagNamePattern.test(htmlStack[ 0 ].name)
           ) {

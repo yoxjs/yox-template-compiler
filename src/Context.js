@@ -104,8 +104,6 @@ export default class Context {
 
     keypath = joinKeypath(this, keypath)
 
-    logger.warn(`Failed to lookup "${keypath}".`)
-
     return {
       keypath,
     }

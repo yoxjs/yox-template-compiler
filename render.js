@@ -48,18 +48,6 @@ export default function render(ast, data, instance) {
     return value !== env.UNDEFINED
   }
 
-  let traverseList = function (list) {
-    array.each(
-      list,
-      function (node, index) {
-        if (!filterNode || filterNode(node)) {
-          sibling = list[ index + 1 ]
-          pushStack(node)
-        }
-      }
-    )
-  }
-
   let addChild = function (parent, child) {
 
     if (parent && isDefined(child)) {
@@ -120,7 +108,7 @@ export default function render(ast, data, instance) {
       value = output.value
     }
     else if (source.expr) {
-      value = executeExpr(source.expr, source.binding || source.name === syntax.DIRECTIVE_MODEL)
+      value = executeExpr(source.expr, source.binding || source.type === nodeType.DIRECTIVE)
     }
     else if (object.has(source, 'value')) {
       value = source.value
@@ -134,7 +122,7 @@ export default function render(ast, data, instance) {
   let attributeRendering
   let pushStack = function (source) {
 
-    let { type, attrs, children } = source
+    let { type, divider, children } = source
 
     let parent = array.last(nodeStack), output = { type, source, parent }
 
@@ -175,14 +163,25 @@ export default function render(ast, data, instance) {
       array.push(htmlStack, output)
     }
 
-    if (attrs) {
-      attributeRendering = env.TRUE
-      traverseList(attrs)
-      attributeRendering = env.NULL
-    }
-
     if (children) {
-      traverseList(children)
+      array.each(
+        children,
+        function (node, index) {
+          if (index < divider) {
+            attributeRendering = env.TRUE
+          }
+          else if (attributeRendering && index >= divider) {
+            attributeRendering = env.NULL
+          }
+          if (!filterNode || filterNode(node)) {
+            sibling = children[ index + 1 ]
+            pushStack(node)
+          }
+        }
+      )
+      if (attributeRendering) {
+        attributeRendering = env.NULL
+      }
     }
 
     executeFunction(
@@ -388,19 +387,21 @@ export default function render(ast, data, instance) {
         let cache = prevCache[ trackBy ]
 
         if (cache) {
-          let isSame = env.TRUE
-          object.each(
-            cache.deps,
-            function (oldValue, key) {
-              let { keypath, value } = context.get(key)
-              if (value === oldValue) {
-                deps[ keypath ] = value
+          let isSame = cache.keypath === keypath
+          if (isSame) {
+            object.each(
+              cache.deps,
+              function (oldValue, key) {
+                let { keypath, value } = context.get(key)
+                if (value === oldValue) {
+                  deps[ keypath ] = value
+                }
+                else {
+                  return isSame = env.FALSE
+                }
               }
-              else {
-                return isSame = env.FALSE
-              }
-            }
-          )
+            )
+          }
           if (isSame) {
             currentCache[ trackBy ] = cache
             addChild(
@@ -413,7 +414,9 @@ export default function render(ast, data, instance) {
 
         cacheDeps = { }
         output.key = trackBy
-
+        currentCache[ trackBy ] = {
+          keypath,
+        }
       }
     }
   }
@@ -449,10 +452,8 @@ export default function render(ast, data, instance) {
     )
 
     if (isDefined(key)) {
-      currentCache[ key ] = {
-        deps: cacheDeps,
-        vnode,
-      }
+      currentCache[ key ].deps = cacheDeps
+      currentCache[ key ].vnode = vnode
       cacheDeps = env.NULL
     }
 
