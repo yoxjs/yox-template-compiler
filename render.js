@@ -120,7 +120,7 @@ export default function render(ast, data, instance) {
       value = output.value
     }
     else if (source.expr) {
-      value = executeExpr(source.expr, source.binding)
+      value = executeExpr(source.expr, source.binding || source.name === syntax.DIRECTIVE_MODEL)
     }
     else if (object.has(source, 'value')) {
       value = source.value
@@ -239,14 +239,14 @@ export default function render(ast, data, instance) {
         ) {
           deps[ keypath ] = value
           if (cacheDeps) {
-            cacheDeps[ keypath ] = value
+            cacheDeps[ key ] = value
           }
           // 响应数组长度的变化是个很普遍的需求
           if (is.array(value)) {
             keypath = keypathUtil.join(keypath, 'length')
             deps[ keypath ] = value.length
             if (cacheDeps) {
-              cacheDeps[ keypath ] = value
+              cacheDeps[ key ] = value
             }
           }
         }
@@ -392,9 +392,9 @@ export default function render(ast, data, instance) {
           object.each(
             cache.deps,
             function (oldValue, key) {
-              let { value } = context.get(key)
+              let { keypath, value } = context.get(key)
               if (value === oldValue) {
-                deps[ key ] = value
+                deps[ keypath ] = value
               }
               else {
                 return isSame = env.FALSE
