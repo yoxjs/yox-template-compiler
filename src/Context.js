@@ -6,6 +6,8 @@ import * as object from 'yox-common/util/object'
 import * as logger from 'yox-common/util/logger'
 import * as keypathUtil from 'yox-common/util/keypath'
 
+import * as syntax from './syntax'
+
 export default class Context {
 
   /**
@@ -90,6 +92,14 @@ export default class Context {
     cache = cache[ keypath ]
     if (cache) {
       return cache
+    }
+
+    if (keypath === syntax.SPECIAL_EVENT
+      || keypath === syntax.SPECIAL_KEYPATH
+    ) {
+      return {
+        keypath,
+      }
     }
 
     keypath = joinKeypath(this, keypath)
