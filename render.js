@@ -220,6 +220,12 @@ export default function render(ast, data, instance) {
     }
   }
 
+  // 缓存节点只处理一层，不支持下面这种多层缓存
+  // <div key="{{xx}}">
+  //     <div key="{{yy}}"></div>
+  // </div>
+  let cacheDeps
+
   let executeExpr = function (expr, filter) {
     return executeExpression(
       expr,
@@ -232,9 +238,16 @@ export default function render(ast, data, instance) {
           && key !== syntax.SPECIAL_KEYPATH
         ) {
           deps[ keypath ] = value
+          if (cacheDeps) {
+            cacheDeps[ keypath ] = value
+          }
           // 响应数组长度的变化是个很普遍的需求
           if (is.array(value)) {
-            deps[ keypathUtil.join(keypath, 'length') ] = value.length
+            keypath = keypathUtil.join(keypath, 'length')
+            deps[ keypath ] = value.length
+            if (cacheDeps) {
+              cacheDeps[ keypath ] = value
+            }
           }
         }
         return value
@@ -365,7 +378,7 @@ export default function render(ast, data, instance) {
         trackBy = getValue(source, pushStack(source))
         attributeRendering = env.NULL
       }
-      if (trackBy != env.NULL) {
+      if (isDefined(trackBy)) {
 
         if (!currentCache) {
           prevCache = ast.cache || { }
@@ -373,24 +386,33 @@ export default function render(ast, data, instance) {
         }
 
         let cache = prevCache[ trackBy ]
-        let result = context.get(keypath)
 
-        // 有缓存，且数据没有变化才算命中
-        if (cache && cache.value === result.value) {
-          currentCache[ trackBy ] = cache
-          deps[ result.keypath ] = result.value
-          addChild(
-            array.last(htmlStack),
-            cache.result
+        if (cache) {
+          let isSame = env.TRUE
+          object.each(
+            cache.deps,
+            function (oldValue, key) {
+              let { value } = context.get(key)
+              if (value === oldValue) {
+                deps[ key ] = value
+              }
+              else {
+                return isSame = env.FALSE
+              }
+            }
           )
-          return env.FALSE
-        }
-        else {
-          output.key = trackBy
-          currentCache[ trackBy ] = {
-            value: result.value,
+          if (isSame) {
+            currentCache[ trackBy ] = cache
+            addChild(
+              array.last(htmlStack),
+              cache.vnode
+            )
+            return env.FALSE
           }
         }
+
+        cacheDeps = { }
+        output.key = trackBy
 
       }
     }
@@ -398,7 +420,11 @@ export default function render(ast, data, instance) {
 
   leave[ nodeType.ELEMENT ] = function (source, output) {
 
-    let { key } = output, props
+    let key, props
+    if (object.has(output, 'key')) {
+      key = output.key
+    }
+
     if (source.props) {
       props = { }
       object.each(
@@ -422,8 +448,12 @@ export default function render(ast, data, instance) {
       source.component
     )
 
-    if (key) {
-      currentCache[ key ].result = vnode
+    if (isDefined(key)) {
+      currentCache[ key ] = {
+        deps: cacheDeps,
+        vnode,
+      }
+      cacheDeps = env.NULL
     }
 
     addChild(
