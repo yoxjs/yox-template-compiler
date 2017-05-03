@@ -136,27 +136,6 @@ export default function render(ast, data, instance) {
       return
     }
 
-    if (isDefined(source.keypath)) {
-      array.push(
-        keypathList,
-        source.keypath
-      )
-      updateKeypath()
-    }
-    if (isDefined(source.forward)) {
-      context = context.push(
-        source.forward,
-        keypath
-      )
-    }
-    if (is.array(source.context)) {
-      executeFunction(
-        context.set,
-        context,
-        source.context
-      )
-    }
-
     array.push(nodeStack, output)
 
     if (helper.htmlTypes[ type ]) {
@@ -196,14 +175,6 @@ export default function render(ast, data, instance) {
 
     array.pop(nodeStack)
 
-    if (isDefined(source.forward)) {
-      context = context.pop()
-    }
-    if (isDefined(source.keypath)) {
-      array.pop(keypathList)
-      updateKeypath()
-    }
-
     return output
 
   }
@@ -242,10 +213,9 @@ export default function render(ast, data, instance) {
           }
           // 响应数组长度的变化是个很普遍的需求
           if (is.array(value)) {
-            keypath = keypathUtil.join(keypath, 'length')
-            deps[ keypath ] = value.length
+            deps[ keypathUtil.join(keypath, 'length') ] = value.length
             if (cacheDeps) {
-              cacheDeps[ key ] = value
+              cacheDeps[ keypathUtil.join(key, 'length') ] = value.length
             }
           }
         }
@@ -317,43 +287,52 @@ export default function render(ast, data, instance) {
   enter[ nodeType.EACH ] = function (source) {
 
     let { expr, index, children } = source
-    let forward = executeExpr(expr), each
+    let value = executeExpr(expr), each
 
-    if (is.array(forward)) {
+    if (is.array(value)) {
       each = array.each
     }
-    else if (is.object(forward)) {
+    else if (is.object(value)) {
       each = object.each
     }
 
     if (each) {
 
-      let list = [ ]
+      let eachKeypath = expr.keypath
+      if (isDefined(eachKeypath)) {
+        array.push(keypathList, eachKeypath)
+        updateKeypath()
+      }
+      context = context.push(value, keypath)
 
       each(
-        forward,
-        function (forward, i) {
+        value,
+        function (value, i) {
 
-          let child = {
-            forward,
-            children,
-            keypath: i,
-          }
+          array.push(keypathList, i)
+          updateKeypath()
 
+          context = context.push(value, keypath)
           if (index) {
-            child.context = [ index, i ]
+            context.set(index, i)
           }
 
-          array.push(list, child)
+          pushStack({
+            children,
+          })
+
+          context = context.pop()
+          array.pop(keypathList)
+          updateKeypath()
 
         }
       )
 
-      pushStack({
-        forward,
-        children: list,
-        keypath: expr.keypath,
-      })
+      context = context.pop()
+      if (isDefined(eachKeypath)) {
+        array.pop(keypathList)
+        updateKeypath()
+      }
 
     }
 
@@ -532,7 +511,7 @@ export default function render(ast, data, instance) {
     // 2. <Component {{... a ? aProps : bProps }}/>
     //    复杂的表达式，需要收集依赖
 
-    let expr = source.expr, hasKeypath = is.string(expr.keypath), value = executeExpr(expr, hasKeypath)
+    let expr = source.expr, spreadKeypath = expr.keypath, value = executeExpr(expr, spreadKeypath)
 
     if (is.object(value)) {
       let element = array.last(htmlStack)
@@ -544,7 +523,7 @@ export default function render(ast, data, instance) {
             name,
             value
           )
-          if (hasKeypath) {
+          if (spreadKeypath) {
             addDirective(
               element,
               syntax.DIRECTIVE_MODEL,

@@ -3,6 +3,7 @@ import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
 import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
+import * as object from 'yox-common/util/object'
 import * as string from 'yox-common/util/string'
 import * as logger from 'yox-common/util/logger'
 
@@ -91,10 +92,6 @@ export default function compile(content) {
     logger.fatal(`Error compiling template:${char.CHAR_BREAKLINE}${content}${char.CHAR_BREAKLINE}- ${msg}`)
   }
 
-  let getSingleChild = function (children) {
-    return children && children.length === 1 && children[ 0 ]
-  }
-
   let popStack = function (type, expectedName) {
 
     let target
@@ -111,30 +108,53 @@ export default function compile(content) {
     )
 
     if (target) {
+
       let { name, divider, children } = target
-      let child = getSingleChild(children)
+      if (type === nodeType.ELEMENT && expectedName && name !== expectedName) {
+        throwError(`end tag expected </${name}> to be </${expectedName}>.`)
+      }
+
+      // ==========================================
+      // 以下是性能优化的逻辑
+      // ==========================================
+
+      // 如果 children 没实际的数据，删掉它
+      // 避免在渲染阶段增加计算量
+      if (children && !children.length) {
+        delete target.children
+      }
+      if (!target.children) {
+        if (object.has(target, 'divider')) {
+          delete target.divider
+        }
+        return
+      }
+
+      let onlyChild = children.length === 1 && children[ 0 ]
 
       if (type === nodeType.ELEMENT) {
-        if (expectedName
-          && name !== expectedName
-        ) {
-          throwError(`end tag expected </${name}> to be </${expectedName}>.`)
-        }
-        if (children && children.length - divider === 1) {
-          child = array.last(children)
-          if (child.type === nodeType.EXPRESSION
-            && child.safe === env.FALSE
+        // 只有一个子元素
+        // 并且这个子元素是非转义插值
+        // 转成 props
+        if (children.length - divider === 1) {
+          onlyChild = array.last(children)
+          if (onlyChild.type === nodeType.EXPRESSION
+            && onlyChild.safe === env.FALSE
           ) {
             target.props = {
-              innerHTML: child.expr,
+              innerHTML: onlyChild.expr,
             }
-            children.length = divider
-            if (!divider) {
+            if (divider) {
+              children.length = divider
+            }
+            else {
               delete target.children
             }
           }
         }
       }
+      // <div key="xx">
+      // 把 key 从属性中提出来，减少渲染时的遍历
       else if (type === nodeType.ATTRIBUTE
         && name === syntax.KEYWORD_UNIQUE
       ) {
@@ -143,32 +163,33 @@ export default function compile(content) {
         if (!element.children.length) {
           delete element.children
         }
-        if (!array.falsy(children)) {
-          element.key = child.type === nodeType.TEXT
-            ? child.text
-            : children
-        }
+        element.key = onlyChild && onlyChild.type === nodeType.TEXT
+          ? onlyChild.text
+          : children
       }
-      else if (child) {
-        if (child.type === nodeType.TEXT) {
-          // 预编译表达式，提升性能
+      else if (onlyChild) {
+        if (onlyChild.type === nodeType.TEXT) {
+          // 指令的值如果是纯文本，可以预编译表达式，提升性能
           if (type === nodeType.DIRECTIVE) {
-            let expr = compileExpression(child.text)
+            let expr = compileExpression(onlyChild.text)
             target.expr = expr
-            target.value = child.text
+            target.value = onlyChild.text
             delete target.children
           }
+          // 属性的值如果是纯文本，直接获取文本值
+          // 减少渲染时的遍历
           else if (type === nodeType.ATTRIBUTE) {
-            target.value = child.text
+            target.value = onlyChild.text
             delete target.children
           }
         }
-        // 属性绑定，把 Attribute 转成 单向绑定 指令
+        // <div class="{{className}}">
+        // 把 Attribute 转成 单向绑定 指令，可实现精确更新视图
         else if (type === nodeType.ATTRIBUTE
-          && child.type === nodeType.EXPRESSION
-          && child.safe
+          && onlyChild.type === nodeType.EXPRESSION
+          && onlyChild.safe
         ) {
-          let { expr } = child
+          let { expr } = onlyChild
           if (is.string(expr.keypath)) {
             target.expr = expr
             target.binding = expr.keypath
@@ -493,7 +514,7 @@ export default function compile(content) {
         parseDelimiter(match[ 2 ], match[ 0 ])
       }
       else {
-        throwError(`invalid expression: ${match[ 0 ]}`)
+        throwError(`invalid syntax: ${match[ 0 ]}`)
       }
     }
     else {
