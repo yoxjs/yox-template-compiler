@@ -155,6 +155,7 @@ export default function compile(content) {
           if (type === nodeType.DIRECTIVE) {
             let expr = compileExpression(child.text)
             target.expr = expr
+            target.value = child.text
             delete target.children
           }
           else if (type === nodeType.ATTRIBUTE) {
