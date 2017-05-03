@@ -111,7 +111,7 @@ export default function compile(content) {
     )
 
     if (target) {
-      let { name, children } = target
+      let { name, divider, children } = target
       let child = getSingleChild(children)
 
       if (type === nodeType.ELEMENT) {
@@ -120,14 +120,19 @@ export default function compile(content) {
         ) {
           throwError(`end tag expected </${name}> to be </${expectedName}>.`)
         }
-        if (child
-          && child.type === nodeType.EXPRESSION
-          && child.safe === env.FALSE
-        ) {
-          target.props = {
-            innerHTML: child.expr,
+        if (children && children.length - divider === 1) {
+          child = array.last(children)
+          if (child.type === nodeType.EXPRESSION
+            && child.safe === env.FALSE
+          ) {
+            target.props = {
+              innerHTML: child.expr,
+            }
+            children.length = divider
+            if (!divider) {
+              delete target.children
+            }
           }
-          delete target.children
         }
       }
       else if (type === nodeType.ATTRIBUTE
