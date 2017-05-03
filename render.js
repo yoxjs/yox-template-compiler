@@ -113,7 +113,7 @@ export default function render(ast, data, instance) {
     else if (object.has(source, 'value')) {
       value = source.value
     }
-    if (value == env.NULL && (source.expr || source.children)) {
+    if (!isDefined(value) && (source.expr || source.children)) {
       value = char.CHAR_BLANK
     }
     return value
