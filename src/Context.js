@@ -17,7 +17,7 @@ export default class Context {
    */
   constructor(data, keypath, parent) {
     this.data = { }
-    this.data[ env.THIS ] = data
+    this.data[ env.RAW_THIS ] = data
     this.keypath = keypath
     this.parent = parent
     this.cache = { }
@@ -37,7 +37,7 @@ export default class Context {
     if (object.has(cache, keypath)) {
       delete cache[ keypath ]
     }
-    data[ keypath || env.THIS ] = value
+    data[ keypath || env.RAW_THIS ] = value
   }
 
   get(key) {
@@ -52,7 +52,7 @@ export default class Context {
     let getValue = function (data, keypath) {
       return object.exists(data, keypath)
         ? { value: data[ keypath ] }
-        : object.get(data[ env.THIS ], keypath)
+        : object.get(data[ env.RAW_THIS ], keypath)
     }
 
     if (!object.has(cache, keypath)) {
@@ -85,7 +85,7 @@ export default class Context {
       else {
         cache[ keypath ] = {
           keypath: instance.keypath,
-          value: data[ env.THIS ],
+          value: data[ env.RAW_THIS ],
         }
       }
     }
@@ -114,7 +114,7 @@ export default class Context {
 
 function formatKeypath(keypath) {
   keypath = keypathUtil.normalize(keypath)
-  let lookup = env.TRUE, items = keypathUtil.startsWith(keypath, env.THIS, env.TRUE)
+  let lookup = env.TRUE, items = keypathUtil.startsWith(keypath, env.RAW_THIS, env.TRUE)
   if (items) {
     keypath = items[ 1 ]
     lookup = env.FALSE
