@@ -114,9 +114,9 @@ export default class Context {
 
 function formatKeypath(keypath) {
   keypath = keypathUtil.normalize(keypath)
-  let lookup = env.TRUE, items = keypathUtil.startsWith(keypath, env.RAW_THIS, env.TRUE)
-  if (items) {
-    keypath = items[ 1 ]
+  let lookup = env.TRUE, length = keypathUtil.startsWith(keypath, env.RAW_THIS)
+  if (is.number(length)) {
+    keypath = string.slice(keypath, length)
     lookup = env.FALSE
   }
   return { keypath, lookup }
