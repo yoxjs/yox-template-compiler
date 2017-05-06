@@ -535,7 +535,7 @@ export default function render(ast, data, instance) {
       )
     }
     else {
-      logger.fatal(`Spread "${expr.source}" expected to be an object.`)
+      logger.fatal(`Spread "${expr.raw}" expected to be an object.`)
     }
 
   }

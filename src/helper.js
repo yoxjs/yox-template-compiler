@@ -5,8 +5,6 @@ import * as object from 'yox-common/util/object'
 import * as syntax from './syntax'
 import * as nodeType from './nodeType'
 
-import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
-
 // if 带条件的
 export const ifTypes = { }
 // if 分支的

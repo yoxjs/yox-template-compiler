@@ -20,11 +20,4 @@ export default class Element extends Node {
     }
   }
 
-  addAttr(child) {
-    array.push(
-      this.attrs || (this.attrs = [ ]),
-      child,
-    )
-  }
-
 }

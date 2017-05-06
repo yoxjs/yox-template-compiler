@@ -21,7 +21,7 @@ describe('template', () => {
     expect(ast[2].name).toBe('ul')
 
     expect(ast[3].type).toBe(nodeType.TEXT)
-    expect(ast[3].content).toBe('text')
+    expect(ast[3].text).toBe('text')
   })
 
   it('简单的标签组合', () => {
@@ -35,16 +35,16 @@ describe('template', () => {
     expect(ast[0].children.length).toBe(3)
 
     expect(ast[0].children[0].type).toBe(nodeType.TEXT)
-    expect(ast[0].children[0].content).toBe('123')
+    expect(ast[0].children[0].text).toBe('123')
 
     expect(ast[0].children[1].type).toBe(nodeType.ELEMENT)
     expect(ast[0].children[1].name).toBe('span')
     expect(ast[0].children[1].children.length).toBe(1)
     expect(ast[0].children[1].children[0].type).toBe(nodeType.TEXT)
-    expect(ast[0].children[1].children[0].content).toBe('456')
+    expect(ast[0].children[1].children[0].text).toBe('456')
 
     expect(ast[0].children[2].type).toBe(nodeType.TEXT)
-    expect(ast[0].children[2].content).toBe('789')
+    expect(ast[0].children[2].text).toBe('789')
   })
 
   it('自闭合标签', () => {
@@ -71,17 +71,17 @@ describe('template', () => {
     expect(ast[0].type).toBe(nodeType.IF)
     expect(ast[0].children.length).toBe(1)
     expect(ast[0].children[0].type).toBe(nodeType.TEXT)
-    expect(ast[0].children[0].content).toBe('a')
+    expect(ast[0].children[0].text).toBe('a')
 
     expect(ast[1].type).toBe(nodeType.ELSE_IF)
     expect(ast[1].children.length).toBe(1)
     expect(ast[1].children[0].type).toBe(nodeType.TEXT)
-    expect(ast[1].children[0].content).toBe('b')
+    expect(ast[1].children[0].text).toBe('b')
 
     expect(ast[2].type).toBe(nodeType.ELSE)
     expect(ast[2].children.length).toBe(1)
     expect(ast[2].children[0].type).toBe(nodeType.TEXT)
-    expect(ast[2].children[0].content).toBe('c')
+    expect(ast[2].children[0].text).toBe('c')
 
   })
 
