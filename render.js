@@ -28,18 +28,10 @@ import * as nodeType from './src/nodeType'
  */
 export default function render(ast, data, instance) {
 
-  let keypath, keypathList = [ ],
+  let keypath = char.CHAR_BLANK, keypathList = [ ],
   updateKeypath = function () {
     keypath = keypathUtil.stringify(keypathList)
-  },
-  getKeypath = function () {
-    return keypath
   }
-
-  updateKeypath()
-
-  getKeypath.toString =
-  data[ syntax.SPECIAL_KEYPATH ] = getKeypath
 
   let context = new Context(data, keypath), nodeStack = [ ], htmlStack = [ ], partials = { }, deps = { }
   let sibling, cache, prevCache, currentCache

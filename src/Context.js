@@ -17,11 +17,18 @@ export default class Context {
    * @param {?Context} parent
    */
   constructor(data, keypath, parent) {
-    this.data = { }
-    this.data[ env.RAW_THIS ] = data
-    this.keypath = keypath
-    this.parent = parent
-    this.cache = { }
+
+    let instance = this, context = { }
+
+    context[ env.RAW_THIS ] = data
+    context[ syntax.SPECIAL_KEYPATH ] = keypath
+    instance.data = context
+    instance.cache = { }
+
+    if (parent) {
+      instance.parent = parent
+    }
+
   }
 
   push(data, keypath) {
@@ -47,9 +54,6 @@ export default class Context {
     let { data, cache } = instance
     let { keypath, lookup } = formatKeypath(key)
 
-    let joinKeypath = function (context, keypath) {
-      return keypathUtil.join(context.keypath, keypath)
-    }
     let getValue = function (data, keypath) {
       return object.exists(data, keypath)
         ? { value: data[ keypath ] }
@@ -78,32 +82,31 @@ export default class Context {
 
         if (result) {
           cache[ keypath ] = {
-            keypath: joinKeypath(instance, keypath),
+            keypath: keypathUtil.join(
+              instance.data[ syntax.SPECIAL_KEYPATH ],
+              keypath
+            ),
             value: result.value,
           }
         }
       }
       else {
         cache[ keypath ] = {
-          keypath: instance.keypath,
+          keypath: data[ syntax.SPECIAL_KEYPATH ],
           value: data[ env.RAW_THIS ],
         }
       }
     }
+
     cache = cache[ keypath ]
     if (cache) {
       return cache
     }
 
-    if (keypath === syntax.SPECIAL_EVENT
-      || keypath === syntax.SPECIAL_KEYPATH
-    ) {
-      return {
-        keypath,
-      }
-    }
-
-    keypath = joinKeypath(this, keypath)
+    keypath = keypathUtil.join(
+      data[ syntax.SPECIAL_KEYPATH ],
+      keypath
+    )
 
     return {
       keypath,
