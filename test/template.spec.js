@@ -66,29 +66,29 @@ describe('template', () => {
   it('if', () => {
 
     let ast = compile('{{#if x > 1}}a{{else if x < 0}}b{{else}}c{{/if}}')
-
-    expect(ast.length).toBe(3)
+console.log(JSON.stringify(ast, 4, 4))
+    expect(ast.length).toBe(1)
     expect(ast[0].type).toBe(nodeType.IF)
     expect(ast[0].children.length).toBe(1)
     expect(ast[0].children[0].type).toBe(nodeType.TEXT)
     expect(ast[0].children[0].text).toBe('a')
 
-    expect(ast[1].type).toBe(nodeType.ELSE_IF)
-    expect(ast[1].children.length).toBe(1)
-    expect(ast[1].children[0].type).toBe(nodeType.TEXT)
-    expect(ast[1].children[0].text).toBe('b')
+    expect(ast[0].then.type).toBe(nodeType.ELSE_IF)
+    expect(ast[0].then.children.length).toBe(1)
+    expect(ast[0].then.children[0].type).toBe(nodeType.TEXT)
+    expect(ast[0].then.children[0].text).toBe('b')
 
-    expect(ast[2].type).toBe(nodeType.ELSE)
-    expect(ast[2].children.length).toBe(1)
-    expect(ast[2].children[0].type).toBe(nodeType.TEXT)
-    expect(ast[2].children[0].text).toBe('c')
+    expect(ast[0].then.then.type).toBe(nodeType.ELSE)
+    expect(ast[0].then.then.children.length).toBe(1)
+    expect(ast[0].then.then.children[0].type).toBe(nodeType.TEXT)
+    expect(ast[0].then.then.children[0].text).toBe('c')
 
   })
 
   it('瞎测', () => {
 
     let ast = compile('<div key="ah{{a}}b" ref="haha" lazy="100" model="name{{name}}">text</div>')
-    console.log(JSON.stringify(ast, 4, 4))
+
   })
 
 })

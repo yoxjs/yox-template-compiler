@@ -143,10 +143,8 @@ export default function render(ast, data, instance) {
           else if (attributeRendering && index >= divider) {
             attributeRendering = env.NULL
           }
-          if (!filterNode || filterNode(node)) {
-            sibling = children[ index + 1 ]
-            pushStack(node)
-          }
+          sibling = children[ index + 1 ]
+          pushStack(node)
         }
       )
       if (attributeRendering) {
@@ -168,17 +166,6 @@ export default function render(ast, data, instance) {
 
     return output
 
-  }
-
-  let filterNode
-  let filterElse = function (node) {
-    if (helper.elseTypes[ node.type ]) {
-      return env.FALSE
-    }
-    else {
-      filterNode = env.NULL
-      return env.TRUE
-    }
   }
 
   // 缓存节点只处理一层，不支持下面这种多层缓存
@@ -245,11 +232,12 @@ export default function render(ast, data, instance) {
   // 就需要用注释节点来占位，否则 virtual dom 无法正常工作
   enter[ nodeType.IF ] =
   enter[ nodeType.ELSE_IF ] = function (source) {
-    if (!executeExpr(source.expr)) {
-      if (sibling
-        && !helper.elseTypes[ sibling.type ]
-        && !attributeRendering
-      ) {
+    let { expr, then } = source
+    if (!executeExpr(expr)) {
+      if (then) {
+        pushStack(then)
+      }
+      else if (sibling && !attributeRendering) {
         addChild(
           array.last(htmlStack),
           snabbdom.createCommentVnode()
@@ -262,7 +250,6 @@ export default function render(ast, data, instance) {
   leave[ nodeType.IF ] =
   leave[ nodeType.ELSE_IF ] =
   leave[ nodeType.ELSE ] = function (source, output) {
-    filterNode = filterElse
     let { children } = output
     if (children) {
       let htmlNode = array.last(htmlStack)

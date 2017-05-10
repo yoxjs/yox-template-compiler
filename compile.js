@@ -130,21 +130,21 @@ export default function compile(content) {
         return
       }
 
-      let onlyChild = children.length === 1 && children[ 0 ]
+      let singleChild = children.length === 1 && children[ 0 ]
 
       if (type === nodeType.ELEMENT) {
         // 只有一个子元素
         // 并且这个子元素是非转义插值
         // 转成 props
         if (children.length - divider === 1) {
-          onlyChild = array.last(children)
-          if (onlyChild.type === nodeType.EXPRESSION) {
+          singleChild = array.last(children)
+          if (singleChild.type === nodeType.EXPRESSION) {
             let props = { }
-            if (onlyChild.safe === env.FALSE) {
-              props.innerHTML = onlyChild.expr
+            if (singleChild.safe === env.FALSE) {
+              props.innerHTML = singleChild.expr
             }
             else {
-              props.innerText = onlyChild.expr
+              props.innerText = singleChild.expr
             }
             target.props = props
             if (divider) {
@@ -166,33 +166,31 @@ export default function compile(content) {
         if (!element.children.length) {
           delete element.children
         }
-        element.key = onlyChild && onlyChild.type === nodeType.TEXT
-          ? onlyChild.text
+        element.key = singleChild && singleChild.type === nodeType.TEXT
+          ? singleChild.text
           : children
       }
-      else if (onlyChild) {
-        if (onlyChild.type === nodeType.TEXT) {
+      else if (singleChild) {
+        if (singleChild.type === nodeType.TEXT) {
           // 指令的值如果是纯文本，可以预编译表达式，提升性能
           if (type === nodeType.DIRECTIVE) {
-            let expr = compileExpression(onlyChild.text)
-            target.expr = expr
-            target.value = onlyChild.text
+            target.expr = compileExpression(singleChild.text)
+            target.value = singleChild.text
             delete target.children
           }
           // 属性的值如果是纯文本，直接获取文本值
           // 减少渲染时的遍历
           else if (type === nodeType.ATTRIBUTE) {
-            target.value = onlyChild.text
+            target.value = singleChild.text
             delete target.children
           }
         }
         // <div class="{{className}}">
         // 把 Attribute 转成 单向绑定 指令，可实现精确更新视图
         else if (type === nodeType.ATTRIBUTE
-          && onlyChild.type === nodeType.EXPRESSION
-          && onlyChild.safe
+          && singleChild.type === nodeType.EXPRESSION
         ) {
-          let { expr } = onlyChild
+          let { expr } = singleChild
           if (is.string(expr.keypath)) {
             target.expr = expr
             target.binding = expr.keypath
@@ -221,9 +219,12 @@ export default function compile(content) {
     }
 
     if (helper.elseTypes[ type ]) {
-      popStack(
-        array.pop(ifStack).type
-      )
+      let ifNode = array.pop(ifStack)
+      ifNode.then = node
+      popStack(ifNode.type)
+      array.push(ifStack, node)
+      array.push(nodeStack, node)
+      return
     }
 
     let currentNode = array.last(nodeStack)
@@ -234,7 +235,7 @@ export default function compile(content) {
       array.push(nodeList, node)
     }
 
-    if (helper.ifTypes[ type ] || helper.elseTypes[ type ]) {
+    if (helper.ifTypes[ type ]) {
       array.push(ifStack, node)
     }
     else if (helper.htmlTypes[ type ]) {
