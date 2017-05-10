@@ -138,12 +138,15 @@ export default function compile(content) {
         // 转成 props
         if (children.length - divider === 1) {
           onlyChild = array.last(children)
-          if (onlyChild.type === nodeType.EXPRESSION
-            && onlyChild.safe === env.FALSE
-          ) {
-            target.props = {
-              innerHTML: onlyChild.expr,
+          if (onlyChild.type === nodeType.EXPRESSION) {
+            let props = { }
+            if (onlyChild.safe === env.FALSE) {
+              props.innerHTML = onlyChild.expr
             }
+            else {
+              props.innerText = onlyChild.expr
+            }
+            target.props = props
             if (divider) {
               children.length = divider
             }

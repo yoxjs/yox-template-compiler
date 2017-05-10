@@ -82,15 +82,14 @@ export default function render(ast, data, instance) {
     attrs[ key ] = value
   }
 
-  let addDirective = function (parent, name, modifier, value, expr) {
+  let addDirective = function (parent, name, modifier, value) {
     let directives = parent.directives || (parent.directives = { })
-    directives[ keypathUtil.join(name, modifier) ] = {
+    return directives[ keypathUtil.join(name, modifier) ] = {
       name,
       modifier,
       context,
       keypath,
       value,
-      expr,
     }
   }
 
@@ -405,6 +404,14 @@ export default function render(ast, data, instance) {
         source.props,
         function (expr, key) {
           props[ key ] = executeExpr(expr)
+          if (expr.keypath) {
+            addDirective(
+              output,
+              syntax.DIRECTIVE_BINDING,
+              key,
+              expr.keypath
+            ).prop = env.TRUE
+          }
         }
       )
     }
@@ -465,10 +472,10 @@ export default function render(ast, data, instance) {
       if (binding) {
         addDirective(
           element,
-          syntax.DIRECTIVE_MODEL,
+          syntax.DIRECTIVE_BINDING,
           name,
           binding
-        )
+        ).attr = env.TRUE
       }
     }
   }
@@ -489,9 +496,8 @@ export default function render(ast, data, instance) {
       htmlStack[ htmlStack.length - 2 ],
       source.name,
       source.modifier,
-      getValue(source, output),
-      source.expr
-    )
+      getValue(source, output)
+    ).expr = source.expr
 
   }
 
