@@ -475,7 +475,7 @@ export default function render(ast, data, instance) {
           syntax.DIRECTIVE_BINDING,
           name,
           binding
-        ).attr = env.TRUE
+        )
       }
     }
   }
@@ -524,9 +524,9 @@ export default function render(ast, data, instance) {
           if (spreadKeypath) {
             addDirective(
               element,
-              syntax.DIRECTIVE_MODEL,
+              syntax.DIRECTIVE_BINDING,
               name,
-              keypathUtil.join(expr.keypath, name)
+              keypathUtil.join(spreadKeypath, name)
             )
           }
         }
