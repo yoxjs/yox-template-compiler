@@ -390,13 +390,14 @@ export default function render(ast, data, instance) {
       object.each(
         source.props,
         function (expr, key) {
-          props[ key ] = executeExpr(expr)
-          if (expr.keypath) {
+          let { keypath } = expr
+          props[ key ] = executeExpr(expr, keypath)
+          if (keypath) {
             addDirective(
               output,
               syntax.DIRECTIVE_BINDING,
               key,
-              expr.keypath
+              keypath
             ).prop = env.TRUE
           }
         }
