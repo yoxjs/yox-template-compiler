@@ -189,13 +189,6 @@ export default function render(ast, data, instance) {
           if (cacheDeps) {
             cacheDeps[ key ] = value
           }
-          // 响应数组长度的变化是个很普遍的需求
-          if (is.array(value)) {
-            deps[ keypathUtil.join(keypath, 'length') ] = value.length
-            if (cacheDeps) {
-              cacheDeps[ keypathUtil.join(key, 'length') ] = value.length
-            }
-          }
         }
         return value
       },
@@ -474,11 +467,8 @@ export default function render(ast, data, instance) {
     //   on-click="submit()"
     //   ref="child"
     //
-    // 2.如果指令的值包含插值语法，则会 merge 出最终值
+    // 2.如果指令的值包含插值语法，则会拼接出最终值
     //   on-click="haha{{name}}"
-    //
-    // model="xxx"
-    // model=""
 
     addDirective(
       htmlStack[ htmlStack.length - 2 ],
