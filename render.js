@@ -134,20 +134,23 @@ export default function render(ast, data, instance) {
     }
 
     if (children) {
+      let hasDivider = isDefined(divider)
       array.each(
         children,
         function (node, index) {
-          if (index < divider) {
-            attributeRendering = env.TRUE
-          }
-          else if (attributeRendering && index >= divider) {
-            attributeRendering = env.NULL
+          if (hasDivider) {
+            if (index < divider) {
+              attributeRendering = env.TRUE
+            }
+            else if (attributeRendering && index >= divider) {
+              attributeRendering = env.NULL
+            }
           }
           sibling = children[ index + 1 ]
           pushStack(node)
         }
       )
-      if (attributeRendering) {
+      if (hasDivider && attributeRendering) {
         attributeRendering = env.NULL
       }
     }
