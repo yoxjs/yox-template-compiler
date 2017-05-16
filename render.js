@@ -34,7 +34,7 @@ export default function render(ast, data, instance) {
   }
 
   let context = new Context(data, keypath), nodeStack = [ ], htmlStack = [ ], partials = { }, deps = { }
-  let sibling, cache, prevCache, currentCache
+  let cache, prevCache, currentCache
 
   let isDefined = function (value) {
     return value !== env.UNDEFINED
@@ -44,15 +44,7 @@ export default function render(ast, data, instance) {
 
     if (parent && isDefined(child)) {
 
-      if (attributeRendering) {
-        if (object.has(parent, 'value')) {
-          parent.value += child
-        }
-        else {
-          parent.value = child
-        }
-      }
-      else {
+      if (parent.type === nodeType.ELEMENT) {
         // 文本节点需要拼接
         // <div>123{{name}}456</div>
         // <div>123{{user}}456</div>
@@ -71,6 +63,14 @@ export default function render(ast, data, instance) {
         }
 
         children.push(child)
+      }
+      else {
+        if (object.has(parent, 'value')) {
+          parent.value += child
+        }
+        else {
+          parent.value = child
+        }
       }
 
     }
@@ -110,10 +110,9 @@ export default function render(ast, data, instance) {
     return value
   }
 
-  let attributeRendering
   let pushStack = function (source) {
 
-    let { type, divider, children } = source
+    let { type, children } = source
 
     let parent = array.last(nodeStack), output = { type, source, parent }
 
@@ -134,25 +133,12 @@ export default function render(ast, data, instance) {
     }
 
     if (children) {
-      let hasDivider = isDefined(divider)
       array.each(
         children,
         function (node, index) {
-          if (hasDivider) {
-            if (index < divider) {
-              attributeRendering = env.TRUE
-            }
-            else if (attributeRendering && index >= divider) {
-              attributeRendering = env.NULL
-            }
-          }
-          sibling = children[ index + 1 ]
           pushStack(node)
         }
       )
-      if (hasDivider && attributeRendering) {
-        attributeRendering = env.NULL
-      }
     }
 
     executeFunction(
@@ -228,12 +214,12 @@ export default function render(ast, data, instance) {
   // 就需要用注释节点来占位，否则 virtual dom 无法正常工作
   enter[ nodeType.IF ] =
   enter[ nodeType.ELSE_IF ] = function (source) {
-    let { expr, then } = source
+    let { expr, then, needFaker } = source
     if (!executeExpr(expr)) {
       if (then) {
         pushStack(then)
       }
-      else if (sibling && !attributeRendering) {
+      else if (needFaker) {
         addChild(
           array.last(htmlStack),
           snabbdom.createCommentVnode()
@@ -321,14 +307,15 @@ export default function render(ast, data, instance) {
       if (is.string(key)) {
         trackBy = key
       }
+      else if (is.object(key)) {
+        trackBy = executeExpr(key)
+      }
       else if (is.array(key)) {
-        attributeRendering = env.TRUE
         source = {
           type: nodeType.ATTRIBUTE,
           children: key,
         }
         trackBy = getValue(source, pushStack(source))
-        attributeRendering = env.NULL
       }
       if (isDefined(trackBy)) {
 

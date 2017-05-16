@@ -166,9 +166,17 @@ export default function compile(content) {
         if (!element.children.length) {
           delete element.children
         }
-        element.key = singleChild && singleChild.type === nodeType.TEXT
-          ? singleChild.text
-          : children
+        if (singleChild) {
+          if (singleChild.type === nodeType.TEXT) {
+            element.key = singleChild.text
+          }
+          else if (singleChild.type === nodeType.EXPRESSION) {
+            element.key = singleChild
+          }
+        }
+        else {
+          element.key = children
+        }
       }
       else if (singleChild) {
         if (singleChild.type === nodeType.TEXT) {
@@ -227,12 +235,31 @@ export default function compile(content) {
       return
     }
 
+    let prevNode
+
     let currentNode = array.last(nodeStack)
     if (currentNode) {
-      currentNode.addChild(node)
+      let { children } = currentNode
+      if (children) {
+        prevNode = array.last(children)
+      }
+      else {
+        children = currentNode.children = [ ]
+      }
+      array.push(children, node)
     }
     else {
+      prevNode = array.last(nodeList)
       array.push(nodeList, node)
+    }
+
+    // 上一个 if 节点没有 else 分支
+    // 在渲染时，如果这种 if 分支为 false，需要加上注释节点
+    if (prevNode
+      && helper.ifTypes[ prevNode.type ]
+      && !htmlStack.length
+    ) {
+      prevNode.needFaker = env.TRUE
     }
 
     if (helper.ifTypes[ type ]) {
