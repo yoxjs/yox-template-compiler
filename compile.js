@@ -114,6 +114,10 @@ export default function compile(content) {
         throwError(`end tag expected </${name}> to be </${expectedName}>.`)
       }
 
+      if (is.number(divider)) {
+        delete target.divider
+      }
+
       // ==========================================
       // 以下是性能优化的逻辑
       // ==========================================
@@ -124,9 +128,6 @@ export default function compile(content) {
         delete target.children
       }
       if (!target.children) {
-        if (object.has(target, 'divider')) {
-          delete target.divider
-        }
         return
       }
 
@@ -171,7 +172,7 @@ export default function compile(content) {
             element.key = singleChild.text
           }
           else if (singleChild.type === nodeType.EXPRESSION) {
-            element.key = singleChild
+            element.key = singleChild.expr
           }
         }
         else {
@@ -239,9 +240,11 @@ export default function compile(content) {
 
     let currentNode = array.last(nodeStack)
     if (currentNode) {
-      let { children } = currentNode
+      let { children, divider } = currentNode
       if (children) {
-        prevNode = array.last(children)
+        if (children.length !== divider) {
+          prevNode = children[ children.length - 1 ]
+        }
       }
       else {
         children = currentNode.children = [ ]
