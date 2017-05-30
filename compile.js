@@ -92,7 +92,30 @@ export default function compile(content) {
     logger.fatal(`Error compiling template:${char.CHAR_BREAKLINE}${content}${char.CHAR_BREAKLINE}- ${msg}`)
   }
 
-  let popStack = function (type, expectedName) {
+  let popSelfClosingElementIfNeeded = function (popingTagName) {
+    let lastNode = array.last(nodeStack)
+    if (lastNode
+      && lastNode.type === nodeType.ELEMENT
+      && lastNode.name !== popingTagName
+      && selfClosingTagNamePattern.test(lastNode.name)
+    ) {
+      popStack(
+        nodeType.ELEMENT,
+        lastNode.name
+      )
+    }
+  }
+
+  let popStack = function (type, expectedTagName) {
+
+    /**
+     * <div>
+     *    <input>
+     * </div>
+     */
+    if (expectedTagName) {
+      popSelfClosingElementIfNeeded(expectedTagName)
+    }
 
     let target
 
@@ -110,8 +133,8 @@ export default function compile(content) {
     if (target) {
 
       let { name, divider, children } = target
-      if (type === nodeType.ELEMENT && expectedName && name !== expectedName) {
-        throwError(`end tag expected </${name}> to be </${expectedName}>.`)
+      if (type === nodeType.ELEMENT && expectedTagName && name !== expectedTagName) {
+        throwError(`end tag expected </${name}> to be </${expectedTagName}>.`)
       }
 
       if (is.number(divider)) {
@@ -227,6 +250,20 @@ export default function compile(content) {
       node.text = text
     }
 
+    /**
+     * <div>
+     *    <input>
+     *    <div></div>
+     * </div>
+     *
+     * <div>
+     *    <input>xxx
+     * </div>
+     */
+    if (!htmlStack.length) {
+      popSelfClosingElementIfNeeded()
+    }
+
     if (helper.elseTypes[ type ]) {
       let ifNode = array.pop(ifStack)
       ifNode.then = node
@@ -309,9 +346,7 @@ export default function compile(content) {
         if (htmlStack.length === 1) {
           let element = array.last(htmlStack)
           element.divider = element.children ? element.children.length : 0
-          if (match[ 1 ] === char.CHAR_SLASH
-            || selfClosingTagNamePattern.test(htmlStack[ 0 ].name)
-          ) {
+          if (match[ 1 ] === char.CHAR_SLASH) {
             popStack(
               nodeType.ELEMENT
             )
