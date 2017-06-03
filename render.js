@@ -24,9 +24,10 @@ import * as nodeType from './src/nodeType'
  * @param {Object} ast 编译出来的抽象语法树
  * @param {Object} data 渲染模板的数据
  * @param {Yox} instance 组件实例
- * @return {Array}
+ * @param {?boolean} forceUpdate 是否强制刷新子组件
+ * @return {Object}
  */
-export default function render(ast, data, instance) {
+export default function render(ast, data, instance, forceUpdate) {
 
   let keypath = char.CHAR_BLANK, keypathList = [ ],
   updateKeypath = function () {
@@ -387,17 +388,23 @@ export default function render(ast, data, instance) {
       )
     }
 
+    let { component } = source
+    let data = {
+      instance,
+      props,
+      attrs: output.attrs,
+      directives: output.directives,
+    }
+    if (component) {
+      data.forceUpdate = forceUpdate
+    }
+
     let vnode = snabbdom.createElementVnode(
       source.name,
-      {
-        instance,
-        props,
-        attrs: output.attrs,
-        directives: output.directives,
-      },
+      data,
       output.children,
       key,
-      source.component
+      component
     )
 
     if (isDefined(key)) {
