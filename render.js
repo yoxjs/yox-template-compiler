@@ -302,8 +302,23 @@ export default function render(ast, data, instance, forceUpdate) {
   }
 
   enter[ nodeType.ELEMENT ] = function (source, output) {
-    let { key } = source
-    if (key) {
+    let { name, key } = source
+    if (name === 'slot') {
+      let { $slot } = instance
+      if ($slot) {
+        if (is.array($slot)) {
+          pushStack({
+            children: $slot,
+          })
+        }
+        else {
+          pushStack($slot)
+        }
+        return env.FALSE
+      }
+      logger.fatal(`slot is not found.`)
+    }
+    else if (key) {
       let trackBy
       if (is.string(key)) {
         trackBy = key
