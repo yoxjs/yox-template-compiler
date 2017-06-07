@@ -305,18 +305,16 @@ export default function render(ast, data, instance, forceUpdate) {
     let { name, key } = source
     if (name === 'slot') {
       let { $slot } = instance
-      if ($slot) {
-        if (is.array($slot)) {
-          pushStack({
-            children: $slot,
-          })
-        }
-        else {
-          pushStack($slot)
-        }
-        return env.FALSE
+      if (is.array($slot)) {
+        let parentElement = htmlStack[ htmlStack.length - 2 ]
+        array.each(
+          $slot,
+          function (vnode) {
+            addChild(parentElement, vnode)
+          }
+        )
       }
-      logger.fatal(`slot is not found.`)
+      return env.FALSE
     }
     else if (key) {
       let trackBy
