@@ -180,26 +180,34 @@ export default function compile(content) {
           }
         }
       }
-      // <div key="xx">
-      // 把 key 从属性中提出来，减少渲染时的遍历
-      else if (type === nodeType.ATTRIBUTE
-        && name === syntax.KEYWORD_UNIQUE
-      ) {
-        let element = array.last(htmlStack)
-        array.remove(element.children, target)
-        if (!element.children.length) {
-          delete element.children
+      else if (type === nodeType.ATTRIBUTE) {
+        // <div key="xx">
+        // <div slot="xx">
+        // <slot name="xx">
+        // 把 key 从属性中提出来，减少渲染时的遍历
+        let element = array.last(htmlStack), prop
+        if (name === syntax.KEYWORD_UNIQUE) {
+          prop = syntax.KEYWORD_UNIQUE
         }
-        if (singleChild) {
-          if (singleChild.type === nodeType.TEXT) {
-            element.key = singleChild.text
-          }
-          else if (singleChild.type === nodeType.EXPRESSION) {
-            element.key = singleChild.expr
-          }
+        else if (name === syntax.KEYWORD_SLOT) {
+          prop = syntax.KEYWORD_SLOT
         }
-        else {
-          element.key = children
+        else if (name === 'name' && element.name === syntax.KEYWORD_SLOT) {
+          prop = syntax.KEYWORD_SLOT
+        }
+        if (prop) {
+          array.remove(element.children, target)
+          if (!element.children.length) {
+            delete element.children
+          }
+          if (singleChild) {
+            if (singleChild.type === nodeType.TEXT) {
+              element[ prop ] = singleChild.text
+            }
+            else if (singleChild.type === nodeType.EXPRESSION) {
+              element[ prop ] = singleChild.expr
+            }
+          }
         }
       }
       else if (singleChild) {

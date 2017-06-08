@@ -21,3 +21,4 @@ export const DIRECTIVE_EVENT = 'event'
 export const DIRECTIVE_BINDING = 'binding'
 
 export const KEYWORD_UNIQUE = 'key'
+export const KEYWORD_SLOT = 'slot'

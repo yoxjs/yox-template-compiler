@@ -8,6 +8,8 @@ import * as string from 'yox-common/util/string'
 import * as logger from 'yox-common/util/logger'
 import * as keypathUtil from 'yox-common/util/keypath'
 
+import isDef from 'yox-common/function/isDef'
+import toString from 'yox-common/function/toString'
 import executeFunction from 'yox-common/function/execute'
 import executeExpression from 'yox-expression-compiler/execute'
 
@@ -24,10 +26,9 @@ import * as nodeType from './src/nodeType'
  * @param {Object} ast 编译出来的抽象语法树
  * @param {Object} data 渲染模板的数据
  * @param {Yox} instance 组件实例
- * @param {?boolean} forceUpdate 是否强制刷新子组件
  * @return {Object}
  */
-export default function render(ast, data, instance, forceUpdate) {
+export default function render(ast, data, instance) {
 
   let keypath = char.CHAR_BLANK, keypathList = [ ],
   updateKeypath = function () {
@@ -37,25 +38,21 @@ export default function render(ast, data, instance, forceUpdate) {
   let context = new Context(data, keypath), nodeStack = [ ], htmlStack = [ ], partials = { }, deps = { }
   let cache, prevCache, currentCache
 
-  let isDefined = function (value) {
-    return value !== env.UNDEFINED
-  }
-
   let addChild = function (parent, child) {
 
-    if (parent && isDefined(child)) {
+    if (parent && isDef(child)) {
 
       if (parent.type === nodeType.ELEMENT) {
-        // 文本节点需要拼接
-        // <div>123{{name}}456</div>
-        // <div>123{{user}}456</div>
 
         let children = (parent.children || (parent.children = [ ]))
         let prevChild = array.last(children), prop = 'text'
 
+        // 文本节点需要拼接
+        // <div>123{{name}}456</div>
+        // <div>123{{user}}456</div>
         if (is.primitive(child) || !object.has(child, prop)) {
           if (is.object(prevChild) && is.string(prevChild[ prop ])) {
-            prevChild[ prop ] += child
+            prevChild[ prop ] += toString(child)
             return
           }
           else {
@@ -64,6 +61,7 @@ export default function render(ast, data, instance, forceUpdate) {
         }
 
         children.push(child)
+
       }
       else {
         if (object.has(parent, 'value')) {
@@ -105,8 +103,10 @@ export default function render(ast, data, instance, forceUpdate) {
     else if (source.expr) {
       value = executeExpr(source.expr, source.binding || source.type === nodeType.DIRECTIVE)
     }
-    if (!isDefined(value) && (source.expr || source.children)) {
-      value = char.CHAR_BLANK
+    if (!isDef(value)) {
+      value = source.expr || source.children
+        ? char.CHAR_BLANK
+        : env.TRUE
     }
     return value
   }
@@ -260,7 +260,7 @@ export default function render(ast, data, instance, forceUpdate) {
     if (each) {
 
       let eachKeypath = expr.keypath
-      if (isDefined(eachKeypath)) {
+      if (isDef(eachKeypath)) {
         array.push(keypathList, eachKeypath)
         updateKeypath()
       }
@@ -290,7 +290,7 @@ export default function render(ast, data, instance, forceUpdate) {
       )
 
       context = context.pop()
-      if (isDefined(eachKeypath)) {
+      if (isDef(eachKeypath)) {
         array.pop(keypathList)
         updateKeypath()
       }
@@ -302,19 +302,26 @@ export default function render(ast, data, instance, forceUpdate) {
   }
 
   enter[ nodeType.ELEMENT ] = function (source, output) {
-    let { name, key } = source
-    if (name === 'slot') {
-      let { $slot } = instance
-      if (is.array($slot)) {
-        let parentElement = htmlStack[ htmlStack.length - 2 ]
-        array.each(
-          $slot,
-          function (vnode) {
-            addChild(parentElement, vnode)
-          }
-        )
-      }
-      return env.FALSE
+    let { name, slot, key } = source
+    // 嵌入 slot
+    // <slot></slot>
+    if (name === syntax.KEYWORD_SLOT) {
+      // slot = instance.slot(slot)
+      // if (is.array($slot)) {
+      //   let parentElement = htmlStack[ htmlStack.length - 2 ]
+      //   array.each(
+      //     $slot,
+      //     function (vnode) {
+      //       addChild(parentElement, vnode)
+      //     }
+      //   )
+      // }
+      // return env.FALSE
+    }
+    // 定义 slot
+    // <div slot="header">
+    else if (slot) {
+
     }
     else if (key) {
       let trackBy
@@ -324,14 +331,7 @@ export default function render(ast, data, instance, forceUpdate) {
       else if (is.object(key)) {
         trackBy = executeExpr(key)
       }
-      else if (is.array(key)) {
-        source = {
-          type: nodeType.ATTRIBUTE,
-          children: key,
-        }
-        trackBy = getValue(source, pushStack(source))
-      }
-      if (isDefined(trackBy)) {
+      if (isDef(trackBy)) {
 
         if (!currentCache) {
           prevCache = ast.cache || { }
@@ -377,10 +377,7 @@ export default function render(ast, data, instance, forceUpdate) {
 
   leave[ nodeType.ELEMENT ] = function (source, output) {
 
-    let key, props
-    if (object.has(output, 'key')) {
-      key = output.key
-    }
+    let { key } = output, props, vnode
 
     if (source.props) {
       props = { }
@@ -401,26 +398,17 @@ export default function render(ast, data, instance, forceUpdate) {
       )
     }
 
-    let { component } = source
-    let data = {
-      instance,
-      props,
-      attrs: output.attrs,
-      directives: output.directives,
-    }
-    if (component) {
-      data.forceUpdate = forceUpdate
-    }
-
-    let vnode = snabbdom.createElementVnode(
+    vnode = snabbdom[ source.component ? 'createComponentVnode' : 'createElementVnode' ](
       source.name,
-      data,
+      output.attrs,
+      props,
+      output.directives,
       output.children,
       key,
-      component
+      instance
     )
 
-    if (isDefined(key)) {
+    if (isDef(key)) {
       currentCache[ key ].deps = cacheDeps
       currentCache[ key ].vnode = vnode
       cacheDeps = env.NULL
@@ -452,22 +440,18 @@ export default function render(ast, data, instance, forceUpdate) {
   leave[ nodeType.ATTRIBUTE ] = function (source, output) {
     let element = htmlStack[ htmlStack.length - 2 ]
     let { name, binding } = source
-    // key="xx" 是作为一个虚拟属性来求值的
-    // 它并没有 name
-    if (name) {
-      addAttr(
+    addAttr(
+      element,
+      name,
+      getValue(source, output)
+    )
+    if (binding) {
+      addDirective(
         element,
+        syntax.DIRECTIVE_BINDING,
         name,
-        getValue(source, output)
+        binding
       )
-      if (binding) {
-        addDirective(
-          element,
-          syntax.DIRECTIVE_BINDING,
-          name,
-          binding
-        )
-      }
     }
   }
 
