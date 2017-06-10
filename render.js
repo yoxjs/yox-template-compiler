@@ -20,6 +20,8 @@ import * as helper from './src/helper'
 import * as syntax from './src/syntax'
 import * as nodeType from './src/nodeType'
 
+const VALUE = 'value'
+
 /**
  * 渲染抽象语法树
  *
@@ -64,7 +66,7 @@ export default function render(ast, data, instance) {
 
       }
       else {
-        if (object.has(parent, 'value')) {
+        if (object.has(parent, VALUE)) {
           parent.value += child
         }
         else {
@@ -94,10 +96,10 @@ export default function render(ast, data, instance) {
 
   let getValue = function (source, output) {
     let value
-    if (object.has(output, 'value')) {
+    if (object.has(output, VALUE)) {
       value = output.value
     }
-    else if (object.has(source, 'value')) {
+    else if (object.has(source, VALUE)) {
       value = source.value
     }
     else if (source.expr) {
@@ -168,13 +170,8 @@ export default function render(ast, data, instance) {
     return executeExpression(
       expr,
       function (key) {
-        let { keypath, value } = context.get(key)
-        if (!filter
-          && !is.numeric(keypath)
-          && !is.func(value)
-          && key !== syntax.SPECIAL_EVENT
-          && key !== syntax.SPECIAL_KEYPATH
-        ) {
+        let { keypath, value, temp } = context.get(key)
+        if (!filter && !temp) {
           deps[ keypath ] = value
           if (cacheDeps) {
             cacheDeps[ key ] = value
@@ -207,7 +204,7 @@ export default function render(ast, data, instance) {
       }
       return env.FALSE
     }
-    logger.fatal(`Partial "${name}" is not found.`)
+    logger.fatal(`"${name}" partial is not found.`)
   }
 
   // 条件判断失败就没必要往下走了
@@ -505,7 +502,7 @@ export default function render(ast, data, instance) {
       )
     }
     else {
-      logger.fatal(`Spread "${expr.raw}" expected to be an object.`)
+      logger.fatal(`"${expr.raw}" spread expected to be an object.`)
     }
 
   }

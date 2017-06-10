@@ -10,17 +10,19 @@ import * as syntax from './syntax'
 export default class Context {
 
   /**
-   * @param {Object} data
+   * @param {Object} context
    * @param {string} keypath
    * @param {?Context} parent
    */
-  constructor(data, keypath, parent) {
+  constructor(context, keypath, parent) {
 
-    let instance = this, context = { }
+    let instance = this, data = { }, temp = { }
 
-    context[ env.RAW_THIS ] = data
-    context[ syntax.SPECIAL_KEYPATH ] = keypath
-    instance.data = context
+    data[ env.RAW_THIS ] = context
+    temp[ syntax.SPECIAL_KEYPATH ] = keypath
+
+    instance.data = data
+    instance.temp = temp
     instance.cache = { }
 
     if (parent) {
@@ -29,8 +31,8 @@ export default class Context {
 
   }
 
-  push(data, keypath) {
-    return new Context(data, keypath, this)
+  push(context, keypath) {
+    return new Context(context, keypath, this)
   }
 
   pop() {
@@ -38,34 +40,50 @@ export default class Context {
   }
 
   set(key, value) {
-    let { data, cache } = this
+    let { temp, cache } = this
     let { keypath } = formatKeypath(key)
-    if (object.has(cache, keypath)) {
-      delete cache[ keypath ]
+    if (keypath) {
+      if (object.has(cache, keypath)) {
+        delete cache[ keypath ]
+      }
+      temp[ keypath ] = value
     }
-    data[ keypath || env.RAW_THIS ] = value
   }
 
   get(key) {
 
     let instance = this
-    let { data, cache } = instance
+    let { data, temp, cache } = instance
     let { keypath, lookup } = formatKeypath(key)
-
-    let getValue = function (data, keypath) {
-      return object.exists(data, keypath)
-        ? { value: data[ keypath ] }
-        : object.get(data[ env.RAW_THIS ], keypath)
-    }
 
     if (!object.has(cache, keypath)) {
 
+      let result
+
       if (keypath) {
-        let result
+
+        let getValue = function (instance, keypath) {
+          let { data, temp } = instance, value
+          if (object.exists(temp, keypath)) {
+            value = {
+              temp: env.TRUE,
+              value: temp[ keypath ],
+            }
+          }
+          else if (object.exists(data, keypath)) {
+            value = {
+              value: data[ keypath ],
+            }
+          }
+          else {
+            value = object.get(data[ env.RAW_THIS ], keypath)
+          }
+          return value
+        }
 
         if (lookup) {
           while (instance) {
-            result = getValue(instance.data, keypath)
+            result = getValue(instance, keypath)
             if (result) {
               break
             }
@@ -75,25 +93,23 @@ export default class Context {
           }
         }
         else {
-          result = getValue(data, keypath)
-        }
-
-        if (result) {
-          cache[ keypath ] = {
-            keypath: keypathUtil.join(
-              instance.data[ syntax.SPECIAL_KEYPATH ],
-              keypath
-            ),
-            value: result.value,
-          }
+          result = getValue(instance, keypath)
         }
       }
       else {
-        cache[ keypath ] = {
-          keypath: data[ syntax.SPECIAL_KEYPATH ],
+        result = {
           value: data[ env.RAW_THIS ],
         }
       }
+
+      if (result) {
+        result.keypath = keypathUtil.join(
+          instance.temp[ syntax.SPECIAL_KEYPATH ],
+          keypath
+        )
+        cache[ keypath ] = result
+      }
+
     }
 
     cache = cache[ keypath ]
@@ -101,13 +117,11 @@ export default class Context {
       return cache
     }
 
-    keypath = keypathUtil.join(
-      data[ syntax.SPECIAL_KEYPATH ],
-      keypath
-    )
-
     return {
-      keypath,
+      keypath: keypathUtil.join(
+        temp[ syntax.SPECIAL_KEYPATH ],
+        keypath
+      )
     }
 
   }

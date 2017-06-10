@@ -181,18 +181,18 @@ export default function compile(content) {
         }
       }
       else if (type === nodeType.ATTRIBUTE) {
-        // <div key="xx">
-        // <div slot="xx">
-        // <slot name="xx">
-        // 把 key 从属性中提出来，减少渲染时的遍历
+        // 把数据从属性中提出来，减少渲染时的遍历
         let element = array.last(htmlStack), prop
+        // <div key="xx">
         if (name === syntax.KEYWORD_UNIQUE) {
           prop = syntax.KEYWORD_UNIQUE
         }
+        // <div slot="xx">
         else if (name === syntax.KEYWORD_SLOT) {
           prop = syntax.KEYWORD_SLOT
         }
-        else if (name === 'name' && element.name === syntax.KEYWORD_SLOT) {
+        // <slot name="xx">
+        else if (element.name === syntax.KEYWORD_SLOT && name === 'name') {
           prop = syntax.KEYWORD_SLOT
         }
         if (prop) {
@@ -201,6 +201,8 @@ export default function compile(content) {
             delete element.children
           }
           if (singleChild) {
+            // 这些特殊属性不支持插值
+            // 提升下性能
             if (singleChild.type === nodeType.TEXT) {
               element[ prop ] = singleChild.text
             }
