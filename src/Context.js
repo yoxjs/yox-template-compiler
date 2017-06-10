@@ -14,11 +14,9 @@ export default class Context {
    * @param {string} keypath
    * @param {?Context} parent
    */
-  constructor(context, keypath, parent) {
+  constructor(data, keypath, parent) {
 
-    let instance = this, data = { }, temp = { }
-
-    data[ env.RAW_THIS ] = context
+    let instance = this, temp = { }
     temp[ syntax.SPECIAL_KEYPATH ] = keypath
 
     instance.data = data
@@ -31,8 +29,8 @@ export default class Context {
 
   }
 
-  push(context, keypath) {
-    return new Context(context, keypath, this)
+  push(data, keypath) {
+    return new Context(data, keypath, this)
   }
 
   pop() {
@@ -70,13 +68,8 @@ export default class Context {
               value: temp[ keypath ],
             }
           }
-          else if (object.exists(data, keypath)) {
-            value = {
-              value: data[ keypath ],
-            }
-          }
           else {
-            value = object.get(data[ env.RAW_THIS ], keypath)
+            value = object.get(data, keypath)
           }
           return value
         }
@@ -98,7 +91,7 @@ export default class Context {
       }
       else {
         result = {
-          value: data[ env.RAW_THIS ],
+          value: data,
         }
       }
 
