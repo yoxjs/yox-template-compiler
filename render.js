@@ -50,8 +50,7 @@ export default function render(ast, data, instance) {
         let prevChild = array.last(children), prop = 'text'
 
         // 文本节点需要拼接
-        // <div>123{{name}}456</div>
-        // <div>123{{user}}456</div>
+        // <div>123{{name}}456{{age}}789</div>
         if (is.primitive(child) || !object.has(child, prop)) {
           if (is.object(prevChild) && is.string(prevChild[ prop ])) {
             prevChild[ prop ] += toString(child)
@@ -212,8 +211,13 @@ export default function render(ast, data, instance) {
   // 就需要用注释节点来占位，否则 virtual dom 无法正常工作
   enter[ nodeType.IF ] =
   enter[ nodeType.ELSE_IF ] = function (source) {
-    let { expr, then, stump } = source
-    if (!executeExpr(expr)) {
+    let { expr, children, then, stump } = source
+    if (executeExpr(expr)) {
+      pushStack({
+        children,
+      })
+    }
+    else {
       if (then) {
         pushStack(then)
       }
@@ -223,23 +227,15 @@ export default function render(ast, data, instance) {
           stump
         )
       }
-      return env.FALSE
     }
+    return env.FALSE
   }
 
-  leave[ nodeType.IF ] =
-  leave[ nodeType.ELSE_IF ] =
-  leave[ nodeType.ELSE ] = function (source, output) {
-    let { children } = output
-    if (children) {
-      let htmlNode = array.last(htmlStack)
-      array.each(
-        children,
-        function (child) {
-          addChild(htmlNode, child)
-        }
-      )
-    }
+  enter[ nodeType.ELSE ] = function (source) {
+    pushStack({
+      children: source.children,
+    })
+    return env.FALSE
   }
 
   enter[ nodeType.EACH ] = function (source) {
