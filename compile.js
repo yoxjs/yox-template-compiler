@@ -10,6 +10,8 @@ import * as logger from 'yox-common/util/logger'
 import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
 import compileExpression from 'yox-expression-compiler/compile'
 
+import * as snabbdom from 'yox-snabbdom'
+
 import * as helper from './src/helper'
 import * as syntax from './src/syntax'
 import * as nodeType from './src/nodeType'
@@ -309,7 +311,7 @@ export default function compile(content) {
       && helper.ifTypes[ prevNode.type ]
       && !htmlStack.length
     ) {
-      prevNode.needFaker = env.TRUE
+      prevNode.stump = snabbdom.createCommentVnode()
     }
 
     if (helper.ifTypes[ type ]) {

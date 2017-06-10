@@ -212,15 +212,15 @@ export default function render(ast, data, instance) {
   // 就需要用注释节点来占位，否则 virtual dom 无法正常工作
   enter[ nodeType.IF ] =
   enter[ nodeType.ELSE_IF ] = function (source) {
-    let { expr, then, needFaker } = source
+    let { expr, then, stump } = source
     if (!executeExpr(expr)) {
       if (then) {
         pushStack(then)
       }
-      else if (needFaker) {
+      else if (stump) {
         addChild(
           array.last(htmlStack),
-          snabbdom.createCommentVnode()
+          stump
         )
       }
       return env.FALSE
