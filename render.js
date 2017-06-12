@@ -224,7 +224,7 @@ export default function render(ast, data, instance) {
       else if (stump) {
         addChild(
           array.last(htmlStack),
-          stump
+          snabbdom.createCommentVnode()
         )
       }
     }
