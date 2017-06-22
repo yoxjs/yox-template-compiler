@@ -68,7 +68,7 @@ export default class Context {
               value: temp[ keypath ],
             }
           }
-          else if (is.object(data)) {
+          else {
             value = object.get(data, keypath)
           }
           return value
