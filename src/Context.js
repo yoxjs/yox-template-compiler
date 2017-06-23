@@ -1,8 +1,11 @@
 
+import isNative from 'yox-common/function/isNative'
+
 import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
 import * as object from 'yox-common/util/object'
 import * as string from 'yox-common/util/string'
+import * as logger from 'yox-common/util/logger'
 import * as keypathUtil from 'yox-common/util/keypath'
 
 import * as syntax from './syntax'
@@ -61,17 +64,20 @@ export default class Context {
       if (keypath) {
 
         let getValue = function (instance, keypath) {
-          let { data, temp } = instance, value
+          let { data, temp } = instance, result
           if (object.exists(temp, keypath)) {
-            value = {
+            result = {
               temp: env.TRUE,
               value: temp[ keypath ],
             }
           }
           else {
-            value = object.get(data, keypath)
+            result = object.get(data, keypath)
+            if (result && isNative(result.value)) {
+              logger.warn(`find a native function by ${keypath}.`)
+            }
           }
-          return value
+          return result
         }
 
         if (lookup) {

@@ -525,7 +525,7 @@ export default function compile(content) {
       }
     },
     function (source, all) {
-      if (!string.startsWith(source, syntax.COMMENT)) {
+      if (!syntax.COMMENT.test(source)) {
         source = string.trim(source)
         return source
           ? new Expression(
