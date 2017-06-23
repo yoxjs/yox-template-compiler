@@ -582,6 +582,15 @@ export default function compile(content) {
   }
 
   let str = content, match
+
+  // 干掉 html 注释
+  str = str.replace(
+    /<!--[\s\S]*?-->/g,
+    function () {
+      return char.CHAR_BLANK
+    }
+  )
+
   while (str) {
     match = str.match(delimiterPattern)
     if (match) {
