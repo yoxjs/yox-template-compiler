@@ -20,6 +20,7 @@ import * as helper from './src/helper'
 import * as syntax from './src/syntax'
 import * as nodeType from './src/nodeType'
 
+const TEXT = 'text'
 const VALUE = 'value'
 
 /**
@@ -47,21 +48,32 @@ export default function render(ast, data, instance) {
       if (parent.type === nodeType.ELEMENT) {
 
         let children = (parent.children || (parent.children = [ ]))
-        let prevChild = array.last(children), prop = 'text'
+        let prevChild = array.last(children)
 
-        // 文本节点需要拼接
-        // <div>123{{name}}456{{age}}789</div>
-        if (is.primitive(child) || !object.has(child, prop)) {
-          if (is.object(prevChild) && is.string(prevChild[ prop ])) {
-            prevChild[ prop ] += toString(child)
+        if (is.primitive(child)) {
+          if (is.object(prevChild) && is.string(prevChild[ TEXT ])) {
+            prevChild[ TEXT ] += toString(child)
             return
           }
           else {
-            child = snabbdom.createTextVnode(child)
+            children.push(
+              snabbdom.createTextVnode(child)
+            )
           }
         }
-
-        children.push(child)
+        else if (is.array(child)) {
+          array.each(
+            child,
+            function (item) {
+              if (object.has(item, TEXT)) {
+                children.push(item)
+              }
+            }
+          )
+        }
+        else if (object.has(child, TEXT)) {
+          children.push(child)
+        }
 
       }
       else {
@@ -295,28 +307,8 @@ export default function render(ast, data, instance) {
   }
 
   enter[ nodeType.ELEMENT ] = function (source, output) {
-    let { name, slot, key } = source
-    // 嵌入 slot
-    // <slot></slot>
-    if (name === syntax.KEYWORD_SLOT) {
-      // slot = instance.slot(slot)
-      // if (is.array($slot)) {
-      //   let parentElement = htmlStack[ htmlStack.length - 2 ]
-      //   array.each(
-      //     $slot,
-      //     function (vnode) {
-      //       addChild(parentElement, vnode)
-      //     }
-      //   )
-      // }
-      // return env.FALSE
-    }
-    // 定义 slot
-    // <div slot="header">
-    else if (slot) {
-
-    }
-    else if (key) {
+    let { name, key } = source
+    if (key) {
       let trackBy
       if (is.string(key)) {
         trackBy = key

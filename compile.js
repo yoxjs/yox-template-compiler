@@ -162,7 +162,9 @@ export default function compile(content) {
         // 转成 props
         if (children.length - divider === 1) {
           singleChild = array.last(children)
-          if (singleChild.type === nodeType.EXPRESSION) {
+          if (singleChild.type === nodeType.EXPRESSION
+            && singleChild.expr.raw !== SPECIAL_CHILDREN
+          ) {
             let props = { }
             if (singleChild.safe === env.FALSE) {
               props.innerHTML = singleChild.expr
@@ -186,14 +188,6 @@ export default function compile(content) {
         // <div key="xx">
         if (name === syntax.KEYWORD_UNIQUE) {
           prop = syntax.KEYWORD_UNIQUE
-        }
-        // <div slot="xx">
-        else if (name === syntax.KEYWORD_SLOT) {
-          prop = syntax.KEYWORD_SLOT
-        }
-        // <slot name="xx">
-        else if (element.name === syntax.KEYWORD_SLOT && name === 'name') {
-          prop = syntax.KEYWORD_SLOT
         }
         if (prop) {
           array.remove(element.children, target)
