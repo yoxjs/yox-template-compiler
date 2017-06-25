@@ -163,7 +163,7 @@ export default function compile(content) {
         if (children.length - divider === 1) {
           singleChild = array.last(children)
           if (singleChild.type === nodeType.EXPRESSION
-            && singleChild.expr.raw !== SPECIAL_CHILDREN
+            && singleChild.expr.raw !== syntax.SPECIAL_CHILDREN
           ) {
             let props = { }
             if (singleChild.safe === env.FALSE) {
