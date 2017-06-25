@@ -10,7 +10,6 @@ export const COMMENT = /^!\s/
 
 export const SPECIAL_EVENT = '$event'
 export const SPECIAL_KEYPATH = '$keypath'
-export const SPECIAL_CHILDREN = '$children'
 
 export const DIRECTIVE_CUSTOM_PREFIX = 'o-'
 export const DIRECTIVE_EVENT_PREFIX = 'on-'

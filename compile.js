@@ -132,7 +132,7 @@ export default function compile(content) {
 
     if (target) {
 
-      let { name, divider, children } = target
+      let { name, divider, children, component } = target
       if (type === nodeType.ELEMENT && expectedTagName && name !== expectedTagName) {
         throwError(`end tag expected </${name}> to be </${expectedTagName}>.`)
       }
@@ -148,9 +148,11 @@ export default function compile(content) {
       // 如果 children 没实际的数据，删掉它
       // 避免在渲染阶段增加计算量
       if (children && !children.length) {
+        children = env.NULL
         delete target.children
       }
-      if (!target.children) {
+
+      if (component || !children) {
         return
       }
 
@@ -163,7 +165,7 @@ export default function compile(content) {
         if (children.length - divider === 1) {
           singleChild = array.last(children)
           if (singleChild.type === nodeType.EXPRESSION
-            && singleChild.expr.raw !== syntax.SPECIAL_CHILDREN
+            && singleChild.expr.raw !== '$children'
           ) {
             let props = { }
             if (singleChild.safe === env.FALSE) {
