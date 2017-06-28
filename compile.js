@@ -7,11 +7,12 @@ import * as object from 'yox-common/util/object'
 import * as string from 'yox-common/util/string'
 import * as logger from 'yox-common/util/logger'
 
+import * as config from 'yox-config'
+
 import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
 import compileExpression from 'yox-expression-compiler/compile'
 
 import * as helper from './src/helper'
-import * as syntax from './src/syntax'
 import * as nodeType from './src/nodeType'
 
 import Attribute from './src/node/Attribute'
@@ -152,44 +153,61 @@ export default function compile(content) {
         delete target.children
       }
 
-      if (component || !children) {
+      if (!children) {
         return
       }
 
       let singleChild = children.length === 1 && children[ 0 ]
 
       if (type === nodeType.ELEMENT) {
-        // 只有一个子元素
-        // 并且这个子元素是非转义插值
-        // 转成 props
         if (children.length - divider === 1) {
           singleChild = array.last(children)
-          if (singleChild.type === nodeType.EXPRESSION
-            && singleChild.expr.raw !== '$children'
-          ) {
-            let props = { }
-            if (singleChild.safe === env.FALSE) {
-              props.innerHTML = singleChild.expr
+          if (singleChild.type === nodeType.TEXT) {
+            if (component) {
+              let attr = new Attribute(config.SPECIAL_CHILDREN)
+              attr.children = [ singleChild ]
+              children[ divider ] = attr
             }
             else {
-              props.innerText = singleChild.expr
-            }
-            target.props = props
-            if (divider) {
-              children.length = divider
-            }
-            else {
-              delete target.children
+              target.props = {
+                innerText: singleChild.text
+              }
+              array.pop(children)
             }
           }
+          else if (singleChild.type === nodeType.EXPRESSION
+            && singleChild.expr.raw !== config.SPECIAL_CHILDREN
+          ) {
+            if (component) {
+              let attr = new Attribute(config.SPECIAL_CHILDREN)
+              attr.children = [ singleChild ]
+              children[ divider ] = attr
+            }
+            else {
+              let props = { }
+              if (singleChild.safe === env.FALSE) {
+                props.innerHTML = singleChild.expr
+              }
+              else {
+                props.innerText = singleChild.expr
+              }
+              target.props = props
+              array.pop(children)
+            }
+          }
+
+          if (!children.length) {
+              delete target.children
+          }
+
         }
       }
       else if (type === nodeType.ATTRIBUTE) {
         // 把数据从属性中提出来，减少渲染时的遍历
         let element = array.last(htmlStack), prop
         // <div key="xx">
-        if (name === syntax.KEYWORD_UNIQUE) {
-          prop = syntax.KEYWORD_UNIQUE
+        if (name === config.KEYWORD_UNIQUE) {
+          prop = config.KEYWORD_UNIQUE
         }
         if (prop) {
           array.remove(element.children, target)
@@ -197,8 +215,7 @@ export default function compile(content) {
             delete element.children
           }
           if (singleChild) {
-            // 这些特殊属性不支持插值
-            // 提升下性能
+            // 为了提升性能，这些特殊属性不支持插值
             if (singleChild.type === nodeType.TEXT) {
               element[ prop ] = singleChild.text
             }
@@ -374,17 +391,17 @@ export default function compile(content) {
               )
             )
           }
-          else if (string.startsWith(name, syntax.DIRECTIVE_EVENT_PREFIX)) {
-            name = string.slice(name, syntax.DIRECTIVE_EVENT_PREFIX.length)
+          else if (string.startsWith(name, config.DIRECTIVE_EVENT_PREFIX)) {
+            name = string.slice(name, config.DIRECTIVE_EVENT_PREFIX.length)
             addChild(
               new Directive(
-                syntax.DIRECTIVE_EVENT,
+                config.DIRECTIVE_EVENT,
                 string.camelCase(name)
               )
             )
           }
-          else if (string.startsWith(name, syntax.DIRECTIVE_CUSTOM_PREFIX)) {
-            name = string.slice(name, syntax.DIRECTIVE_CUSTOM_PREFIX.length)
+          else if (string.startsWith(name, config.DIRECTIVE_CUSTOM_PREFIX)) {
+            name = string.slice(name, config.DIRECTIVE_CUSTOM_PREFIX.length)
             addChild(
               new Directive(
                 string.camelCase(name)
@@ -458,8 +475,8 @@ export default function compile(content) {
 
   const delimiterParsers = [
     function (source, all) {
-      if (string.startsWith(source, syntax.EACH)) {
-        let terms = string.split(slicePrefix(source, syntax.EACH), char.CHAR_COLON)
+      if (string.startsWith(source, config.SYNTAX_EACH)) {
+        let terms = string.split(slicePrefix(source, config.SYNTAX_EACH), char.CHAR_COLON)
         if (terms[ 0 ]) {
           return new Each(
             compileExpression(string.trim(terms[ 0 ])),
@@ -470,24 +487,24 @@ export default function compile(content) {
       }
     },
     function (source, all) {
-      if (string.startsWith(source, syntax.IMPORT)) {
-        source = slicePrefix(source, syntax.IMPORT)
+      if (string.startsWith(source, config.SYNTAX_IMPORT)) {
+        source = slicePrefix(source, config.SYNTAX_IMPORT)
         return source
           ? new Import(source)
           : throwError(`invalid import: ${all}`)
       }
     },
     function (source, all) {
-      if (string.startsWith(source, syntax.PARTIAL)) {
-        source = slicePrefix(source, syntax.PARTIAL)
+      if (string.startsWith(source, config.SYNTAX_PARTIAL)) {
+        source = slicePrefix(source, config.SYNTAX_PARTIAL)
         return source
           ? new Partial(source)
           : throwError(`invalid partial: ${all}`)
       }
     },
     function (source, all) {
-      if (string.startsWith(source, syntax.IF)) {
-        source = slicePrefix(source, syntax.IF)
+      if (string.startsWith(source, config.SYNTAX_IF)) {
+        source = slicePrefix(source, config.SYNTAX_IF)
         return source
           ? new If(
             compileExpression(source)
@@ -496,8 +513,8 @@ export default function compile(content) {
       }
     },
     function (source, all) {
-      if (string.startsWith(source, syntax.ELSE_IF)) {
-        source = slicePrefix(source, syntax.ELSE_IF)
+      if (string.startsWith(source, config.SYNTAX_ELSE_IF)) {
+        source = slicePrefix(source, config.SYNTAX_ELSE_IF)
         return source
           ? new ElseIf(
             compileExpression(source)
@@ -506,13 +523,13 @@ export default function compile(content) {
       }
     },
     function (source) {
-      if (string.startsWith(source, syntax.ELSE)) {
+      if (string.startsWith(source, config.SYNTAX_ELSE)) {
         return new Else()
       }
     },
     function (source, all) {
-      if (string.startsWith(source, syntax.SPREAD)) {
-        source = slicePrefix(source, syntax.SPREAD)
+      if (string.startsWith(source, config.SYNTAX_SPREAD)) {
+        source = slicePrefix(source, config.SYNTAX_SPREAD)
         return source
           ? new Spread(
             compileExpression(source)
@@ -521,7 +538,7 @@ export default function compile(content) {
       }
     },
     function (source, all) {
-      if (!syntax.COMMENT.test(source)) {
+      if (!config.SYNTAX_COMMENT.test(source)) {
         source = string.trim(source)
         return source
           ? new Expression(

@@ -8,7 +8,7 @@ import * as string from 'yox-common/util/string'
 import * as logger from 'yox-common/util/logger'
 import * as keypathUtil from 'yox-common/util/keypath'
 
-import * as syntax from './syntax'
+import * as config from 'yox-config'
 
 export default class Context {
 
@@ -20,7 +20,7 @@ export default class Context {
   constructor(data, keypath, parent) {
 
     let instance = this, temp = { }
-    temp[ syntax.SPECIAL_KEYPATH ] = keypath
+    temp[ config.SPECIAL_KEYPATH ] = keypath
 
     instance.data = data
     instance.temp = temp
@@ -103,7 +103,7 @@ export default class Context {
 
       if (result) {
         result.keypath = keypathUtil.join(
-          instance.temp[ syntax.SPECIAL_KEYPATH ],
+          instance.temp[ config.SPECIAL_KEYPATH ],
           keypath
         )
         cache[ keypath ] = result
@@ -118,7 +118,7 @@ export default class Context {
 
     return {
       keypath: keypathUtil.join(
-        temp[ syntax.SPECIAL_KEYPATH ],
+        temp[ config.SPECIAL_KEYPATH ],
         keypath
       )
     }

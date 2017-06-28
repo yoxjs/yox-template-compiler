@@ -13,11 +13,11 @@ import toString from 'yox-common/function/toString'
 import executeFunction from 'yox-common/function/execute'
 import executeExpression from 'yox-expression-compiler/execute'
 
+import * as config from 'yox-config'
 import * as snabbdom from 'yox-snabbdom'
 
 import Context from './src/Context'
 import * as helper from './src/helper'
-import * as syntax from './src/syntax'
 import * as nodeType from './src/nodeType'
 
 const TEXT = 'text'
@@ -369,16 +369,23 @@ export default function render(ast, data, instance) {
       object.each(
         source.props,
         function (expr, key) {
-          let { keypath } = expr
-          props[ key ] = executeExpr(expr, keypath)
-          if (keypath) {
-            addDirective(
-              output,
-              syntax.DIRECTIVE_BINDING,
-              key,
-              keypath
-            ).prop = env.TRUE
+          let value
+          if (is.primitive(expr)) {
+            value = expr
           }
+          else {
+            let { keypath } = expr
+            value = executeExpr(expr, keypath)
+            if (keypath) {
+              addDirective(
+                output,
+                config.DIRECTIVE_BINDING,
+                key,
+                keypath
+              ).prop = env.TRUE
+            }
+          }
+          props[ key ] = value
         }
       )
     }
@@ -433,7 +440,7 @@ export default function render(ast, data, instance) {
     if (binding) {
       addDirective(
         element,
-        syntax.DIRECTIVE_BINDING,
+        config.DIRECTIVE_BINDING,
         name,
         binding
       )
@@ -481,7 +488,7 @@ export default function render(ast, data, instance) {
           if (spreadKeypath) {
             addDirective(
               element,
-              syntax.DIRECTIVE_BINDING,
+              config.DIRECTIVE_BINDING,
               name,
               keypathUtil.join(spreadKeypath, name)
             )

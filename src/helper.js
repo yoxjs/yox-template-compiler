@@ -2,7 +2,8 @@
 import * as env from 'yox-common/util/env'
 import * as object from 'yox-common/util/object'
 
-import * as syntax from './syntax'
+import * as config from 'yox-config'
+
 import * as nodeType from './nodeType'
 
 // if 带条件的
@@ -35,9 +36,9 @@ leafTypes[ nodeType.IMPORT ] =
 leafTypes[ nodeType.SPREAD ] =
 leafTypes[ nodeType.EXPRESSION ] =
 
-builtInDirectives[ syntax.DIRECTIVE_REF ] =
-builtInDirectives[ syntax.DIRECTIVE_LAZY ] =
-builtInDirectives[ syntax.DIRECTIVE_MODEL ] = env.TRUE
+builtInDirectives[ config.DIRECTIVE_REF ] =
+builtInDirectives[ config.DIRECTIVE_LAZY ] =
+builtInDirectives[ config.DIRECTIVE_MODEL ] = env.TRUE
 
 name2Type[ 'if' ] = nodeType.IF
 name2Type[ 'each' ] = nodeType.EACH
