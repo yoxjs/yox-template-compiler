@@ -362,7 +362,7 @@ export default function render(ast, data, instance) {
 
   leave[ nodeType.ELEMENT ] = function (source, output) {
 
-    let { key } = output, props, vnode
+    let { component } = source, { key, attrs, children } = output, props, vnode, create
 
     if (source.props) {
       props = { }
@@ -390,12 +390,27 @@ export default function render(ast, data, instance) {
       )
     }
 
-    vnode = snabbdom[ source.component ? 'createComponentVnode' : 'createElementVnode' ](
+
+    if (component) {
+      create = 'createComponentVnode'
+      if (children) {
+        if (!attrs) {
+          attrs = { }
+        }
+        attrs[ config.SPECIAL_CHILDREN ] = children
+        children = env.UNDEFINED
+      }
+    }
+    else {
+      create = 'createElementVnode'
+    }
+
+    vnode = snabbdom[ create ](
       source.name,
-      output.attrs,
+      attrs,
       props,
       output.directives,
-      output.children,
+      children,
       key,
       instance
     )
