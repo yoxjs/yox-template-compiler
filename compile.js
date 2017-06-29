@@ -365,7 +365,7 @@ export default function compile(content) {
 
     if (helper.elseTypes[ type ]) {
       let ifNode = array.pop(ifStack)
-      ifNode.then = node
+      ifNode.next = node
       popStack(ifNode.type)
       array.push(ifStack, node)
       array.push(nodeStack, node)

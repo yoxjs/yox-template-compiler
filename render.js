@@ -221,32 +221,39 @@ export default function render(ast, data, instance) {
   // 条件判断失败就没必要往下走了
   // 但如果失败的点原本是一个 DOM 元素
   // 就需要用注释节点来占位，否则 virtual dom 无法正常工作
-  enter[ nodeType.IF ] =
-  enter[ nodeType.ELSE_IF ] = function (source) {
-    let { expr, children, then, stump } = source
-    if (executeExpr(expr)) {
-      pushStack({
-        children,
-      })
-    }
-    else {
-      if (then) {
-        pushStack(then)
+  enter[ nodeType.IF ] = function (source) {
+    while (env.TRUE) {
+      // 有判断条件
+      if (source.expr) {
+        if (executeExpr(source.expr)) {
+          pushStack({
+            children: source.children,
+          })
+          break
+        }
+        else {
+          if (source.next) {
+            source = source.next
+          }
+          else {
+            if (source.stump) {
+              addChild(
+                array.last(htmlStack),
+                snabbdom.createCommentVnode()
+              )
+            }
+            break
+          }
+        }
       }
-      else if (stump) {
-        addChild(
-          array.last(htmlStack),
-          snabbdom.createCommentVnode()
-        )
+      // 无判断条件，即 else
+      else {
+        pushStack({
+          children: source.children,
+        })
+        break
       }
     }
-    return env.FALSE
-  }
-
-  enter[ nodeType.ELSE ] = function (source) {
-    pushStack({
-      children: source.children,
-    })
     return env.FALSE
   }
 
