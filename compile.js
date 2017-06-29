@@ -11,6 +11,8 @@ import * as config from 'yox-config'
 
 import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
 import compileExpression from 'yox-expression-compiler/compile'
+import Binary from 'yox-expression-compiler/src/node/Binary'
+import Literal from 'yox-expression-compiler/src/node/Literal'
 
 import * as helper from './src/helper'
 import * as nodeType from './src/nodeType'
@@ -71,6 +73,60 @@ function trimBreakline(content) {
     /^[ \t]*\n|\n[ \t]*$/g,
     char.CHAR_BLANK
   )
+}
+
+/**
+ * 把一堆插值优化成表达式
+ *
+ * @param {Array} children
+ */
+function optimizeExpression(children) {
+
+  // "xxx{{name}}" => 优化成 {{ 'xxx' + name }}
+  // "xxx{{name1}}{{name2}} => 优化成 {{ 'xxx' + name1 + name2 }}"
+
+  let current
+
+  let addNode = function (node) {
+    if (!current) {
+      current = node
+    }
+    else {
+      current = new Binary(
+        char.CHAR_BLANK,
+        current,
+        '+',
+        node
+      )
+    }
+  }
+
+  array.each(
+    children,
+    function (child) {
+      let { type, expr, text } = child
+      if (type === nodeType.EXPRESSION
+        && expr.raw !== config.SPECIAL_CHILDREN
+      ) {
+        addNode(child.expr)
+      }
+      else if (type === nodeType.TEXT) {
+        addNode(new Literal(char.CHAR_BLANK, text))
+      }
+      else {
+        current = env.NULL
+        return env.FALSE
+      }
+    }
+  )
+
+  if (current) {
+    return new Expression(
+      current,
+      env.TRUE
+    )
+  }
+
 }
 
 /**
@@ -157,11 +213,19 @@ export default function compile(content) {
         return
       }
 
-      let singleChild = children.length === 1 && children[ 0 ]
-
       if (type === nodeType.ELEMENT) {
+
+        let realChildren = children.slice(divider)
+        if (realChildren.length > 1) {
+          let result = optimizeExpression(realChildren)
+          if (result) {
+            children.length = divider
+            array.push(children, result)
+          }
+        }
+
         if (children.length - divider === 1) {
-          singleChild = array.last(children)
+          let singleChild = array.last(children)
           if (singleChild.type === nodeType.TEXT) {
             if (component) {
               let attr = new Attribute(config.SPECIAL_CHILDREN)
@@ -197,59 +261,71 @@ export default function compile(content) {
           }
 
           if (!children.length) {
-              delete target.children
+            delete target.children
           }
 
         }
       }
-      else if (type === nodeType.ATTRIBUTE) {
-        // 把数据从属性中提出来，减少渲染时的遍历
-        let element = array.last(htmlStack), prop
-        // <div key="xx">
-        if (name === config.KEYWORD_UNIQUE) {
-          prop = config.KEYWORD_UNIQUE
-        }
-        if (prop) {
-          array.remove(element.children, target)
-          if (!element.children.length) {
-            delete element.children
+      else {
+
+        if (children.length > 1) {
+          let result = optimizeExpression(children)
+          if (result) {
+            children = [ result ]
           }
-          if (singleChild) {
-            // 为了提升性能，这些特殊属性不支持插值
-            if (singleChild.type === nodeType.TEXT) {
-              element[ prop ] = singleChild.text
+        }
+
+        let singleChild = children.length === 1 && children[ 0 ]
+
+        if (type === nodeType.ATTRIBUTE) {
+          // 把数据从属性中提出来，减少渲染时的遍历
+          let element = array.last(htmlStack), prop
+          // <div key="xx">
+          if (name === config.KEYWORD_UNIQUE) {
+            prop = config.KEYWORD_UNIQUE
+          }
+          if (prop) {
+            array.remove(element.children, target)
+            if (!element.children.length) {
+              delete element.children
             }
-            else if (singleChild.type === nodeType.EXPRESSION) {
-              element[ prop ] = singleChild.expr
+            if (singleChild) {
+              // 为了提升性能，这些特殊属性不支持插值
+              if (singleChild.type === nodeType.TEXT) {
+                element[ prop ] = singleChild.text
+              }
+              else if (singleChild.type === nodeType.EXPRESSION) {
+                element[ prop ] = singleChild.expr
+              }
             }
           }
         }
-      }
-      else if (singleChild) {
-        if (singleChild.type === nodeType.TEXT) {
-          // 指令的值如果是纯文本，可以预编译表达式，提升性能
-          if (type === nodeType.DIRECTIVE) {
-            target.expr = compileExpression(singleChild.text)
-            target.value = singleChild.text
-            delete target.children
+        else if (singleChild) {
+          if (singleChild.type === nodeType.TEXT) {
+            // 指令的值如果是纯文本，可以预编译表达式，提升性能
+            if (type === nodeType.DIRECTIVE) {
+              target.expr = compileExpression(singleChild.text)
+              target.value = singleChild.text
+              delete target.children
+            }
+            // 属性的值如果是纯文本，直接获取文本值
+            // 减少渲染时的遍历
+            else if (type === nodeType.ATTRIBUTE) {
+              target.value = singleChild.text
+              delete target.children
+            }
           }
-          // 属性的值如果是纯文本，直接获取文本值
-          // 减少渲染时的遍历
-          else if (type === nodeType.ATTRIBUTE) {
-            target.value = singleChild.text
-            delete target.children
-          }
-        }
-        // <div class="{{className}}">
-        // 把 Attribute 转成 单向绑定 指令，可实现精确更新视图
-        else if (type === nodeType.ATTRIBUTE
-          && singleChild.type === nodeType.EXPRESSION
-        ) {
-          let { expr } = singleChild
-          if (is.string(expr.keypath)) {
-            target.expr = expr
-            target.binding = expr.keypath
-            delete target.children
+          // <div class="{{className}}">
+          // 把 Attribute 转成 单向绑定 指令，可实现精确更新视图
+          else if (type === nodeType.ATTRIBUTE
+            && singleChild.type === nodeType.EXPRESSION
+          ) {
+            let { expr } = singleChild
+            if (is.string(expr.keypath)) {
+              target.expr = expr
+              target.binding = expr.keypath
+              delete target.children
+            }
           }
         }
       }
