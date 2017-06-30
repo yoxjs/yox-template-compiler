@@ -326,8 +326,8 @@ export default function render(ast, data, instance) {
       if (isDef(trackBy)) {
 
         if (!currentCache) {
-          prevCache = ast.cache || { }
-          currentCache = ast.cache = { }
+          prevCache = instance.$templateCache || { }
+          currentCache = instance.$templateCache = { }
         }
 
         let cache = prevCache[ trackBy ]

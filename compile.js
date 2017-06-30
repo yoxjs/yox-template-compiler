@@ -12,6 +12,7 @@ import * as config from 'yox-config'
 import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
 import compileExpression from 'yox-expression-compiler/compile'
 import Binary from 'yox-expression-compiler/src/node/Binary'
+import Ternary from 'yox-expression-compiler/src/node/Ternary'
 import Literal from 'yox-expression-compiler/src/node/Literal'
 
 import * as helper from './src/helper'
@@ -112,6 +113,53 @@ function optimizeExpression(children) {
       }
       else if (type === nodeType.TEXT) {
         addNode(new Literal(char.CHAR_BLANK, text))
+      }
+      else if (type === nodeType.IF) {
+
+        let list = [ ], children
+
+        let append = function (node) {
+          let last = array.last(list)
+          if (last) {
+            last.no = node
+          }
+          array.push(list, node)
+        }
+
+        while (child) {
+          children = child.children
+          if (children) {
+            children = optimizeExpression(children)
+            if (children) {
+              children = children.expr
+            }
+            else {
+              current = env.NULL
+              return env.FALSE
+            }
+          }
+          if (!children) {
+            children = new Literal(char.CHAR_BLANK, char.CHAR_BLANK)
+          }
+          if (child.expr) {
+            append(
+              new Ternary(
+                char.CHAR_BLANK,
+                child.expr,
+                children,
+                new Literal(char.CHAR_BLANK, char.CHAR_BLANK)
+              )
+            )
+          }
+          else {
+            append(
+              children
+            )
+          }
+          child = child.next
+        }
+
+        addNode(list[ 0 ])
       }
       else {
         current = env.NULL
@@ -271,7 +319,8 @@ export default function compile(content) {
         if (children.length > 1) {
           let result = optimizeExpression(children)
           if (result) {
-            children = [ result ]
+            children.length = 0
+            array.push(children, result)
           }
         }
 
@@ -279,12 +328,9 @@ export default function compile(content) {
 
         if (type === nodeType.ATTRIBUTE) {
           // 把数据从属性中提出来，减少渲染时的遍历
-          let element = array.last(htmlStack), prop
+          let element = array.last(htmlStack)
           // <div key="xx">
           if (name === config.KEYWORD_UNIQUE) {
-            prop = config.KEYWORD_UNIQUE
-          }
-          if (prop) {
             array.remove(element.children, target)
             if (!element.children.length) {
               delete element.children
@@ -292,10 +338,10 @@ export default function compile(content) {
             if (singleChild) {
               // 为了提升性能，这些特殊属性不支持插值
               if (singleChild.type === nodeType.TEXT) {
-                element[ prop ] = singleChild.text
+                element.key = singleChild.text
               }
               else if (singleChild.type === nodeType.EXPRESSION) {
-                element[ prop ] = singleChild.expr
+                element.key = singleChild.expr
               }
             }
           }
@@ -321,10 +367,10 @@ export default function compile(content) {
             && singleChild.type === nodeType.EXPRESSION
           ) {
             let { expr } = singleChild
+            target.expr = expr
+            delete target.children
             if (is.string(expr.keypath)) {
-              target.expr = expr
               target.binding = expr.keypath
-              delete target.children
             }
           }
         }
