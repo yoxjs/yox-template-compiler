@@ -105,7 +105,7 @@ export default function render(ast, data, instance) {
     }
   }
 
-  let getValue = function (source, output) {
+  let getValue = function (element, source, output) {
     let value
     if (object.has(output, VALUE)) {
       value = output.value
@@ -117,9 +117,15 @@ export default function render(ast, data, instance) {
       value = executeExpr(source.expr, source.binding || source.type === nodeType.DIRECTIVE)
     }
     if (!isDef(value)) {
-      value = source.expr || source.children
-        ? char.CHAR_BLANK
-        : env.TRUE
+      if (source.expr || source.children) {
+        value = char.CHAR_BLANK
+      }
+      else if (element.component) {
+        value = env.TRUE
+      }
+      else {
+        value = source.name
+      }
     }
     return value
   }
@@ -457,7 +463,7 @@ export default function render(ast, data, instance) {
     addAttr(
       element,
       name,
-      getValue(source, output)
+      getValue(element, source, output)
     )
     if (binding) {
       addDirective(
@@ -478,11 +484,13 @@ export default function render(ast, data, instance) {
     // 2.如果指令的值包含插值语法，则会拼接出最终值
     //   on-click="haha{{name}}"
 
+    let element = htmlStack[ htmlStack.length - 2 ]
+
     addDirective(
-      htmlStack[ htmlStack.length - 2 ],
+      element,
       source.name,
       source.modifier,
-      getValue(source, output)
+      getValue(element, source, output)
     ).expr = source.expr
 
   }
