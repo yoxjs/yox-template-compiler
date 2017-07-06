@@ -86,13 +86,24 @@ function optimizeExpression(children) {
   // "xxx{{name}}" => 优化成 {{ 'xxx' + name }}
   // "xxx{{name1}}{{name2}} => 优化成 {{ 'xxx' + name1 + name2 }}"
 
-  let current
+  let current, blankString = new Literal(char.CHAR_BLANK, char.CHAR_BLANK)
 
   let addNode = function (node) {
     if (!current) {
       current = node
     }
     else {
+      // 为了确保是字符串拼接，而不是加法，多个相加时，第一个必须确保是空字符串
+      if (current.type !== expressionNodeType.BINARY
+        || current.raw !== char.CHAR_BLANK
+      ) {
+        current = new Binary(
+          char.CHAR_BLANK,
+          blankString,
+          '+',
+          current
+        )
+      }
       current = new Binary(
         char.CHAR_BLANK,
         current,
@@ -139,7 +150,7 @@ function optimizeExpression(children) {
             }
           }
           if (!children) {
-            children = new Literal(char.CHAR_BLANK, char.CHAR_BLANK)
+            children = blankString
           }
           if (child.expr) {
             append(
@@ -147,7 +158,7 @@ function optimizeExpression(children) {
                 char.CHAR_BLANK,
                 child.expr,
                 children,
-                new Literal(char.CHAR_BLANK, char.CHAR_BLANK)
+                blankString
               )
             )
           }
