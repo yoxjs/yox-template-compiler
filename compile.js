@@ -355,9 +355,11 @@ export default function compile(content) {
                 element.key = singleChild.expr
               }
             }
+            return
           }
         }
-        else if (singleChild) {
+
+        if (singleChild) {
           if (singleChild.type === nodeType.TEXT) {
             // 指令的值如果是纯文本，可以预编译表达式，提升性能
             if (type === nodeType.DIRECTIVE) {
