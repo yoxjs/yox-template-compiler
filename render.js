@@ -51,9 +51,11 @@ export default function render(ast, data, instance) {
         let prevChild = array.last(children)
 
         if (is.primitive(child)) {
-          if (is.object(prevChild) && is.string(prevChild[ TEXT ])) {
+          if (is.object(prevChild)
+            && is.string(prevChild[ TEXT ])
+            && !prevChild.tag
+          ) {
             prevChild[ TEXT ] += toString(child)
-            return
           }
           else {
             children.push(
