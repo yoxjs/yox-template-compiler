@@ -33,13 +33,13 @@ const VALUE = 'value'
  */
 export default function render(ast, data, instance) {
 
-  let keypath = char.CHAR_BLANK, keypathList = [ ],
-  updateKeypath = function () {
+  // 为了减少字符，一个 let 定义完所有变量
+  // 这里不考虑是否一行过长
+  let keypath = char.CHAR_BLANK, keypathList = [ ], context = new Context(data, keypath), nodeStack = [ ], htmlStack = [ ], partials = { }, deps = { }, enter = { }, leave = { }, cache, prevCache, currentCache, cacheDeps
+
+  let updateKeypath = function () {
     keypath = keypathUtil.stringify(keypathList)
   }
-
-  let context = new Context(data, keypath), nodeStack = [ ], htmlStack = [ ], partials = { }, deps = { }
-  let cache, prevCache, currentCache
 
   let addChild = function (parent, child) {
 
@@ -51,10 +51,7 @@ export default function render(ast, data, instance) {
         let prevChild = array.last(children)
 
         if (is.primitive(child)) {
-          if (is.object(prevChild)
-            && is.string(prevChild[ TEXT ])
-            && !prevChild.tag
-          ) {
+          if (snabbdom.isTextVnode(prevChild)) {
             prevChild[ TEXT ] += toString(child)
           }
           else {
@@ -183,7 +180,6 @@ export default function render(ast, data, instance) {
   // <div key="{{xx}}">
   //     <div key="{{yy}}"></div>
   // </div>
-  let cacheDeps
 
   let executeExpr = function (expr, filter) {
     return executeExpression(
@@ -201,8 +197,6 @@ export default function render(ast, data, instance) {
       instance
     )
   }
-
-  let enter = { }, leave = { }
 
   enter[ nodeType.PARTIAL ] = function (source) {
     partials[ source.name ] = source.children
