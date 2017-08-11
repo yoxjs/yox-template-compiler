@@ -50,17 +50,7 @@ export default function render(ast, data, instance) {
         let children = (parent.children || (parent.children = [ ]))
         let prevChild = array.last(children)
 
-        if (is.primitive(child)) {
-          if (snabbdom.isTextVnode(prevChild)) {
-            prevChild[ TEXT ] += toString(child)
-          }
-          else {
-            children.push(
-              snabbdom.createTextVnode(child)
-            )
-          }
-        }
-        else if (is.array(child)) {
+        if (is.array(child)) {
           array.each(
             child,
             function (item) {
@@ -70,8 +60,20 @@ export default function render(ast, data, instance) {
             }
           )
         }
-        else if (object.has(child, TEXT)) {
-          children.push(child)
+        else if (is.object(child)) {
+          if (object.has(child, TEXT)) {
+            children.push(child)
+          }
+        }
+        else {
+          if (snabbdom.isTextVnode(prevChild)) {
+            prevChild[ TEXT ] += toString(child)
+          }
+          else {
+            children.push(
+              snabbdom.createTextVnode(child)
+            )
+          }
         }
 
       }
