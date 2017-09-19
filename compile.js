@@ -66,12 +66,14 @@ function isBreakline(content) {
 /**
  * trim 文本开始和结束位置的换行符
  *
+ * 换行符比较神奇，有时候你明明看不到换行符，却真的存在一个，那就是 \r
+ *
  * @param {string} content
  * @return {string}
  */
 function trimBreakline(content) {
   return content.replace(
-    /^[ \t]*\n|\n[ \t]*$/g,
+    /^\s*[\n|\r]|[\n|\r]\s*$/g,
     char.CHAR_BLANK
   )
 }
