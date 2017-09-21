@@ -364,15 +364,23 @@ export default function compile(content) {
         if (singleChild) {
           if (singleChild.type === nodeType.TEXT) {
             // 指令的值如果是纯文本，可以预编译表达式，提升性能
+            let { text } = singleChild
             if (type === nodeType.DIRECTIVE) {
-              target.expr = compileExpression(singleChild.text)
-              target.value = singleChild.text
+              // 有可能写了个中文，例如“中文”，这种是没法作为表达式解析的
+              // 就像你在浏览器控制台输入了“中文”，照样报错
+              try {
+                target.expr = compileExpression(text)
+              }
+              catch (e) {
+                target.expr = new Literal(text, text)
+              }
+              target.value = text
               delete target.children
             }
             // 属性的值如果是纯文本，直接获取文本值
             // 减少渲染时的遍历
             else if (type === nodeType.ATTRIBUTE) {
-              target.value = singleChild.text
+              target.value = text
               delete target.children
             }
           }
