@@ -36,7 +36,6 @@ leafTypes[ nodeType.IMPORT ] =
 leafTypes[ nodeType.SPREAD ] =
 leafTypes[ nodeType.EXPRESSION ] =
 
-builtInDirectives[ config.DIRECTIVE_REF ] =
 builtInDirectives[ config.DIRECTIVE_LAZY ] =
 builtInDirectives[ config.DIRECTIVE_MODEL ] = env.TRUE
 

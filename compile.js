@@ -340,10 +340,11 @@ export default function compile(content) {
         let singleChild = children.length === 1 && children[ 0 ]
 
         if (type === nodeType.ATTRIBUTE) {
-          // 把数据从属性中提出来，减少渲染时的遍历
-          let element = array.last(htmlStack)
           // <div key="xx">
-          if (name === config.KEYWORD_UNIQUE) {
+          // <div ref="xx">
+          if (name === config.KEYWORD_UNIQUE || name === config.KEYWORD_REF) {
+            // 把数据从属性中提出来，减少渲染时的遍历
+            let element = array.last(htmlStack)
             array.remove(element.children, target)
             if (!element.children.length) {
               delete element.children
@@ -351,10 +352,10 @@ export default function compile(content) {
             if (singleChild) {
               // 为了提升性能，这些特殊属性不支持插值
               if (singleChild.type === nodeType.TEXT) {
-                element.key = singleChild.text
+                element[ name ] = singleChild.text
               }
               else if (singleChild.type === nodeType.EXPRESSION) {
-                element.key = singleChild.expr
+                element[ name ] = singleChild.expr
               }
             }
             return

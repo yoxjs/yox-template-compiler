@@ -317,16 +317,22 @@ export default function render(ast, data, instance) {
 
   }
 
+  function getKeywordValue(value) {
+    if (is.string(value)) {
+      return value
+    }
+    else if (is.object(value)) {
+      return executeExpr(value)
+    }
+  }
+
   enter[ nodeType.ELEMENT ] = function (source, output) {
-    let { name, key } = source
+    let { name, key, ref } = source
+    if (ref) {
+      output.ref = getKeywordValue(ref)
+    }
     if (key) {
-      let trackBy
-      if (is.string(key)) {
-        trackBy = key
-      }
-      else if (is.object(key)) {
-        trackBy = executeExpr(key)
-      }
+      let trackBy = getKeywordValue(key)
       if (isDef(trackBy)) {
 
         if (!currentCache) {
@@ -373,7 +379,7 @@ export default function render(ast, data, instance) {
 
   leave[ nodeType.ELEMENT ] = function (source, output) {
 
-    let { component } = source, { key, attrs, children } = output, props, vnode, create
+    let { component } = source, { key, ref, attrs, children } = output, props, vnode, create
 
     if (source.props) {
       props = { }
@@ -401,7 +407,6 @@ export default function render(ast, data, instance) {
       )
     }
 
-
     if (component) {
       create = 'createComponentVnode'
       if (children) {
@@ -423,6 +428,7 @@ export default function render(ast, data, instance) {
       output.directives,
       children,
       key,
+      ref,
       instance
     )
 
