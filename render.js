@@ -317,7 +317,7 @@ export default function render(ast, data, instance) {
 
   }
 
-  function getKeywordValue(value) {
+  let getKeywordValue = function (value) {
     if (is.string(value)) {
       return value
     }
@@ -328,9 +328,6 @@ export default function render(ast, data, instance) {
 
   enter[ nodeType.ELEMENT ] = function (source, output) {
     let { name, key, ref } = source
-    if (ref) {
-      output.ref = getKeywordValue(ref)
-    }
     if (key) {
       let trackBy = getKeywordValue(key)
       if (isDef(trackBy)) {
@@ -374,6 +371,9 @@ export default function render(ast, data, instance) {
           keypath,
         }
       }
+    }
+    if (ref) {
+      output.ref = getKeywordValue(ref)
     }
   }
 
