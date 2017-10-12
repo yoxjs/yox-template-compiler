@@ -226,6 +226,7 @@ export default function render(ast, data, instance) {
   // 但如果失败的点原本是一个 DOM 元素
   // 就需要用注释节点来占位，否则 virtual dom 无法正常工作
   enter[ nodeType.IF ] = function (source) {
+    let { stump } = source
     while (env.TRUE) {
       // 有判断条件
       if (source.expr) {
@@ -240,7 +241,7 @@ export default function render(ast, data, instance) {
             source = source.next
           }
           else {
-            if (source.stump) {
+            if (stump) {
               addChild(
                 array.last(htmlStack),
                 snabbdom.createCommentVnode()
