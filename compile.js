@@ -295,7 +295,7 @@ export default function compile(content) {
             }
             else {
               target.props = {
-                innerText: singleChild.text
+                textContent: singleChild.text
               }
               array.pop(children)
             }
@@ -314,7 +314,7 @@ export default function compile(content) {
                 props.innerHTML = singleChild.expr
               }
               else {
-                props.innerText = singleChild.expr
+                props.textContent = singleChild.expr
               }
               target.props = props
               array.pop(children)
