@@ -367,14 +367,7 @@ export default function compile(content) {
             // 指令的值如果是纯文本，可以预编译表达式，提升性能
             let { text } = singleChild
             if (type === nodeType.DIRECTIVE) {
-              // 有可能写了个中文，例如“中文”，这种是没法作为表达式解析的
-              // 就像你在浏览器控制台输入了“中文”，照样报错
-              try {
-                target.expr = compileExpression(text)
-              }
-              catch (e) {
-                target.expr = new Literal(text, text)
-              }
+              target.expr = compileExpression(text)
               target.value = text
               delete target.children
             }
