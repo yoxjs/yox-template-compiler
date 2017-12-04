@@ -44,8 +44,7 @@ export default class Context {
     let { temp, cache } = this
     let { keypath } = formatKeypath(key)
     if (keypath) {
-      // 外部可能会禁掉缓存
-      if (cache && object.has(cache, keypath)) {
+      if (object.has(cache, keypath)) {
         delete cache[ keypath ]
       }
       temp[ keypath ] = value
@@ -58,8 +57,7 @@ export default class Context {
     let { data, temp, cache } = instance
     let { keypath, lookup } = formatKeypath(key)
 
-    // 外部可能会禁掉缓存
-    if (!cache || !object.has(cache, keypath)) {
+    if (!object.has(cache, keypath)) {
 
       let result
 
@@ -108,21 +106,14 @@ export default class Context {
           instance.temp[ config.SPECIAL_KEYPATH ],
           keypath
         )
-        if (cache) {
-          cache[ keypath ] = result
-        }
-        else {
-          return result
-        }
+        cache[ keypath ] = result
       }
 
     }
 
+    cache = cache[ keypath ]
     if (cache) {
-      cache = cache[ keypath ]
-      if (cache) {
-        return cache
-      }
+      return cache
     }
 
     return {
