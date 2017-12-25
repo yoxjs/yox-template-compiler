@@ -106,9 +106,6 @@ export default class Context {
           instance.temp[ config.SPECIAL_KEYPATH ],
           keypath
         )
-        if (is.func(result.value) && result.value.$computed) {
-          result.value = result.value()
-        }
         cache[ keypath ] = result
       }
 
