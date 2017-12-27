@@ -36,7 +36,7 @@ const openingTagPattern = /<(\/)?([a-z][-a-z0-9]*)/i
 const closingTagPattern = /^\s*(\/)?>/
 const attributePattern = /^\s*([-:\w]+)(?:=(['"]))?/
 const componentNamePattern = /[-A-Z]/
-const selfClosingTagNamePattern = /area|base|embed|track|source|param|input|col|img|br|hr/
+const selfClosingTagNames = [ 'area', 'base', 'embed', 'track', 'source', 'param', 'input', 'col', 'img', 'br', 'hr' ]
 
 // 缓存编译结果
 let compileCache = { }
@@ -215,7 +215,7 @@ export default function compile(content) {
     if (lastNode
       && lastNode.type === nodeType.ELEMENT
       && lastNode.name !== popingTagName
-      && selfClosingTagNamePattern.test(lastNode.name)
+      && array.has(selfClosingTagNames, lastNode.name)
     ) {
       popStack(
         nodeType.ELEMENT,
