@@ -55,6 +55,7 @@ export default function render(ast, data, instance) {
             child,
             function (item) {
               if (object.has(item, TEXT)) {
+                item.instance = instance
                 children.push(item)
               }
             }
