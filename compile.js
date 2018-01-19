@@ -73,7 +73,7 @@ function isBreakline(content) {
  */
 function trimBreakline(content) {
   return content.replace(
-    /^\s*[\n|\r]\s*|\s*[\n|\r]\s*$/g,
+    /^\s*[\n\r]\s*|\s*[\n\r]\s*$/g,
     char.CHAR_BLANK
   )
 }
