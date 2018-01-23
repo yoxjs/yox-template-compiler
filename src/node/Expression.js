@@ -16,4 +16,8 @@ export default class Expression extends Node {
     this.safe = safe
   }
 
+  stringify() {
+    return this.stringifyExpression(this.expr, this.safe)
+  }
+
 }

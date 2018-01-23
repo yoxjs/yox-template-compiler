@@ -3,6 +3,7 @@ import isNative from 'yox-common/function/isNative'
 
 import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
+import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
 import * as string from 'yox-common/util/string'
 import * as logger from 'yox-common/util/logger'
@@ -32,8 +33,11 @@ export default class Context {
 
   }
 
-  push(data, keypath) {
-    return new Context(data, keypath, this)
+  push(data, nextKeypath) {
+    let keypath = this.temp[ config.SPECIAL_KEYPATH ]
+    let tokens = keypathUtil.parse(keypath)
+    array.push(tokens, nextKeypath)
+    return new Context(data, keypathUtil.stringify(tokens), this)
   }
 
   pop() {
@@ -102,6 +106,7 @@ export default class Context {
       }
 
       if (result) {
+        result.context = instance
         result.keypath = keypathUtil.join(
           instance.temp[ config.SPECIAL_KEYPATH ],
           keypath
@@ -117,6 +122,7 @@ export default class Context {
     }
 
     return {
+      context: this,
       keypath: keypathUtil.join(
         temp[ config.SPECIAL_KEYPATH ],
         keypath

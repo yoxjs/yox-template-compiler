@@ -14,4 +14,29 @@ export default class If extends Node {
     this.expr = expr
   }
 
+  stringify() {
+
+    let { stump } = this
+
+    let stringify = function (node) {
+      let expr = node.stringifyExpression(node.expr)
+      let result = node.stringifyArray(node.children)
+      if (node.next) {
+        return `${expr}?${result}:(${stringify(node.next)})`
+      }
+      else {
+        if (expr) {
+          return stump
+            ? `${expr}?${result}:m()`
+            : `${expr}&&${result}`
+        }
+        else {
+          return result
+        }
+      }
+    }
+
+    return stringify(this)
+  }
+
 }

@@ -1,4 +1,6 @@
 
+import * as array from 'yox-common/util/array'
+
 import Node from './Node'
 import * as nodeType from '../nodeType'
 
@@ -16,6 +18,17 @@ export default class Each extends Node {
     if (index) {
       this.index = index
     }
+  }
+
+  stringify() {
+    let params = [
+      this.stringifyObject(this.expr),
+      `function(){return ${this.stringifyArray(this.children)}}`,
+    ]
+    if (this.index) {
+      array.push(params, `'${this.index}'`)
+    }
+    return this.stringifyCall('e', params)
   }
 
 }

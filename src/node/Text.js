@@ -14,4 +14,8 @@ export default class Text extends Node {
     this.text = text
   }
 
+  stringify() {
+    return `'${this.text}'`
+  }
+
 }

@@ -14,4 +14,14 @@ export default class Partial extends Node {
     this.name = name
   }
 
+  stringify() {
+    return this.stringifyCall(
+      'p',
+      [
+        `'${this.name}'`,
+        this.stringifyArray(this.children)
+      ]
+    )
+  }
+
 }
