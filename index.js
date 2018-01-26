@@ -685,7 +685,6 @@ export default function render(render, data, instance) {
   let keypath = char.CHAR_BLANK,
 
   context = new Context(data, keypath),
-  contextStack = [ context ],
   executeExpr = function (expr) {
     let currentContext
     let value = execute(
@@ -910,9 +909,6 @@ export default function render(render, data, instance) {
     logger.fatal(`"${name}" partial is not found.`)
   }
 
-  return {
-    nodes: [ render(c, m, e, o, s, p, i) ],
-    deps: {},
-  }
+  return render(c, m, e, o, s, p, i)
 
 }
