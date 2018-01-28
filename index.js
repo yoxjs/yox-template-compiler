@@ -1,7 +1,6 @@
 
 import isDef from 'yox-common/function/isDef'
 import toString from 'yox-common/function/toString'
-import execute from 'yox-expression-compiler/execute'
 
 import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
@@ -18,9 +17,6 @@ import * as snabbdom from 'yox-snabbdom'
 
 import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
 import compileExpression from 'yox-expression-compiler/compile'
-import Binary from 'yox-expression-compiler/src/node/Binary'
-import Ternary from 'yox-expression-compiler/src/node/Ternary'
-import Literal from 'yox-expression-compiler/src/node/Literal'
 
 import Context from './src/Context'
 import * as helper from './src/helper'
@@ -676,31 +672,13 @@ export function convert(ast) {
  * 渲染抽象语法树
  *
  * @param {Function} render 编译出来的渲染函数
- * @param {Object} data 渲染模板的数据
+ * @param {Function} executeExpr 表达式求值函数
  * @param {Yox} instance 组件实例
  * @return {Object}
  */
-export default function render(render, data, instance) {
+export default function render(render, executeExpr, instance) {
 
-  let keypath = char.CHAR_BLANK,
-
-  context = new Context(data, keypath),
-  executeExpr = function (expr) {
-    let currentContext
-    let value = execute(
-      expr,
-      function (key) {
-        let result = context.get(key)
-        currentContext = result.context
-        return result.value
-      },
-      instance
-    )
-    return {
-      context: currentContext || context,
-      value,
-    }
-  },
+  let keypath = char.CHAR_BLANK, keypaths = [ ],
 
   // create
   c = function (tag, attrs, props, childs, isComponent, key, ref) {
@@ -813,7 +791,7 @@ export default function render(render, data, instance) {
       tag,
       attributes,
       props,
-      [],
+      [ ],
       children,
       key,
       ref,
@@ -827,35 +805,35 @@ export default function render(render, data, instance) {
   // each
   e = function (expr, generate, index) {
 
-    let each, result = executeExpr(expr)
+    let each, value = executeExpr(expr)
 
-    if (is.array(result.value)) {
+    if (is.array(value)) {
       each = array.each
     }
-    else if (is.object(result.value)) {
+    else if (is.object(value)) {
       each = object.each
     }
 
     if (each) {
-      let children = [ ]
+      let children = [ ], lastKeypath = keypath
 
       let eachKeypath = expr.staticKeypath || expr.dynamicKeypath
-      let lastContext = context, lastKeypath = keypath, currentContext = result.context
-
-      if (isDef(eachKeypath)) {
-        context = currentContext.push(result.value, eachKeypath)
-        keypath = context.get(config.SPECIAL_KEYPATH).value
+      if (eachKeypath) {
+        array.push(keypaths, eachKeypath)
+        keypath = keypathUtil.stringify(keypaths)
       }
 
       each(
-        result.value,
+        value,
         function (item, i) {
 
-          context = context.push(item, i)
-          keypath = context.get(config.SPECIAL_KEYPATH).value
+          let lastKeypath = keypath
+
+          array.push(keypaths, i)
+          keypath = keypathUtil.stringify(keypaths)
 
           if (index) {
-            context.set(index, i)
+            set(index, i)
           }
 
           array.each(
@@ -865,14 +843,12 @@ export default function render(render, data, instance) {
             }
           )
 
-          context = context.pop()
-          keypath = context.get(config.SPECIAL_KEYPATH).value
+          keypath = lastKeypath
 
         }
       )
 
-      if (isDef(eachKeypath)) {
-        context = lastContext
+      if (eachKeypath) {
         keypath = lastKeypath
       }
 
@@ -882,11 +858,11 @@ export default function render(render, data, instance) {
   },
   // output（e 被 each 占了..)
   o = function (expr) {
-    return executeExpr(expr).value
+    return executeExpr(expr)
   },
   // spread
   s = function (expr) {
-    let value = o(expr)
+    let value = executeExpr(expr)
     return is.object(value)
       ? value
       : logger.fatal(`"${expr.raw}" spread expected to be an object.`)
