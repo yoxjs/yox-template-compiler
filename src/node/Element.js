@@ -26,18 +26,27 @@ export default class Element extends Node {
   stringify() {
 
     let me = this
-    let { name, divider, children, props, component, key, ref } = me
+    let { name, divider, component, key, ref } = me
 
-    let params = [ `'${name}'` ]
+    let params = [ `'${name}'` ], props = { }, attrs = [ ], children = [ ]
 
-    let attrs = [ ], childs = [ ]
+    if (me.props) {
+      object.each(
+        me.props,
+        function (value, key) {
+          props[ key ] = Expression.is(value)
+            ? me.stringifyObject(value)
+            : value
+        }
+      )
+    }
 
-    if (children) {
+    if (me.children) {
       array.each(
-        children,
+        me.children,
         function (child, index) {
           array.push(
-            index < divider ? attrs : childs,
+            index < divider ? attrs : children,
             child.stringify()
           )
         }
@@ -46,14 +55,14 @@ export default class Element extends Node {
 
     array.push(params, this.stringifyArray(attrs))
     array.push(params, this.stringifyObject(props))
-    array.push(params, this.stringifyArray(childs))
+    array.push(params, this.stringifyArray(children))
     array.push(params, component ? 1 : 0)
 
     let stringify = function (value) {
       if (is.array(value)) {
         return me.stringifyArray(value)
       }
-      else if (value instanceof Expression) {
+      else if (Expression.is(value)) {
         return me.stringfiyExpression(value)
       }
       else if (is.string(value)) {

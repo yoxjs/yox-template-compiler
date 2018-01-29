@@ -20,4 +20,17 @@ export default class Directive extends Node {
     }
   }
 
+  stringify() {
+    let data = {
+      name: this.name,
+      modifier: this.modifier,
+      value: this.value,
+      children: this.children,
+    }
+    if (this.expr) {
+      data.expr = this.stringifyObject(this.expr)
+    }
+    return this.stringifyObject(data)
+  }
+
 }

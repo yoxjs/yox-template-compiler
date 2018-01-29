@@ -14,4 +14,17 @@ export default class Attribute extends Node {
     this.name = name
   }
 
+  stringify() {
+    let data = {
+      name: this.name,
+      value: this.value,
+      children: this.children,
+      binding: this.binding,
+    }
+    if (this.expr) {
+      data.expr = this.stringifyObject(this.expr)
+    }
+    return this.stringifyObject(data)
+  }
+
 }

@@ -37,7 +37,7 @@ export default class Node {
           else if (is.array(value)) {
             value = me.stringifyArray(value)
           }
-          else if (value instanceof Expression) {
+          else if (Expression.is(value)) {
             value = me.stringifyExpression(value)
           }
           else if (is.object(value)) {

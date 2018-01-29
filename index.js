@@ -672,44 +672,66 @@ export function convert(ast) {
  * 渲染抽象语法树
  *
  * @param {Function} render 编译出来的渲染函数
- * @param {Function} executeExpr 表达式求值函数
+ * @param {Function} getter 表达式求值函数
+ * @param {Function} setter 设值函数，用于存储模板渲染过程中的临时变量
  * @param {Yox} instance 组件实例
  * @return {Object}
  */
-export default function render(render, executeExpr, instance) {
+export default function render(render, getter, setter, instance) {
 
-  let keypath = char.CHAR_BLANK, keypaths = [ ],
+  /**
+   *
+   * 表达式求值，通常是从当前层级依次往上查找，如果到根层级还找不到，返回 undefined
+   *
+   * 层级只会因为 each 改变，其他语法不具有这个能力。
+   *
+   * 需要特殊处理的是，this 或 this.x 无需向上查找（由 getter 函数处理）
+   *
+   * 此外，如果表达式是单向绑定或双向绑定，无需收集到模板依赖中（由 getter 函数处理）
+   *
+   */
+
+  let keypath = char.CHAR_BLANK, keypaths = [ ], keypathStack = [ ],
+
+  pushKeypath = function (newKeypath) {
+    array.push(keypaths, newKeypath)
+    newKeypath = keypathUtil.stringify(keypaths)
+    if (newKeypath !== keypath) {
+      keypath = newKeypath
+      keypathStack = keypathStack.slice()
+      array.push(keypathStack, keypath)
+    }
+  },
 
   // create
   c = function (tag, attrs, props, childs, isComponent, key, ref) {
 
-    let create
-    if (isComponent) {
-      create = 'createComponentVnode'
-    }
-    else {
-      create = 'createElementVnode'
-    }
-
     // 处理属性
-    let attributes = { }, directives = { }
+    let properties = { }, attributes = { }, directives = { }
+
+    let addDirective = function (name, modifier, value) {
+      return directives[ name + env.KEYPATH_SEPARATOR + modifier) ] = {
+        name,
+        modifier,
+        value,
+        keypath,
+        keypathStack,
+      }
+    }
 
     let addAttr = function (item) {
 
-      let { name, modifier } = item
-
-      let value
+      let { type, name, modifier, expr, binding } = item
 
       if (object.has(item, 'value')) {
         value = item.value
       }
-      else if (object.has(item, 'expr')) {
-        // 经过 o 函数求值
-        value = item.expr
+      else if (expr) {
+        value = getter(expr, keypathStack, binding)
       }
 
       if (!isDef(value)) {
-        if (item.expr || item.children) {
+        if (expr || item.children) {
           value = char.CHAR_BLANK
         }
         else {
@@ -717,17 +739,14 @@ export default function render(render, executeExpr, instance) {
         }
       }
 
-      if (item.type === nodeType.ATTRIBUTE) {
+      if (type === nodeType.ATTRIBUTE) {
         attributes[ name ] = value
-      }
-      else if (item.type === nodeType.DIRECTIVE) {
-        directives[ keypathUtil.join(name, modifier) ] = {
-          name,
-          modifier,
-          context,
-          keypath,
-          value,
+        if (binding) {
+          addDirective(config.DIRECTIVE_BINDING, name, value)
         }
+      }
+      else if (type === nodeType.DIRECTIVE) {
+        addDirective(name, modifier, value).expr = expr
       }
       // 延展出来的数据
       else {
@@ -735,6 +754,24 @@ export default function render(render, executeExpr, instance) {
       }
 
     }
+
+    object.each(
+      props,
+      function (value, key) {
+        if (is.object(value)) {
+          let { staticKeypath } = value
+          value = getter(value, keypathStack, staticKeypath)
+          if (staticKeypath) {
+            addDirective(
+              config.DIRECTIVE_BINDING,
+              key,
+              staticKeypath
+            ).prop = env.TRUE
+          }
+        }
+        properties[ key ] = value
+      }
+    )
 
     array.each(
       attrs,
@@ -787,11 +824,11 @@ export default function render(render, executeExpr, instance) {
     )
 
     // 创建元素/组件
-    return snabbdom[ create ](
+    return snabbdom[ isComponent ? 'createComponentVnode' : 'createElementVnode' ](
       tag,
       attributes,
-      props,
-      [ ],
+      properties,
+      directives,
       children,
       key,
       ref,
@@ -799,13 +836,11 @@ export default function render(render, executeExpr, instance) {
     )
   },
   // comment
-  m = function () {
-    return snabbdom.createCommentVnode()
-  },
+  m = snabbdom.createCommentVnode,
   // each
   e = function (expr, generate, index) {
 
-    let each, value = executeExpr(expr)
+    let each, value = getter(expr, keypathStack)
 
     if (is.array(value)) {
       each = array.each
@@ -815,25 +850,23 @@ export default function render(render, executeExpr, instance) {
     }
 
     if (each) {
-      let children = [ ], lastKeypath = keypath
+      let children = [ ], lastKeypath = keypath, lastKeypathStack = keypathStack
 
       let eachKeypath = expr.staticKeypath || expr.dynamicKeypath
       if (eachKeypath) {
-        array.push(keypaths, eachKeypath)
-        keypath = keypathUtil.stringify(keypaths)
+        pushKeypath(eachKeypath)
       }
 
       each(
         value,
         function (item, i) {
 
-          let lastKeypath = keypath
+          let lastKeypath = keypath, lastKeypathStack = keypathStack
 
-          array.push(keypaths, i)
-          keypath = keypathUtil.stringify(keypaths)
+          pushKeypath(i)
 
           if (index) {
-            set(index, i)
+            setter(keypath, index, i)
           }
 
           array.each(
@@ -844,12 +877,14 @@ export default function render(render, executeExpr, instance) {
           )
 
           keypath = lastKeypath
+          keypathStack = lastKeypathStack
 
         }
       )
 
       if (eachKeypath) {
         keypath = lastKeypath
+        keypathStack = lastKeypathStack
       }
 
       return children
@@ -858,11 +893,11 @@ export default function render(render, executeExpr, instance) {
   },
   // output（e 被 each 占了..)
   o = function (expr) {
-    return executeExpr(expr)
+    return getter(expr, keypathStack)
   },
   // spread
   s = function (expr) {
-    let value = executeExpr(expr)
+    let value = getter(expr, keypathStack)
     return is.object(value)
       ? value
       : logger.fatal(`"${expr.raw}" spread expected to be an object.`)
@@ -878,7 +913,7 @@ export default function render(render, executeExpr, instance) {
     if (partial) {
       return partial.map(
         function (item) {
-          return is.func(item) ? item(c, m, e, o, s, p, i) : item
+          return item(c, m, e, o, s, p, i)
         }
       )
     }
