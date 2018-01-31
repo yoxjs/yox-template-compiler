@@ -30,7 +30,7 @@ export default class Element extends Node {
     let me = this
     let { name, divider, component, props, key, ref } = me
 
-    let params = [ `"${name}"` ], attrs = [ ], children = [ ]
+    let params = [ ], attrs = [ ], children = [ ]
 
     if (me.children) {
       array.each(
@@ -44,29 +44,46 @@ export default class Element extends Node {
       )
     }
 
-    array.push(params, this.stringifyArray(attrs))
-    array.push(params, props ? this.stringifyObject(props) : 0)
-    array.push(params, this.stringifyArray(children))
-    array.push(params, component ? 1 : 0)
+    // 反过来 push
+    // 这样序列化能省更多字符
+    if (key || ref) {
+      let stringify = function (value) {
+        if (is.array(value)) {
+          return me.stringifyArray(value, env.TRUE)
+        }
+        else if (Expression.is(value)) {
+          return me.stringifyExpression(value)
+        }
+        else if (is.string(value)) {
+          return me.stringifyString(value)
+        }
+        return value
+      }
+      if (key) {
+        array.unshift(params, stringify(key))
+      }
+      if (ref) {
+        array.unshift(params, stringify(ref))
+      }
+    }
 
-    let stringify = function (value) {
-      if (is.array(value)) {
-        return me.stringifyArray(value)
-      }
-      else if (Expression.is(value)) {
-        return me.stringifyExpression(value)
-      }
-      else if (is.string(value)) {
-        return `"${value}"`
-      }
-      return value
+    if (component || params.length) {
+      array.unshift(params, component ? 1 : 0)
     }
-    if (key) {
-      array.push(params, stringify(key))
+
+    if (children.length || params.length) {
+      array.unshift(params, children.length ? this.stringifyArray(children) : 0)
     }
-    if (ref) {
-      array.push(params, stringify(ref))
+
+    if (props || params.length) {
+      array.unshift(params, props ? this.stringifyObject(props) : 0)
     }
+
+    if (attrs.length || params.length) {
+      array.unshift(params, attrs.length ? this.stringifyArray(attrs) : 0)
+    }
+
+    array.unshift(params, me.stringifyString(name))
 
     return this.stringifyCall('c', params)
   }

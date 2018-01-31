@@ -729,133 +729,144 @@ export function render(render, getter, setter, instance) {
     }
   },
 
+  getRefKey = function (value) {
+    return is.array(value) && value[ STRUCT ]
+      ? array.join(value, '')
+      : value
+  },
+
   // create
-  c = function (tag, attrs, props, childs, isComponent, key, ref) {
+  c = function (tag, attrs, props, childs, isComponent, ref, key) {
 
     // 处理属性
     let properties = { }, attributes = { }, directives = { }
 
-    let addDirective = function (name, modifier, value) {
-      return directives[ keypathUtil.join(name, modifier) ] = {
-        name,
-        modifier,
-        value,
-        keypath,
-        keypathStack,
-      }
-    }
+    if (props || attrs) {
 
-    let addAttr = function (item) {
-
-      let { type, name, modifier, expr, children, binding } = item
-
-      let value
-      if (object.has(item, 'value')) {
-        value = item.value
-      }
-      else if (expr) {
-        value = getter(expr, keypathStack, binding)
-      }
-      else if (children) {
-        value = array.join(children, '')
-      }
-
-      if (!isDef(value)) {
-        if (expr || children) {
-          value = char.CHAR_BLANK
-        }
-        else {
-          value = isComponent ? env.TRUE : name
+      let addDirective = function (name, modifier, value) {
+        return directives[ keypathUtil.join(name, modifier) ] = {
+          name,
+          modifier,
+          value,
+          keypath,
+          keypathStack,
         }
       }
 
-      if (type === nodeType.ATTRIBUTE) {
-        attributes[ name ] = value
-        if (binding) {
-          addDirective(config.DIRECTIVE_BINDING, name, binding)
-        }
-      }
-      else if (type === nodeType.DIRECTIVE) {
-        addDirective(name, modifier, value).expr = expr
-      }
-      // 延展出来的数据
-      else {
-        object.extend(attributes, item)
+      if (props) {
+        object.each(
+          props,
+          function (value, key) {
+            if (is.object(value)) {
+              let { staticKeypath } = value
+              value = getter(value, keypathStack, staticKeypath)
+              if (staticKeypath) {
+                addDirective(
+                  config.DIRECTIVE_BINDING,
+                  key,
+                  staticKeypath
+                ).prop = env.TRUE
+              }
+            }
+            properties[ key ] = value
+          }
+        )
       }
 
-    }
+      if (attrs) {
+        let addAttr = function (item) {
 
-    if (props) {
-      object.each(
-        props,
-        function (value, key) {
-          if (is.object(value)) {
-            let { staticKeypath } = value
-            value = getter(value, keypathStack, staticKeypath)
-            if (staticKeypath) {
-              addDirective(
-                config.DIRECTIVE_BINDING,
-                key,
-                staticKeypath
-              ).prop = env.TRUE
+          let { type, name, modifier, expr, children, binding } = item
+
+          let value
+          if (object.has(item, 'value')) {
+            value = item.value
+          }
+          else if (expr) {
+            value = getter(expr, keypathStack, binding)
+          }
+          else if (children) {
+            value = array.join(children, '')
+          }
+
+          if (!isDef(value)) {
+            if (expr || children) {
+              value = char.CHAR_BLANK
+            }
+            else {
+              value = isComponent ? env.TRUE : name
             }
           }
-          properties[ key ] = value
-        }
-      )
-    }
 
-    array.each(
-      attrs,
-      function (item) {
-        if (is.array(item)) {
-          array.each(item, addAttr)
+          if (type === nodeType.ATTRIBUTE) {
+            attributes[ name ] = value
+            if (binding) {
+              addDirective(config.DIRECTIVE_BINDING, name, binding)
+            }
+          }
+          else if (type === nodeType.DIRECTIVE) {
+            addDirective(name, modifier, value).expr = expr
+          }
+          // 延展出来的数据
+          else {
+            object.extend(attributes, item)
+          }
+
         }
-        else {
-          addAttr(item)
-        }
+        array.each(
+          attrs,
+          function (item) {
+            if (item) {
+              if (is.array(item)) {
+                array.each(item, addAttr)
+              }
+              else {
+                addAttr(item)
+              }
+            }
+          }
+        )
       }
-    )
+    }
 
 
     // 处理 children
     let children = [ ], lastChild
 
-    let addChild = function (child, parent) {
-      if (snabbdom.isVnode(child)) {
-        if (parent) {
-          child.parent = parent
+    if (childs) {
+      let addChild = function (child) {
+        if (snabbdom.isVnode(child)) {
+          if (child.component) {
+            child.parent = instance
+          }
+          array.push(children, child)
+          lastChild = env.NULL
         }
-        array.push(children, child)
-        lastChild = env.NULL
+        else if (snabbdom.isTextVnode(lastChild)) {
+          lastChild.text += toString(child)
+        }
+        else {
+          lastChild = snabbdom.createTextVnode(child)
+          array.push(children, lastChild)
+        }
       }
-      else if (snabbdom.isTextVnode(lastChild)) {
-        lastChild.text += toString(child)
-      }
-      else {
-        lastChild = snabbdom.createTextVnode(child)
-        array.push(children, lastChild)
-      }
-    }
-
-    array.each(
-      childs,
-      function (child) {
-        if (child != env.NULL) {
-          if (is.array(child) && child[ STRUCT ]) {
-            array.each(
-              child,
-              function (item) {
-                addChild(item, instance)
+      let eachChilds = function (childs) {
+        array.each(
+          childs,
+          function (child) {
+            if (child != env.NULL) {
+              if (is.array(child) && child[ STRUCT ]) {
+                eachChilds(child)
               }
-            )
+              else {
+                addChild(child)
+              }
+            }
           }
-          else {
-            addChild(child)
-          }
-        }
+        )
       }
-    )
+      eachChilds(childs)
+    }
 
     // 创建元素/组件
     return snabbdom[ isComponent ? 'createComponentVnode' : 'createElementVnode' ](
@@ -864,8 +875,8 @@ export function render(render, getter, setter, instance) {
       properties,
       directives,
       children,
-      key,
-      ref,
+      getRefKey(ref),
+      getRefKey(key),
       instance
     )
   },

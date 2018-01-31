@@ -15,7 +15,7 @@ export default class Text extends Node {
   }
 
   stringify() {
-    return `"${this.text}"`
+    return this.stringifyString(this.text)
   }
 
 }

@@ -30,7 +30,7 @@ export default class Node {
             value = value.stringify()
           }
           else if (is.string(value)) {
-            value = `"${value.replace(/"/g, '\\"')}"`
+            value = me.stringifyString(value)
           }
           else if (is.array(value)) {
             value = me.stringifyArray(value)
@@ -73,6 +73,10 @@ export default class Node {
 
   stringifyCall(name, params) {
     return `${name}(${array.join(params, ',')})`
+  }
+
+  stringifyString(str) {
+    return `"${str.replace(/"/g, '\\"')}"`
   }
 
 }
