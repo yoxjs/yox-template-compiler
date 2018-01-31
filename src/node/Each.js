@@ -26,7 +26,7 @@ export default class Each extends Node {
       `function(){return ${this.stringifyArray(this.children)}}`,
     ]
     if (this.index) {
-      array.push(params, `'${this.index}'`)
+      array.push(params, `"${this.index}"`)
     }
     return this.stringifyCall('e', params)
   }

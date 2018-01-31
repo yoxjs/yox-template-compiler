@@ -1,6 +1,8 @@
 
 import * as is from 'yox-common/util/is'
+import * as env from 'yox-common/util/env'
 import * as array from 'yox-common/util/array'
+import * as object from 'yox-common/util/object'
 
 import Expression from 'yox-expression-compiler/src/node/Node'
 
@@ -26,20 +28,9 @@ export default class Element extends Node {
   stringify() {
 
     let me = this
-    let { name, divider, component, key, ref } = me
+    let { name, divider, component, props, key, ref } = me
 
-    let params = [ `'${name}'` ], props = { }, attrs = [ ], children = [ ]
-
-    if (me.props) {
-      object.each(
-        me.props,
-        function (value, key) {
-          props[ key ] = Expression.is(value)
-            ? me.stringifyObject(value)
-            : value
-        }
-      )
-    }
+    let params = [ `"${name}"` ], attrs = [ ], children = [ ]
 
     if (me.children) {
       array.each(
@@ -54,7 +45,7 @@ export default class Element extends Node {
     }
 
     array.push(params, this.stringifyArray(attrs))
-    array.push(params, this.stringifyObject(props))
+    array.push(params, props ? this.stringifyObject(props) : 0)
     array.push(params, this.stringifyArray(children))
     array.push(params, component ? 1 : 0)
 
@@ -63,10 +54,10 @@ export default class Element extends Node {
         return me.stringifyArray(value)
       }
       else if (Expression.is(value)) {
-        return me.stringfiyExpression(value)
+        return me.stringifyExpression(value)
       }
       else if (is.string(value)) {
-        return `'${value}'`
+        return `"${value}"`
       }
       return value
     }

@@ -11,14 +11,11 @@ import * as string from 'yox-common/util/string'
 import * as logger from 'yox-common/util/logger'
 import * as keypathUtil from 'yox-common/util/keypath'
 
-
 import * as config from 'yox-config'
 import * as snabbdom from 'yox-snabbdom'
 
-import * as expressionNodeType from 'yox-expression-compiler/src/nodeType'
 import compileExpression from 'yox-expression-compiler/compile'
 
-import Context from './src/Context'
 import * as helper from './src/helper'
 import * as nodeType from './src/nodeType'
 
@@ -587,7 +584,13 @@ export function compile(content) {
       if (char.charAt(content) === char.CHAR_SLASH) {
         let name = string.slice(content, 1), type = helper.name2Type[ name ]
         if (helper.ifTypes[ type ]) {
-          type = array.pop(ifStack).type
+          let node = array.pop(ifStack)
+          if (node) {
+            type = node.type
+          }
+          else {
+            throwError(`if is not begined.`)
+          }
         }
         popStack(type)
       }
@@ -649,7 +652,7 @@ export function compile(content) {
 export function stringify(ast) {
   return ast.map(
     function (item) {
-      return `function(c,m,e,o,s,p,i){return ${item.stringify()}}`
+      return `function(a,c,m,e,o,s,p,i){return ${item.stringify()}}`
     }
   )
 }
@@ -663,7 +666,7 @@ export function stringify(ast) {
 export function convert(ast) {
   return ast.map(
     function (item) {
-      return new Function('c', 'm', 'e', 'o', 's', 'p', 'i', `return ${item.stringify()}`)
+      return new Function('a', 'c', 'm', 'e', 'o', 's', 'p', 'i', `return ${item.stringify()}`)
     }
   )
 }
@@ -677,7 +680,7 @@ export function convert(ast) {
  * @param {Yox} instance 组件实例
  * @return {Object}
  */
-export default function render(render, getter, setter, instance) {
+export function render(render, getter, setter, instance) {
 
   /**
    *
@@ -691,15 +694,38 @@ export default function render(render, getter, setter, instance) {
    *
    */
 
-  let keypath = char.CHAR_BLANK, keypaths = [ ], keypathStack = [ ],
+  let keypath = char.CHAR_BLANK, keypaths = [ ], keypathStack = [ keypath ],
 
   pushKeypath = function (newKeypath) {
     array.push(keypaths, newKeypath)
     newKeypath = keypathUtil.stringify(keypaths)
     if (newKeypath !== keypath) {
       keypath = newKeypath
-      keypathStack = keypathStack.slice()
+      keypathStack = object.copy(keypathStack)
       array.push(keypathStack, keypath)
+    }
+  },
+
+  popKeypath = function (lastKeypath, lastKeypathStack) {
+    keypaths.pop()
+    keypath = lastKeypath
+    keypathStack = lastKeypathStack
+  },
+
+  STRUCT = 'struct',
+
+  // array
+  a = function (arr) {
+    arr[ STRUCT ] = env.TRUE
+    return arr
+  },
+
+  toArray = function (arr) {
+    let { length } = arr
+    if (length > 0) {
+      return length === 1
+        ? arr[ 0 ]
+        : a(arr)
     }
   },
 
@@ -710,7 +736,7 @@ export default function render(render, getter, setter, instance) {
     let properties = { }, attributes = { }, directives = { }
 
     let addDirective = function (name, modifier, value) {
-      return directives[ name + env.KEYPATH_SEPARATOR + modifier) ] = {
+      return directives[ keypathUtil.join(name, modifier) ] = {
         name,
         modifier,
         value,
@@ -721,17 +747,21 @@ export default function render(render, getter, setter, instance) {
 
     let addAttr = function (item) {
 
-      let { type, name, modifier, expr, binding } = item
+      let { type, name, modifier, expr, children, binding } = item
 
+      let value
       if (object.has(item, 'value')) {
         value = item.value
       }
       else if (expr) {
         value = getter(expr, keypathStack, binding)
       }
+      else if (children) {
+        value = array.join(children, '')
+      }
 
       if (!isDef(value)) {
-        if (expr || item.children) {
+        if (expr || children) {
           value = char.CHAR_BLANK
         }
         else {
@@ -742,7 +772,7 @@ export default function render(render, getter, setter, instance) {
       if (type === nodeType.ATTRIBUTE) {
         attributes[ name ] = value
         if (binding) {
-          addDirective(config.DIRECTIVE_BINDING, name, value)
+          addDirective(config.DIRECTIVE_BINDING, name, binding)
         }
       }
       else if (type === nodeType.DIRECTIVE) {
@@ -755,23 +785,25 @@ export default function render(render, getter, setter, instance) {
 
     }
 
-    object.each(
-      props,
-      function (value, key) {
-        if (is.object(value)) {
-          let { staticKeypath } = value
-          value = getter(value, keypathStack, staticKeypath)
-          if (staticKeypath) {
-            addDirective(
-              config.DIRECTIVE_BINDING,
-              key,
-              staticKeypath
-            ).prop = env.TRUE
+    if (props) {
+      object.each(
+        props,
+        function (value, key) {
+          if (is.object(value)) {
+            let { staticKeypath } = value
+            value = getter(value, keypathStack, staticKeypath)
+            if (staticKeypath) {
+              addDirective(
+                config.DIRECTIVE_BINDING,
+                key,
+                staticKeypath
+              ).prop = env.TRUE
+            }
           }
+          properties[ key ] = value
         }
-        properties[ key ] = value
-      }
-    )
+      )
+    }
 
     array.each(
       attrs,
@@ -809,16 +841,18 @@ export default function render(render, getter, setter, instance) {
     array.each(
       childs,
       function (child) {
-        if (is.array(child)) {
-          array.each(
-            child,
-            function (item) {
-              addChild(item, instance)
-            }
-          )
-        }
-        else {
-          addChild(child)
+        if (child != env.NULL) {
+          if (is.array(child) && child[ STRUCT ]) {
+            array.each(
+              child,
+              function (item) {
+                addChild(item, instance)
+              }
+            )
+          }
+          else {
+            addChild(child)
+          }
         }
       }
     )
@@ -865,6 +899,8 @@ export default function render(render, getter, setter, instance) {
 
           pushKeypath(i)
 
+          setter(keypath, env.RAW_THIS, item)
+
           if (index) {
             setter(keypath, index, i)
           }
@@ -876,18 +912,16 @@ export default function render(render, getter, setter, instance) {
             }
           )
 
-          keypath = lastKeypath
-          keypathStack = lastKeypathStack
+          popKeypath(lastKeypath, lastKeypathStack)
 
         }
       )
 
       if (eachKeypath) {
-        keypath = lastKeypath
-        keypathStack = lastKeypathStack
+        popKeypath(lastKeypath, lastKeypathStack)
       }
 
-      return children
+      return toArray(children)
 
     }
   },
@@ -911,15 +945,17 @@ export default function render(render, getter, setter, instance) {
   i = function (name) {
     let partial = localPartials[ name ] || instance.importPartial(name)
     if (partial) {
-      return partial.map(
-        function (item) {
-          return item(c, m, e, o, s, p, i)
-        }
+      return toArray(
+        partial.map(
+          function (item) {
+            return is.func(item) ? item(a, c, m, e, o, s, p, i) : item
+          }
+        )
       )
     }
     logger.fatal(`"${name}" partial is not found.`)
   }
 
-  return render(c, m, e, o, s, p, i)
+  return render(a, c, m, e, o, s, p, i)
 
 }

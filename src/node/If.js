@@ -1,4 +1,6 @@
 
+import * as env from 'yox-common/util/env'
+
 import Node from './Node'
 import * as nodeType from '../nodeType'
 
@@ -20,15 +22,13 @@ export default class If extends Node {
 
     let stringify = function (node) {
       let expr = node.stringifyExpression(node.expr)
-      let result = node.stringifyArray(node.children)
+      let result = node.stringifyArray(node.children, env.TRUE)
       if (node.next) {
         return `${expr}?${result}:(${stringify(node.next)})`
       }
       else {
         if (expr) {
-          return stump
-            ? `${expr}?${result}:m()`
-            : `${expr}&&${result}`
+          return `${expr}?${result}:${stump ? 'm()' : env.RAW_NULL}`
         }
         else {
           return result

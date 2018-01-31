@@ -4,8 +4,6 @@ import * as env from 'yox-common/util/env'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
 
-import Expression from 'yox-expression-compiler/src/node/Node'
-
 /**
  * 节点基类
  */
@@ -32,13 +30,10 @@ export default class Node {
             value = value.stringify()
           }
           else if (is.string(value)) {
-            value = `'${value}'`
+            value = `"${value.replace(/"/g, '\\"')}"`
           }
           else if (is.array(value)) {
             value = me.stringifyArray(value)
-          }
-          else if (Expression.is(value)) {
-            value = me.stringifyExpression(value)
           }
           else if (is.object(value)) {
             value = me.stringifyObject(value)
@@ -47,10 +42,10 @@ export default class Node {
         }
       )
     }
-    return `{${result.join(',')}}`
+    return `{${array.join(result, ',')}}`
   }
 
-  stringifyArray(arr) {
+  stringifyArray(arr, special) {
     let me = this, result = [ ]
     if (arr) {
       array.each(
@@ -66,7 +61,8 @@ export default class Node {
         }
       )
     }
-    return `[${result.join(',')}]`
+    result = `[${array.join(result, ',')}]`
+    return special ? `a(${result})` : result
   }
 
   stringifyExpression(expr, safe) {
@@ -76,7 +72,7 @@ export default class Node {
   }
 
   stringifyCall(name, params) {
-    return `${name}(${params.join(',')})`
+    return `${name}(${array.join(params, ',')})`
   }
 
 }
