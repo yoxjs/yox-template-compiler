@@ -14,7 +14,7 @@ import * as keypathUtil from 'yox-common/util/keypath'
 import * as config from 'yox-config'
 import * as snabbdom from 'yox-snabbdom'
 
-import * as expressionCompiler from 'yox-expression-compiler/compile'
+import * as expressionCompiler from 'yox-expression-compiler'
 
 import * as helper from './src/helper'
 import * as nodeType from './src/nodeType'
