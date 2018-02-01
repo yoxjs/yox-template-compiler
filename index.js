@@ -762,7 +762,25 @@ export function render(render, getter, setter, instance) {
       if (attrs) {
         let addAttr = function (item) {
 
-          let { type, name, modifier, expr, children, binding } = item
+          let { type, name, modifier, expr, children, binding, data } = item
+
+          // 延展数据
+          if (data) {
+            object.each(
+              data,
+              function (value, key) {
+                attributes[ key ] = value
+                if (binding) {
+                  addDirective(
+                    config.DIRECTIVE_BINDING,
+                    key,
+                    keypathUtil.join(binding, key)
+                  )
+                }
+              }
+            )
+            return
+          }
 
           let value
           if (object.has(item, 'value')) {
@@ -793,10 +811,6 @@ export function render(render, getter, setter, instance) {
           else if (type === nodeType.DIRECTIVE) {
             addDirective(name, modifier, value).expr = expr
           }
-          // 延展出来的数据
-          else {
-            object.extend(attributes, item)
-          }
 
         }
         array.each(
@@ -815,11 +829,11 @@ export function render(render, getter, setter, instance) {
       }
     }
 
-
     // 处理 children
-    let children = [ ], lastChild
+    let children = [ ]
 
     if (childs) {
+      let lastChild
       let addChild = function (child) {
         if (snabbdom.isVnode(child)) {
           if (child.component) {
@@ -929,9 +943,13 @@ export function render(render, getter, setter, instance) {
   // spread
   s = function (expr) {
     let value = getter(expr, keypathStack)
-    return is.object(value)
-      ? value
-      : logger.fatal(`"${expr.raw}" spread expected to be an object.`)
+    if (is.object(value)) {
+      return {
+        data: value,
+        binding: expr.staticKeypath,
+      }
+    }
+    logger.fatal(`"${expr.raw}" spread expected to be an object.`)
   },
   localPartials = { },
   // partial
