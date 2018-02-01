@@ -14,7 +14,7 @@ import * as keypathUtil from 'yox-common/util/keypath'
 import * as config from 'yox-config'
 import * as snabbdom from 'yox-snabbdom'
 
-import compileExpression from 'yox-expression-compiler/compile'
+import * as expressionCompiler from 'yox-expression-compiler/compile'
 
 import * as helper from './src/helper'
 import * as nodeType from './src/nodeType'
@@ -238,7 +238,7 @@ export function compile(content) {
             // 指令的值如果是纯文本，可以预编译表达式，提升性能
             let { text } = singleChild
             if (type === nodeType.DIRECTIVE) {
-              target.expr = compileExpression(text)
+              target.expr = expressionCompiler.compile(text)
               target.value = text
               delete target.children
             }
@@ -489,7 +489,7 @@ export function compile(content) {
         let terms = string.split(slicePrefix(source, config.SYNTAX_EACH), char.CHAR_COLON)
         if (terms[ 0 ]) {
           return new Each(
-            compileExpression(string.trim(terms[ 0 ])),
+            expressionCompiler.compile(string.trim(terms[ 0 ])),
             string.trim(terms[ 1 ])
           )
         }
@@ -517,7 +517,7 @@ export function compile(content) {
         source = slicePrefix(source, config.SYNTAX_IF)
         return source
           ? new If(
-            compileExpression(source)
+            expressionCompiler.compile(source)
           )
           : throwError(`invalid if: ${all}`)
       }
@@ -527,7 +527,7 @@ export function compile(content) {
         source = slicePrefix(source, config.SYNTAX_ELSE_IF)
         return source
           ? new ElseIf(
-            compileExpression(source)
+            expressionCompiler.compile(source)
           )
           : throwError(`invalid else if: ${all}`)
       }
@@ -542,7 +542,7 @@ export function compile(content) {
         source = slicePrefix(source, config.SYNTAX_SPREAD)
         return source
           ? new Spread(
-            compileExpression(source)
+            expressionCompiler.compile(source)
           )
           : throwError(`invalid spread: ${all}`)
       }
@@ -552,7 +552,7 @@ export function compile(content) {
         source = string.trim(source)
         return source
           ? new Expression(
-            compileExpression(source),
+            expressionCompiler.compile(source),
             !string.endsWith(all, '}}}')
           )
           : throwError(`invalid expression: ${all}`)
@@ -641,20 +641,6 @@ export function compile(content) {
 
   return compileCache[ content ] = nodeList
 
-}
-
-/**
- * 把抽象语法树序列化成渲染函数，方便打包构建
- *
- * @param {Array} ast
- * @return {Array}
- */
-export function stringify(ast) {
-  return ast.map(
-    function (item) {
-      return `function(a,c,m,e,o,s,p,i){return ${item.stringify()}}`
-    }
-  )
 }
 
 /**

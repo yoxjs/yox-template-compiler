@@ -62,8 +62,8 @@ export default class Element extends Node {
       if (key) {
         array.unshift(params, stringify(key))
       }
-      if (ref) {
-        array.unshift(params, stringify(ref))
+      if (ref || params.length) {
+        array.unshift(params, ref ? stringify(ref) : env.RAW_NULL)
       }
     }
 

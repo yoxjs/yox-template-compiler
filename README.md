@@ -3,15 +3,27 @@
 Template compiler for Yox.js
 
 ```js
-import compile from 'yox-template-compiler/compile'
-import render from 'yox-template-compiler/render'
+import * as compiler from 'yox-template-compiler'
 
 // Compile to AST
-let ast = compile('<div>...</div>')
+let ast = compiler.compile('<div>...</div>')
 
-// Stringify from AST
-// Maybe it is useful during the build phase
-JSON.stringify(ast)
+ast = compiler.convert(ast)
 
-let { nodes, deps } = render(ast, data, instance)
+// render the first element
+compiler.render(ast[ 0 ], getter, setter, instance)
 ``
+
+Stringify from AST
+
+Maybe it is useful during the build phase
+
+```js
+JSON.stringify(
+  ast.map(
+    function (item) {
+      return `function(a,c,m,e,o,s,p,i){return ${item.stringify()}}`
+    }
+  )
+)
+```
