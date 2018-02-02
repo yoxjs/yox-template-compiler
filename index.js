@@ -963,7 +963,7 @@ export function render(render, getter, setter, instance) {
       return toArray(
         partial.map(
           function (item) {
-            return is.func(item) ? item(a, c, m, e, o, s, p, i) : item
+            return item(a, c, m, e, o, s, p, i)
           }
         )
       )
