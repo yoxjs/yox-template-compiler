@@ -958,7 +958,12 @@ export function render(render, getter, setter, instance) {
   },
   // import
   i = function (name) {
-    let partial = localPartials[ name ] || instance.importPartial(name)
+    if (localPartials[ name ]) {
+      return toArray(
+        localPartials[ name ]()
+      )
+    }
+    let partial = instance.importPartial(name)
     if (partial) {
       return toArray(
         partial.map(
