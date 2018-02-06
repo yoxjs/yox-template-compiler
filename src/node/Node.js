@@ -61,12 +61,12 @@ export default class Node {
         }
       )
     }
-    return `a(${array.join(result, ',')})`
+    return me.stringifyCall('a', result)
   }
 
   stringifyExpression(expr, safe) {
     if (expr) {
-      return 'o(' + this.stringifyObject(expr) + (safe === env.FALSE ? ',true)' : ')')
+      return 'o(' + this.stringifyObject(expr) + ')'
     }
   }
 

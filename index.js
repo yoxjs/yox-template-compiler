@@ -925,7 +925,7 @@ export function render(render, getter, setter, instance) {
     }
 
     if (each) {
-      let children = [ ], lastKeypath = keypath, lastKeypathStack = keypathStack
+      let result = [ ], lastKeypath = keypath, lastKeypathStack = keypathStack
 
       let eachKeypath = expr.staticKeypath || expr.dynamicKeypath
       if (eachKeypath) {
@@ -948,7 +948,7 @@ export function render(render, getter, setter, instance) {
           array.each(
             generate(),
             function (item) {
-              array.push(children, item)
+              array.push(result, item)
             }
           )
 
@@ -961,7 +961,7 @@ export function render(render, getter, setter, instance) {
         popKeypath(lastKeypath, lastKeypathStack)
       }
 
-      return toArray(children)
+      return toArray(result)
 
     }
   },
@@ -978,7 +978,6 @@ export function render(render, getter, setter, instance) {
         binding: expr.staticKeypath,
       }
     }
-    logger.fatal(`"${expr.raw}" spread expected to be an object.`)
   },
   localPartials = { },
   // partial
@@ -996,15 +995,16 @@ export function render(render, getter, setter, instance) {
     if (partial) {
       return toArray(
         partial.map(
-          function (item) {
-            return item(a, c, m, e, o, s, p, i)
-          }
+          executeRender
         )
       )
     }
     logger.fatal(`"${name}" partial is not found.`)
+  },
+  executeRender = function (render) {
+    return render(a, c, m, e, o, s, p, i)
   }
 
-  return render(a, c, m, e, o, s, p, i)
+  return executeRender(render)
 
 }
