@@ -22,13 +22,13 @@ export default class If extends Node {
 
     let stringify = function (node) {
       let expr = node.stringifyExpression(node.expr)
-      let result = node.stringifyArray(node.children, env.TRUE)
+      let result = node.stringifyArray(node.children)
       if (node.next) {
         return `${expr}?${result}:(${stringify(node.next)})`
       }
       else {
         if (expr) {
-          return `${expr}?${result}:${stump ? 'm()' : env.RAW_NULL}`
+          return `${expr}?${result}:${stump ? 'm()' : env.RAW_UNDEFINED}`
         }
         else {
           return result

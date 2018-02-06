@@ -45,7 +45,7 @@ export default class Node {
     return `{${array.join(result, ',')}}`
   }
 
-  stringifyArray(arr, special) {
+  stringifyArray(arr) {
     let me = this, result = [ ]
     if (arr) {
       array.each(
@@ -61,8 +61,7 @@ export default class Node {
         }
       )
     }
-    result = `[${array.join(result, ',')}]`
-    return special ? `a(${result})` : result
+    return `a(${array.join(result, ',')})`
   }
 
   stringifyExpression(expr, safe) {

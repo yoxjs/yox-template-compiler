@@ -49,7 +49,7 @@ export default class Element extends Node {
     if (key || ref) {
       let stringify = function (value) {
         if (is.array(value)) {
-          return me.stringifyArray(value, env.TRUE)
+          return me.stringifyArray(value)
         }
         else if (Expression.is(value)) {
           return me.stringifyExpression(value)

@@ -169,23 +169,23 @@ export function compile(content) {
               let attr = new Attribute(config.SPECIAL_CHILDREN)
               attr.children = [ singleChild ]
               children[ divider ] = attr
+              target.divider++
             }
             else {
               target.props = {
-                textContent: singleChild.text
+                textContent: singleChild.text,
               }
               array.pop(children)
             }
           }
-          else if (singleChild.type === nodeType.EXPRESSION
-            && singleChild.expr.raw !== config.SPECIAL_CHILDREN
-          ) {
+          else if (singleChild.type === nodeType.EXPRESSION) {
             if (component) {
               let attr = new Attribute(config.SPECIAL_CHILDREN)
               attr.children = [ singleChild ]
               children[ divider ] = attr
+              target.divider++
             }
-            else {
+            else if (singleChild.expr.raw !== config.SPECIAL_CHILDREN) {
               let props = { }
               if (singleChild.safe === env.FALSE) {
                 props.innerHTML = singleChild.expr
@@ -701,9 +701,23 @@ export function render(render, getter, setter, instance) {
   STRUCT = 'struct',
 
   // array
-  a = function (arr) {
-    arr[ STRUCT ] = env.TRUE
-    return arr
+  a = function () {
+    let result = [ ]
+    array.each(
+      arguments,
+      function (item) {
+        if (isDef(item)) {
+          if (is.array(item) && item[ STRUCT ]) {
+            array.push(result, item)
+          }
+          else {
+            result.push(item)
+          }
+        }
+      }
+    )
+    result[ STRUCT ] = env.TRUE
+    return result
   },
 
   toArray = function (arr) {
@@ -793,8 +807,10 @@ export function render(render, getter, setter, instance) {
             value = array.join(children, '')
           }
 
-          if (!isDef(value)) {
-            if (expr || children) {
+          // <input checked>
+          // <div title="{{title}}" 这种写法，如果没取到值，就是 undefined
+          if (!isDef(value) && !expr) {
+            if (children) {
               value = char.CHAR_BLANK
             }
             else {
@@ -885,13 +901,27 @@ export function render(render, getter, setter, instance) {
   // each
   e = function (expr, generate, index) {
 
-    let each, value = getter(expr, keypathStack)
+    let value = getter(expr, keypathStack), each
 
     if (is.array(value)) {
-      each = array.each
+      if (value.length) {
+        each = function (callback) {
+          array.each(
+            value,
+            function (_, i) {
+              callback(i)
+            }
+          )
+        }
+      }
     }
     else if (is.object(value)) {
-      each = object.each
+      let keys = object.keys(value)
+      if (keys.length) {
+        each = function (callback) {
+          array.each(keys, callback)
+        }
+      }
     }
 
     if (each) {
@@ -903,17 +933,16 @@ export function render(render, getter, setter, instance) {
       }
 
       each(
-        value,
-        function (item, i) {
+        function (key) {
 
           let lastKeypath = keypath, lastKeypathStack = keypathStack
 
-          pushKeypath(i)
+          pushKeypath(key)
 
-          setter(keypath, env.RAW_THIS, item)
+          setter(keypath, env.RAW_THIS, value[ key ])
 
           if (index) {
-            setter(keypath, index, i)
+            setter(keypath, index, key)
           }
 
           array.each(
