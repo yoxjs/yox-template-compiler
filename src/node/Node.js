@@ -75,7 +75,7 @@ export default class Node {
   }
 
   stringifyString(str) {
-    return `"${str.replace(/"/g, '\\"')}"`
+    return `"${str.replace(/"/g, '\\"').replace(/\s*\n+\s*/g, ' ')}"`
   }
 
 }
