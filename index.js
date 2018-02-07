@@ -723,9 +723,11 @@ export function render(render, getter, setter, instance) {
   toArray = function (arr) {
     let { length } = arr
     if (length > 0) {
-      return length === 1
-        ? arr[ 0 ]
-        : a(arr)
+      if (length === 1) {
+        return arr[ 0 ]
+      }
+      arr[ STRUCT ] = env.TRUE
+      return arr
     }
   },
 
