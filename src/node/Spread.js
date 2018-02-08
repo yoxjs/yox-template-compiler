@@ -17,9 +17,7 @@ export default class Spread extends Node {
   stringify() {
     return this.stringifyCall(
       's',
-      [
-        this.stringifyObject(this.expr)
-      ]
+      this.stringifyObject(this.expr)
     )
   }
 

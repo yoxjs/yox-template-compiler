@@ -652,7 +652,7 @@ export function compile(content) {
 export function convert(ast) {
   return ast.map(
     function (item) {
-      return new Function('a', 'c', 'm', 'e', 'o', 's', 'p', 'i', `return ${item.stringify()}`)
+      return new Function('a', 'c', 'e', 'i', 'm', 'o', 'p', 'q', 's', 'x', 'y', `return ${item.stringify()}`)
     }
   )
 }
@@ -700,6 +700,27 @@ export function render(render, getter, setter, instance) {
 
   STRUCT = 'struct',
 
+  toArray = function (arr) {
+    let { length } = arr
+    if (length > 0) {
+      if (length === 1) {
+        return arr[ 0 ]
+      }
+      arr[ STRUCT ] = env.TRUE
+      return arr
+    }
+  },
+
+  addDirective = function (directives, name, modifier, value) {
+    return directives[ keypathUtil.join(name, modifier) ] = {
+      name,
+      modifier,
+      value,
+      keypath,
+      keypathStack,
+    }
+  },
+
   // array
   a = function () {
     let result = [ ]
@@ -720,183 +741,160 @@ export function render(render, getter, setter, instance) {
     return result
   },
 
-  toArray = function (arr) {
-    let { length } = arr
-    if (length > 0) {
-      if (length === 1) {
-        return arr[ 0 ]
-      }
-      arr[ STRUCT ] = env.TRUE
-      return arr
-    }
-  },
-
-  getRefKey = function (value) {
-    return is.array(value) && value[ STRUCT ]
-      ? array.join(value, '')
-      : value
-  },
-
   // create
-  c = function (tag, attrs, props, childs, isComponent, ref, key) {
+  c = function (tag, mix, children, isComponent, ref, key) {
+    return snabbdom[ isComponent ? 'createComponentVnode' : 'createElementVnode' ](
+      tag,
+      mix && mix.attributes,
+      mix && mix.properties,
+      mix && mix.directives,
+      children,
+      ref,
+      key,
+      instance
+    )
+  },
+  // m childs 的 c 被占用了，随便换个字母
+  x = function (childs) {
 
-    // 处理属性
-    let properties = { }, attributes = { }, directives = { }
-
-    if (props || attrs) {
-
-      let addDirective = function (name, modifier, value) {
-        return directives[ keypathUtil.join(name, modifier) ] = {
-          name,
-          modifier,
-          value,
-          keypath,
-          keypathStack,
-        }
-      }
-
-      if (props) {
-        object.each(
-          props,
-          function (value, key) {
-            if (is.object(value)) {
-              let { staticKeypath } = value
-              value = getter(value, keypathStack, staticKeypath)
-              if (staticKeypath) {
-                addDirective(
-                  config.DIRECTIVE_BINDING,
-                  key,
-                  staticKeypath
-                ).prop = env.TRUE
-              }
-            }
-            properties[ key ] = value
-          }
-        )
-      }
-
-      if (attrs) {
-        let addAttr = function (item) {
-
-          let { type, name, modifier, expr, children, binding, data } = item
-
-          // 延展数据
-          if (data) {
-            object.each(
-              data,
-              function (value, key) {
-                attributes[ key ] = value
-                if (binding) {
-                  addDirective(
-                    config.DIRECTIVE_BINDING,
-                    key,
-                    keypathUtil.join(binding, key)
-                  )
-                }
-              }
-            )
-            return
-          }
-
-          let value
-          if (object.has(item, 'value')) {
-            value = item.value
-          }
-          else if (expr) {
-            value = getter(expr, keypathStack, binding)
-          }
-          else if (children) {
-            value = array.join(children, '')
-          }
-
-          // <input checked>
-          // <div title="{{title}}" 这种写法，如果没取到值，就是 undefined
-          if (!isDef(value) && !expr) {
-            if (children) {
-              value = char.CHAR_BLANK
-            }
-            else {
-              value = isComponent ? env.TRUE : name
-            }
-          }
-
-          if (type === nodeType.ATTRIBUTE) {
-            attributes[ name ] = value
-            if (binding) {
-              addDirective(config.DIRECTIVE_BINDING, name, binding)
-            }
-          }
-          else if (type === nodeType.DIRECTIVE) {
-            addDirective(name, modifier, value).expr = expr
-          }
-
-        }
-        array.each(
-          attrs,
-          function (item) {
-            if (item) {
-              if (is.array(item)) {
-                array.each(item, addAttr)
-              }
-              else {
-                addAttr(item)
-              }
-            }
-          }
-        )
-      }
-    }
-
-    // 处理 children
-    let children = [ ]
+    let result = [ ]
 
     if (childs) {
       let lastChild
-      let addChild = function (child) {
-        if (snabbdom.isVnode(child)) {
-          if (child.component) {
-            child.parent = instance
-          }
-          array.push(children, child)
-          lastChild = env.NULL
-        }
-        else if (snabbdom.isTextVnode(lastChild)) {
-          lastChild.text += toString(child)
-        }
-        else {
-          lastChild = snabbdom.createTextVnode(child)
-          array.push(children, lastChild)
-        }
-      }
-      let eachChilds = function (childs) {
-        array.each(
-          childs,
-          function (child) {
-            if (child != env.NULL) {
-              if (is.array(child) && child[ STRUCT ]) {
-                eachChilds(child)
+      array.each(
+        childs,
+        function (child) {
+          if (child != env.NULL) {
+            if (snabbdom.isVnode(child)) {
+              if (child.component) {
+                child.parent = instance
               }
-              else {
-                addChild(child)
-              }
+              array.push(result, child)
+              lastChild = env.NULL
+            }
+            else if (snabbdom.isTextVnode(lastChild)) {
+              lastChild.text += toString(child)
+            }
+            else {
+              lastChild = snabbdom.createTextVnode(child)
+              array.push(result, lastChild)
             }
           }
-        )
-      }
-      eachChilds(childs)
+        }
+      )
     }
 
-    // 创建元素/组件
-    return snabbdom[ isComponent ? 'createComponentVnode' : 'createElementVnode' ](
-      tag,
-      attributes,
+    return result
+
+  },
+  y = function (props, attrs, isComponent) {
+
+    let properties = { }, attributes = { }, directives = { }
+
+    if (props) {
+      object.each(
+        props,
+        function (value, key) {
+          if (is.object(value)) {
+            let { staticKeypath } = value
+            value = getter(value, keypathStack, staticKeypath)
+            if (staticKeypath) {
+              addDirective(
+                directives,
+                config.DIRECTIVE_BINDING,
+                key,
+                staticKeypath
+              ).prop = env.TRUE
+            }
+          }
+          properties[ key ] = value
+        }
+      )
+    }
+
+    if (attrs) {
+      let addAttr = function (item) {
+
+        let { type, name, modifier, expr, children, binding, data } = item
+
+        // 延展数据
+        if (data) {
+          object.each(
+            data,
+            function (value, key) {
+              attributes[ key ] = value
+              if (binding) {
+                addDirective(
+                  directives,
+                  config.DIRECTIVE_BINDING,
+                  key,
+                  keypathUtil.join(binding, key)
+                )
+              }
+            }
+          )
+          return
+        }
+
+        let value
+        if (object.has(item, 'value')) {
+          value = item.value
+        }
+        else if (expr) {
+          value = getter(expr, keypathStack, binding)
+        }
+        else if (children) {
+          value = array.join(children, '')
+        }
+
+        // <input checked>
+        // <div title="{{title}}" 这种写法，如果没取到值，就是 undefined
+        if (!isDef(value) && !expr) {
+          if (children) {
+            value = char.CHAR_BLANK
+          }
+          else {
+            value = isComponent ? env.TRUE : name
+          }
+        }
+
+        if (type === nodeType.ATTRIBUTE) {
+          attributes[ name ] = value
+          if (binding) {
+            addDirective(directives, config.DIRECTIVE_BINDING, name, binding)
+          }
+        }
+        else if (type === nodeType.DIRECTIVE) {
+          addDirective(directives, name, modifier, value).expr = expr
+        }
+
+      }
+      array.each(
+        attrs,
+        function (item) {
+          if (item) {
+            if (is.array(item)) {
+              array.each(item, addAttr)
+            }
+            else {
+              addAttr(item)
+            }
+          }
+        }
+      )
+    }
+
+    return {
       properties,
+      attributes,
       directives,
-      children,
-      getRefKey(ref),
-      getRefKey(key),
-      instance
-    )
+    }
+  },
+  // ref key
+  q = function (value) {
+    return is.array(value) && value[ STRUCT ]
+      ? array.join(value, '')
+      : value
   },
   // comment
   m = snabbdom.createCommentVnode,
@@ -1004,7 +1002,7 @@ export function render(render, getter, setter, instance) {
     logger.fatal(`"${name}" partial is not found.`)
   },
   executeRender = function (render) {
-    return render(a, c, m, e, o, s, p, i)
+    return render(a, c, e, i, m, o, p, q, s, x, y)
   }
 
   return executeRender(render)

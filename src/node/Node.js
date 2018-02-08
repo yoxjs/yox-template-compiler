@@ -66,12 +66,12 @@ export default class Node {
 
   stringifyExpression(expr, safe) {
     if (expr) {
-      return 'o(' + this.stringifyObject(expr) + ')'
+      return this.stringifyCall('o', this.stringifyObject(expr))
     }
   }
 
   stringifyCall(name, params) {
-    return `${name}(${array.join(params, ',')})`
+    return `${name}(${is.array(params) ? array.join(params, ',') : params})`
   }
 
   stringifyString(str) {

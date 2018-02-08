@@ -17,9 +17,7 @@ export default class Import extends Node {
   stringify() {
     return this.stringifyCall(
       'i',
-      [
-        this.stringifyString(this.name),
-      ]
+      this.stringifyString(this.name)
     )
   }
 

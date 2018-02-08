@@ -44,7 +44,7 @@ export default class Element extends Node {
       )
     }
 
-    // 反过来 push
+    // 反过来
     // 这样序列化能省更多字符
     if (key || ref) {
       let stringify = function (value) {
@@ -60,10 +60,10 @@ export default class Element extends Node {
         return value
       }
       if (key) {
-        array.unshift(params, stringify(key))
+        array.unshift(params, me.stringifyCall('q', stringify(key)))
       }
       if (ref || params.length) {
-        array.unshift(params, ref ? stringify(ref) : env.RAW_NULL)
+        array.unshift(params, ref ? me.stringifyCall('q', stringify(ref)) : env.RAW_UNDEFINED)
       }
     }
 
@@ -72,15 +72,24 @@ export default class Element extends Node {
     }
 
     if (children.length || params.length) {
-      array.unshift(params, children.length ? this.stringifyArray(children) : 0)
+      array.unshift(
+        params,
+        me.stringifyCall('x', children.length ? this.stringifyArray(children) : 0)
+      )
     }
 
-    if (props || params.length) {
-      array.unshift(params, props ? this.stringifyObject(props) : 0)
-    }
-
-    if (attrs.length || params.length) {
-      array.unshift(params, attrs.length ? this.stringifyArray(attrs) : 0)
+    if (props || attrs.length || params.length) {
+      array.unshift(
+        params,
+        me.stringifyCall(
+          'y',
+          [
+            props ? this.stringifyObject(props) : 0,
+            attrs.length ? this.stringifyArray(attrs) : 0,
+            component ? 1 : 0
+          ]
+        )
+      )
     }
 
     array.unshift(params, me.stringifyString(name))
