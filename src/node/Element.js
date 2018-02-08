@@ -67,14 +67,21 @@ export default class Element extends Node {
       }
     }
 
+    let isComponent = component ? 1 : 0
     if (component || params.length) {
-      array.unshift(params, component ? 1 : 0)
+      array.unshift(params, isComponent)
     }
 
     if (children.length || params.length) {
       array.unshift(
         params,
-        me.stringifyCall('x', children.length ? this.stringifyArray(children) : 0)
+        me.stringifyCall(
+          'x',
+          [
+            children.length ? this.stringifyArray(children) : 0,
+            isComponent
+          ]
+        )
       )
     }
 
@@ -86,7 +93,7 @@ export default class Element extends Node {
           [
             props ? this.stringifyObject(props) : 0,
             attrs.length ? this.stringifyArray(attrs) : 0,
-            component ? 1 : 0
+            isComponent
           ]
         )
       )

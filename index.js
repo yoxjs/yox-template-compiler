@@ -161,41 +161,27 @@ export function compile(content) {
 
       if (type === nodeType.ELEMENT) {
         // 优化只有一个子节点的情况
-        if (children.length - divider === 1) {
+        if (!component && children.length - divider === 1) {
           let singleChild = array.last(children)
           // 子节点是纯文本
           if (singleChild.type === nodeType.TEXT) {
-            if (component) {
-              let attr = new Attribute(config.SPECIAL_CHILDREN)
-              attr.children = [ singleChild ]
-              children[ divider ] = attr
-              target.divider++
+            target.props = {
+              textContent: singleChild.text,
+            }
+            array.pop(children)
+          }
+          else if (singleChild.type === nodeType.EXPRESSION
+            && singleChild.expr.raw !== config.SPECIAL_CHILDREN
+          ) {
+            let props = { }
+            if (singleChild.safe === env.FALSE) {
+              props.innerHTML = singleChild.expr
             }
             else {
-              target.props = {
-                textContent: singleChild.text,
-              }
-              array.pop(children)
+              props.textContent = singleChild.expr
             }
-          }
-          else if (singleChild.type === nodeType.EXPRESSION) {
-            if (component) {
-              let attr = new Attribute(config.SPECIAL_CHILDREN)
-              attr.children = [ singleChild ]
-              children[ divider ] = attr
-              target.divider++
-            }
-            else if (singleChild.expr.raw !== config.SPECIAL_CHILDREN) {
-              let props = { }
-              if (singleChild.safe === env.FALSE) {
-                props.innerHTML = singleChild.expr
-              }
-              else {
-                props.textContent = singleChild.expr
-              }
-              target.props = props
-              array.pop(children)
-            }
+            target.props = props
+            array.pop(children)
           }
 
           if (!children.length) {
@@ -755,7 +741,7 @@ export function render(render, getter, setter, instance) {
     )
   },
   // m childs 的 c 被占用了，随便换个字母
-  x = function (childs) {
+  x = function (childs, isComponent) {
 
     let result = [ ]
 
@@ -782,6 +768,10 @@ export function render(render, getter, setter, instance) {
           }
         }
       )
+    }
+
+    if (isComponent) {
+      result[ STRUCT ] = env.TRUE
     }
 
     return result
