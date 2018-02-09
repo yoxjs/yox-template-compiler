@@ -794,73 +794,62 @@ export function render(render, getter, setter, instance) {
     }
 
     if (attrs) {
-      let addAttr = function (item) {
-
-        let { type, name, modifier, expr, children, binding, data } = item
-
-        // 延展数据
-        if (data) {
-          object.each(
-            data,
-            function (value, key) {
-              attributes[ key ] = value
-              if (binding) {
-                addDirective(
-                  directives,
-                  config.DIRECTIVE_BINDING,
-                  key,
-                  keypathUtil.join(binding, key)
-                )
-              }
-            }
+      let addAttr = function (name, value, binding) {
+        attributes[ name ] = value
+        if (binding) {
+          addDirective(
+            directives,
+            config.DIRECTIVE_BINDING,
+            name,
+            binding
           )
-          return
         }
-
-        let value
-        if (object.has(item, 'value')) {
-          value = item.value
-        }
-        else if (expr) {
-          value = getter(expr, keypathStack, binding)
-        }
-        else if (children) {
-          value = array.join(children, '')
-        }
-
-        // <input checked>
-        // <div title="{{title}}" 这种写法，如果没取到值，就是 undefined
-        if (!isDef(value) && !expr) {
-          if (children) {
-            value = char.CHAR_BLANK
-          }
-          else {
-            value = isComponent ? env.TRUE : name
-          }
-        }
-
-        if (type === nodeType.ATTRIBUTE) {
-          attributes[ name ] = value
-          if (binding) {
-            addDirective(directives, config.DIRECTIVE_BINDING, name, binding)
-          }
-        }
-        else if (type === nodeType.DIRECTIVE) {
-          addDirective(directives, name, modifier, value).expr = expr
-        }
-
       }
+
       array.each(
         attrs,
         function (item) {
-          if (item) {
-            if (is.array(item)) {
-              array.each(item, addAttr)
+
+          let { name, expr, binding } = item
+
+          // 延展数据
+          if (item.data) {
+            object.each(
+              item.data,
+              function (value, key) {
+                addAttr(key, value, binding && keypathUtil.join(binding, key))
+              }
+            )
+            return
+          }
+
+          // 静态属性
+          if (object.has(item, 'value')) {
+            addAttr(name, item.value)
+            return
+          }
+
+          // 普通属性
+          if (item.type === nodeType.ATTRIBUTE) {
+
+            let value
+            if (expr) {
+              value = getter(expr, keypathStack, binding)
+            }
+            else if (item.children) {
+              value = array.join(item.children, '')
             }
             else {
-              addAttr(item)
+              value = isComponent ? env.TRUE : name
             }
+
+            addAttr(name, value, binding)
+
+            return
           }
+
+          addDirective(directives, name, item.modifier, item.value).expr = expr
+
         }
       )
     }
