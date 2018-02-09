@@ -686,17 +686,6 @@ export function render(render, getter, setter, instance) {
 
   STRUCT = 'struct',
 
-  toArray = function (arr) {
-    let { length } = arr
-    if (length > 0) {
-      if (length === 1) {
-        return arr[ 0 ]
-      }
-      arr[ STRUCT ] = env.TRUE
-      return arr
-    }
-  },
-
   addDirective = function (directives, name, modifier, value) {
     return directives[ keypathUtil.join(name, modifier) ] = {
       name,
@@ -743,9 +732,10 @@ export function render(render, getter, setter, instance) {
   // m childs 的 c 被占用了，随便换个字母
   x = function (childs, isComponent) {
 
-    let result = [ ]
-
     if (childs) {
+
+      let result = [ ]
+
       let lastChild
       array.each(
         childs,
@@ -768,17 +758,18 @@ export function render(render, getter, setter, instance) {
           }
         }
       )
-    }
 
-    if (isComponent) {
-      result[ STRUCT ] = env.TRUE
-    }
+      if (isComponent) {
+        result[ STRUCT ] = env.TRUE
+      }
 
-    return result
+      return result
+
+    }
 
   },
   y = function (props, attrs, isComponent) {
-
+console.log('y', props, attrs)
     let properties = { }, attributes = { }, directives = { }
 
     if (props) {
@@ -951,7 +942,9 @@ export function render(render, getter, setter, instance) {
         popKeypath(lastKeypath, lastKeypathStack)
       }
 
-      return toArray(result)
+      result[ STRUCT ] = env.TRUE
+
+      return result
 
     }
   },
@@ -960,12 +953,11 @@ export function render(render, getter, setter, instance) {
     return getter(expr, keypathStack)
   },
   // spread
-  s = function (expr) {
-    let value = getter(expr, keypathStack)
+  s = function (value, staticKeypath) {
     if (is.object(value)) {
       return {
         data: value,
-        binding: expr.staticKeypath,
+        binding: staticKeypath,
       }
     }
   },
@@ -977,17 +969,13 @@ export function render(render, getter, setter, instance) {
   // import
   i = function (name) {
     if (localPartials[ name ]) {
-      return toArray(
-        localPartials[ name ]()
-      )
+      return localPartials[ name ]()
     }
     let partial = instance.importPartial(name)
     if (partial) {
-      return toArray(
-        partial.map(
-          executeRender
-        )
-      )
+      partial = partial.map(executeRender)
+      partial[ STRUCT ] = env.TRUE
+      return partial
     }
     logger.fatal(`"${name}" partial is not found.`)
   },
