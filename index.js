@@ -769,7 +769,7 @@ export function render(render, getter, setter, instance) {
 
   },
   y = function (props, attrs, isComponent) {
-console.log('y', props, attrs)
+
     let properties = { }, attributes = { }, directives = { }
 
     if (props) {
