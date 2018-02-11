@@ -18,8 +18,8 @@ export default class Node {
   }
 
   stringifyObject(obj) {
-    let me = this, result = [ ]
     if (obj) {
+      let me = this, result
       object.each(
         obj,
         function (value, key) {
@@ -32,22 +32,27 @@ export default class Node {
           else if (is.string(value)) {
             value = me.stringifyString(value)
           }
-          else if (is.array(value)) {
-            value = me.stringifyArray(value)
-          }
           else if (is.object(value)) {
             value = me.stringifyObject(value)
+            if (!value) {
+              return
+            }
+          }
+          if (!result) {
+            result = [ ]
           }
           array.push(result, `${key}:${value}`)
         }
       )
+      if (result) {
+        return `{${array.join(result, ',')}}`
+      }
     }
-    return `{${array.join(result, ',')}}`
   }
 
-  stringifyArray(arr) {
-    let me = this, result = [ ]
-    if (arr) {
+  stringifyArray(arr, name) {
+    if (arr && arr[ env.RAW_LENGTH ]) {
+      let me = this, result = [ ]
       array.each(
         arr,
         function (item) {
@@ -60,8 +65,8 @@ export default class Node {
           array.push(result, item)
         }
       )
+      return me.stringifyCall(name || 'x', result)
     }
-    return me.stringifyCall('a', result)
   }
 
   stringifyExpression(expr, safe) {
@@ -76,6 +81,10 @@ export default class Node {
 
   stringifyString(str) {
     return `"${str.replace(/"/g, '\\"').replace(/\s*\n+\s*/g, ' ')}"`
+  }
+
+  stringifyFunction(str) {
+    return `function(){${str || ''}}`
   }
 
 }

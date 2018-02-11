@@ -22,21 +22,37 @@ export default class If extends Node {
 
     let stringify = function (node) {
       let expr = node.stringifyExpression(node.expr)
-      let result = node.stringifyArray(node.children)
-      if (node.next) {
-        return `${expr}?${result}:(${stringify(node.next)})`
+      let children = node.stringifyArray(node.children)
+      let next = node.next
+      if (next) {
+        next = stringify(next)
       }
-      else {
-        if (expr) {
-          return `${expr}?${result}:${stump ? 'm()' : env.RAW_UNDEFINED}`
+      else if (stump) {
+        next = 'x(m())'
+      }
+      if (expr) {
+        if (children) {
+          if (next) {
+            return `${expr}?${children}:${next}`
+          }
+          return `${expr}&&${children}`
         }
         else {
-          return result
+          if (next) {
+            return `!${expr}&&${next}`
+          }
         }
+      }
+      else if (children) {
+        return children
       }
     }
 
-    return stringify(this)
+    let str = stringify(this)
+    if (str) {
+      return this.stringifyFunction(str)
+    }
+
   }
 
 }

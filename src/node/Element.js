@@ -4,8 +4,6 @@ import * as env from 'yox-common/util/env'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
 
-import Expression from 'yox-expression-compiler/src/node/Node'
-
 import Node from './Node'
 import * as nodeType from '../nodeType'
 
@@ -44,64 +42,43 @@ export default class Element extends Node {
       )
     }
 
+    let addArray = function (arr, name) {
+      arr = me.stringifyArray(arr, name)
+      array.unshift(
+        params,
+        arr
+        ? me.stringifyFunction(arr)
+        : 0
+      )
+    }
+
     // 反过来
     // 这样序列化能省更多字符
-    if (key || ref) {
-      let stringify = function (value) {
-        if (is.array(value)) {
-          return me.stringifyArray(value)
-        }
-        else if (Expression.is(value)) {
-          return me.stringifyExpression(value)
-        }
-        else if (is.string(value)) {
-          return me.stringifyString(value)
-        }
-        return value
-      }
-      if (key) {
-        array.unshift(params, me.stringifyCall('q', stringify(key)))
-      }
-      if (ref || params.length) {
-        array.unshift(params, ref ? me.stringifyCall('q', stringify(ref)) : env.RAW_UNDEFINED)
-      }
+    if (key) {
+      addArray(key)
     }
 
-    let isComponent = component ? 1 : 0
-    if (component || params.length) {
-      array.unshift(params, isComponent)
+    if (ref || params[ env.RAW_LENGTH ]) {
+      addArray(ref)
     }
 
-    if (children.length || params.length) {
-      array.unshift(
-        params,
-        me.stringifyCall(
-          'x',
-          [
-            children.length ? this.stringifyArray(children) : 0,
-            isComponent
-          ]
-        )
-      )
+    if (children[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {
+      addArray(children)
     }
 
-    if (props || attrs.length || params.length) {
-      array.unshift(
-        params,
-        me.stringifyCall(
-          'y',
-          [
-            props ? this.stringifyObject(props) : 0,
-            attrs.length ? this.stringifyArray(attrs) : 0,
-            isComponent
-          ]
-        )
-      )
+    if (attrs[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {
+      addArray(attrs, 'y')
+    }
+
+    if (props && props[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {
+      addArray(props, 'z')
     }
 
     array.unshift(params, me.stringifyString(name))
+    array.unshift(params, component ? 1 : 0)
 
     return this.stringifyCall('c', params)
+
   }
 
 }

@@ -19,7 +19,9 @@ export default class Partial extends Node {
       'p',
       [
         this.stringifyString(this.name),
-        `function(){return ${this.stringifyArray(this.children)}}`,
+        this.stringifyFunction(
+          this.stringifyArray(this.children)
+        )
       ]
     )
   }

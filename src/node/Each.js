@@ -21,14 +21,19 @@ export default class Each extends Node {
   }
 
   stringify() {
-    let params = [
-      this.stringifyObject(this.expr),
-      `function(){return ${this.stringifyArray(this.children)}}`,
-    ]
-    if (this.index) {
-      array.push(params, this.stringifyString(this.index))
+    let generate = this.stringifyArray(this.children)
+    if (generate) {
+      let params = [
+        this.stringifyObject(this.expr),
+        this.stringifyFunction(generate)
+      ]
+      if (this.index) {
+        array.push(params, this.stringifyString(this.index))
+      }
+      return this.stringifyFunction(
+        this.stringifyCall('e', params)
+      )
     }
-    return this.stringifyCall('e', params)
   }
 
 }

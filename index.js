@@ -50,7 +50,7 @@ let compileCache = { }
  * @return {string}
  */
 function slicePrefix(str, prefix) {
-  return string.trim(string.slice(str, prefix.length))
+  return string.trim(string.slice(str, prefix[ env.RAW_LENGTH ]))
 }
 
 /**
@@ -150,7 +150,7 @@ export function compile(content) {
 
       // 如果 children 没实际的数据，删掉它
       // 避免在渲染阶段增加计算量
-      if (children && !children.length) {
+      if (children && !children[ env.RAW_LENGTH ]) {
         children = env.NULL
         delete target.children
       }
@@ -161,38 +161,51 @@ export function compile(content) {
 
       if (type === nodeType.ELEMENT) {
         // 优化只有一个子节点的情况
-        if (!component && children.length - divider === 1) {
+        if (!component && children[ env.RAW_LENGTH ] - divider === 1) {
           let singleChild = array.last(children)
           // 子节点是纯文本
           if (singleChild.type === nodeType.TEXT) {
-            target.props = {
-              textContent: singleChild.text,
-            }
+            target.props = [
+              {
+                name: 'textContent',
+                value: singleChild.text,
+              }
+            ]
             array.pop(children)
           }
           else if (singleChild.type === nodeType.EXPRESSION
             && singleChild.expr.raw !== config.SPECIAL_CHILDREN
           ) {
-            let props = { }
+            let props = [ ]
             if (singleChild.safe === env.FALSE) {
-              props.innerHTML = singleChild.expr
+              array.push(
+                props,
+                {
+                  name: 'innerHTML',
+                  value: singleChild.expr,
+                }
+              )
             }
             else {
-              props.textContent = singleChild.expr
+              array.push(
+                props,
+                {
+                  name: 'textContent',
+                  value: singleChild.expr,
+                }
+              )
             }
             target.props = props
             array.pop(children)
           }
 
-          if (!children.length) {
+          if (!children[ env.RAW_LENGTH ]) {
             delete target.children
           }
 
         }
       }
       else {
-
-        let singleChild = children.length === 1 && children[ 0 ]
 
         if (type === nodeType.ATTRIBUTE) {
           // <div key="xx">
@@ -201,24 +214,17 @@ export function compile(content) {
             // 把数据从属性中提出来，减少渲染时的遍历
             let element = array.last(htmlStack)
             array.remove(element.children, target)
-            if (!element.children.length) {
+            if (!element.children[ env.RAW_LENGTH ]) {
               delete element.children
             }
-            if (singleChild) {
-              if (singleChild.type === nodeType.TEXT) {
-                element[ name ] = singleChild.text
-              }
-              else if (singleChild.type === nodeType.EXPRESSION) {
-                element[ name ] = singleChild.expr
-              }
-            }
-            else {
-              element[ name ] = target.children
+            if (children[ env.RAW_LENGTH ]) {
+              element[ name ] = children
             }
             return
           }
         }
 
+        let singleChild = children[ env.RAW_LENGTH ] === 1 && children[ 0 ]
         if (singleChild) {
           if (singleChild.type === nodeType.TEXT) {
             // 指令的值如果是纯文本，可以预编译表达式，提升性能
@@ -279,7 +285,7 @@ export function compile(content) {
      *    <input>xxx
      * </div>
      */
-    if (!htmlStack.length) {
+    if (!htmlStack[ env.RAW_LENGTH ]) {
       popSelfClosingElementIfNeeded()
     }
 
@@ -298,8 +304,8 @@ export function compile(content) {
     if (currentNode) {
       let { children, divider } = currentNode
       if (children) {
-        if (children.length !== divider) {
-          prevNode = children[ children.length - 1 ]
+        if (children[ env.RAW_LENGTH ] !== divider) {
+          prevNode = children[ children[ env.RAW_LENGTH ] - 1 ]
         }
       }
       else {
@@ -316,7 +322,7 @@ export function compile(content) {
     // 在渲染时，如果这种 if 分支为 false，需要加上注释节点
     if (prevNode
       && helper.ifTypes[ prevNode.type ]
-      && !htmlStack.length
+      && !htmlStack[ env.RAW_LENGTH ]
     ) {
       prevNode.stump = env.TRUE
     }
@@ -336,7 +342,7 @@ export function compile(content) {
 
   const htmlParsers = [
     function (content) {
-      if (!htmlStack.length) {
+      if (!htmlStack[ env.RAW_LENGTH ]) {
         let match = content.match(openingTagPattern)
         // 必须以 <tag 开头才能继续
         if (match && !match.index) {
@@ -362,9 +368,9 @@ export function compile(content) {
     function (content) {
       let match = content.match(closingTagPattern)
       if (match) {
-        if (htmlStack.length === 1) {
+        if (htmlStack[ env.RAW_LENGTH ] === 1) {
           let element = array.last(htmlStack)
-          element.divider = element.children ? element.children.length : 0
+          element.divider = element.children ? element.children[ env.RAW_LENGTH ] : 0
           if (match[ 1 ] === char.CHAR_SLASH) {
             popStack(
               nodeType.ELEMENT
@@ -376,7 +382,7 @@ export function compile(content) {
       }
     },
     function (content) {
-      if (htmlStack.length === 1) {
+      if (htmlStack[ env.RAW_LENGTH ] === 1) {
         let match = content.match(attributePattern)
         if (match) {
           let name = match[ 1 ]
@@ -388,7 +394,7 @@ export function compile(content) {
             )
           }
           else if (string.startsWith(name, config.DIRECTIVE_EVENT_PREFIX)) {
-            name = string.slice(name, config.DIRECTIVE_EVENT_PREFIX.length)
+            name = string.slice(name, config.DIRECTIVE_EVENT_PREFIX[ env.RAW_LENGTH ])
             addChild(
               new Directive(
                 config.DIRECTIVE_EVENT,
@@ -397,7 +403,7 @@ export function compile(content) {
             )
           }
           else if (string.startsWith(name, config.DIRECTIVE_CUSTOM_PREFIX)) {
-            name = string.slice(name, config.DIRECTIVE_CUSTOM_PREFIX.length)
+            name = string.slice(name, config.DIRECTIVE_CUSTOM_PREFIX[ env.RAW_LENGTH ])
             addChild(
               new Directive(
                 string.camelCase(name)
@@ -424,7 +430,7 @@ export function compile(content) {
       }
     },
     function (content) {
-      if (htmlStack.length === 2) {
+      if (htmlStack[ env.RAW_LENGTH ] === 2) {
         let index = 0, currentChar, closed
         while (currentChar = char.charAt(content, index)) {
           if (currentChar === currentQuote) {
@@ -457,7 +463,7 @@ export function compile(content) {
         }
         // 属性级别的空字符串是没有意义的
         // 比如 <div      class="xx">
-        if (htmlStack.length !== 1
+        if (htmlStack[ env.RAW_LENGTH ] !== 1
           || string.trim(content)
         ) {
           addChild(
@@ -555,13 +561,13 @@ export function compile(content) {
           function (parse, match) {
             match = parse(tpl)
             if (match) {
-              tpl = string.slice(tpl, match.length)
+              tpl = string.slice(tpl, match[ env.RAW_LENGTH ])
               return env.FALSE
             }
           }
         )
       }
-      str = string.slice(str, content.length)
+      str = string.slice(str, content[ env.RAW_LENGTH ])
     }
   }
 
@@ -593,7 +599,7 @@ export function compile(content) {
         )
       }
     }
-    str = string.slice(str, all.length)
+    str = string.slice(str, all[ env.RAW_LENGTH ])
   }
 
   let str = content, match
@@ -613,7 +619,7 @@ export function compile(content) {
         string.slice(str, 0, match.index)
       )
       // 避免手误写成 {{{ name }}
-      if (match[ 1 ].length === match[ 3 ].length) {
+      if (match[ 1 ][ env.RAW_LENGTH ] === match[ 3 ][ env.RAW_LENGTH ]) {
         parseDelimiter(match[ 2 ], match[ 0 ])
       }
       else {
@@ -638,7 +644,7 @@ export function compile(content) {
 export function convert(ast) {
   return ast.map(
     function (item) {
-      return new Function('a', 'c', 'e', 'i', 'm', 'o', 'p', 'q', 's', 'x', 'y', `return ${item.stringify()}`)
+      return new Function('c', 'e', 'i', 'm', 'o', 'p', 's', 'x', 'y', 'z', `return ${item.stringify()}`)
     }
   )
 }
@@ -684,9 +690,23 @@ export function render(render, getter, setter, instance) {
     keypathStack = lastKeypathStack
   },
 
-  STRUCT = 'struct',
+  elementStack = [ ],
+  currentElement,
 
-  addDirective = function (directives, name, modifier, value) {
+  addAttr = function (name, value, binding) {
+    let attrs = currentElement.attrs || (currentElement.attrs = { })
+    attrs[ name ] = value
+    if (binding) {
+      addDirective(
+        config.DIRECTIVE_BINDING,
+        name,
+        binding
+      )
+    }
+  },
+
+  addDirective = function (name, modifier, value) {
+    let directives = currentElement.directives || (currentElement.directives = { })
     return directives[ keypathUtil.join(name, modifier) ] = {
       name,
       modifier,
@@ -696,175 +716,173 @@ export function render(render, getter, setter, instance) {
     }
   },
 
-  // array
-  a = function () {
-    let result = [ ]
+  addChild = function (child) {
+    array.push(
+      currentElement.children || (currentElement.children = [ ]),
+      child
+    )
+  },
+
+  getValue = function (generate) {
+    currentElement.children = [ ]
+    generate()
+    return array.join(currentElement.children, '')
+  },
+
+  // 处理 children
+  x = function () {
     array.each(
       arguments,
       function (item) {
-        if (isDef(item)) {
-          if (is.array(item) && item[ STRUCT ]) {
-            array.push(result, item)
+        if (item != env.NULL) {
+          let { lastChild } = currentElement
+          if (is.func(item)) {
+            item()
           }
           else {
-            result.push(item)
+            if (currentElement.phase) {
+              if (snabbdom.isVnode(item)) {
+                if (item.component) {
+                  item.parent = instance
+                }
+                addChild(item)
+                if (lastChild) {
+                  currentElement.lastChild = env.NULL
+                }
+              }
+              else if (snabbdom.isTextVnode(lastChild)) {
+                lastChild.text += toString(item)
+              }
+              else {
+                addChild(
+                  currentElement.lastChild = snabbdom.createTextVnode(item)
+                )
+              }
+            }
+            else {
+              addChild(item)
+            }
           }
         }
       }
     )
-    result[ STRUCT ] = env.TRUE
-    return result
+  },
+
+  // 处理元素 attribute
+  y = function () {
+    array.each(
+      arguments,
+      function (item) {
+        if (item != env.NULL) {
+          if (is.func(item)) {
+            currentElement.children = [ ]
+            item()
+          }
+          else if (item.type === nodeType.ATTRIBUTE) {
+            let value
+            if (object.has(item, 'value')) {
+              value = item.value
+            }
+            else if (item.expr) {
+              value = getter(item.expr, keypathStack, item.binding)
+            }
+            else if (item.children) {
+              value = getValue(item.children)
+            }
+            else {
+              value = currentElement.component ? env.TRUE : item.name
+            }
+            addAttr(
+              item.name,
+              value,
+              item.binding
+            )
+          }
+          else {
+            addDirective(
+              item.name,
+              item.modifier,
+              item.value
+            ).expr = item.expr
+          }
+        }
+      }
+    )
+  },
+
+  // 处理 properties
+  z = function () {
+    object.each(
+      arguments,
+      function (item) {
+        let { name, value } = item
+        if (is.object(value)) {
+          let { staticKeypath } = value
+          value = getter(value, keypathStack, staticKeypath)
+          if (staticKeypath) {
+            addDirective(
+              config.DIRECTIVE_BINDING,
+              name,
+              staticKeypath
+            ).prop = env.TRUE
+          }
+        }
+        let props = currentElement.props || (currentElement.props = { })
+        props[ name ] = value
+      }
+    )
   },
 
   // create
-  c = function (tag, mix, children, isComponent, ref, key) {
-    return snabbdom[ isComponent ? 'createComponentVnode' : 'createElementVnode' ](
+  c = function (component, tag, props, attrs, childs, ref, key) {
+
+    currentElement = {
+      component,
+      phase: 0,
+    }
+
+    array.push(elementStack, currentElement)
+
+    if (ref) {
+      ref = getValue(ref)
+    }
+
+    if (key) {
+      ref = getValue(key)
+    }
+
+    if (attrs) {
+      attrs()
+    }
+
+    if (props) {
+      props()
+    }
+
+    if (currentElement.children) {
+      currentElement.children = env.NULL
+    }
+
+    if (childs) {
+      currentElement.phase = 1
+      childs()
+    }
+
+    let result = snabbdom[ component ? 'createComponentVnode' : 'createElementVnode' ](
       tag,
-      mix && mix.attributes,
-      mix && mix.properties,
-      mix && mix.directives,
-      children,
+      currentElement.attrs,
+      currentElement.props,
+      currentElement.directives,
+      currentElement.children,
       ref,
       key,
       instance
     )
-  },
-  // m childs 的 c 被占用了，随便换个字母
-  x = function (childs, isComponent) {
 
-    if (childs) {
+    array.pop(elementStack)
+    currentElement = array.last(elementStack)
 
-      let result = [ ]
-
-      let lastChild
-      array.each(
-        childs,
-        function (child) {
-          if (child != env.NULL) {
-            if (snabbdom.isVnode(child)) {
-              if (child.component) {
-                child.parent = instance
-              }
-              array.push(result, child)
-              lastChild = env.NULL
-            }
-            else if (snabbdom.isTextVnode(lastChild)) {
-              lastChild.text += toString(child)
-            }
-            else {
-              lastChild = snabbdom.createTextVnode(child)
-              array.push(result, lastChild)
-            }
-          }
-        }
-      )
-
-      if (isComponent) {
-        result[ STRUCT ] = env.TRUE
-      }
-
-      return result
-
-    }
-
-  },
-  y = function (props, attrs, isComponent) {
-
-    let properties = { }, attributes = { }, directives = { }
-
-    if (props) {
-      object.each(
-        props,
-        function (value, key) {
-          if (is.object(value)) {
-            let { staticKeypath } = value
-            value = getter(value, keypathStack, staticKeypath)
-            if (staticKeypath) {
-              addDirective(
-                directives,
-                config.DIRECTIVE_BINDING,
-                key,
-                staticKeypath
-              ).prop = env.TRUE
-            }
-          }
-          properties[ key ] = value
-        }
-      )
-    }
-
-    if (attrs) {
-      let addAttr = function (name, value, binding) {
-        attributes[ name ] = value
-        if (binding) {
-          addDirective(
-            directives,
-            config.DIRECTIVE_BINDING,
-            name,
-            binding
-          )
-        }
-      }
-
-      array.each(
-        attrs,
-        function (item) {
-
-          let { name, expr, binding } = item
-
-          // 延展数据
-          if (item.data) {
-            object.each(
-              item.data,
-              function (value, key) {
-                addAttr(key, value, binding && keypathUtil.join(binding, key))
-              }
-            )
-            return
-          }
-
-          // 静态属性
-          if (object.has(item, 'value')) {
-            addAttr(name, item.value)
-            return
-          }
-
-          // 普通属性
-          if (item.type === nodeType.ATTRIBUTE) {
-
-            let value
-            if (expr) {
-              value = getter(expr, keypathStack, binding)
-            }
-            else if (item.children) {
-              value = array.join(item.children, '')
-            }
-            else {
-              value = isComponent ? env.TRUE : name
-            }
-
-            addAttr(name, value, binding)
-
-            return
-          }
-
-          addDirective(directives, name, item.modifier, item.value).expr = expr
-
-        }
-      )
-    }
-
-    return {
-      properties,
-      attributes,
-      directives,
-    }
-  },
-  // ref key
-  q = function (value) {
-    return is.array(value) && value[ STRUCT ]
-      ? array.join(value, '')
-      : value
+    return result
   },
   // comment
   m = snabbdom.createCommentVnode,
@@ -874,7 +892,7 @@ export function render(render, getter, setter, instance) {
     let value = getter(expr, keypathStack), each
 
     if (is.array(value)) {
-      if (value.length) {
+      if (value[ env.RAW_LENGTH ]) {
         each = function (callback) {
           array.each(
             value,
@@ -887,7 +905,7 @@ export function render(render, getter, setter, instance) {
     }
     else if (is.object(value)) {
       let keys = object.keys(value)
-      if (keys.length) {
+      if (keys[ env.RAW_LENGTH ]) {
         each = function (callback) {
           array.each(keys, callback)
         }
@@ -895,7 +913,7 @@ export function render(render, getter, setter, instance) {
     }
 
     if (each) {
-      let result = [ ], lastKeypath = keypath, lastKeypathStack = keypathStack
+      let lastKeypath = keypath, lastKeypathStack = keypathStack
 
       let eachKeypath = expr.staticKeypath || expr.dynamicKeypath
       if (eachKeypath) {
@@ -915,12 +933,7 @@ export function render(render, getter, setter, instance) {
             setter(keypath, index, key)
           }
 
-          array.each(
-            generate(),
-            function (item) {
-              array.push(result, item)
-            }
-          )
+          generate()
 
           popKeypath(lastKeypath, lastKeypathStack)
 
@@ -931,10 +944,6 @@ export function render(render, getter, setter, instance) {
         popKeypath(lastKeypath, lastKeypathStack)
       }
 
-      result[ STRUCT ] = env.TRUE
-
-      return result
-
     }
   },
   // output（e 被 each 占了..)
@@ -944,10 +953,16 @@ export function render(render, getter, setter, instance) {
   // spread
   s = function (value, staticKeypath) {
     if (is.object(value)) {
-      return {
-        data: value,
-        binding: staticKeypath,
-      }
+      object.each(
+        value,
+        function (value, key) {
+          addAttr(
+            key,
+            value,
+            staticKeypath && keypathUtil.join(staticKeypath, key)
+          )
+        }
+      )
     }
   },
   localPartials = { },
@@ -958,18 +973,21 @@ export function render(render, getter, setter, instance) {
   // import
   i = function (name) {
     if (localPartials[ name ]) {
-      return localPartials[ name ]()
+      localPartials[ name ]()
+      return
     }
     let partial = instance.importPartial(name)
     if (partial) {
-      partial = partial.map(executeRender)
-      partial[ STRUCT ] = env.TRUE
-      return partial
+      array.each(
+        partial,
+        executeRender
+      )
+      return
     }
     logger.fatal(`"${name}" partial is not found.`)
   },
   executeRender = function (render) {
-    return render(a, c, e, i, m, o, p, q, s, x, y)
+    return render(c, e, i, m, o, p, s, x, y, z)
   }
 
   return executeRender(render)
