@@ -14,38 +14,47 @@ export default class Node {
   }
 
   stringify() {
-    return this.stringifyObject(this)
+    return this.stringifyObject(this, 'x')
   }
 
-  stringifyObject(obj) {
+  stringifyObject(obj, name) {
     if (obj) {
-      let me = this, result
-      object.each(
-        obj,
-        function (value, key) {
-          if (value == env.NULL) {
-            return
-          }
-          if (value.stringify) {
-            value = value.stringify()
-          }
-          else if (is.string(value)) {
-            value = me.stringifyString(value)
-          }
-          else if (is.object(value)) {
-            value = me.stringifyObject(value)
-            if (!value) {
+      let keys = object.keys(obj)
+      if (keys[ env.RAW_LENGTH ]) {
+        let me = this, result
+        array.each(
+          keys,
+          function (key) {
+            let value = obj[ key ]
+            if (value == env.NULL) {
               return
             }
+            if (value.stringify) {
+              value = value.stringify()
+            }
+            else if (is.string(value)) {
+              value = me.stringifyString(value)
+            }
+            else {
+              if (is.array(value)) {
+                value = me.stringifyArray(value, name)
+              }
+              else if (is.object(value)) {
+                value = me.stringifyObject(value)
+              }
+              if (value == env.NULL) {
+                return
+              }
+            }
+            if (!result) {
+              result = [ ]
+            }
+            array.push(result, `${key}:${value}`)
           }
-          if (!result) {
-            result = [ ]
-          }
-          array.push(result, `${key}:${value}`)
+        )
+        if (result) {
+          return `{${array.join(result, ',')}}`
         }
-      )
-      if (result) {
-        return `{${array.join(result, ',')}}`
       }
     }
   }
@@ -65,7 +74,9 @@ export default class Node {
           array.push(result, item)
         }
       )
-      return me.stringifyCall(name || 'x', result)
+      return name
+        ? me.stringifyCall(name, result)
+        : `[${array.join(params, ',')}]`
     }
   }
 

@@ -20,7 +20,7 @@ export default class Partial extends Node {
       [
         this.stringifyString(this.name),
         this.stringifyFunction(
-          this.stringifyArray(this.children)
+          this.stringifyArray(this.children, 'x')
         )
       ]
     )

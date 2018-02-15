@@ -63,7 +63,7 @@ export default class Element extends Node {
     }
 
     if (children[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {
-      addArray(children)
+      addArray(children, 'x')
     }
 
     if (attrs[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {

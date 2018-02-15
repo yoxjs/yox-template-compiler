@@ -735,33 +735,31 @@ export function render(render, getter, setter, instance) {
       arguments,
       function (item) {
         if (item != env.NULL) {
-          let { lastChild } = currentElement
           if (is.func(item)) {
             item()
           }
-          else {
-            if (currentElement.phase) {
-              if (snabbdom.isVnode(item)) {
-                if (item.component) {
-                  item.parent = instance
-                }
-                addChild(item)
-                if (lastChild) {
-                  currentElement.lastChild = env.NULL
-                }
+          else if (currentElement.opened) {
+            let { lastChild } = currentElement
+            if (snabbdom.isVnode(item)) {
+              if (item.component) {
+                item.parent = instance
               }
-              else if (snabbdom.isTextVnode(lastChild)) {
-                lastChild.text += toString(item)
+              addChild(item)
+              if (lastChild) {
+                currentElement.lastChild = env.NULL
               }
-              else {
-                addChild(
-                  currentElement.lastChild = snabbdom.createTextVnode(item)
-                )
-              }
+            }
+            else if (snabbdom.isTextVnode(lastChild)) {
+              lastChild.text += toString(item)
             }
             else {
-              addChild(item)
+              addChild(
+                currentElement.lastChild = snabbdom.createTextVnode(item)
+              )
             }
+          }
+          else {
+            addChild(item)
           }
         }
       }
@@ -774,6 +772,7 @@ export function render(render, getter, setter, instance) {
       arguments,
       function (item) {
         if (item != env.NULL) {
+          // 进了结构体，比如 if / each
           if (is.func(item)) {
             currentElement.children = [ ]
             item()
@@ -838,7 +837,7 @@ export function render(render, getter, setter, instance) {
 
     currentElement = {
       component,
-      phase: 0,
+      opened: env.FALSE,
     }
 
     array.push(elementStack, currentElement)
@@ -864,7 +863,7 @@ export function render(render, getter, setter, instance) {
     }
 
     if (childs) {
-      currentElement.phase = 1
+      currentElement.opened = env.TRUE
       childs()
     }
 

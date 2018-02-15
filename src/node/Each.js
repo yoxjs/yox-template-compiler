@@ -21,7 +21,7 @@ export default class Each extends Node {
   }
 
   stringify() {
-    let generate = this.stringifyArray(this.children)
+    let generate = this.stringifyArray(this.children, 'x')
     if (generate) {
       let params = [
         this.stringifyObject(this.expr),
