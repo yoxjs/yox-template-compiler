@@ -690,7 +690,7 @@ export function render(render, getter, setter, instance) {
     keypathStack = lastKeypathStack
   },
 
-  children,
+  values,
 
   elementStack = [ ],
   currentElement,
@@ -716,13 +716,6 @@ export function render(render, getter, setter, instance) {
       keypath,
       keypathStack,
     }
-  },
-
-  addChild = function (child) {
-    array.push(
-      currentElement.children || (currentElement.children = [ ]),
-      child
-    )
   },
 
   attrHandler = function (node) {
@@ -758,13 +751,49 @@ export function render(render, getter, setter, instance) {
     }
   },
 
+  childHandler = function (node) {
+    if (is.func(node)) {
+      node()
+    }
+    else if (currentElement.opened) {
+      let { lastChild, children } = currentElement
+      if (!children) {
+        children = currentElement.children = [ ]
+      }
+      if (snabbdom.isVnode(node)) {
+        if (node.component) {
+          node.parent = instance
+        }
+        array.push(children, node)
+        if (lastChild) {
+          currentElement.lastChild = env.NULL
+        }
+      }
+      else if (snabbdom.isTextVnode(lastChild)) {
+        lastChild.text += toString(node)
+      }
+      else {
+        array.push(
+          children,
+          currentElement.lastChild = snabbdom.createTextVnode(node)
+        )
+      }
+    }
+    else if (values) {
+      array.push(values, node)
+    }
+    else {
+      attrHandler(node)
+    }
+  },
+
   getValue = function (generate) {
-    children = [ ]
+    values = [ ]
     generate()
-    let value = children.length > 1
-      ? array.join(children, '')
-      : children[ 0 ]
-    children = env.NULL
+    let value = values.length > 1
+      ? array.join(values, '')
+      : values[ 0 ]
+    values = env.NULL
     return value
   },
 
@@ -772,39 +801,7 @@ export function render(render, getter, setter, instance) {
   x = function () {
     array.each(
       arguments,
-      function (item) {
-        if (item != env.NULL) {
-          if (is.func(item)) {
-            item()
-          }
-          else if (currentElement.opened) {
-            let { lastChild } = currentElement
-            if (snabbdom.isVnode(item)) {
-              if (item.component) {
-                item.parent = instance
-              }
-              addChild(item)
-              if (lastChild) {
-                currentElement.lastChild = env.NULL
-              }
-            }
-            else if (snabbdom.isTextVnode(lastChild)) {
-              lastChild.text += toString(item)
-            }
-            else {
-              addChild(
-                currentElement.lastChild = snabbdom.createTextVnode(item)
-              )
-            }
-          }
-          else if (children) {
-            array.push(children, item)
-          }
-          else {
-            attrHandler(item)
-          }
-        }
-      }
+      childHandler
     )
   },
 
@@ -812,11 +809,7 @@ export function render(render, getter, setter, instance) {
   y = function () {
     array.each(
       arguments,
-      function (item) {
-        if (item != env.NULL) {
-          attrHandler(item)
-        }
-      }
+      attrHandler
     )
   },
 
