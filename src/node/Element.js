@@ -48,18 +48,18 @@ export default class Element extends Node {
         params,
         arr
         ? me.stringifyFunction(arr)
-        : 0
+        : env.RAW_UNDEFINED
       )
     }
 
     // 反过来
     // 这样序列化能省更多字符
     if (key) {
-      addArray(key)
+      addArray(key.children, 'x')
     }
 
     if (ref || params[ env.RAW_LENGTH ]) {
-      addArray(ref)
+      addArray(ref && ref.children, 'x')
     }
 
     if (children[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {

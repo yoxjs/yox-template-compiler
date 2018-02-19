@@ -14,10 +14,10 @@ export default class Node {
   }
 
   stringify() {
-    return this.stringifyObject(this, 'x')
+    return this.stringifyObject(this)
   }
 
-  stringifyObject(obj, name) {
+  stringifyObject(obj) {
     if (obj) {
       let keys = object.keys(obj)
       if (keys[ env.RAW_LENGTH ]) {
@@ -29,15 +29,20 @@ export default class Node {
             if (value == env.NULL) {
               return
             }
-            if (value.stringify) {
-              value = value.stringify()
-            }
-            else if (is.string(value)) {
+            if (is.string(value)) {
               value = me.stringifyString(value)
             }
             else {
               if (is.array(value)) {
-                value = me.stringifyArray(value, name)
+                if (key === 'children') {
+                  value = me.stringifyArray(value, 'x')
+                  if (value) {
+                    value = me.stringifyFunction(value)
+                  }
+                }
+                else {
+                  value = me.stringifyArray(value)
+                }
               }
               else if (is.object(value)) {
                 value = me.stringifyObject(value)
@@ -76,7 +81,7 @@ export default class Node {
       )
       return name
         ? me.stringifyCall(name, result)
-        : `[${array.join(params, ',')}]`
+        : `[${array.join(result, ',')}]`
     }
   }
 

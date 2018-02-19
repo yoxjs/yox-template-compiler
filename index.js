@@ -690,6 +690,8 @@ export function render(render, getter, setter, instance) {
     keypathStack = lastKeypathStack
   },
 
+  children,
+
   elementStack = [ ],
   currentElement,
 
@@ -723,10 +725,47 @@ export function render(render, getter, setter, instance) {
     )
   },
 
+  attrHandler = function (node) {
+    if (is.func(node)) {
+      node()
+    }
+    else if (node.type === nodeType.ATTRIBUTE) {
+      let value
+      if (object.has(node, 'value')) {
+        value = node.value
+      }
+      else if (node.expr) {
+        value = getter(node.expr, keypathStack, node.binding)
+      }
+      else if (node.children) {
+        value = getValue(node.children)
+      }
+      else {
+        value = currentElement.component ? env.TRUE : node.name
+      }
+      addAttr(
+        node.name,
+        value,
+        node.binding
+      )
+    }
+    else {
+      addDirective(
+        node.name,
+        node.modifier,
+        node.value
+      ).expr = node.expr
+    }
+  },
+
   getValue = function (generate) {
-    currentElement.children = [ ]
+    children = [ ]
     generate()
-    return array.join(currentElement.children, '')
+    let value = children.length > 1
+      ? array.join(children, '')
+      : children[ 0 ]
+    children = env.NULL
+    return value
   },
 
   // 处理 children
@@ -758,8 +797,11 @@ export function render(render, getter, setter, instance) {
               )
             }
           }
+          else if (children) {
+            array.push(children, item)
+          }
           else {
-            addChild(item)
+            attrHandler(item)
           }
         }
       }
@@ -772,38 +814,7 @@ export function render(render, getter, setter, instance) {
       arguments,
       function (item) {
         if (item != env.NULL) {
-          // 进了结构体，比如 if / each
-          if (is.func(item)) {
-            currentElement.children = [ ]
-            item()
-          }
-          else if (item.type === nodeType.ATTRIBUTE) {
-            let value
-            if (object.has(item, 'value')) {
-              value = item.value
-            }
-            else if (item.expr) {
-              value = getter(item.expr, keypathStack, item.binding)
-            }
-            else if (item.children) {
-              value = getValue(item.children)
-            }
-            else {
-              value = currentElement.component ? env.TRUE : item.name
-            }
-            addAttr(
-              item.name,
-              value,
-              item.binding
-            )
-          }
-          else {
-            addDirective(
-              item.name,
-              item.modifier,
-              item.value
-            ).expr = item.expr
-          }
+          attrHandler(item)
         }
       }
     )
@@ -856,10 +867,6 @@ export function render(render, getter, setter, instance) {
 
     if (props) {
       props()
-    }
-
-    if (currentElement.children) {
-      currentElement.children = env.NULL
     }
 
     if (childs) {
