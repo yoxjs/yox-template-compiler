@@ -691,9 +691,21 @@ export function render(render, getter, setter, instance) {
   },
 
   values,
-
-  elementStack = [ ],
   currentElement,
+  elementStack = [ ],
+
+  pushElement = function (element) {
+    currentElement = element
+    array.push(
+      elementStack,
+      element
+    )
+  },
+
+  popElement = function (lastElement) {
+    currentElement = lastElement
+    array.pop(elementStack)
+  },
 
   addAttr = function (name, value, binding) {
     let attrs = currentElement.attrs || (currentElement.attrs = { })
@@ -839,12 +851,12 @@ export function render(render, getter, setter, instance) {
   // create
   c = function (component, tag, props, attrs, childs, ref, key) {
 
-    currentElement = {
+    let lastElement = currentElement
+
+    pushElement({
       component,
       opened: env.FALSE,
-    }
-
-    array.push(elementStack, currentElement)
+    })
 
     if (ref) {
       ref = getValue(ref)
@@ -878,8 +890,7 @@ export function render(render, getter, setter, instance) {
       instance
     )
 
-    array.pop(elementStack)
-    currentElement = array.last(elementStack)
+    popElement(lastElement)
 
     return result
   },
