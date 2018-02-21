@@ -18,7 +18,7 @@
     "yox-common": "^0.14.0",
     "yox-config": "0.0.2",
     "yox-expression-compiler": "^0.13.5",
-    "yox-snabbdom": "^0.14.6"
+    "yox-snabbdom": "^0.14.7"
   },
   "repository": {
     "type": "git",

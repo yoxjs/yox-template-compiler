@@ -26,7 +26,7 @@ export default class Element extends Node {
   stringify() {
 
     let me = this
-    let { name, divider, component, props, key, ref } = me
+    let { name, divider, component, props, slot, key, ref } = me
 
     let params = [ ], attrs = [ ], children = [ ]
 
@@ -54,12 +54,17 @@ export default class Element extends Node {
 
     // 反过来
     // 这样序列化能省更多字符
-    if (key) {
-      addArray(key.children, 'x')
+
+    if (slot) {
+      addArray(slot, 'x')
+    }
+
+    if (key || params[ env.RAW_LENGTH ]) {
+      addArray(key, 'x')
     }
 
     if (ref || params[ env.RAW_LENGTH ]) {
-      addArray(ref && ref.children, 'x')
+      addArray(ref, 'x')
     }
 
     if (children[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {

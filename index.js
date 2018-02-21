@@ -174,7 +174,7 @@ export function compile(content) {
             array.pop(children)
           }
           else if (singleChild.type === nodeType.EXPRESSION
-            && singleChild.expr.raw !== config.SPECIAL_CHILDREN
+            && !string.startsWith(singleChild.expr.raw, '$')
           ) {
             let props = [ ]
             if (singleChild.safe === env.FALSE) {
@@ -210,7 +210,10 @@ export function compile(content) {
         if (type === nodeType.ATTRIBUTE) {
           // <div key="xx">
           // <div ref="xx">
-          if (name === config.KEYWORD_UNIQUE || name === config.KEYWORD_REF) {
+          if (name === config.KEYWORD_UNIQUE
+            || name === config.KEYWORD_SLOT
+            || name === config.KEYWORD_REF
+          ) {
             // 把数据从属性中提出来，减少渲染时的遍历
             let element = array.last(htmlStack)
             array.remove(element.children, target)
@@ -691,6 +694,7 @@ export function render(render, getter, setter, instance) {
   },
 
   values,
+
   currentElement,
   elementStack = [ ],
 
@@ -705,6 +709,22 @@ export function render(render, getter, setter, instance) {
   popElement = function (lastElement) {
     currentElement = lastElement
     array.pop(elementStack)
+  },
+
+  currentComponent,
+  componentStack = [ ],
+
+  pushComponent = function (component) {
+    currentComponent = component
+    array.push(
+      componentStack,
+      component
+    )
+  },
+
+  popComponent = function (lastComponent) {
+    currentComponent = lastComponent
+    array.pop(componentStack)
   },
 
   addAttr = function (name, value, binding) {
@@ -727,6 +747,52 @@ export function render(render, getter, setter, instance) {
       value,
       keypath,
       keypathStack,
+    }
+  },
+
+  addChild = function (node) {
+
+    let { lastChild, children } = currentElement
+    if (!children) {
+      children = currentElement.children = [ ]
+    }
+
+    if (snabbdom.isVnode(node)) {
+      if (node.component) {
+        node.parent = instance
+      }
+      array.push(children, node)
+      if (lastChild) {
+        currentElement.lastChild = env.NULL
+      }
+    }
+    else if (snabbdom.isTextVnode(lastChild)) {
+      lastChild.text += toString(node)
+    }
+    else {
+      array.push(
+        children,
+        currentElement.lastChild = snabbdom.createTextVnode(node)
+      )
+    }
+
+  },
+
+  addSlot = function (name, slot) {
+    let slots = currentComponent.slots || (currentComponent.slots = { })
+    if (slots[ name ]) {
+      if (is.array(slots[ name ])) {
+        array.push(
+          slots[ name ],
+          slot
+        )
+      }
+      else {
+        slots[ name ] = [ slots[ name ], slot ]
+      }
+    }
+    else {
+      slots[ name ] = slot
     }
   },
 
@@ -767,32 +833,21 @@ export function render(render, getter, setter, instance) {
     if (is.func(node)) {
       node()
     }
-    else if (currentElement.opened) {
-      let { lastChild, children } = currentElement
-      if (!children) {
-        children = currentElement.children = [ ]
-      }
-      if (snabbdom.isVnode(node)) {
-        if (node.component) {
-          node.parent = instance
-        }
-        array.push(children, node)
-        if (lastChild) {
-          currentElement.lastChild = env.NULL
-        }
-      }
-      else if (snabbdom.isTextVnode(lastChild)) {
-        lastChild.text += toString(node)
-      }
-      else {
-        array.push(
-          children,
-          currentElement.lastChild = snabbdom.createTextVnode(node)
+    else if (values) {
+      values[ values[ env.RAW_LENGTH ] ] = node
+    }
+    else if (currentElement.opened === env.TRUE) {
+
+      if (is.array(node)) {
+        array.each(
+          node,
+          addChild
         )
       }
-    }
-    else if (values) {
-      array.push(values, node)
+      else {
+        addChild(node)
+      }
+
     }
     else {
       attrHandler(node)
@@ -802,7 +857,7 @@ export function render(render, getter, setter, instance) {
   getValue = function (generate) {
     values = [ ]
     generate()
-    let value = values.length > 1
+    let value = values[ env.RAW_LENGTH ] > 1
       ? array.join(values, '')
       : values[ 0 ]
     values = env.NULL
@@ -849,21 +904,26 @@ export function render(render, getter, setter, instance) {
   },
 
   // create
-  c = function (component, tag, props, attrs, childs, ref, key) {
+  c = function (component, tag, props, attrs, childs, ref, key, slot) {
 
-    let lastElement = currentElement
+    let lastElement = currentElement, lastComponent = currentComponent
 
-    pushElement({
+    let element = {
       component,
-      opened: env.FALSE,
-    })
+    }
 
-    if (ref) {
-      ref = getValue(ref)
+    pushElement(element)
+
+    if (component) {
+      pushComponent(element)
     }
 
     if (key) {
-      ref = getValue(key)
+      key = getValue(key)
+    }
+
+    if (ref) {
+      ref = getValue(ref)
     }
 
     if (attrs) {
@@ -874,9 +934,18 @@ export function render(render, getter, setter, instance) {
       props()
     }
 
+    let children
     if (childs) {
       currentElement.opened = env.TRUE
       childs()
+      children = currentElement.children
+      if (component && children) {
+        addSlot(
+          config.SPECIAL_CHILDREN,
+          children
+        )
+        children = env.UNDEFINED
+      }
     }
 
     let result = snabbdom[ component ? 'createComponentVnode' : 'createElementVnode' ](
@@ -884,7 +953,8 @@ export function render(render, getter, setter, instance) {
       currentElement.attrs,
       currentElement.props,
       currentElement.directives,
-      currentElement.children,
+      children,
+      currentElement.slots,
       ref,
       key,
       instance
@@ -892,7 +962,20 @@ export function render(render, getter, setter, instance) {
 
     popElement(lastElement)
 
+    if (component) {
+      popComponent(lastComponent)
+    }
+
+    if (slot && lastComponent) {
+      addSlot(
+        '$' + getValue(slot),
+        result
+      )
+      return
+    }
+
     return result
+
   },
   // comment
   m = snabbdom.createCommentVnode,
