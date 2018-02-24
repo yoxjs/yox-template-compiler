@@ -773,60 +773,64 @@ export function render(render, getter, setter, instance) {
   },
 
   attrHandler = function (node) {
-    if (is.func(node)) {
-      node()
-    }
-    else if (node.type === nodeType.ATTRIBUTE) {
-      let value
-      if (object.has(node, 'value')) {
-        value = node.value
+    if (isDef(node)) {
+      if (is.func(node)) {
+        node()
       }
-      else if (node.expr) {
-        value = o(node.expr, node.binding)
-      }
-      else if (node.children) {
-        value = getValue(node.children)
+      else if (node.type === nodeType.ATTRIBUTE) {
+        let value
+        if (object.has(node, 'value')) {
+          value = node.value
+        }
+        else if (node.expr) {
+          value = o(node.expr, node.binding)
+        }
+        else if (node.children) {
+          value = getValue(node.children)
+        }
+        else {
+          value = currentElement.component ? env.TRUE : node.name
+        }
+        addAttr(
+          node.name,
+          value,
+          node.binding
+        )
       }
       else {
-        value = currentElement.component ? env.TRUE : node.name
+        addDirective(
+          node.name,
+          node.modifier,
+          node.value
+        ).expr = node.expr
       }
-      addAttr(
-        node.name,
-        value,
-        node.binding
-      )
-    }
-    else {
-      addDirective(
-        node.name,
-        node.modifier,
-        node.value
-      ).expr = node.expr
     }
   },
 
   childHandler = function (node) {
-    if (is.func(node)) {
-      node()
-    }
-    else if (values) {
-      values[ values[ env.RAW_LENGTH ] ] = node
-    }
-    else if (currentElement.opened === env.TRUE) {
+    if (isDef(node)) {
+      if (is.func(node)) {
+        node()
+      }
+      else if (values) {
+        values[ values[ env.RAW_LENGTH ] ] = node
+      }
+      else if (currentElement.opened === env.TRUE) {
 
-      if (is.array(node)) {
-        array.each(
-          node,
-          addChild
-        )
+        if (is.array(node)) {
+          array.each(
+            node,
+            addChild
+          )
+        }
+        else {
+          addChild(node)
+        }
+
       }
       else {
-        addChild(node)
+        attrHandler(node)
       }
-
-    }
-    else {
-      attrHandler(node)
     }
   },
 
@@ -1027,7 +1031,7 @@ export function render(render, getter, setter, instance) {
   },
   // spread
   s = function (value, staticKeypath) {
-    if (is.object(value)) {
+    if (is.object(value) && currentElement.opened !== env.TRUE) {
       object.each(
         value,
         function (value, key) {
