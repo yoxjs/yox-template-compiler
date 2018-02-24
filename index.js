@@ -161,8 +161,13 @@ export function compile(content) {
 
       if (type === nodeType.ELEMENT) {
         // 优化只有一个子节点的情况
-        if (!component && children[ env.RAW_LENGTH ] - divider === 1) {
+        if (!component
+          && tag !== 'template'
+          && children[ env.RAW_LENGTH ] - divider === 1
+        ) {
+
           let singleChild = array.last(children)
+
           // 子节点是纯文本
           if (singleChild.type === nodeType.TEXT) {
             target.props = [
@@ -212,7 +217,7 @@ export function compile(content) {
           let element = array.last(htmlStack)
           if (name === 'key'
             || name === 'ref'
-            || name === 'slot'
+            || (element.tag === 'template' && name === 'slot')
             || (element.tag === 'slot' && name === 'name')
           ) {
             // 把数据从属性中提出来，减少渲染时的遍历
@@ -968,7 +973,7 @@ export function render(render, getter, setter, instance) {
     if (slot && lastComponent) {
       addSlot(
         slotPrefix + getValue(slot),
-        result
+        children
       )
       return
     }
