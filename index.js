@@ -980,24 +980,10 @@ export function render(render, getter, setter, instance) {
     let value = o(expr), each
 
     if (is.array(value)) {
-      if (value[ env.RAW_LENGTH ]) {
-        each = function (callback) {
-          array.each(
-            value,
-            function (_, i) {
-              callback(i)
-            }
-          )
-        }
-      }
+      each = array.each
     }
     else if (is.object(value)) {
-      let keys = object.keys(value)
-      if (keys[ env.RAW_LENGTH ]) {
-        each = function (callback) {
-          array.each(keys, callback)
-        }
-      }
+      each = object.each
     }
 
     if (each) {
@@ -1009,13 +995,14 @@ export function render(render, getter, setter, instance) {
       }
 
       each(
-        function (key) {
+        value,
+        function (item, key) {
 
           let lastKeypath = keypath, lastKeypathStack = keypathStack
 
           pushKeypath(key)
 
-          setter(keypath, env.RAW_THIS, value[ key ])
+          setter(keypath, env.RAW_THIS, item)
 
           if (index) {
             setter(keypath, index, key)
