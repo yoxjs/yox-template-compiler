@@ -10,14 +10,14 @@ import * as nodeType from '../nodeType'
 /**
  * 元素节点
  *
- * @param {string} name
+ * @param {string} tag
  * @param {?boolean} component 是否是组件
  */
 export default class Element extends Node {
 
-  constructor(name, component) {
+  constructor(tag, component) {
     super(nodeType.ELEMENT)
-    this.name = name
+    this.tag = tag
     if (component) {
       this.component = component
     }
@@ -26,7 +26,7 @@ export default class Element extends Node {
   stringify() {
 
     let me = this
-    let { name, divider, component, props, slot, key, ref } = me
+    let { tag, divider, component, props, slot, name, key, ref } = me
 
     let params = [ ], attrs = [ ], children = [ ]
 
@@ -55,7 +55,11 @@ export default class Element extends Node {
     // 反过来
     // 这样序列化能省更多字符
 
-    if (slot) {
+    if (name) {
+      addArray(name, 'x')
+    }
+
+    if (slot || params[ env.RAW_LENGTH ]) {
       addArray(slot, 'x')
     }
 
@@ -79,7 +83,7 @@ export default class Element extends Node {
       addArray(props, 'z')
     }
 
-    array.unshift(params, me.stringifyString(name))
+    array.unshift(params, me.stringifyString(tag))
     array.unshift(params, component ? 1 : 0)
 
     return this.stringifyCall('c', params)

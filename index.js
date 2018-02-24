@@ -103,12 +103,12 @@ export function compile(content) {
     let lastNode = array.last(nodeStack)
     if (lastNode
       && lastNode.type === nodeType.ELEMENT
-      && lastNode.name !== popingTagName
-      && array.has(selfClosingTagNames, lastNode.name)
+      && lastNode.tag !== popingTagName
+      && array.has(selfClosingTagNames, lastNode.tag)
     ) {
       popStack(
         nodeType.ELEMENT,
-        lastNode.name
+        lastNode.tag
       )
     }
   }
@@ -139,9 +139,9 @@ export function compile(content) {
 
     if (target) {
 
-      let { name, divider, children, component } = target
-      if (type === nodeType.ELEMENT && expectedTagName && name !== expectedTagName) {
-        throwError(`end tag expected </${name}> to be </${expectedTagName}>.`)
+      let { tag, name, divider, children, component } = target
+      if (type === nodeType.ELEMENT && expectedTagName && tag !== expectedTagName) {
+        throwError(`end tag expected </${tag}> to be </${expectedTagName}>.`)
       }
 
       // ==========================================
@@ -173,9 +173,7 @@ export function compile(content) {
             ]
             array.pop(children)
           }
-          else if (singleChild.type === nodeType.EXPRESSION
-            && !string.startsWith(singleChild.expr.raw, '$')
-          ) {
+          else if (singleChild.type === nodeType.EXPRESSION) {
             let props = [ ]
             if (singleChild.safe === env.FALSE) {
               array.push(
@@ -210,12 +208,14 @@ export function compile(content) {
         if (type === nodeType.ATTRIBUTE) {
           // <div key="xx">
           // <div ref="xx">
-          if (name === config.KEYWORD_UNIQUE
-            || name === config.KEYWORD_SLOT
-            || name === config.KEYWORD_REF
+          // <slot name="xx">
+          let element = array.last(htmlStack)
+          if (name === 'key'
+            || name === 'ref'
+            || name === 'slot'
+            || (element.tag === 'slot' && name === 'name')
           ) {
             // 把数据从属性中提出来，减少渲染时的遍历
-            let element = array.last(htmlStack)
             array.remove(element.children, target)
             if (!element.children[ env.RAW_LENGTH ]) {
               delete element.children
@@ -675,7 +675,7 @@ export function render(render, getter, setter, instance) {
    *
    */
 
-  let keypath = char.CHAR_BLANK, keypaths = [ ], keypathStack = [ keypath ],
+  let keypath = char.CHAR_BLANK, keypaths = [ ], keypathStack = [ keypath ], rootStack = [ keypath ],
 
   pushKeypath = function (newKeypath) {
     array.push(keypaths, newKeypath)
@@ -698,34 +698,8 @@ export function render(render, getter, setter, instance) {
   currentElement,
   elementStack = [ ],
 
-  pushElement = function (element) {
-    currentElement = element
-    array.push(
-      elementStack,
-      element
-    )
-  },
-
-  popElement = function (lastElement) {
-    currentElement = lastElement
-    array.pop(elementStack)
-  },
-
   currentComponent,
   componentStack = [ ],
-
-  pushComponent = function (component) {
-    currentComponent = component
-    array.push(
-      componentStack,
-      component
-    )
-  },
-
-  popComponent = function (lastComponent) {
-    currentComponent = lastComponent
-    array.pop(componentStack)
-  },
 
   addAttr = function (name, value, binding) {
     let attrs = currentElement.attrs || (currentElement.attrs = { })
@@ -778,6 +752,8 @@ export function render(render, getter, setter, instance) {
 
   },
 
+  slotPrefix = '$slot_',
+
   addSlot = function (name, slot) {
     let slots = currentComponent.slots || (currentComponent.slots = { })
     if (slots[ name ]) {
@@ -806,7 +782,7 @@ export function render(render, getter, setter, instance) {
         value = node.value
       }
       else if (node.expr) {
-        value = getter(node.expr, keypathStack, node.binding)
+        value = o(node.expr, node.binding)
       }
       else if (node.children) {
         value = getValue(node.children)
@@ -888,7 +864,7 @@ export function render(render, getter, setter, instance) {
         let { name, value } = item
         if (is.object(value)) {
           let { staticKeypath } = value
-          value = getter(value, keypathStack, staticKeypath)
+          value = o(value, staticKeypath)
           if (staticKeypath) {
             addDirective(
               config.DIRECTIVE_BINDING,
@@ -904,18 +880,35 @@ export function render(render, getter, setter, instance) {
   },
 
   // create
-  c = function (component, tag, props, attrs, childs, ref, key, slot) {
+  c = function (component, tag, props, attrs, childs, ref, key, slot, name) {
+
+    if (tag === 'slot') {
+      if (name) {
+        name = getValue(name)
+        if (name) {
+          return getter(slotPrefix + name, rootStack)
+        }
+      }
+      return
+    }
 
     let lastElement = currentElement, lastComponent = currentComponent
 
-    let element = {
+    currentElement = {
       component,
     }
 
-    pushElement(element)
+    array.push(
+      elementStack,
+      currentElement
+    )
 
     if (component) {
-      pushComponent(element)
+      currentComponent = currentElement
+      array.push(
+        componentStack,
+        currentElement
+      )
     }
 
     if (key) {
@@ -941,7 +934,7 @@ export function render(render, getter, setter, instance) {
       children = currentElement.children
       if (component && children) {
         addSlot(
-          config.SPECIAL_CHILDREN,
+          slotPrefix + 'children',
           children
         )
         children = env.UNDEFINED
@@ -960,15 +953,17 @@ export function render(render, getter, setter, instance) {
       instance
     )
 
-    popElement(lastElement)
+    currentElement = lastElement
+    array.pop(elementStack)
 
     if (component) {
-      popComponent(lastComponent)
+      currentComponent = lastComponent
+      array.pop(componentStack)
     }
 
     if (slot && lastComponent) {
       addSlot(
-        '$' + getValue(slot),
+        slotPrefix + getValue(slot),
         result
       )
       return
@@ -982,7 +977,7 @@ export function render(render, getter, setter, instance) {
   // each
   e = function (expr, generate, index) {
 
-    let value = getter(expr, keypathStack), each
+    let value = o(expr), each
 
     if (is.array(value)) {
       if (value[ env.RAW_LENGTH ]) {
@@ -1040,8 +1035,8 @@ export function render(render, getter, setter, instance) {
     }
   },
   // output（e 被 each 占了..)
-  o = function (expr) {
-    return getter(expr, keypathStack)
+  o = function (expr, binding) {
+    return getter(expr.staticKeypath || expr, keypathStack, binding)
   },
   // spread
   s = function (value, staticKeypath) {
