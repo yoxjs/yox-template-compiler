@@ -657,6 +657,9 @@ export function convert(ast) {
   )
 }
 
+
+const SLOT_PREFIX = '$slot_'
+
 /**
  * 渲染抽象语法树
  *
@@ -719,7 +722,7 @@ export function render(render, getter, setter, instance) {
   currentComponent,
   componentStack = [ ],
 
-  pushElement = function (component) {
+  pushComponent = function (component) {
     currentComponent = component
     array.push(
       componentStack,
@@ -782,8 +785,6 @@ export function render(render, getter, setter, instance) {
     }
 
   },
-
-  slotPrefix = '$slot_',
 
   addSlot = function (name, slot) {
     let slots = currentComponent.slots || (currentComponent.slots = { })
@@ -928,7 +929,7 @@ export function render(render, getter, setter, instance) {
       childs()
 
       addSlot(
-        slotPrefix + name,
+        SLOT_PREFIX + name,
         currentElement.children
       )
 
@@ -941,7 +942,7 @@ export function render(render, getter, setter, instance) {
   b = function (name) {
     name = getValue(name)
     if (name) {
-      return getter(slotPrefix + name, rootStack)
+      return getter(SLOT_PREFIX + name, rootStack)
     }
   },
 
@@ -981,7 +982,7 @@ export function render(render, getter, setter, instance) {
       children = currentElement.children
       if (component && children) {
         addSlot(
-          slotPrefix + 'children',
+          SLOT_PREFIX + 'children',
           children
         )
         children = env.UNDEFINED
