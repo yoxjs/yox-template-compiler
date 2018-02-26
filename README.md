@@ -22,7 +22,7 @@ Maybe it is useful during the build phase
 JSON.stringify(
   ast.map(
     function (item) {
-      return `function(c,e,i,m,o,p,s,x,y,z){return ${item.stringify()}}`
+      return `function(a,b,c,e,i,m,o,p,s,x,y,z){return ${item.stringify()}}`
     }
   )
 )

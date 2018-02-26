@@ -652,7 +652,7 @@ export function compile(content) {
 export function convert(ast) {
   return ast.map(
     function (item) {
-      return new Function('c', 'e', 'i', 'm', 'o', 'p', 's', 'x', 'y', 'z', `return ${item.stringify()}`)
+      return new Function('a', 'b', 'c', 'e', 'i', 'm', 'o', 'p', 's', 'x', 'y', 'z', `return ${item.stringify()}`)
     }
   )
 }
@@ -703,8 +703,34 @@ export function render(render, getter, setter, instance) {
   currentElement,
   elementStack = [ ],
 
+  pushElement = function (element) {
+    currentElement = element
+    array.push(
+      elementStack,
+      element
+    )
+  },
+
+  popElement = function (lastElement) {
+    currentElement = lastElement
+    array.pop(elementStack)
+  },
+
   currentComponent,
   componentStack = [ ],
+
+  pushElement = function (component) {
+    currentComponent = component
+    array.push(
+      componentStack,
+      component
+    )
+  },
+
+  popComponent = function (lastComponent) {
+    currentComponent = lastComponent
+    array.pop(componentStack)
+  },
 
   addAttr = function (name, value, binding) {
     let attrs = currentElement.attrs || (currentElement.attrs = { })
@@ -888,36 +914,48 @@ export function render(render, getter, setter, instance) {
     )
   },
 
-  // create
-  c = function (component, tag, props, attrs, childs, ref, key, slot, name) {
+  // template
+  a = function (name, childs) {
 
-    if (tag === 'slot') {
-      if (name) {
-        name = getValue(name)
-        if (name) {
-          return getter(slotPrefix + name, rootStack)
-        }
-      }
-      return
+    if (currentComponent && (name = getValue(name))) {
+
+      let lastElement = currentElement
+
+      pushElement({
+        opened: env.TRUE,
+      })
+
+      childs()
+
+      addSlot(
+        slotPrefix + name,
+        currentElement.children
+      )
+
+      popElement(lastElement)
+
     }
+
+  },
+  // slot
+  b = function (name) {
+    name = getValue(name)
+    if (name) {
+      return getter(slotPrefix + name, rootStack)
+    }
+  },
+
+  // create
+  c = function (component, tag, props, attrs, childs, ref, key) {
 
     let lastElement = currentElement, lastComponent = currentComponent
 
-    currentElement = {
+    pushElement({
       component,
-    }
-
-    array.push(
-      elementStack,
-      currentElement
-    )
+    })
 
     if (component) {
-      currentComponent = currentElement
-      array.push(
-        componentStack,
-        currentElement
-      )
+      pushComponent(currentElement)
     }
 
     if (key) {
@@ -962,20 +1000,10 @@ export function render(render, getter, setter, instance) {
       instance
     )
 
-    currentElement = lastElement
-    array.pop(elementStack)
+    popElement(lastElement)
 
     if (component) {
-      currentComponent = lastComponent
-      array.pop(componentStack)
-    }
-
-    if (slot && lastComponent) {
-      addSlot(
-        slotPrefix + getValue(slot),
-        children
-      )
-      return
+      popComponent(lastComponent)
     }
 
     return result
@@ -1071,7 +1099,7 @@ export function render(render, getter, setter, instance) {
     logger.fatal(`"${name}" partial is not found.`)
   },
   executeRender = function (render) {
-    return render(c, e, i, m, o, p, s, x, y, z)
+    return render(a, b, c, e, i, m, o, p, s, x, y, z)
   }
 
   return executeRender(render)
