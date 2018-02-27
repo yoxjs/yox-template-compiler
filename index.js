@@ -982,7 +982,7 @@ export function render(render, getter, setter, instance) {
       children = currentElement.children
       if (component) {
         addSlot(
-          slotPrefix + 'children',
+          SLOT_PREFIX + 'children',
           children || [ ]
         )
         if (children) {
