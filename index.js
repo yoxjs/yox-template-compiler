@@ -980,12 +980,14 @@ export function render(render, getter, setter, instance) {
       currentElement.opened = env.TRUE
       childs()
       children = currentElement.children
-      if (component && children) {
+      if (component) {
         addSlot(
-          SLOT_PREFIX + 'children',
-          children
+          slotPrefix + 'children',
+          children || [ ]
         )
-        children = env.UNDEFINED
+        if (children) {
+          children = env.UNDEFINED
+        }
       }
     }
 
