@@ -486,7 +486,8 @@ export function compile(content) {
   const delimiterParsers = [
     function (source, all) {
       if (string.startsWith(source, config.SYNTAX_EACH)) {
-        let terms = string.split(slicePrefix(source, config.SYNTAX_EACH), char.CHAR_COLON)
+        source = slicePrefix(source, config.SYNTAX_EACH)
+        let terms = source.replace(/\s+/g, char.CHAR_BLANK).split(char.CHAR_COLON)
         if (terms[ 0 ]) {
           return new Each(
             expressionCompiler.compile(string.trim(terms[ 0 ])),
@@ -687,7 +688,7 @@ export function render(render, getter, setter, instance) {
 
   pushKeypath = function (newKeypath) {
     array.push(keypaths, newKeypath)
-    newKeypath = keypathUtil.stringify(keypaths)
+    newKeypath = array.join(keypaths, env.KEYPATH_SEPARATOR) 
     if (newKeypath !== keypath) {
       keypath = newKeypath
       keypathStack = object.copy(keypathStack)
