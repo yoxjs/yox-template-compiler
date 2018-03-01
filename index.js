@@ -688,7 +688,7 @@ export function render(render, getter, setter, instance) {
 
   pushKeypath = function (newKeypath) {
     array.push(keypaths, newKeypath)
-    newKeypath = array.join(keypaths, env.KEYPATH_SEPARATOR) 
+    newKeypath = array.join(keypaths, env.KEYPATH_SEPARATOR)
     if (newKeypath !== keypath) {
       keypath = newKeypath
       keypathStack = object.copy(keypathStack)
@@ -801,6 +801,9 @@ export function render(render, getter, setter, instance) {
       }
     }
     else {
+      if (is.array(slot) && slot.length === 1) {
+        slot = slot[ 0 ]
+      }
       slots[ name ] = slot
     }
   },
