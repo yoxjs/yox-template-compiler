@@ -790,20 +790,12 @@ export function render(render, getter, setter, instance) {
   addSlot = function (name, slot) {
     let slots = currentComponent.slots || (currentComponent.slots = { })
     if (slots[ name ]) {
-      if (is.array(slots[ name ])) {
-        array.push(
-          slots[ name ],
-          slot
-        )
-      }
-      else {
-        slots[ name ] = [ slots[ name ], slot ]
-      }
+      array.push(
+        slots[ name ],
+        slot
+      )
     }
     else {
-      if (is.array(slot) && slot.length === 1) {
-        slot = slot[ 0 ]
-      }
       slots[ name ] = slot
     }
   },
@@ -946,7 +938,10 @@ export function render(render, getter, setter, instance) {
   b = function (name) {
     name = getValue(name)
     if (name) {
-      return getter(SLOT_PREFIX + name, rootStack)
+      let result = getter(SLOT_PREFIX + name, rootStack)
+      return is.array(result) && result.length === 1
+        ? result[ 0 ]
+        : result
     }
   },
 
