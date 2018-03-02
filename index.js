@@ -684,7 +684,7 @@ export function render(render, getter, setter, instance) {
    *
    */
 
-  let keypath = char.CHAR_BLANK, keypaths = [ ], keypathStack = [ keypath ], rootStack = [ keypath ],
+  let keypath = char.CHAR_BLANK, keypaths = [ ], keypathStack = [ keypath ],
 
   pushKeypath = function (newKeypath) {
     array.push(keypaths, newKeypath)
@@ -938,7 +938,7 @@ export function render(render, getter, setter, instance) {
   b = function (name) {
     name = getValue(name)
     if (name) {
-      let result = getter(SLOT_PREFIX + name, rootStack)
+      let result = getter(SLOT_PREFIX + name)
       return is.array(result) && result.length === 1
         ? result[ 0 ]
         : result
@@ -1062,7 +1062,7 @@ export function render(render, getter, setter, instance) {
   },
   // output（e 被 each 占了..)
   o = function (expr, binding) {
-    return getter(expr.staticKeypath || expr, keypathStack, binding)
+    return getter(expr, keypathStack, binding)
   },
   // spread
   s = function (value, staticKeypath) {
