@@ -18,10 +18,7 @@ export default class Spread extends Node {
     let { expr } = this
     return this.stringifyCall(
       's',
-      [
-        this.stringifyExpression(expr),
-        expr.staticKeypath && this.stringifyString(expr.staticKeypath)
-      ]
+      this.stringifyObject(expr)
     )
   }
 

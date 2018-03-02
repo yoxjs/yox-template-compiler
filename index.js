@@ -257,9 +257,6 @@ export function compile(content) {
             let { expr } = singleChild
             target.expr = expr
             delete target.children
-            if (is.string(expr.staticKeypath)) {
-              target.binding = expr.staticKeypath
-            }
           }
         }
       }
@@ -736,16 +733,9 @@ export function render(render, getter, setter, instance) {
     array.pop(componentStack)
   },
 
-  addAttr = function (name, value, binding) {
+  addAttr = function (name, value) {
     let attrs = currentElement.attrs || (currentElement.attrs = { })
     attrs[ name ] = value
-    if (binding) {
-      addDirective(
-        config.DIRECTIVE_BINDING,
-        name,
-        binding
-      )
-    }
   },
 
   addDirective = function (name, modifier, value) {
@@ -811,7 +801,15 @@ export function render(render, getter, setter, instance) {
           value = node.value
         }
         else if (node.expr) {
-          value = o(node.expr, node.binding)
+          let { expr } = node
+          value = o(expr, expr.staticKeypath)
+          if (expr.staticKeypath) {
+            addDirective(
+              config.DIRECTIVE_BINDING,
+              name,
+              expr.actualKeypath
+            )
+          }
         }
         else if (node.children) {
           value = getValue(node.children)
@@ -819,18 +817,21 @@ export function render(render, getter, setter, instance) {
         else {
           value = currentElement.component ? env.TRUE : node.name
         }
-        addAttr(
-          node.name,
-          value,
-          node.binding
-        )
+        addAttr(node.name, value)
       }
       else {
+        let { expr } = node
+        if (expr) {
+          // 求值会给 expr 加上 actualKeypath
+          o(expr)
+        }
         addDirective(
           node.name,
           node.modifier,
-          node.value
-        ).expr = node.expr
+          node.name === config.DIRECTIVE_MODEL
+          ? expr.actualKeypath
+          : node.value
+        ).expr = expr
       }
     }
   },
@@ -895,13 +896,13 @@ export function render(render, getter, setter, instance) {
       function (item) {
         let { name, value } = item
         if (is.object(value)) {
-          let { staticKeypath } = value
-          value = o(value, staticKeypath)
-          if (staticKeypath) {
+          let expr = value
+          value = o(expr, expr.staticKeypath)
+          if (expr.staticKeypath) {
             addDirective(
               config.DIRECTIVE_BINDING,
               name,
-              staticKeypath
+              expr.actualKeypath
             ).prop = env.TRUE
           }
         }
@@ -1065,16 +1066,27 @@ export function render(render, getter, setter, instance) {
     return getter(expr, keypathStack, binding)
   },
   // spread
-  s = function (value, staticKeypath) {
-    if (is.object(value) && currentElement.opened !== env.TRUE) {
+  s = function (expr) {
+    let { staticKeypath } = expr, value
+    // 只能作用于 attribute 层级
+    if (currentElement.opened !== env.TRUE
+      && (value = o(expr, staticKeypath))
+      && is.object(value)
+    ) {
+      let { actualKeypath } = expr
       object.each(
         value,
         function (value, key) {
-          addAttr(
-            key,
-            value,
-            staticKeypath && keypathUtil.join(staticKeypath, key)
-          )
+          addAttr(key, value)
+          if (isDef(staticKeypath)) {
+            addDirective(
+              config.DIRECTIVE_BINDING,
+              key,
+              actualKeypath
+              ? actualKeypath + env.KEYPATH_SEPARATOR + key
+              : key
+            )
+          }
         }
       )
     }
