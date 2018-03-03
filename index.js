@@ -795,43 +795,45 @@ export function render(render, getter, setter, instance) {
       if (is.func(node)) {
         node()
       }
-      else if (node.type === nodeType.ATTRIBUTE) {
-        let value
-        if (object.has(node, 'value')) {
-          value = node.value
-        }
-        else if (node.expr) {
-          let { expr } = node
-          value = o(expr, expr.staticKeypath)
-          if (expr.staticKeypath) {
-            addDirective(
-              config.DIRECTIVE_BINDING,
-              name,
-              expr.actualKeypath
-            )
+      else {
+        let { name, expr } = node
+        if (node.type === nodeType.ATTRIBUTE) {
+          let value
+          if (object.has(node, 'value')) {
+            value = node.value
           }
-        }
-        else if (node.children) {
-          value = getValue(node.children)
+          else if (expr) {
+            value = o(expr, expr.staticKeypath)
+            if (expr.staticKeypath) {
+              addDirective(
+                config.DIRECTIVE_BINDING,
+                name,
+                expr.actualKeypath
+              )
+            }
+          }
+          else if (node.children) {
+            value = getValue(node.children)
+          }
+          else {
+            value = currentElement.component ? env.TRUE : name
+          }
+          addAttr(name, value)
         }
         else {
-          value = currentElement.component ? env.TRUE : node.name
+
+          if (expr) {
+            // 求值会给 expr 加上 actualKeypath
+            o(expr)
+          }
+          addDirective(
+            name,
+            node.modifier,
+            name === config.DIRECTIVE_MODEL
+            ? expr.actualKeypath
+            : node.value
+          ).expr = expr
         }
-        addAttr(node.name, value)
-      }
-      else {
-        let { expr } = node
-        if (expr) {
-          // 求值会给 expr 加上 actualKeypath
-          o(expr)
-        }
-        addDirective(
-          node.name,
-          node.modifier,
-          node.name === config.DIRECTIVE_MODEL
-          ? expr.actualKeypath
-          : node.value
-        ).expr = expr
       }
     }
   },
