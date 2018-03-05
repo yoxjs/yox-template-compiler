@@ -821,16 +821,11 @@ export function render(render, getter, setter, instance) {
           addAttr(name, value)
         }
         else {
-
-          if (expr) {
-            // 求值会给 expr 加上 actualKeypath
-            o(expr)
-          }
           addDirective(
             name,
             node.modifier,
             name === config.DIRECTIVE_MODEL
-            ? expr.actualKeypath
+            ? (o(expr), expr.actualKeypath)
             : node.value
           ).expr = expr
         }
