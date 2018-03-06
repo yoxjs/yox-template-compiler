@@ -172,7 +172,7 @@ export function compile(content) {
           if (singleChild.type === nodeType.TEXT) {
             target.props = [
               {
-                name: 'textContent',
+                name: 'innerText',
                 value: singleChild.text,
               }
             ]
@@ -193,7 +193,7 @@ export function compile(content) {
               array.push(
                 props,
                 {
-                  name: 'textContent',
+                  name: 'innerText',
                   value: singleChild.expr,
                 }
               )
