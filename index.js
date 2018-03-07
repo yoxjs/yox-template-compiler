@@ -911,17 +911,17 @@ export function render(render, getter, setter, instance) {
 
     if (currentComponent && (name = getValue(name))) {
 
-      let lastElement = currentElement
+      let lastElement = currentElement, children = [ ]
 
       pushElement({
-        opened: env.TRUE,
+        children,
       })
 
       childs()
 
       addSlot(
         SLOT_PREFIX + name,
-        currentElement.children
+        children
       )
 
       popElement(lastElement)
