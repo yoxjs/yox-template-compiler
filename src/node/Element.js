@@ -75,16 +75,16 @@ export default class Element extends Node {
         addArray(ref)
       }
 
-      if (children[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {
-        addArray(children)
+      if (props && props[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {
+        addArray(props, 'z')
       }
 
       if (attrs[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {
         addArray(attrs, 'y')
       }
 
-      if (props && props[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {
-        addArray(props, 'z')
+      if (children[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {
+        addArray(children)
       }
 
       array.unshift(params, me.stringifyString(tag))

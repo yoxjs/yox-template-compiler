@@ -37,7 +37,7 @@ const openingTagPattern = /<(\/)?([a-z][-a-z0-9]*)/i
 const closingTagPattern = /^\s*(\/)?>/
 const attributePattern = /^\s*([-:\w]+)(?:=(['"]))?/
 const componentNamePattern = /[-A-Z]/
-const selfClosingTagNames = [ 'area', 'base', 'embed', 'track', 'source', 'param', 'input', 'col', 'img', 'br', 'hr' ]
+const selfClosingTagNames = [ 'area', 'base', 'embed', 'track', 'source', 'param', 'input', 'slot', 'col', 'img', 'br', 'hr' ]
 
 // 缓存编译结果
 let compileCache = { }
@@ -752,9 +752,6 @@ export function render(render, getter, setter, instance) {
   addChild = function (node) {
 
     let { lastChild, children } = currentElement
-    if (!children) {
-      children = currentElement.children = [ ]
-    }
 
     if (snabbdom.isVnode(node)) {
       if (node.component) {
@@ -841,7 +838,7 @@ export function render(render, getter, setter, instance) {
       else if (values) {
         values[ values[ env.RAW_LENGTH ] ] = node
       }
-      else if (currentElement.opened === env.TRUE) {
+      else if (currentElement.children) {
 
         if (is.array(node)) {
           array.each(
@@ -944,7 +941,7 @@ export function render(render, getter, setter, instance) {
   },
 
   // create
-  c = function (component, tag, props, attrs, childs, ref, key) {
+  c = function (component, tag, childs, attrs, props, ref, key) {
 
     let lastElement = currentElement, lastComponent = currentComponent
 
@@ -974,17 +971,14 @@ export function render(render, getter, setter, instance) {
 
     let children
     if (childs) {
-      currentElement.opened = env.TRUE
+      children = currentElement.children = [ ]
       childs()
-      children = currentElement.children
       if (component) {
         addSlot(
           SLOT_PREFIX + 'children',
-          children || [ ]
+          children
         )
-        if (children) {
-          children = env.UNDEFINED
-        }
+        children = env.UNDEFINED
       }
     }
 
@@ -1066,7 +1060,7 @@ export function render(render, getter, setter, instance) {
   s = function (expr) {
     let { staticKeypath } = expr, value
     // 只能作用于 attribute 层级
-    if (currentElement.opened !== env.TRUE
+    if (!currentElement.children
       && (value = o(expr, staticKeypath))
       && is.object(value)
     ) {
