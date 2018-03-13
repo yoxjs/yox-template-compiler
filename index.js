@@ -79,6 +79,8 @@ function trimBreakline(content) {
   )
 }
 
+const textProp = env.win && env.win.SVGElement ? 'textContent' : 'innerText'
+
 /**
  * 把模板编译为抽象语法树
  *
@@ -172,7 +174,7 @@ export function compile(content) {
           if (singleChild.type === nodeType.TEXT) {
             target.props = [
               {
-                name: 'innerText',
+                name: textProp,
                 value: singleChild.text,
               }
             ]
@@ -193,7 +195,7 @@ export function compile(content) {
               array.push(
                 props,
                 {
-                  name: 'innerText',
+                  name: textProp,
                   value: singleChild.expr,
                 }
               )
