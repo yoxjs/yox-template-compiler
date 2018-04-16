@@ -154,7 +154,7 @@ export function compile(content) {
       // 避免在渲染阶段增加计算量
       if (children && !children[ env.RAW_LENGTH ]) {
         children = env.NULL
-        delete target.children
+        delete target[ env.RAW_CHILDREN ]
       }
 
       if (!children) {
@@ -205,7 +205,7 @@ export function compile(content) {
           }
 
           if (!children[ env.RAW_LENGTH ]) {
-            delete target.children
+            delete target[ env.RAW_CHILDREN ]
           }
 
         }
@@ -223,9 +223,9 @@ export function compile(content) {
             || (element.tag === 'slot' && name === 'name')
           ) {
             // 把数据从属性中提出来，减少渲染时的遍历
-            array.remove(element.children, target)
-            if (!element.children[ env.RAW_LENGTH ]) {
-              delete element.children
+            array.remove(element[ env.RAW_CHILDREN ], target)
+            if (!element[ env.RAW_CHILDREN ][ env.RAW_LENGTH ]) {
+              delete element[ env.RAW_CHILDREN ]
             }
             if (children[ env.RAW_LENGTH ]) {
               element[ name ] = children
@@ -242,13 +242,13 @@ export function compile(content) {
             if (type === nodeType.DIRECTIVE) {
               target.expr = expressionCompiler.compile(text)
               target.value = text
-              delete target.children
+              delete target[ env.RAW_CHILDREN ]
             }
             // 属性的值如果是纯文本，直接获取文本值
             // 减少渲染时的遍历
             else if (type === nodeType.ATTRIBUTE) {
               target.value = text
-              delete target.children
+              delete target[ env.RAW_CHILDREN ]
             }
           }
           // <div class="{{className}}">
@@ -258,7 +258,7 @@ export function compile(content) {
           ) {
             let { expr } = singleChild
             target.expr = expr
-            delete target.children
+            delete target[ env.RAW_CHILDREN ]
           }
         }
       }
@@ -316,7 +316,7 @@ export function compile(content) {
         }
       }
       else {
-        children = currentNode.children = [ ]
+        children = currentNode[ env.RAW_CHILDREN ] = [ ]
       }
       array.push(children, node)
     }
@@ -377,7 +377,7 @@ export function compile(content) {
       if (match) {
         if (htmlStack[ env.RAW_LENGTH ] === 1) {
           let element = array.last(htmlStack)
-          element.divider = element.children ? element.children[ env.RAW_LENGTH ] : 0
+          element.divider = element[ env.RAW_CHILDREN ] ? element[ env.RAW_CHILDREN ][ env.RAW_LENGTH ] : 0
           if (match[ 1 ] === char.CHAR_SLASH) {
             popStack(
               nodeType.ELEMENT
@@ -456,7 +456,7 @@ export function compile(content) {
         if (closed) {
           text += currentQuote
           closed = array.pop(htmlStack)
-          if (!closed.children) {
+          if (!closed[ env.RAW_CHILDREN ]) {
             closed.value = char.CHAR_BLANK
           }
           popStack(closed.type)
@@ -657,9 +657,6 @@ export function convert(ast) {
   )
 }
 
-
-const SLOT_PREFIX = '$slot_'
-
 /**
  * 渲染抽象语法树
  *
@@ -811,8 +808,8 @@ export function render(render, getter, setter, instance) {
               )
             }
           }
-          else if (node.children) {
-            value = getValue(node.children)
+          else if (node[ env.RAW_CHILDREN ]) {
+            value = getValue(node[ env.RAW_CHILDREN ])
           }
           else {
             value = currentElement.component ? env.TRUE : name
@@ -840,7 +837,7 @@ export function render(render, getter, setter, instance) {
       else if (values) {
         values[ values[ env.RAW_LENGTH ] ] = node
       }
-      else if (currentElement.children) {
+      else if (currentElement[ env.RAW_CHILDREN ]) {
 
         if (is.array(node)) {
           array.each(
@@ -922,7 +919,7 @@ export function render(render, getter, setter, instance) {
       childs()
 
       addSlot(
-        SLOT_PREFIX + name,
+        config.SLOT_DATA_PREFIX + name,
         children
       )
 
@@ -935,7 +932,7 @@ export function render(render, getter, setter, instance) {
   b = function (name) {
     name = getValue(name)
     if (name) {
-      let result = getter(SLOT_PREFIX + name)
+      let result = getter(config.SLOT_DATA_PREFIX + name)
       return is.array(result) && result.length === 1
         ? result[ 0 ]
         : result
@@ -973,11 +970,11 @@ export function render(render, getter, setter, instance) {
 
     let children
     if (childs) {
-      children = currentElement.children = [ ]
+      children = currentElement[ env.RAW_CHILDREN ] = [ ]
       childs()
       if (component) {
         addSlot(
-          SLOT_PREFIX + 'children',
+          config.SLOT_DATA_PREFIX + 'children',
           children
         )
         children = env.UNDEFINED
@@ -1062,7 +1059,7 @@ export function render(render, getter, setter, instance) {
   s = function (expr) {
     let { staticKeypath } = expr, value
     // 只能作用于 attribute 层级
-    if (!currentElement.children
+    if (!currentElement[ env.RAW_CHILDREN ]
       && (value = o(expr, staticKeypath))
       && is.object(value)
     ) {

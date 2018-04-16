@@ -1,4 +1,5 @@
 
+import * as env from 'yox-common/util/env'
 import * as array from 'yox-common/util/array'
 
 import Node from './Node'
@@ -21,7 +22,7 @@ export default class Each extends Node {
   }
 
   stringify() {
-    let generate = this.stringifyArray(this.children, 'x')
+    let generate = this.stringifyArray(this[ env.RAW_CHILDREN ], 'x')
     if (generate) {
       let params = [
         this.stringifyObject(this.expr),

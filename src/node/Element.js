@@ -30,9 +30,9 @@ export default class Element extends Node {
 
     let params = [ ], attrs = [ ], children = [ ]
 
-    if (me.children) {
+    if (me[ env.RAW_CHILDREN ]) {
       array.each(
-        me.children,
+        me[ env.RAW_CHILDREN ],
         function (child, index) {
           array.push(
             index < divider ? attrs : children,

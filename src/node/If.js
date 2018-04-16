@@ -22,7 +22,7 @@ export default class If extends Node {
 
     let stringify = function (node) {
       let expr = node.stringifyExpression(node.expr)
-      let children = node.stringifyArray(node.children, 'x')
+      let children = node.stringifyArray(node[ env.RAW_CHILDREN ], 'x')
       let next = node.next
       if (next) {
         next = stringify(next)

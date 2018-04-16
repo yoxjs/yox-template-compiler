@@ -1,4 +1,6 @@
 
+import * as env from 'yox-common/util/env'
+
 import Node from './Node'
 import * as nodeType from '../nodeType'
 
@@ -20,7 +22,7 @@ export default class Partial extends Node {
       [
         this.stringifyString(this.name),
         this.stringifyFunction(
-          this.stringifyArray(this.children, 'x')
+          this.stringifyArray(this[ env.RAW_CHILDREN ], 'x')
         )
       ]
     )
