@@ -680,11 +680,9 @@ export function render(render, getter, setter, instance) {
    *
    */
 
-  let keypath = char.CHAR_BLANK, keypaths = [ ], keypathStack = [ keypath ],
+  let keypath = char.CHAR_BLANK, keypathStack = [ keypath ],
 
   pushKeypath = function (newKeypath) {
-    array.push(keypaths, newKeypath)
-    newKeypath = array.join(keypaths, env.KEYPATH_SEPARATOR)
     if (newKeypath !== keypath) {
       keypath = newKeypath
       keypathStack = object.copy(keypathStack)
@@ -693,7 +691,6 @@ export function render(render, getter, setter, instance) {
   },
 
   popKeypath = function (lastKeypath, lastKeypathStack) {
-    keypaths.pop()
     keypath = lastKeypath
     keypathStack = lastKeypathStack
   },
@@ -804,7 +801,7 @@ export function render(render, getter, setter, instance) {
               addDirective(
                 config.DIRECTIVE_BINDING,
                 name,
-                expr.actualKeypath
+                expr.absoluteKeypath
               )
             }
           }
@@ -821,7 +818,7 @@ export function render(render, getter, setter, instance) {
             name,
             node.modifier,
             name === config.DIRECTIVE_MODEL
-            ? (o(expr), expr.actualKeypath)
+            ? (o(expr), expr.absoluteKeypath)
             : node.value
           ).expr = expr
         }
@@ -895,7 +892,7 @@ export function render(render, getter, setter, instance) {
             addDirective(
               config.DIRECTIVE_BINDING,
               name,
-              expr.actualKeypath
+              expr.absoluteKeypath
             ).prop = env.TRUE
           }
         }
@@ -1019,7 +1016,7 @@ export function render(render, getter, setter, instance) {
     if (each) {
       let lastKeypath = keypath, lastKeypathStack = keypathStack
 
-      let eachKeypath = expr.staticKeypath || expr.dynamicKeypath
+      let eachKeypath = expr.absoluteKeypath
       if (eachKeypath) {
         pushKeypath(eachKeypath)
       }
@@ -1030,7 +1027,7 @@ export function render(render, getter, setter, instance) {
 
           let lastKeypath = keypath, lastKeypathStack = keypathStack
 
-          pushKeypath(key)
+          pushKeypath(keypath + env.KEYPATH_SEPARATOR + key)
 
           setter(keypath, env.RAW_THIS, item)
 
@@ -1063,7 +1060,7 @@ export function render(render, getter, setter, instance) {
       && (value = o(expr, staticKeypath))
       && is.object(value)
     ) {
-      let { actualKeypath } = expr
+      let { absoluteKeypath } = expr
       object.each(
         value,
         function (value, key) {
@@ -1072,8 +1069,8 @@ export function render(render, getter, setter, instance) {
             addDirective(
               config.DIRECTIVE_BINDING,
               key,
-              actualKeypath
-              ? actualKeypath + env.KEYPATH_SEPARATOR + key
+              absoluteKeypath
+              ? absoluteKeypath + env.KEYPATH_SEPARATOR + key
               : key
             )
           }
