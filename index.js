@@ -663,11 +663,10 @@ export function convert(ast) {
  * @param {Function} render 编译出来的渲染函数
  * @param {Function} getter 表达式求值函数
  * @param {Function} setter 设值函数，用于存储模板渲染过程中的临时变量
- * @param {Function} remove 删除函数，用于删除模板渲染过程中的临时变量
  * @param {Yox} instance 组件实例
  * @return {Object}
  */
-export function render(render, getter, setter, remove, instance) {
+export function render(render, getter, setter, instance) {
 
   /**
    *
@@ -1037,12 +1036,6 @@ export function render(render, getter, setter, remove, instance) {
           }
 
           generate()
-
-          remove(keypath, env.RAW_THIS)
-
-          if (index) {
-            remove(keypath, index)
-          }
 
           popKeypath(lastKeypath, lastKeypathStack)
 
