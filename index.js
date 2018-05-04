@@ -690,11 +690,6 @@ export function render(render, getter, setter, instance) {
     }
   },
 
-  popKeypath = function (lastKeypath, lastKeypathStack) {
-    keypath = lastKeypath
-    keypathStack = lastKeypathStack
-  },
-
   values,
 
   currentElement,
@@ -1037,13 +1032,15 @@ export function render(render, getter, setter, instance) {
 
           generate()
 
-          popKeypath(lastKeypath, lastKeypathStack)
+          keypath = lastKeypath
+          keypathStack = lastKeypathStack
 
         }
       )
 
       if (eachKeypath) {
-        popKeypath(lastKeypath, lastKeypathStack)
+        keypath = lastKeypath
+        keypathStack = lastKeypathStack
       }
 
     }
