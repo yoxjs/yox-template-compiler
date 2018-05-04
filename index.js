@@ -1038,13 +1038,13 @@ export function render(render, getter, setter, remove, instance) {
 
           generate()
 
-          popKeypath(lastKeypath, lastKeypathStack)
-
           remove(keypath, env.RAW_THIS)
 
           if (index) {
             remove(keypath, index)
           }
+
+          popKeypath(lastKeypath, lastKeypathStack)
 
         }
       )
