@@ -1010,7 +1010,7 @@ export function render(render, getter, setter, instance) {
 
           keypath += env.KEYPATH_SEPARATOR + key
           keypathStack = object.copy(keypathStack)
-          array.push(keypathStack, eachKeypath)
+          array.push(keypathStack, keypath)
 
           setter(keypath, env.UNDEFINED, item)
 
