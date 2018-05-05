@@ -1002,15 +1002,19 @@ export function render(render, getter, setter, instance) {
 
     if (each) {
 
+      let eachKeypath = expr.absoluteKeypath
+
       each(
         value,
         function (item, key) {
 
           let lastKeypath = keypath, lastKeypathStack = keypathStack
 
-          keypath += env.KEYPATH_SEPARATOR + key
-          keypathStack = object.copy(keypathStack)
-          array.push(keypathStack, keypath)
+          if (eachKeypath) {
+            keypath = keypathUtil.join(eachKeypath, key)
+            keypathStack = object.copy(keypathStack)
+            array.push(keypathStack, keypath)
+          }
 
           setter(keypath, env.UNDEFINED, item)
 
@@ -1020,8 +1024,10 @@ export function render(render, getter, setter, instance) {
 
           generate()
 
-          keypath = lastKeypath
-          keypathStack = lastKeypathStack
+          if (eachKeypath) {
+            keypath = lastKeypath
+            keypathStack = lastKeypathStack
+          }
 
         }
       )
