@@ -682,14 +682,6 @@ export function render(render, getter, setter, instance) {
 
   let keypath = char.CHAR_BLANK, keypathStack = [ keypath ],
 
-  pushKeypath = function (newKeypath) {
-    if (newKeypath !== keypath) {
-      keypath = newKeypath
-      keypathStack = object.copy(keypathStack)
-      array.push(keypathStack, keypath)
-    }
-  },
-
   values,
 
   currentElement,
@@ -1009,12 +1001,6 @@ export function render(render, getter, setter, instance) {
     }
 
     if (each) {
-      let lastKeypath = keypath, lastKeypathStack = keypathStack
-
-      let eachKeypath = expr.absoluteKeypath
-      if (eachKeypath) {
-        pushKeypath(eachKeypath)
-      }
 
       each(
         value,
@@ -1022,9 +1008,11 @@ export function render(render, getter, setter, instance) {
 
           let lastKeypath = keypath, lastKeypathStack = keypathStack
 
-          pushKeypath(keypath + env.KEYPATH_SEPARATOR + key)
+          keypath += env.KEYPATH_SEPARATOR + key
+          keypathStack = object.copy(keypathStack)
+          array.push(keypathStack, eachKeypath)
 
-          setter(keypath, env.RAW_THIS, item)
+          setter(keypath, env.UNDEFINED, item)
 
           if (index) {
             setter(keypath, index, key)
@@ -1037,11 +1025,6 @@ export function render(render, getter, setter, instance) {
 
         }
       )
-
-      if (eachKeypath) {
-        keypath = lastKeypath
-        keypathStack = lastKeypathStack
-      }
 
     }
   },
