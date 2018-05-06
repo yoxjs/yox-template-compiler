@@ -11,7 +11,7 @@ let ast = compiler.compile('<div>...</div>')
 ast = compiler.convert(ast)
 
 // render the first element
-compiler.render(ast[ 0 ], getter, setter, instance)
+compiler.render(ast[ 0 ], getter, instance)
 ``
 
 Stringify from AST

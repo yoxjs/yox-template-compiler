@@ -662,11 +662,10 @@ export function convert(ast) {
  *
  * @param {Function} render 编译出来的渲染函数
  * @param {Function} getter 表达式求值函数
- * @param {Function} setter 设值函数，用于存储模板渲染过程中的临时变量
  * @param {Yox} instance 组件实例
  * @return {Object}
  */
-export function render(render, getter, setter, instance) {
+export function render(render, getter, instance) {
 
   /**
    *
@@ -680,7 +679,7 @@ export function render(render, getter, setter, instance) {
    *
    */
 
-  let keypath = char.CHAR_BLANK, keypathStack = [ keypath ],
+  let scope = { }, keypath = char.CHAR_BLANK, keypathStack = [ keypath, scope ],
 
   values,
 
@@ -1008,23 +1007,26 @@ export function render(render, getter, setter, instance) {
         value,
         function (item, key) {
 
-          let lastKeypath = keypath, lastKeypathStack = keypathStack
+          let lastScope = scope, lastKeypath = keypath, lastKeypathStack = keypathStack
 
           if (eachKeypath) {
+            scope = { }
             keypath = keypathUtil.join(eachKeypath, key)
             keypathStack = object.copy(keypathStack)
             array.push(keypathStack, keypath)
+            array.push(keypathStack, scope)
           }
 
-          setter(keypath, env.UNDEFINED, item)
+          scope[ config.SPECIAL_KEYPATH ] = keypath
 
           if (index) {
-            setter(keypath, index, key)
+            scope[ index ] = key
           }
 
           generate()
 
           if (eachKeypath) {
+            scope = lastScope
             keypath = lastKeypath
             keypathStack = lastKeypathStack
           }
@@ -1088,6 +1090,8 @@ export function render(render, getter, setter, instance) {
   executeRender = function (render) {
     return render(a, b, c, e, i, m, o, p, s, x, y, z)
   }
+
+  scope[ config.SPECIAL_KEYPATH ] = keypath
 
   return executeRender(render)
 
