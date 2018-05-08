@@ -1073,17 +1073,22 @@ export function render(render, getter, instance) {
   },
   // import
   i = function (name) {
+    let lastElement = currentElement
+    pushElement({ })
     if (localPartials[ name ]) {
+      currentElement[ env.RAW_CHILDREN ] = [ ]
       localPartials[ name ]()
-      return
     }
-    let partial = instance.importPartial(name)
-    if (partial) {
-      array.each(
-        partial,
-        executeRender
-      )
-      return
+    else {
+      let partial = instance.importPartial(name)
+      if (partial) {
+        currentElement[ env.RAW_CHILDREN ] = partial.map(executeRender)
+      }
+    }
+    if (currentElement[ env.RAW_CHILDREN ]) {
+      let result = currentElement[ env.RAW_CHILDREN ]
+      popElement(lastElement)
+      return result
     }
     logger.fatal(`"${name}" partial is not found.`)
   },
