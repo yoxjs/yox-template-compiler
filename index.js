@@ -867,7 +867,7 @@ export function render(render, getter, instance) {
 
   // 处理 properties
   z = function () {
-    object.each(
+    array.each(
       arguments,
       function (item) {
         let { name, value } = item
