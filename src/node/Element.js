@@ -26,7 +26,7 @@ export default class Element extends Node {
   stringify() {
 
     let me = this
-    let { tag, divider, component, props, slot, name, key, ref } = me
+    let { tag, divider, component, props, slot, name, key, ref, transition } = me
 
     let params = [ ], attrs = [ ], children = [ ]
 
@@ -69,6 +69,10 @@ export default class Element extends Node {
 
       if (key) {
         addArray(key)
+      }
+
+      if (transition || params[ env.RAW_LENGTH ]) {
+        addArray(transition)
       }
 
       if (ref || params[ env.RAW_LENGTH ]) {

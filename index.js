@@ -215,10 +215,13 @@ export function compile(content) {
         if (type === nodeType.ATTRIBUTE) {
           // <div key="xx">
           // <div ref="xx">
+          // <div transition="xx">
           // <slot name="xx">
+          // <template slot="xx">
           let element = array.last(htmlStack)
           if (name === 'key'
             || name === 'ref'
+            || name === 'transition'
             || (element.tag === 'template' && name === 'slot')
             || (element.tag === 'slot' && name === 'name')
           ) {
@@ -923,7 +926,7 @@ export function render(render, getter, instance) {
   },
 
   // create
-  c = function (component, tag, childs, attrs, props, ref, key) {
+  c = function (component, tag, childs, attrs, props, ref, transition, key) {
 
     let lastElement = currentElement, lastComponent = currentComponent
 
@@ -937,6 +940,10 @@ export function render(render, getter, instance) {
 
     if (key) {
       key = getValue(key)
+    }
+
+    if (transition) {
+      transition = getValue(transition)
     }
 
     if (ref) {
@@ -973,7 +980,8 @@ export function render(render, getter, instance) {
       currentElement.slots,
       ref,
       key,
-      instance
+      instance,
+      instance.transition(transition)
     )
 
     popElement(lastElement)
