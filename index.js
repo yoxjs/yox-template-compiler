@@ -328,16 +328,12 @@ export function compile(content) {
       array.push(nodeList, node)
     }
 
-    // 上一个 if 节点没有 else 分支
-    // 在渲染时，如果这种 if 分支为 false，需要加上注释节点
-    if (prevNode
-      && helper.ifTypes[ prevNode.type ]
-      && !htmlStack[ env.RAW_LENGTH ]
-    ) {
-      prevNode.stump = env.TRUE
-    }
-
     if (helper.ifTypes[ type ]) {
+      // 只要是 if 节点，并且处于 element 层级，就加 stump
+      // 方便 virtual dom 进行对比
+      if (!htmlStack[ env.RAW_LENGTH ]) {
+        node.stump = env.TRUE
+      }
       array.push(ifStack, node)
     }
     else if (helper.htmlTypes[ type ]) {
