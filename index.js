@@ -1005,7 +1005,7 @@ export function render(render, getter, instance) {
 
     if (each) {
 
-      let eachKeypath = expr.absoluteKeypath
+      let eachKeypath = expr.absoluteKeypath || keypathUtil.join(keypath, expr.raw)
 
       each(
         value,
@@ -1013,13 +1013,11 @@ export function render(render, getter, instance) {
 
           let lastScope = scope, lastKeypath = keypath, lastKeypathStack = keypathStack
 
-          if (eachKeypath) {
-            scope = { }
-            keypath = keypathUtil.join(eachKeypath, key)
-            keypathStack = object.copy(keypathStack)
-            array.push(keypathStack, keypath)
-            array.push(keypathStack, scope)
-          }
+          scope = { }
+          keypath = keypathUtil.join(eachKeypath, key)
+          keypathStack = object.copy(keypathStack)
+          array.push(keypathStack, keypath)
+          array.push(keypathStack, scope)
 
           scope[ config.SPECIAL_KEYPATH ] = keypath
 
@@ -1029,11 +1027,9 @@ export function render(render, getter, instance) {
 
           generate()
 
-          if (eachKeypath) {
-            scope = lastScope
-            keypath = lastKeypath
-            keypathStack = lastKeypathStack
-          }
+          scope = lastScope
+          keypath = lastKeypath
+          keypathStack = lastKeypathStack
 
         }
       )
