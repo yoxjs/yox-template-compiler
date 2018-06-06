@@ -1,4 +1,6 @@
 
+import stringifyJSON from 'yox-common/function/stringifyJSON'
+
 import Node from './Node'
 import * as nodeType from '../nodeType'
 
@@ -15,7 +17,7 @@ export default class Text extends Node {
   }
 
   stringify() {
-    return this.stringifyString(this.text)
+    return stringifyJSON(this.text)
   }
 
 }

@@ -2,6 +2,7 @@
 import * as env from 'yox-common/util/env'
 
 import Node from './Node'
+import * as helper from '../helper'
 import * as nodeType from '../nodeType'
 
 /**
@@ -21,8 +22,8 @@ export default class If extends Node {
     let { stump } = this
 
     let stringify = function (node) {
-      let expr = node.stringifyExpression(node.expr)
-      let children = node.stringifyArray(node[ env.RAW_CHILDREN ], 'x')
+      let expr = helper.stringifyExpression(node.expr)
+      let children = helper.stringifyArray(node[ env.RAW_CHILDREN ], 'x')
       let next = node.next
       if (next) {
         next = stringify(next)
@@ -32,15 +33,12 @@ export default class If extends Node {
       }
       if (expr) {
         if (children) {
-          if (next) {
-            return `${expr}?${children}:${next}`
-          }
-          return `${expr}&&${children}`
+          return next
+            ? `${expr}?${children}:${next}`
+            : `${expr}&&${children}`
         }
-        else {
-          if (next) {
-            return `!${expr}&&${next}`
-          }
+        else if (next) {
+          return `!${expr}&&${next}`
         }
       }
       else if (children) {
@@ -50,7 +48,7 @@ export default class If extends Node {
 
     let str = stringify(this)
     if (str) {
-      return this.stringifyFunction(str)
+      return helper.stringifyFunction(str)
     }
 
   }

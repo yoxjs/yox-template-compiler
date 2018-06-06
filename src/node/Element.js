@@ -1,10 +1,13 @@
 
+import stringifyJSON from 'yox-common/function/stringifyJSON'
+
 import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
 
 import Node from './Node'
+import * as helper from '../helper'
 import * as nodeType from '../nodeType'
 
 /**
@@ -36,65 +39,65 @@ export default class Element extends Node {
         function (child, index) {
           array.push(
             index < divider ? attrs : children,
-            child.stringify()
+            child
           )
         }
       )
     }
 
-    let addArray = function (arr, name) {
-      arr = me.stringifyArray(arr, name || 'x')
+    let addParam = function (arr, name) {
+      arr = helper.stringifyArray(arr, name || 'x')
       array.unshift(
         params,
         arr
-        ? me.stringifyFunction(arr)
+        ? helper.stringifyFunction(arr)
         : env.RAW_UNDEFINED
       )
     }
 
     if (tag === 'template') {
       if (slot && children[ env.RAW_LENGTH ]) {
-        addArray(children)
-        addArray(slot)
-        return this.stringifyCall('a', params)
+        addParam(children)
+        addParam(slot)
+        return helper.stringifyCall('a', params)
       }
     }
     else if (tag === 'slot') {
       if (name) {
-        addArray(name)
-        return this.stringifyCall('b', params)
+        addParam(name)
+        return helper.stringifyCall('b', params)
       }
     }
     else {
 
       if (key) {
-        addArray(key)
+        addParam(key)
       }
 
       if (transition || params[ env.RAW_LENGTH ]) {
-        addArray(transition)
+        addParam(transition)
       }
 
       if (ref || params[ env.RAW_LENGTH ]) {
-        addArray(ref)
+        addParam(ref)
       }
 
       if (props && props[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {
-        addArray(props, 'z')
+        addParam(props, 'z')
       }
 
       if (attrs[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {
-        addArray(attrs, 'y')
+        addParam(attrs, 'y')
       }
 
       if (children[ env.RAW_LENGTH ] || params[ env.RAW_LENGTH ]) {
-        addArray(children)
+        addParam(children)
       }
 
-      array.unshift(params, me.stringifyString(tag))
+      array.unshift(params, stringifyJSON(tag))
       array.unshift(params, component ? 1 : 0)
 
-      return this.stringifyCall('c', params)
+      return helper.stringifyCall('c', params)
 
     }
 

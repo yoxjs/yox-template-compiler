@@ -1,7 +1,10 @@
 
+import stringifyJSON from 'yox-common/function/stringifyJSON'
+
 import * as env from 'yox-common/util/env'
 
 import Node from './Node'
+import * as helper from '../helper'
 import * as nodeType from '../nodeType'
 
 /**
@@ -17,12 +20,12 @@ export default class Partial extends Node {
   }
 
   stringify() {
-    return this.stringifyCall(
+    return helper.stringifyCall(
       'p',
       [
-        this.stringifyString(this.name),
-        this.stringifyFunction(
-          this.stringifyArray(this[ env.RAW_CHILDREN ], 'x')
+        stringifyJSON(this.name),
+        helper.stringifyFunction(
+          helper.stringifyArray(this[ env.RAW_CHILDREN ], 'x')
         )
       ]
     )

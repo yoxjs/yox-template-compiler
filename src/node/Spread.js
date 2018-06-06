@@ -1,5 +1,8 @@
 
+import stringifyJSON from 'yox-common/function/stringifyJSON'
+
 import Node from './Node'
+import * as helper from '../helper'
 import * as nodeType from '../nodeType'
 
 /**
@@ -15,10 +18,9 @@ export default class Spread extends Node {
   }
 
   stringify() {
-    let { expr } = this
-    return this.stringifyCall(
+    return helper.stringifyCall(
       's',
-      this.stringifyObject(expr)
+      stringifyJSON(this.expr)
     )
   }
 

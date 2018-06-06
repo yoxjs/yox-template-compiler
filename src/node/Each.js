@@ -1,8 +1,11 @@
 
+import stringifyJSON from 'yox-common/function/stringifyJSON'
+
 import * as env from 'yox-common/util/env'
 import * as array from 'yox-common/util/array'
 
 import Node from './Node'
+import * as helper from '../helper'
 import * as nodeType from '../nodeType'
 
 /**
@@ -22,17 +25,17 @@ export default class Each extends Node {
   }
 
   stringify() {
-    let generate = this.stringifyArray(this[ env.RAW_CHILDREN ], 'x')
+    let generate = helper.stringifyArray(this[ env.RAW_CHILDREN ], 'x')
     if (generate) {
       let params = [
-        this.stringifyObject(this.expr),
-        this.stringifyFunction(generate)
+        stringifyJSON(this.expr),
+        helper.stringifyFunction(generate)
       ]
       if (this.index) {
-        array.push(params, this.stringifyString(this.index))
+        array.push(params, stringifyJSON(this.index))
       }
-      return this.stringifyFunction(
-        this.stringifyCall('e', params)
+      return helper.stringifyFunction(
+        helper.stringifyCall('e', params)
       )
     }
   }

@@ -1,5 +1,8 @@
 
+import stringifyJSON from 'yox-common/function/stringifyJSON'
+
 import Node from './Node'
+import * as helper from '../helper'
 import * as nodeType from '../nodeType'
 
 /**
@@ -15,9 +18,9 @@ export default class Import extends Node {
   }
 
   stringify() {
-    return this.stringifyCall(
+    return helper.stringifyCall(
       'i',
-      this.stringifyString(this.name)
+      stringifyJSON(this.name)
     )
   }
 

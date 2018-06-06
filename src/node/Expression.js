@@ -1,5 +1,6 @@
 
 import Node from './Node'
+import * as helper from '../helper'
 import * as nodeType from '../nodeType'
 
 /**
@@ -17,7 +18,7 @@ export default class Expression extends Node {
   }
 
   stringify() {
-    return this.stringifyExpression(this.expr)
+    return helper.stringifyExpression(this.expr)
   }
 
 }
