@@ -756,15 +756,17 @@ export function render(render, getter, instance) {
   },
 
   addSlot = function (name, slot) {
-    let slots = currentComponent.slots || (currentComponent.slots = { })
-    if (slots[ name ]) {
-      array.push(
-        slots[ name ],
-        slot
-      )
-    }
-    else {
-      slots[ name ] = slot
+    if (slot[ env.RAW_LENGTH ]) {
+      let slots = currentComponent.slots || (currentComponent.slots = { })
+      if (slots[ name ]) {
+        array.push(
+          slots[ name ],
+          slot
+        )
+      }
+      else {
+        slots[ name ] = slot
+      }
     }
   },
 
@@ -915,7 +917,7 @@ export function render(render, getter, instance) {
     name = getValue(name)
     if (name) {
       let result = getter(config.SLOT_DATA_PREFIX + name)
-      return is.array(result) && result.length === 1
+      return is.array(result) && result[ env.RAW_LENGTH ] === 1
         ? result[ 0 ]
         : result
     }
