@@ -244,13 +244,13 @@ export function compile(content) {
             let { text } = singleChild
             if (type === nodeType.DIRECTIVE) {
               target.expr = expressionCompiler.compile(text)
-              target.value = text
+              target[ env.RAW_VALUE ] = text
               delete target[ env.RAW_CHILDREN ]
             }
             // 属性的值如果是纯文本，直接获取文本值
             // 减少渲染时的遍历
             else if (type === nodeType.ATTRIBUTE) {
-              target.value = text
+              target[ env.RAW_VALUE ] = text
               delete target[ env.RAW_CHILDREN ]
             }
           }
@@ -456,7 +456,7 @@ export function compile(content) {
           text += currentQuote
           closed = array.pop(htmlStack)
           if (!closed[ env.RAW_CHILDREN ]) {
-            closed.value = char.CHAR_BLANK
+            closed[ env.RAW_VALUE ] = char.CHAR_BLANK
           }
           popStack(closed.type)
         }
@@ -780,7 +780,7 @@ export function render(render, getter, instance) {
         if (node.type === nodeType.ATTRIBUTE) {
           let value
           if (object.has(node, 'value')) {
-            value = node.value
+            value = node[ env.RAW_VALUE ]
           }
           else if (expr) {
             value = o(expr, expr.staticKeypath)
@@ -806,7 +806,7 @@ export function render(render, getter, instance) {
             node.modifier,
             name === config.DIRECTIVE_MODEL
             ? (o(expr), expr.absoluteKeypath)
-            : node.value
+            : node[ env.RAW_VALUE ]
           ).expr = expr
         }
       }
