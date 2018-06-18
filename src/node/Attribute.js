@@ -1,4 +1,6 @@
 
+import * as env from 'yox-common/util/env'
+
 import Node from './Node'
 import * as nodeType from '../nodeType'
 
@@ -11,7 +13,7 @@ export default class Attribute extends Node {
 
   constructor(name) {
     super(nodeType.ATTRIBUTE)
-    this.name = name
+    this[ env.RAW_NAME ] = name
   }
 
 }

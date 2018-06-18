@@ -1,4 +1,6 @@
 
+import * as env from 'yox-common/util/env'
+
 import Node from './Node'
 import * as nodeType from '../nodeType'
 
@@ -14,7 +16,7 @@ export default class Directive extends Node {
 
   constructor(name, modifier) {
     super(nodeType.DIRECTIVE)
-    this.name = name
+    this[ env.RAW_NAME ] = name
     if (modifier) {
       this.modifier = modifier
     }

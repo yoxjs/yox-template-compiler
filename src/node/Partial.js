@@ -1,6 +1,5 @@
 
 import stringifyJSON from 'yox-common/function/stringifyJSON'
-
 import * as env from 'yox-common/util/env'
 
 import Node from './Node'
@@ -16,7 +15,7 @@ export default class Partial extends Node {
 
   constructor(name) {
     super(nodeType.PARTIAL)
-    this.name = name
+    this[ env.RAW_NAME ] = name
   }
 
   stringify() {

@@ -1,5 +1,6 @@
 
 import stringifyJSON from 'yox-common/function/stringifyJSON'
+import * as env from 'yox-common/util/env'
 
 import Node from './Node'
 import * as helper from '../helper'
@@ -14,7 +15,7 @@ export default class Import extends Node {
 
   constructor(name) {
     super(nodeType.IMPORT)
-    this.name = name
+    this[ env.RAW_NAME ] = name
   }
 
   stringify() {
