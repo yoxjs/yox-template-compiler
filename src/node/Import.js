@@ -21,7 +21,7 @@ export default class Import extends Node {
   stringify() {
     return helper.stringifyCall(
       'i',
-      stringifyJSON(this.name)
+      stringifyJSON(this[ env.RAW_NAME ])
     )
   }
 

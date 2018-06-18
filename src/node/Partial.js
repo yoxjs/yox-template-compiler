@@ -22,7 +22,7 @@ export default class Partial extends Node {
     return helper.stringifyCall(
       'p',
       [
-        stringifyJSON(this.name),
+        stringifyJSON(this[ env.RAW_NAME ]),
         helper.stringifyFunction(
           helper.stringifyArray(this[ env.RAW_CHILDREN ], 'x')
         )
