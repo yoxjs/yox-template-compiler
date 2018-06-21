@@ -104,7 +104,7 @@ export function compile(content) {
   let popSelfClosingElementIfNeeded = function (popingTagName) {
     let lastNode = array.last(nodeStack)
     if (lastNode
-      && lastNode.type === nodeType.ELEMENT
+      && lastNode[ env.RAW_TYPE ] === nodeType.ELEMENT
       && lastNode.tag !== popingTagName
       && array.has(selfClosingTagNames, lastNode.tag)
     ) {
@@ -131,7 +131,7 @@ export function compile(content) {
     array.each(
       nodeStack,
       function (node, i) {
-        if (node.type === type) {
+        if (node[ env.RAW_TYPE ] === type) {
           target = nodeStack.splice(i, 1)[ 0 ]
           return env.FALSE
         }
@@ -171,7 +171,7 @@ export function compile(content) {
           let singleChild = array.last(children)
 
           // 子节点是纯文本
-          if (singleChild.type === nodeType.TEXT) {
+          if (singleChild[ env.RAW_TYPE ] === nodeType.TEXT) {
             target.props = [
               {
                 name: textProp,
@@ -180,7 +180,7 @@ export function compile(content) {
             ]
             array.pop(children)
           }
-          else if (singleChild.type === nodeType.EXPRESSION) {
+          else if (singleChild[ env.RAW_TYPE ] === nodeType.EXPRESSION) {
             let props = [ ]
             if (singleChild.safe === env.FALSE) {
               array.push(
@@ -239,7 +239,7 @@ export function compile(content) {
 
         let singleChild = children[ env.RAW_LENGTH ] === 1 && children[ 0 ]
         if (singleChild) {
-          if (singleChild.type === nodeType.TEXT) {
+          if (singleChild[ env.RAW_TYPE ] === nodeType.TEXT) {
             // 指令的值如果是纯文本，可以预编译表达式，提升性能
             let { text } = singleChild
             if (type === nodeType.DIRECTIVE) {
@@ -257,7 +257,7 @@ export function compile(content) {
           // <div class="{{className}}">
           // 把 Attribute 转成 单向绑定 指令，可实现精确更新视图
           else if (type === nodeType.ATTRIBUTE
-            && singleChild.type === nodeType.EXPRESSION
+            && singleChild[ env.RAW_TYPE ] === nodeType.EXPRESSION
           ) {
             let { expr } = singleChild
             target.expr = expr
@@ -274,7 +274,7 @@ export function compile(content) {
 
   let addChild = function (node) {
 
-    let { type, text } = node
+    let type = node[ env.RAW_TYPE ], text = node.text
 
     if (type === nodeType.TEXT) {
       if (isBreakline(text)
@@ -302,7 +302,7 @@ export function compile(content) {
     if (helper.elseTypes[ type ]) {
       let ifNode = array.pop(ifStack)
       ifNode.next = node
-      popStack(ifNode.type)
+      popStack(ifNode[ env.RAW_TYPE ])
       array.push(ifStack, node)
       array.push(nodeStack, node)
       return
@@ -428,7 +428,7 @@ export function compile(content) {
           currentQuote = match[ 2 ]
           if (!currentQuote) {
             popStack(
-              array.pop(htmlStack).type
+              array.pop(htmlStack)[ env.RAW_TYPE ]
             )
           }
           return match[ 0 ]
@@ -458,7 +458,7 @@ export function compile(content) {
           if (!closed[ env.RAW_CHILDREN ]) {
             closed[ env.RAW_VALUE ] = char.CHAR_BLANK
           }
-          popStack(closed.type)
+          popStack(closed[ env.RAW_TYPE ])
         }
         return text
       }
@@ -585,7 +585,7 @@ export function compile(content) {
         if (helper.ifTypes[ type ]) {
           let node = array.pop(ifStack)
           if (node) {
-            type = node.type
+            type = node[ env.RAW_TYPE ]
           }
           else {
             throwError(`if is not begined.`)
@@ -777,7 +777,7 @@ export function render(render, getter, instance) {
       }
       else {
         let { name, expr } = node
-        if (node.type === nodeType.ATTRIBUTE) {
+        if (node[ env.RAW_TYPE ] === nodeType.ATTRIBUTE) {
           let value
           if (object.has(node, 'value')) {
             value = node[ env.RAW_VALUE ]

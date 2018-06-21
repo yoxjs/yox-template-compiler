@@ -1,4 +1,6 @@
 
+import * as env from 'yox-common/util/env'
+
 import * as helper from '../helper'
 
 /**
@@ -7,7 +9,7 @@ import * as helper from '../helper'
 export default class Node {
 
   constructor(type) {
-    this.type = type
+    this[ env.RAW_TYPE ] = type
   }
 
   stringify() {
