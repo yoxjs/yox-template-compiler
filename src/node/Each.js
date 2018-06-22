@@ -18,7 +18,7 @@ export default class Each extends Node {
 
   constructor(expr, index) {
     super(nodeType.EACH)
-    this.expr = expr
+    this[ env.RAW_EXPR ] = expr
     if (index) {
       this.index = index
     }
@@ -28,7 +28,7 @@ export default class Each extends Node {
     let generate = helper.stringifyArray(this[ env.RAW_CHILDREN ], 'x')
     if (generate) {
       let params = [
-        stringifyJSON(this.expr),
+        stringifyJSON(this[ env.RAW_EXPR ]),
         helper.stringifyFunction(generate)
       ]
       if (this.index) {

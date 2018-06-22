@@ -39,6 +39,9 @@ const attributePattern = /^\s*([-:\w]+)(?:=(['"]))?/
 const componentNamePattern = /[-A-Z]/
 const selfClosingTagNames = [ 'area', 'base', 'embed', 'track', 'source', 'param', 'input', 'slot', 'col', 'img', 'br', 'hr' ]
 
+ const RAW_STATIC_KEYPATH = 'staticKeypath'
+ const RAW_ABSOLUTE_KEYPATH = 'absoluteKeypath'
+
 // 缓存编译结果
 let compileCache = { }
 
@@ -175,7 +178,7 @@ export function compile(content) {
             target.props = [
               {
                 name: textProp,
-                value: singleChild.text,
+                value: singleChild[ env.RAW_TEXT ],
               }
             ]
             array.pop(children)
@@ -187,7 +190,7 @@ export function compile(content) {
                 props,
                 {
                   name: 'innerHTML',
-                  value: singleChild.expr,
+                  value: singleChild[ env.RAW_EXPR ],
                 }
               )
             }
@@ -196,7 +199,7 @@ export function compile(content) {
                 props,
                 {
                   name: textProp,
-                  value: singleChild.expr,
+                  value: singleChild[ env.RAW_EXPR ],
                 }
               )
             }
@@ -243,7 +246,7 @@ export function compile(content) {
             // 指令的值如果是纯文本，可以预编译表达式，提升性能
             let { text } = singleChild
             if (type === nodeType.DIRECTIVE) {
-              target.expr = expressionCompiler.compile(text)
+              target[ env.RAW_EXPR ] = expressionCompiler.compile(text)
               target[ env.RAW_VALUE ] = text
               delete target[ env.RAW_CHILDREN ]
             }
@@ -259,8 +262,7 @@ export function compile(content) {
           else if (type === nodeType.ATTRIBUTE
             && singleChild[ env.RAW_TYPE ] === nodeType.EXPRESSION
           ) {
-            let { expr } = singleChild
-            target.expr = expr
+            target[ env.RAW_EXPR ] = singleChild[ env.RAW_EXPR ]
             delete target[ env.RAW_CHILDREN ]
           }
         }
@@ -274,7 +276,7 @@ export function compile(content) {
 
   let addChild = function (node) {
 
-    let type = node[ env.RAW_TYPE ], text = node.text
+    let type = node[ env.RAW_TYPE ], text = node[ env.RAW_TEXT ]
 
     if (type === nodeType.TEXT) {
       if (isBreakline(text)
@@ -282,7 +284,7 @@ export function compile(content) {
       ) {
         return
       }
-      node.text = text
+      node[ env.RAW_TEXT ] = text
     }
 
     /**
@@ -744,7 +746,7 @@ export function render(render, getter, instance) {
       }
     }
     else if (snabbdom.isTextVnode(lastChild)) {
-      lastChild.text += toString(node)
+      lastChild[ env.RAW_TEXT ] += toString(node)
     }
     else {
       array.push(
@@ -776,19 +778,19 @@ export function render(render, getter, instance) {
         node()
       }
       else {
-        let { name, expr } = node
+        let name = node[ env.RAW_NAME ], expr = node[ env.RAW_EXPR ]
         if (node[ env.RAW_TYPE ] === nodeType.ATTRIBUTE) {
           let value
           if (object.has(node, 'value')) {
             value = node[ env.RAW_VALUE ]
           }
           else if (expr) {
-            value = o(expr, expr.staticKeypath)
-            if (expr.staticKeypath) {
+            value = o(expr, expr[ RAW_STATIC_KEYPATH ])
+            if (expr[ RAW_STATIC_KEYPATH ]) {
               addDirective(
                 config.DIRECTIVE_BINDING,
                 name,
-                expr.absoluteKeypath
+                expr[ RAW_ABSOLUTE_KEYPATH ]
               )
             }
           }
@@ -805,9 +807,9 @@ export function render(render, getter, instance) {
             name,
             node.modifier,
             name === config.DIRECTIVE_MODEL
-            ? (o(expr), expr.absoluteKeypath)
+            ? (o(expr), expr[ RAW_ABSOLUTE_KEYPATH ])
             : node[ env.RAW_VALUE ]
-          ).expr = expr
+          )[ env.RAW_EXPR ] = expr
         }
       }
     }
@@ -871,15 +873,15 @@ export function render(render, getter, instance) {
     array.each(
       arguments,
       function (item) {
-        let { name, value } = item
+        let name = item[ env.RAW_NAME ], value = item[ env.RAW_VALUE ]
         if (is.object(value)) {
           let expr = value
-          value = o(expr, expr.staticKeypath)
-          if (expr.staticKeypath) {
+          value = o(expr, expr[ RAW_STATIC_KEYPATH ])
+          if (expr[ RAW_STATIC_KEYPATH ]) {
             addDirective(
               config.DIRECTIVE_BINDING,
               name,
-              expr.absoluteKeypath
+              expr[ RAW_ABSOLUTE_KEYPATH ]
             ).prop = env.TRUE
           }
         }
@@ -1007,7 +1009,7 @@ export function render(render, getter, instance) {
 
     if (each) {
 
-      let eachKeypath = expr.absoluteKeypath || keypathUtil.join(keypath, expr.raw)
+      let eachKeypath = expr[ RAW_ABSOLUTE_KEYPATH ] || keypathUtil.join(keypath, expr.raw)
 
       each(
         value,
@@ -1044,13 +1046,13 @@ export function render(render, getter, instance) {
   },
   // spread
   s = function (expr) {
-    let { staticKeypath } = expr, value
+    let staticKeypath = expr[ RAW_STATIC_KEYPATH ], value
     // 只能作用于 attribute 层级
     if (!currentElement[ env.RAW_CHILDREN ]
       && (value = o(expr, staticKeypath))
       && is.object(value)
     ) {
-      let { absoluteKeypath } = expr
+      let absoluteKeypath = expr[ RAW_ABSOLUTE_KEYPATH ]
       object.each(
         value,
         function (value, key) {

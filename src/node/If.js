@@ -14,7 +14,7 @@ export default class If extends Node {
 
   constructor(expr) {
     super(nodeType.IF)
-    this.expr = expr
+    this[ env.RAW_EXPR ] = expr
   }
 
   stringify() {
@@ -22,7 +22,7 @@ export default class If extends Node {
     let { stump } = this
 
     let stringify = function (node) {
-      let expr = helper.stringifyExpression(node.expr)
+      let expr = helper.stringifyExpression(node[ env.RAW_EXPR ])
       let children = helper.stringifyArray(node[ env.RAW_CHILDREN ], 'x')
       let next = node.next
       if (next) {

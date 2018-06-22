@@ -1,4 +1,6 @@
 
+import * as env from 'yox-common/util/env'
+
 import Node from './Node'
 import * as nodeType from '../nodeType'
 
@@ -11,7 +13,7 @@ export default class ElseIf extends Node {
 
   constructor(expr, then) {
     super(nodeType.ELSE_IF)
-    this.expr = expr
+    this[ env.RAW_EXPR ] = expr
   }
 
 }
