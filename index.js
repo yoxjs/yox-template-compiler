@@ -39,9 +39,6 @@ const attributePattern = /^\s*([-:\w]+)(?:=(['"]))?/
 const componentNamePattern = /[-A-Z]/
 const selfClosingTagNames = [ 'area', 'base', 'embed', 'track', 'source', 'param', 'input', 'slot', 'col', 'img', 'br', 'hr' ]
 
- const RAW_STATIC_KEYPATH = 'staticKeypath'
- const RAW_ABSOLUTE_KEYPATH = 'absoluteKeypath'
-
 // 缓存编译结果
 let compileCache = { }
 
@@ -244,7 +241,7 @@ export function compile(content) {
         if (singleChild) {
           if (singleChild[ env.RAW_TYPE ] === nodeType.TEXT) {
             // 指令的值如果是纯文本，可以预编译表达式，提升性能
-            let { text } = singleChild
+            let text = singleChild[ env.RAW_TEXT ]
             if (type === nodeType.DIRECTIVE) {
               target[ env.RAW_EXPR ] = expressionCompiler.compile(text)
               target[ env.RAW_VALUE ] = text
@@ -314,7 +311,7 @@ export function compile(content) {
 
     let currentNode = array.last(nodeStack)
     if (currentNode) {
-      let { children, divider } = currentNode
+      let children = currentNode[ env.RAW_CHILDREN ], divider = currentNode.divider
       if (children) {
         if (children[ env.RAW_LENGTH ] !== divider) {
           prevNode = children[ children[ env.RAW_LENGTH ] - 1 ]
@@ -734,7 +731,7 @@ export function render(render, getter, instance) {
 
   addChild = function (node) {
 
-    let { lastChild, children } = currentElement
+    let children = currentElement[ env.RAW_CHILDREN ], lastChild = currentElement.lastChild
 
     if (snabbdom.isVnode(node)) {
       if (node.component) {
@@ -785,12 +782,12 @@ export function render(render, getter, instance) {
             value = node[ env.RAW_VALUE ]
           }
           else if (expr) {
-            value = o(expr, expr[ RAW_STATIC_KEYPATH ])
-            if (expr[ RAW_STATIC_KEYPATH ]) {
+            value = o(expr, expr[ env.RAW_STATIC_KEYPATH ])
+            if (expr[ env.RAW_STATIC_KEYPATH ]) {
               addDirective(
                 config.DIRECTIVE_BINDING,
                 name,
-                expr[ RAW_ABSOLUTE_KEYPATH ]
+                expr[ env.RAW_ABSOLUTE_KEYPATH ]
               )
             }
           }
@@ -807,7 +804,7 @@ export function render(render, getter, instance) {
             name,
             node.modifier,
             name === config.DIRECTIVE_MODEL
-            ? (o(expr), expr[ RAW_ABSOLUTE_KEYPATH ])
+            ? (o(expr), expr[ env.RAW_ABSOLUTE_KEYPATH ])
             : node[ env.RAW_VALUE ]
           )[ env.RAW_EXPR ] = expr
         }
@@ -876,12 +873,12 @@ export function render(render, getter, instance) {
         let name = item[ env.RAW_NAME ], value = item[ env.RAW_VALUE ]
         if (is.object(value)) {
           let expr = value
-          value = o(expr, expr[ RAW_STATIC_KEYPATH ])
-          if (expr[ RAW_STATIC_KEYPATH ]) {
+          value = o(expr, expr[ env.RAW_STATIC_KEYPATH ])
+          if (expr[ env.RAW_STATIC_KEYPATH ]) {
             addDirective(
               config.DIRECTIVE_BINDING,
               name,
-              expr[ RAW_ABSOLUTE_KEYPATH ]
+              expr[ env.RAW_ABSOLUTE_KEYPATH ]
             ).prop = env.TRUE
           }
         }
@@ -964,7 +961,7 @@ export function render(render, getter, instance) {
       childs()
       if (component) {
         addSlot(
-          config.SLOT_DATA_PREFIX + 'children',
+          config.SLOT_DATA_PREFIX + env.RAW_CHILDREN,
           children
         )
         children = env.UNDEFINED
@@ -1009,7 +1006,7 @@ export function render(render, getter, instance) {
 
     if (each) {
 
-      let eachKeypath = expr[ RAW_ABSOLUTE_KEYPATH ] || keypathUtil.join(keypath, expr.raw)
+      let eachKeypath = expr[ env.RAW_ABSOLUTE_KEYPATH ] || keypathUtil.join(keypath, expr.raw)
 
       each(
         value,
@@ -1046,13 +1043,13 @@ export function render(render, getter, instance) {
   },
   // spread
   s = function (expr) {
-    let staticKeypath = expr[ RAW_STATIC_KEYPATH ], value
+    let staticKeypath = expr[ env.RAW_STATIC_KEYPATH ], value
     // 只能作用于 attribute 层级
     if (!currentElement[ env.RAW_CHILDREN ]
       && (value = o(expr, staticKeypath))
       && is.object(value)
     ) {
-      let absoluteKeypath = expr[ RAW_ABSOLUTE_KEYPATH ]
+      let absoluteKeypath = expr[ env.RAW_ABSOLUTE_KEYPATH ]
       object.each(
         value,
         function (value, key) {
