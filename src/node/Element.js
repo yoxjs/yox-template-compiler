@@ -20,9 +20,9 @@ export default class Element extends Node {
 
   constructor(tag, component) {
     super(nodeType.ELEMENT)
-    this.tag = tag
+    this[ env.RAW_TAG ] = tag
     if (component) {
-      this.component = component
+      this[ env.RAW_COMPONENT ] = component
     }
   }
 
@@ -55,14 +55,14 @@ export default class Element extends Node {
       )
     }
 
-    if (tag === 'template') {
+    if (tag === env.RAW_TEMPLATE) {
       if (slot && children[ env.RAW_LENGTH ]) {
         addParam(children)
         addParam(slot)
         return helper.stringifyCall('a', params)
       }
     }
-    else if (tag === 'slot') {
+    else if (tag === env.RAW_SLOT) {
       if (name) {
         addParam(name)
         return helper.stringifyCall('b', params)

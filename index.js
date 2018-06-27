@@ -37,7 +37,7 @@ const openingTagPattern = /<(\/)?([a-z][-a-z0-9]*)/i
 const closingTagPattern = /^\s*(\/)?>/
 const attributePattern = /^\s*([-:\w]+)(?:=(['"]))?/
 const componentNamePattern = /[-A-Z]/
-const selfClosingTagNames = [ 'area', 'base', 'embed', 'track', 'source', 'param', 'input', 'slot', 'col', 'img', 'br', 'hr' ]
+const selfClosingTagNames = [ 'area', 'base', 'embed', 'track', 'source', 'param', 'input', env.RAW_SLOT, 'col', 'img', 'br', 'hr' ]
 
 // 缓存编译结果
 let compileCache = { }
@@ -95,27 +95,27 @@ export function compile(content) {
   }
   nodeList = [ ]
 
-  let nodeStack = [ ], ifStack = [ ], htmlStack = [ ], currentQuote
+  let nodeStack = [ ], ifStack = [ ], htmlStack = [ ], currentQuote,
 
-  let throwError = function (msg) {
-    logger.fatal(`Error compiling template:${char.CHAR_BREAKLINE}${content}${char.CHAR_BREAKLINE}- ${msg}`)
-  }
+  throwError = function (msg) {
+    logger.fatal(`Error compiling ${env.RAW_TEMPLATE}:${char.CHAR_BREAKLINE}${content}${char.CHAR_BREAKLINE}- ${msg}`)
+  },
 
-  let popSelfClosingElementIfNeeded = function (popingTagName) {
+  popSelfClosingElementIfNeeded = function (popingTagName) {
     let lastNode = array.last(nodeStack)
     if (lastNode
       && lastNode[ env.RAW_TYPE ] === nodeType.ELEMENT
-      && lastNode.tag !== popingTagName
-      && array.has(selfClosingTagNames, lastNode.tag)
+      && lastNode[ env.RAW_TAG ] !== popingTagName
+      && array.has(selfClosingTagNames, lastNode[ env.RAW_TAG ])
     ) {
       popStack(
         nodeType.ELEMENT,
-        lastNode.tag
+        lastNode[ env.RAW_TAG ]
       )
     }
-  }
+  },
 
-  let popStack = function (type, expectedTagName) {
+  popStack = function (type, expectedTagName) {
 
     /**
      * <div>
@@ -164,7 +164,7 @@ export function compile(content) {
       if (type === nodeType.ELEMENT) {
         // 优化只有一个子节点的情况
         if (!component
-          && tag !== 'template'
+          && tag !== env.RAW_TEMPLATE
           && children[ env.RAW_LENGTH ] - divider === 1
         ) {
 
@@ -219,11 +219,11 @@ export function compile(content) {
           // <slot name="xx">
           // <template slot="xx">
           let element = array.last(htmlStack)
-          if (name === 'key'
-            || name === 'ref'
+          if (name === env.RAW_KEY
+            || name === env.RAW_REF
             || name === 'transition'
-            || (element.tag === 'template' && name === 'slot')
-            || (element.tag === 'slot' && name === 'name')
+            || (element[ env.RAW_TAG ] === env.RAW_TEMPLATE && name === env.RAW_SLOT)
+            || (element[ env.RAW_TAG ] === env.RAW_SLOT && name === env.RAW_NAME)
           ) {
             // 把数据从属性中提出来，减少渲染时的遍历
             array.remove(element[ env.RAW_CHILDREN ], target)
@@ -269,9 +269,9 @@ export function compile(content) {
       throwError(`{{/${helper.type2Name[ type ]}}} is not a pair.`)
     }
 
-  }
+  },
 
-  let addChild = function (node) {
+  addChild = function (node) {
 
     let type = node[ env.RAW_TYPE ], text = node[ env.RAW_TEXT ]
 
@@ -307,9 +307,7 @@ export function compile(content) {
       return
     }
 
-    let prevNode
-
-    let currentNode = array.last(nodeStack)
+    let prevNode, currentNode = array.last(nodeStack)
     if (currentNode) {
       let children = currentNode[ env.RAW_CHILDREN ], divider = currentNode.divider
       if (children) {
@@ -343,14 +341,14 @@ export function compile(content) {
       array.push(nodeStack, node)
     }
 
-  }
+  },
 
-  const htmlParsers = [
+  htmlParsers = [
     function (content) {
       if (!htmlStack[ env.RAW_LENGTH ]) {
         let match = content.match(openingTagPattern)
         // 必须以 <tag 开头才能继续
-        if (match && !match.index) {
+        if (match && !match[ env.RAW_INDEX ]) {
           let tagName = match[ 2 ]
           if (match[ 1 ] === char.CHAR_SLASH) {
             popStack(
@@ -418,7 +416,7 @@ export function compile(content) {
           else {
             addChild(
               new Attribute(
-                htmlStack[ 0 ].component
+                htmlStack[ 0 ][ env.RAW_COMPONENT ]
                 ? string.camelCase(name)
                 : name
               )
@@ -463,8 +461,8 @@ export function compile(content) {
       }
       else {
         let match = content.match(openingTagPattern)
-        if (match && match.index) {
-          content = string.slice(content, 0, match.index)
+        if (match && match[ env.RAW_INDEX ]) {
+          content = string.slice(content, 0, match[ env.RAW_INDEX ])
         }
         // 属性级别的空字符串是没有意义的
         // 比如 <div      class="xx">
@@ -478,9 +476,9 @@ export function compile(content) {
         return content
       }
     },
-  ]
+  ],
 
-  const delimiterParsers = [
+  delimiterParsers = [
     function (source, all) {
       if (string.startsWith(source, config.SYNTAX_EACH)) {
         source = slicePrefix(source, config.SYNTAX_EACH)
@@ -556,9 +554,9 @@ export function compile(content) {
           : throwError(`invalid expression: ${all}`)
       }
     },
-  ]
+  ],
 
-  let parseHtml = function (content) {
+  parseHtml = function (content) {
     if (content) {
       let tpl = content
       while (tpl) {
@@ -575,9 +573,9 @@ export function compile(content) {
       }
       str = string.slice(str, content[ env.RAW_LENGTH ])
     }
-  }
+  },
 
-  let parseDelimiter = function (content, all) {
+  parseDelimiter = function (content, all) {
     if (content) {
       if (char.charAt(content) === char.CHAR_SLASH) {
         let name = string.slice(content, 1), type = helper.name2Type[ name ]
@@ -606,9 +604,9 @@ export function compile(content) {
       }
     }
     str = string.slice(str, all[ env.RAW_LENGTH ])
-  }
+  },
 
-  let str = content, match
+  str = content, match
 
   // 干掉 html 注释
   str = str.replace(
@@ -622,7 +620,7 @@ export function compile(content) {
     match = str.match(delimiterPattern)
     if (match) {
       parseHtml(
-        string.slice(str, 0, match.index)
+        string.slice(str, 0, match[ env.RAW_INDEX ])
       )
       // 避免手误写成 {{{ name }}
       if (match[ 1 ][ env.RAW_LENGTH ] === match[ 3 ][ env.RAW_LENGTH ]) {
@@ -677,9 +675,7 @@ export function render(render, getter, instance) {
    *
    */
 
-  let scope = { }, keypath = char.CHAR_BLANK, keypathStack = [ keypath, scope ],
-
-  values,
+  let scope = { }, keypath = char.CHAR_BLANK, keypathStack = [ keypath, scope ], values,
 
   currentElement,
   elementStack = [ ],
@@ -734,7 +730,7 @@ export function render(render, getter, instance) {
     let children = currentElement[ env.RAW_CHILDREN ], lastChild = currentElement.lastChild
 
     if (snabbdom.isVnode(node)) {
-      if (node.component) {
+      if (node[ env.RAW_COMPONENT ]) {
         node.parent = instance
       }
       array.push(children, node)
@@ -795,7 +791,7 @@ export function render(render, getter, instance) {
             value = getValue(node[ env.RAW_CHILDREN ])
           }
           else {
-            value = currentElement.component ? env.TRUE : name
+            value = currentElement[ env.RAW_COMPONENT ] ? env.TRUE : name
           }
           addAttr(name, value)
         }

@@ -20,7 +20,7 @@ export default class Each extends Node {
     super(nodeType.EACH)
     this[ env.RAW_EXPR ] = expr
     if (index) {
-      this.index = index
+      this[ env.RAW_INDEX ] = index
     }
   }
 
@@ -31,8 +31,11 @@ export default class Each extends Node {
         stringifyJSON(this[ env.RAW_EXPR ]),
         helper.stringifyFunction(generate)
       ]
-      if (this.index) {
-        array.push(params, stringifyJSON(this.index))
+      if (this[ env.RAW_INDEX ]) {
+        array.push(
+          params,
+          stringifyJSON(this[ env.RAW_INDEX ])
+        )
       }
       return helper.stringifyFunction(
         helper.stringifyCall('e', params)

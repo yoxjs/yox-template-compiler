@@ -127,5 +127,5 @@ export function stringifyCall(name, params) {
 }
 
 export function stringifyFunction(str) {
-  return `function(){${str || char.CHAR_BLANK}}`
+  return `${env.RAW_FUNCTION}(){${str || char.CHAR_BLANK}}`
 }
