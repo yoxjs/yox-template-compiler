@@ -81,6 +81,8 @@ function trimBreakline(content) {
 
 const textProp = env.win && env.win.SVGElement ? 'textContent' : 'innerText'
 
+const RAW_INVALID = 'invalid'
+
 /**
  * 把模板编译为抽象语法树
  *
@@ -143,7 +145,7 @@ export function compile(content) {
 
       let { tag, name, divider, children, component } = target
       if (type === nodeType.ELEMENT && expectedTagName && tag !== expectedTagName) {
-        throwError(`end tag expected </${tag}> to be </${expectedTagName}>.`)
+        throwError(`end ${env.RAW_TAG} expected </${tag}> to be </${expectedTagName}>.`)
       }
 
       // ==========================================
@@ -489,7 +491,7 @@ export function compile(content) {
             string.trim(terms[ 1 ])
           )
         }
-        throwError(`invalid each: ${all}`)
+        throwError(`${RAW_INVALID} each: ${all}`)
       }
     },
     function (source, all) {
@@ -497,7 +499,7 @@ export function compile(content) {
         source = slicePrefix(source, config.SYNTAX_IMPORT)
         return source
           ? new Import(source)
-          : throwError(`invalid import: ${all}`)
+          : throwError(`${RAW_INVALID} import: ${all}`)
       }
     },
     function (source, all) {
@@ -505,7 +507,7 @@ export function compile(content) {
         source = slicePrefix(source, config.SYNTAX_PARTIAL)
         return source
           ? new Partial(source)
-          : throwError(`invalid partial: ${all}`)
+          : throwError(`${RAW_INVALID} partial: ${all}`)
       }
     },
     function (source, all) {
@@ -515,7 +517,7 @@ export function compile(content) {
           ? new If(
             expressionCompiler.compile(source)
           )
-          : throwError(`invalid if: ${all}`)
+          : throwError(`${RAW_INVALID} if: ${all}`)
       }
     },
     function (source, all) {
@@ -525,7 +527,7 @@ export function compile(content) {
           ? new ElseIf(
             expressionCompiler.compile(source)
           )
-          : throwError(`invalid else if: ${all}`)
+          : throwError(`${RAW_INVALID} else if: ${all}`)
       }
     },
     function (source) {
@@ -540,7 +542,7 @@ export function compile(content) {
           ? new Spread(
             expressionCompiler.compile(source)
           )
-          : throwError(`invalid spread: ${all}`)
+          : throwError(`${RAW_INVALID} spread: ${all}`)
       }
     },
     function (source, all) {
@@ -551,7 +553,7 @@ export function compile(content) {
             expressionCompiler.compile(source),
             !string.endsWith(all, '}}}')
           )
-          : throwError(`invalid expression: ${all}`)
+          : throwError(`${RAW_INVALID} expression: ${all}`)
       }
     },
   ],
@@ -627,7 +629,7 @@ export function compile(content) {
         parseDelimiter(match[ 2 ], match[ 0 ])
       }
       else {
-        throwError(`invalid syntax: ${match[ 0 ]}`)
+        throwError(`${RAW_INVALID} syntax: ${match[ 0 ]}`)
       }
     }
     else {
@@ -774,7 +776,7 @@ export function render(render, getter, instance) {
         let name = node[ env.RAW_NAME ], expr = node[ env.RAW_EXPR ]
         if (node[ env.RAW_TYPE ] === nodeType.ATTRIBUTE) {
           let value
-          if (object.has(node, 'value')) {
+          if (object.has(node, env.RAW_VALUE)) {
             value = node[ env.RAW_VALUE ]
           }
           else if (expr) {
