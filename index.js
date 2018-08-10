@@ -36,7 +36,8 @@ const delimiterPattern = /(\{?\{\{)\s*([^\}]+?)\s*(\}\}\}?)/
 const openingTagPattern = /<(\/)?([a-z][-a-z0-9]*)/i
 const closingTagPattern = /^\s*(\/)?>/
 const attributePattern = /^\s*([-:\w]+)(?:=(['"]))?/
-const componentNamePattern = /[-A-Z]/
+// 首字母大写，或中间包含 -
+const componentNamePattern = /^[A-Z]|-/
 const selfClosingTagNames = [ 'area', 'base', 'embed', 'track', 'source', 'param', 'input', env.RAW_SLOT, 'col', 'img', 'br', 'hr' ]
 
 // 缓存编译结果
