@@ -996,7 +996,8 @@ export function render(render, getter, instance) {
 
     let value = o(expr),
 
-      eachKeypath = expr[ env.RAW_ABSOLUTE_KEYPATH ] || keypathUtil.join(keypath, expr.raw),
+      absoluteKeypath = expr[ env.RAW_ABSOLUTE_KEYPATH ],
+      eachKeypath = absoluteKeypath || keypathUtil.join(keypath, expr.raw),
       eachHandler = function (item, key) {
 
         let lastScope = scope, lastKeypath = keypath, lastKeypathStack = keypathStack
@@ -1007,7 +1008,15 @@ export function render(render, getter, instance) {
         array.push(keypathStack, keypath)
         array.push(keypathStack, scope)
 
+        // 从下面这几句赋值可以看出
+        // scope 至少会有 'keypath' 'this' 'index' 等几个值
         scope[ config.SPECIAL_KEYPATH ] = keypath
+
+        // 类似 {{#each 1 -> 10}} 这样的临时循环，需要在 scope 上加上当前项
+        // 因为通过 instance.get() 无法获取数据
+        if (!absoluteKeypath) {
+          scope[ env.RAW_THIS ] = item
+        }
 
         if (index) {
           scope[ index ] = key
