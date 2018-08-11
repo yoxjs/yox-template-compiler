@@ -994,47 +994,43 @@ export function render(render, getter, instance) {
   // each
   e = function (expr, generate, index) {
 
-    let value = o(expr), each
+    let value = o(expr),
+
+      eachKeypath = expr[ env.RAW_ABSOLUTE_KEYPATH ] || keypathUtil.join(keypath, expr.raw),
+      eachHandler = function (item, key) {
+
+        let lastScope = scope, lastKeypath = keypath, lastKeypathStack = keypathStack
+
+        scope = { }
+        keypath = keypathUtil.join(eachKeypath, key)
+        keypathStack = object.copy(keypathStack)
+        array.push(keypathStack, keypath)
+        array.push(keypathStack, scope)
+
+        scope[ config.SPECIAL_KEYPATH ] = keypath
+
+        if (index) {
+          scope[ index ] = key
+        }
+
+        generate()
+
+        scope = lastScope
+        keypath = lastKeypath
+        keypathStack = lastKeypathStack
+
+      }
 
     if (is.array(value)) {
-      each = array.each
+      array.each(value, eachHandler)
     }
     else if (is.object(value)) {
-      each = object.each
+      array.each(value, eachHandler)
+    }
+    else if (is.func(value)) {
+      value(eachHandler)
     }
 
-    if (each) {
-
-      let eachKeypath = expr[ env.RAW_ABSOLUTE_KEYPATH ] || keypathUtil.join(keypath, expr.raw)
-
-      each(
-        value,
-        function (item, key) {
-
-          let lastScope = scope, lastKeypath = keypath, lastKeypathStack = keypathStack
-
-          scope = { }
-          keypath = keypathUtil.join(eachKeypath, key)
-          keypathStack = object.copy(keypathStack)
-          array.push(keypathStack, keypath)
-          array.push(keypathStack, scope)
-
-          scope[ config.SPECIAL_KEYPATH ] = keypath
-
-          if (index) {
-            scope[ index ] = key
-          }
-
-          generate()
-
-          scope = lastScope
-          keypath = lastKeypath
-          keypathStack = lastKeypathStack
-
-        }
-      )
-
-    }
   },
   // output（e 被 each 占了..)
   o = function (expr, binding) {
