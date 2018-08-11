@@ -1034,7 +1034,7 @@ export function render(render, getter, instance) {
       array.each(value, eachHandler)
     }
     else if (is.object(value)) {
-      array.each(value, eachHandler)
+      object.each(value, eachHandler)
     }
     else if (is.func(value)) {
       value(eachHandler)
