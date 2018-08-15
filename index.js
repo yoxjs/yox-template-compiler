@@ -774,9 +774,8 @@ export function render(render, getter, instance) {
         node()
       }
       else {
-        let name = node[ env.RAW_NAME ], expr = node[ env.RAW_EXPR ]
+        let name = node[ env.RAW_NAME ], expr = node[ env.RAW_EXPR ], value
         if (node[ env.RAW_TYPE ] === nodeType.ATTRIBUTE) {
-          let value
           if (object.has(node, env.RAW_VALUE)) {
             value = node[ env.RAW_VALUE ]
           }
@@ -799,13 +798,16 @@ export function render(render, getter, instance) {
           addAttr(name, value)
         }
         else {
-          addDirective(
-            name,
-            node.modifier,
-            name === config.DIRECTIVE_MODEL
-            ? (o(expr), expr[ env.RAW_ABSOLUTE_KEYPATH ])
-            : node[ env.RAW_VALUE ]
-          )[ env.RAW_EXPR ] = expr
+          if (name === config.DIRECTIVE_MODEL) {
+            value = (o(expr), expr[ env.RAW_ABSOLUTE_KEYPATH ])
+          }
+          else if (object.has(node, env.RAW_VALUE)) {
+            value = node[ env.RAW_VALUE ]
+          }
+          else if (object.has(node, env.RAW_CHILDREN)) {
+            value = getValue(node[ env.RAW_CHILDREN ])
+          }
+          addDirective(name, node.modifier, value)[ env.RAW_EXPR ] = expr
         }
       }
     }
