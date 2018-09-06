@@ -799,7 +799,7 @@ export function render(render, getter, instance) {
         }
         else {
           if (name === config.DIRECTIVE_MODEL) {
-            value = (o(expr), expr[ env.RAW_ABSOLUTE_KEYPATH ])
+            value = (o(expr, expr[ env.RAW_STATIC_KEYPATH ]), expr[ env.RAW_ABSOLUTE_KEYPATH ])
           }
           else if (object.has(node, env.RAW_VALUE)) {
             value = node[ env.RAW_VALUE ]
