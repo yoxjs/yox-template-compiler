@@ -800,7 +800,7 @@ export function render(render, getter, instance) {
         else {
           if (name === config.DIRECTIVE_MODEL) {
             value = (o(expr, expr[ env.RAW_STATIC_KEYPATH ]), expr[ env.RAW_ABSOLUTE_KEYPATH ])
-            addAttr('$model', value)
+            currentElement.model = value
           }
           else if (object.has(node, env.RAW_VALUE)) {
             value = node[ env.RAW_VALUE ]
@@ -977,6 +977,7 @@ export function render(render, getter, instance) {
       currentElement.directives,
       children,
       currentElement.slots,
+      currentElement.model,
       ref,
       key,
       instance,
