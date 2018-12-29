@@ -15,6 +15,7 @@ import * as config from 'yox-config'
 import * as snabbdom from 'yox-snabbdom'
 
 import * as expressionCompiler from 'yox-expression-compiler'
+import Identifier from 'yox-expression-compiler/src/node/Identifier'
 
 import * as helper from './src/helper'
 import * as nodeType from './src/nodeType'
@@ -33,11 +34,11 @@ import Spread from './src/node/Spread'
 import Text from './src/node/Text'
 
 const delimiterPattern = /(\{?\{\{)\s*([^\}]+?)\s*(\}\}\}?)/
-const openingTagPattern = /<(\/)?([a-z][-a-z0-9]*)/i
+const openingTagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i
 const closingTagPattern = /^\s*(\/)?>/
 const attributePattern = /^\s*([-:\w]+)(?:=(['"]))?/
 // 首字母大写，或中间包含 -
-const componentNamePattern = /^[A-Z]|-/
+const componentNamePattern = /^[$A-Z]|-/
 const selfClosingTagNames = [ 'area', 'base', 'embed', 'track', 'source', 'param', 'input', env.RAW_SLOT, 'col', 'img', 'br', 'hr' ]
 
 // 缓存编译结果
@@ -968,6 +969,11 @@ export function render(render, getter, instance) {
         )
         children = env.UNDEFINED
       }
+    }
+
+    if (string.startsWith(tag, '$')) {
+      let name = string.slice(tag, 1)
+      tag = o(new Identifier(name, name))
     }
 
     let result = snabbdom[ component ? 'createComponentVnode' : 'createElementVnode' ](
