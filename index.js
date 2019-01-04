@@ -701,6 +701,7 @@ export function render(render, getter, instance) {
   componentStack = [ ],
 
   pushComponent = function (component) {
+    component.slots = { }
     currentComponent = component
     array.push(
       componentStack,
@@ -756,7 +757,7 @@ export function render(render, getter, instance) {
 
   addSlot = function (name, slot) {
     if (slot[ env.RAW_LENGTH ]) {
-      let slots = currentComponent.slots || (currentComponent.slots = { })
+      let { slots } = currentComponent
       if (slots[ name ]) {
         array.push(
           slots[ name ],
@@ -958,17 +959,18 @@ export function render(render, getter, instance) {
       props()
     }
 
-    let children
+    let childrenSlotName = config.SLOT_DATA_PREFIX + env.RAW_CHILDREN, children
     if (childs) {
       children = currentElement[ env.RAW_CHILDREN ] = [ ]
       childs()
       if (component) {
-        addSlot(
-          config.SLOT_DATA_PREFIX + env.RAW_CHILDREN,
-          children
-        )
+        addSlot(childrenSlotName, children)
         children = env.UNDEFINED
       }
+    }
+    // slot children 即使是空也必须覆盖组件旧值
+    else if (component) {
+      currentComponent.slots[ childrenSlotName ] = env.UNDEFINED
     }
 
     if (string.startsWith(tag, '$')) {
