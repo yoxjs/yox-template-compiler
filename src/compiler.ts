@@ -8,18 +8,31 @@ import * as exprCompiler from 'yox-expression-compiler/src/compiler'
 
 import * as helper from './helper'
 import * as creator from './creator'
+import * as nodeType from './nodeType'
+
 import Node from './node/Node'
+import Text from './node/Text'
 
 // 缓存编译结果
-let compileCache = {}
+const compileCache = {},
 
-const delimiterPattern = /(\{?\{\{)\s*([^\}]+?)\s*(\}\}\}?)/
-const openingTagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i
-const selfClosingTagPattern = /^\s*(\/)?>/
-const attributePattern = /^\s*([-:\w]+)(?:=(['"]))?/
+// 分割符，即 {{ xx }} 和 {{{ xx }}}
+delimiterPattern = /(\{?\{\{)\s*([^\}]+?)\s*(\}\}\}?)/,
+
+// 标签
+tagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i,
+
+// 属性 key value
+attributePattern = /^\s*([-:\w]+)(?:=(['"]))?/,
+
 // 首字母大写，或中间包含 -
-const componentNamePattern = /^[$A-Z]|-/
-const selfClosingTagNames = 'area,base,embed,track,source,param,input,slot,col,img,br,hr'.split(',')
+componentNamePattern = /^[$A-Z]|-/,
+
+// 自闭合标签
+selfClosingTagPattern = /^\s*(\/)?>/,
+
+// 支持的自闭合标签名
+selfClosingTagNames = 'area,base,embed,track,source,param,input,slot,col,img,br,hr'.split(',')
 
 
 /**
@@ -31,13 +44,24 @@ function slicePrefix(str: string, prefix: string): string {
 
 /**
  * 是否是纯粹的换行
- *
- * @param {string} content
- * @return {boolean}
  */
-function isBreakline(content) {
-  return string.has(content, char.CHAR_BREAKLINE)
-    && !string.trim(content)
+function isBreakline(content: string): boolean {
+
+  let hasBreakline = env.FALSE
+
+  // 为了避免外部 polyfill 实现的 trim 不能干掉换行符，这里先把换行符去掉
+  content.replace(
+    /\n\r?/,
+    function ($0) {
+      hasBreakline = env.TRUE
+      return char.CHAR_BLANK
+    }
+  )
+
+  return hasBreakline
+    ? !string.trim(content)
+    : env.FALSE
+
 }
 
 /**
@@ -45,10 +69,10 @@ function isBreakline(content) {
  *
  * 换行符比较神奇，有时候你明明看不到换行符，却真的存在一个，那就是 \r
  *
- * @param {string} content
- * @return {string}
+ * @param content
+ * @return
  */
-function trimBreakline(content) {
+function trimBreakline(content: string): string {
   return content.replace(
     /^\s*[\n\r]\s*|\s*[\n\r]\s*$/g,
     char.CHAR_BLANK
@@ -73,7 +97,7 @@ const delimiterParsers = [
           )
         }
       }
-      throwError(`${RAW_INVALID} each: ${all}`)
+      reportError(`${RAW_INVALID} each: ${all}`)
     }
   },
   function (source: string, all: string) {
@@ -81,7 +105,7 @@ const delimiterParsers = [
       source = slicePrefix(source, config.SYNTAX_IMPORT)
       return source
         ? creator.createImport(source)
-        : throwError(`${RAW_INVALID} import: ${all}`)
+        : reportError(`${RAW_INVALID} import: ${all}`)
     }
   },
   function (source: string, all: string) {
@@ -89,7 +113,7 @@ const delimiterParsers = [
       source = slicePrefix(source, config.SYNTAX_PARTIAL)
       return source
         ? creator.createPartial(source)
-        : throwError(`${RAW_INVALID} partial: ${all}`)
+        : reportError(`${RAW_INVALID} partial: ${all}`)
     }
   },
   function (source: string, all: string) {
@@ -99,7 +123,7 @@ const delimiterParsers = [
       if (expr) {
         return creator.createIf(expr)
       }
-      throwError(`${RAW_INVALID} if: ${all}`)
+      reportError(`${RAW_INVALID} if: ${all}`)
     }
   },
   function (source: string, all: string) {
@@ -109,7 +133,7 @@ const delimiterParsers = [
       if (expr) {
         return creator.createElseIf(expr)
       }
-      throwError(`${RAW_INVALID} else if: ${all}`)
+      reportError(`${RAW_INVALID} else if: ${all}`)
     }
   },
   function (source: string) {
@@ -124,7 +148,7 @@ const delimiterParsers = [
       if (expr) {
         return creator.createSpread(expr)
       }
-      throwError(`${RAW_INVALID} spread: ${all}`)
+      reportError(`${RAW_INVALID} spread: ${all}`)
     }
   },
   function (source: string, all: string) {
@@ -134,7 +158,7 @@ const delimiterParsers = [
       if (expr) {
         return creator.createExpression(expr, !string.endsWith(all, '}}}'))
       }
-      throwError(`${RAW_INVALID} expression: ${all}`)
+      reportError(`${RAW_INVALID} expression: ${all}`)
     }
   },
 ]
@@ -150,19 +174,21 @@ export function compile(content: string) {
 
   let nodeStack = [], ifStack = [], htmlStack = [], index = 0, currentQuote,
 
-    throwError = function (msg) {
+    reportError = function (msg) {
       logger.fatal(`Error compiling ${env.RAW_TEMPLATE}:${char.CHAR_BREAKLINE}${content}${char.CHAR_BREAKLINE}- ${msg}`)
     },
 
     popSelfClosingElementIfNeeded = function (popingTagName) {
       let lastNode = array.last(nodeStack)
       if (lastNode
-        && lastNode.type === nodeType.ELEMENT
-        && lastNode[env.RAW_TAG] !== popingTagName
+        && (
+          lastNode.type === nodeType.ELEMENT && lastNode.tag !== popingTagName
+          || lastNode.type === nodeType.COMPONENT && lastNode.name !== popingTagName
+        )
         && array.has(selfClosingTagNames, lastNode[env.RAW_TAG])
       ) {
         popStack(
-          nodeType.ELEMENT,
+          lastNode.type,
           lastNode[env.RAW_TAG]
         )
       }
@@ -196,7 +222,7 @@ export function compile(content: string) {
 
         let { tag, name, divider, children, component } = target
         if (type === nodeType.ELEMENT && expectedTagName && tag !== expectedTagName) {
-          throwError(`end ${env.RAW_TAG} expected </${tag}> to be </${expectedTagName}>.`)
+          reportError(`end ${env.RAW_TAG} expected </${tag}> to be </${expectedTagName}>.`)
         }
 
         // ==========================================
@@ -319,16 +345,17 @@ export function compile(content: string) {
         }
       }
       else {
-        throwError(`{{/${helper.type2Name[type]}}} is not a pair.`)
+        reportError(`{{/${helper.type2Name[type]}}} is not a pair.`)
       }
 
     },
 
     addChild = function (node: Node) {
 
-      let type = node.type, text = node[env.RAW_TEXT]
+      const type = node.type
 
       if (type === nodeType.TEXT) {
+        let text = (node as Text).text
         if (isBreakline(text)
           || !(text = trimBreakline(text))
         ) {
@@ -399,7 +426,7 @@ export function compile(content: string) {
     htmlParsers = [
       function (content: string): string | void {
         if (!htmlStack.length) {
-          const match = content.match(openingTagPattern)
+          const match = content.match(tagPattern)
           // 必须以 <tag 开头才能继续
           if (match && !match.index) {
             let tagName = match[2]
@@ -521,7 +548,7 @@ export function compile(content: string) {
         }
         else {
           // 跳过 <tag 前面的空白符
-          let match = content.match(openingTagPattern)
+          let match = content.match(tagPattern)
           if (match && match.index) {
             content = string.slice(content, 0, match.index)
           }
@@ -538,8 +565,6 @@ export function compile(content: string) {
         }
       },
     ],
-
-
 
     parseHtml = function (content: string) {
       let tpl = content
@@ -572,7 +597,7 @@ export function compile(content: string) {
               type = node.type
             }
             else {
-              throwError(`if is not begined.`)
+              reportError(`if is not begined.`)
             }
           }
           popStack(type)
@@ -594,7 +619,9 @@ export function compile(content: string) {
       str = string.slice(str, all.length)
     },
 
-    str = content, match: RegExpMatchArray | void
+    str = content,
+
+    match: RegExpMatchArray | void
 
   // 干掉 html 注释
   str = str.replace(
@@ -611,12 +638,13 @@ export function compile(content: string) {
           string.slice(str, 0, match.index)
         )
       }
-      // 避免手误写成 {{{ name }}
+      // 避免手误写成 {{{ name }} 或 {{ name }}}
       if (match[1].length === match[3].length) {
+        index += match[1].length
         parseDelimiter(match[2], match[0])
       }
       else {
-        throwError(`${RAW_INVALID} syntax: ${match[0]}`)
+        reportError(`${match[1]} and ${match[3]} is not a pair.`)
       }
     }
     else {

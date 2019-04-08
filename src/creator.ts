@@ -74,10 +74,11 @@ export function createExpression(expr: ExpressionNode, safe: boolean): Expressio
   }
 }
 
-export function createIf(expr: ExpressionNode): If {
+export function createIf(expr: ExpressionNode, stump: boolean): If {
   return {
     type: nodeType.IF,
     expr,
+    stump,
   }
 }
 
