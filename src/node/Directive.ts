@@ -14,4 +14,6 @@ export default interface Directive extends Node {
 
   modifier: string
 
+  children: Node[] | void
+
 }

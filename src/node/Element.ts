@@ -7,4 +7,10 @@ export default interface Element extends Node {
 
   tag: string
 
+  component: boolean
+
+  attrs: Node[] | void
+
+  children: Node[] | void
+
 }

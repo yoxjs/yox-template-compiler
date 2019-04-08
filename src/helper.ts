@@ -15,8 +15,6 @@ import * as nodeType from './nodeType'
 export const ifTypes = {}
 // if 分支的
 export const elseTypes = {}
-// html 层级的节点类型
-export const htmlTypes = {}
 // 叶子节点类型
 export const leafTypes = {}
 // 内置指令，无需加前缀
@@ -31,10 +29,6 @@ ifTypes[nodeType.ELSE_IF] =
 
 elseTypes[nodeType.ELSE_IF] =
 elseTypes[nodeType.ELSE] =
-
-htmlTypes[nodeType.ELEMENT] =
-htmlTypes[nodeType.ATTRIBUTE] =
-htmlTypes[nodeType.DIRECTIVE] =
 
 leafTypes[nodeType.TEXT] =
 leafTypes[nodeType.IMPORT] =

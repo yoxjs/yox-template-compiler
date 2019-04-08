@@ -1,4 +1,5 @@
 import * as config from 'yox-config'
+
 import * as env from 'yox-common/util/env'
 import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
@@ -11,7 +12,11 @@ import * as creator from './creator'
 import * as nodeType from './nodeType'
 
 import Node from './node/Node'
-import Text from './node/Text'
+import Element from './node/Element'
+import Attribute from './node/Attribute'
+import Directive from './node/Directive'
+import If from './node/If'
+import ElseIf from './node/ElseIf'
 
 // 缓存编译结果
 const compileCache = {},
@@ -22,7 +27,7 @@ delimiterPattern = /(\{?\{\{)\s*([^\}]+?)\s*(\}\}\}?)/,
 // 标签
 tagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i,
 
-// 属性 key value
+// 属性的 name
 attributePattern = /^\s*([-:\w]+)(?:=(['"]))?/,
 
 // 首字母大写，或中间包含 -
@@ -43,28 +48,6 @@ function slicePrefix(str: string, prefix: string): string {
 }
 
 /**
- * 是否是纯粹的换行
- */
-function isBreakline(content: string): boolean {
-
-  let hasBreakline = env.FALSE
-
-  // 为了避免外部 polyfill 实现的 trim 不能干掉换行符，这里先把换行符去掉
-  content.replace(
-    /\n\r?/,
-    function ($0) {
-      hasBreakline = env.TRUE
-      return char.CHAR_BLANK
-    }
-  )
-
-  return hasBreakline
-    ? !string.trim(content)
-    : env.FALSE
-
-}
-
-/**
  * trim 文本开始和结束位置的换行符
  *
  * 换行符比较神奇，有时候你明明看不到换行符，却真的存在一个，那就是 \r
@@ -79,90 +62,6 @@ function trimBreakline(content: string): string {
   )
 }
 
-const textProp = env.win && env.win.SVGElement ? 'textContent' : 'innerText'
-
-
-const delimiterParsers = [
-  // #each
-  function (source: string, all: string) {
-    if (string.startsWith(source, config.SYNTAX_EACH)) {
-      source = slicePrefix(source, config.SYNTAX_EACH)
-      const terms = source.replace(/\s+/g, char.CHAR_BLANK).split(char.CHAR_COLON)
-      if (terms[0]) {
-        const expr = exprCompiler.compile(string.trim(terms[0]))
-        if (expr) {
-          return creator.createEach(
-            expr,
-            string.trim(terms[1])
-          )
-        }
-      }
-      reportError(`${RAW_INVALID} each: ${all}`)
-    }
-  },
-  function (source: string, all: string) {
-    if (string.startsWith(source, config.SYNTAX_IMPORT)) {
-      source = slicePrefix(source, config.SYNTAX_IMPORT)
-      return source
-        ? creator.createImport(source)
-        : reportError(`${RAW_INVALID} import: ${all}`)
-    }
-  },
-  function (source: string, all: string) {
-    if (string.startsWith(source, config.SYNTAX_PARTIAL)) {
-      source = slicePrefix(source, config.SYNTAX_PARTIAL)
-      return source
-        ? creator.createPartial(source)
-        : reportError(`${RAW_INVALID} partial: ${all}`)
-    }
-  },
-  function (source: string, all: string) {
-    if (string.startsWith(source, config.SYNTAX_IF)) {
-      source = slicePrefix(source, config.SYNTAX_IF)
-      const expr = exprCompiler.compile(source)
-      if (expr) {
-        return creator.createIf(expr)
-      }
-      reportError(`${RAW_INVALID} if: ${all}`)
-    }
-  },
-  function (source: string, all: string) {
-    if (string.startsWith(source, config.SYNTAX_ELSE_IF)) {
-      source = slicePrefix(source, config.SYNTAX_ELSE_IF)
-      const expr = exprCompiler.compile(source)
-      if (expr) {
-        return creator.createElseIf(expr)
-      }
-      reportError(`${RAW_INVALID} else if: ${all}`)
-    }
-  },
-  function (source: string) {
-    if (string.startsWith(source, config.SYNTAX_ELSE)) {
-      return creator.createElse()
-    }
-  },
-  function (source: string, all: string) {
-    if (string.startsWith(source, config.SYNTAX_SPREAD)) {
-      source = slicePrefix(source, config.SYNTAX_SPREAD)
-      const expr = exprCompiler.compile(source)
-      if (expr) {
-        return creator.createSpread(expr)
-      }
-      reportError(`${RAW_INVALID} spread: ${all}`)
-    }
-  },
-  function (source: string, all: string) {
-    if (!config.SYNTAX_COMMENT.test(source)) {
-      source = string.trim(source)
-      const expr = exprCompiler.compile(source)
-      if (expr) {
-        return creator.createExpression(expr, !string.endsWith(all, '}}}'))
-      }
-      reportError(`${RAW_INVALID} expression: ${all}`)
-    }
-  },
-]
-
 export function compile(content: string) {
 
   let nodeList = compileCache[content]
@@ -172,24 +71,43 @@ export function compile(content: string) {
 
   nodeList = []
 
-  let nodeStack = [], ifStack = [], htmlStack = [], index = 0, currentQuote,
+  let nodeStack: Node[] = [],
+
+    ifStack: Node[] = [],
+
+    currentElement: Element | void,
+
+    currentAttribute: Attribute | Directive | void,
+
+    index = 0,
+
+    startQuote: string | void,
 
     reportError = function (msg) {
       logger.fatal(`Error compiling ${env.RAW_TEMPLATE}:${char.CHAR_BREAKLINE}${content}${char.CHAR_BREAKLINE}- ${msg}`)
     },
 
-    popSelfClosingElementIfNeeded = function (popingTagName) {
+    /**
+     * 常见的两种情况：
+     *
+     * <div>
+     *    <input>1
+     * </div>
+     *
+     * <div>
+     *    <input>
+     * </div>
+     */
+    popSelfClosingElementIfNeeded = function (popingTagName?: string) {
       let lastNode = array.last(nodeStack)
       if (lastNode
-        && (
-          lastNode.type === nodeType.ELEMENT && lastNode.tag !== popingTagName
-          || lastNode.type === nodeType.COMPONENT && lastNode.name !== popingTagName
-        )
-        && array.has(selfClosingTagNames, lastNode[env.RAW_TAG])
+        && lastNode.type === nodeType.ELEMENT
+        && lastNode.tag !== popingTagName
+        && array.has(selfClosingTagNames, lastNode.tag)
       ) {
         popStack(
           lastNode.type,
-          lastNode[env.RAW_TAG]
+          lastNode.tag
         )
       }
     },
@@ -205,13 +123,13 @@ export function compile(content: string) {
         popSelfClosingElementIfNeeded(expectedTagName)
       }
 
-      let target
+      let target: Node | void
 
       array.each(
         nodeStack,
-        function (node, i) {
+        function (node, index) {
           if (node.type === type) {
-            target = nodeStack.splice(i, 1)[0]
+            target = nodeStack.splice(index, 1)[0]
             return env.FALSE
           }
         },
@@ -220,129 +138,11 @@ export function compile(content: string) {
 
       if (target) {
 
-        let { tag, name, divider, children, component } = target
+        let { tag } = target
         if (type === nodeType.ELEMENT && expectedTagName && tag !== expectedTagName) {
           reportError(`end ${env.RAW_TAG} expected </${tag}> to be </${expectedTagName}>.`)
         }
 
-        // ==========================================
-        // 以下是性能优化的逻辑
-        // ==========================================
-
-        // 如果 children 没实际的数据，删掉它
-        // 避免在渲染阶段增加计算量
-        if (children && !children.length) {
-          children = env.NULL
-          delete target.children
-        }
-
-        if (!children) {
-          return
-        }
-
-        if (type === nodeType.ELEMENT) {
-          // 优化只有一个子节点的情况
-          if (!component
-            && tag !== env.RAW_TEMPLATE
-            && children.length - divider === 1
-          ) {
-
-            let singleChild = array.last(children)
-
-            // 子节点是纯文本
-            if (singleChild.type === nodeType.TEXT) {
-              target.props = [
-                {
-                  name: textProp,
-                  value: singleChild[env.RAW_TEXT],
-                }
-              ]
-              array.pop(children)
-            }
-            else if (singleChild.type === nodeType.EXPRESSION) {
-              let props = []
-              if (singleChild.safe === env.FALSE) {
-                array.push(
-                  props,
-                  {
-                    name: 'innerHTML',
-                    value: singleChild[env.RAW_EXPR],
-                  }
-                )
-              }
-              else {
-                array.push(
-                  props,
-                  {
-                    name: textProp,
-                    value: singleChild[env.RAW_EXPR],
-                  }
-                )
-              }
-              target.props = props
-              array.pop(children)
-            }
-
-            if (!children.length) {
-              delete target.children
-            }
-
-          }
-        }
-        else {
-
-          if (type === nodeType.ATTRIBUTE) {
-            // <div key="xx">
-            // <div ref="xx">
-            // <div transition="xx">
-            // <slot name="xx">
-            // <template slot="xx">
-            let element = array.last(htmlStack)
-            if (name === env.RAW_KEY
-              || name === env.RAW_REF
-              || name === 'transition'
-              || (element[env.RAW_TAG] === env.RAW_TEMPLATE && name === env.RAW_SLOT)
-              || (element[env.RAW_TAG] === env.RAW_SLOT && name === env.RAW_NAME)
-            ) {
-              // 把数据从属性中提出来，减少渲染时的遍历
-              array.remove(element.children, target)
-              if (!element.children.length) {
-                delete element.children
-              }
-              if (children.length) {
-                element[name] = children
-              }
-              return
-            }
-          }
-
-          let singleChild = children.length === 1 && children[0]
-          if (singleChild) {
-            if (singleChild.type === nodeType.TEXT) {
-              // 指令的值如果是纯文本，可以预编译表达式，提升性能
-              let text = singleChild[env.RAW_TEXT]
-              if (type === nodeType.DIRECTIVE) {
-                target[env.RAW_EXPR] = exprCompiler.compile(text)
-                target[env.RAW_VALUE] = text
-                delete target.children
-              }
-              // 属性的值如果是纯文本，直接获取文本值
-              // 减少渲染时的遍历
-              else if (type === nodeType.ATTRIBUTE) {
-                target[env.RAW_VALUE] = text
-                delete target.children
-              }
-            }
-            // <div class="{{className}}">
-            // 把 Attribute 转成 单向绑定 指令，可实现精确更新视图
-            else if (type === nodeType.ATTRIBUTE
-              && singleChild.type === nodeType.EXPRESSION
-            ) {
-              target[env.RAW_EXPR] = singleChild[env.RAW_EXPR]
-              delete target.children
-            }
-          }
-        }
       }
       else {
         reportError(`{{/${helper.type2Name[type]}}} is not a pair.`)
@@ -351,18 +151,6 @@ export function compile(content: string) {
     },
 
     addChild = function (node: Node) {
-
-      const type = node.type
-
-      if (type === nodeType.TEXT) {
-        let text = (node as Text).text
-        if (isBreakline(text)
-          || !(text = trimBreakline(text))
-        ) {
-          return
-        }
-        node[env.RAW_TEXT] = text
-      }
 
       /**
        * <div>
@@ -374,47 +162,46 @@ export function compile(content: string) {
        *    <input>xxx
        * </div>
        */
-      if (!htmlStack.length) {
+      if (!currentElement) {
         popSelfClosingElementIfNeeded()
       }
 
+      const type = node.type
+
       if (helper.elseTypes[type]) {
-        let ifNode = array.pop(ifStack)
+        const ifNode: If | ElseIf = array.pop(ifStack)
         ifNode.next = node
         popStack(ifNode.type)
-        array.push(ifStack, node)
-        array.push(nodeStack, node)
-        return
-      }
-
-      let prevNode, currentNode = array.last(nodeStack)
-      if (currentNode) {
-        let children = currentNode.children, divider = currentNode.divider
-        if (children) {
-          if (children.length !== divider) {
-            prevNode = children[children.length - 1]
-          }
-        }
-        else {
-          children = currentNode.children = []
-        }
-        array.push(children, node)
       }
       else {
-        prevNode = array.last(nodeList)
-        array.push(nodeList, node)
+        let prevNode, currentNode = array.last(nodeStack)
+        if (currentNode) {
+          let children = currentNode.children, divider = currentNode.divider
+          if (children) {
+            if (children.length !== divider) {
+              prevNode = children[children.length - 1]
+            }
+          }
+          else {
+            children = currentNode.children = []
+          }
+          array.push(children, node)
+        }
+        else {
+          prevNode = array.last(nodeList)
+          array.push(nodeList, node)
+        }
       }
 
+
+
       if (helper.ifTypes[type]) {
-        // 只要是 if 节点，并且处于 element 层级，就加 stump
+        // 只要是 if 节点，并且处于 element 同级，就加上 stump
         // 方便 virtual dom 进行对比
-        if (!htmlStack.length) {
+        if (!currentElement) {
           node.stump = env.TRUE
         }
         array.push(ifStack, node)
-      }
-      else if (helper.htmlTypes[type]) {
-        array.push(htmlStack, node)
       }
 
       if (!helper.leafTypes[type]) {
@@ -423,13 +210,23 @@ export function compile(content: string) {
 
     },
 
+    addTextChild = function (text: string) {
+      text = trimBreakline(text)
+      if (text) {
+        addChild(
+          creator.createText(text)
+        )
+      }
+    },
+
     htmlParsers = [
       function (content: string): string | void {
-        if (!htmlStack.length) {
-          const match = content.match(tagPattern)
+        if (!currentElement) {
+          match = content.match(tagPattern)
           // 必须以 <tag 开头才能继续
-          if (match && !match.index) {
-            let tagName = match[2]
+          // 如果 <tag 前面有别的字符，会走进第四个 parser
+          if (match && match.index === 0) {
+            const tagName = match[2]
             if (match[1] === char.CHAR_SLASH) {
               popStack(
                 nodeType.ELEMENT,
@@ -437,131 +234,220 @@ export function compile(content: string) {
               )
             }
             else {
-              addChild(
-                creator.createElement(
-                  tagName,
-                  componentNamePattern.test(tagName)
-                )
+              const node = creator.createElement(
+                tagName,
+                componentNamePattern.test(tagName)
               )
+              addChild(node)
+              currentElement = node
             }
             return match[0]
           }
         }
       },
-      // 自闭合元素
+      // 处理 > 或 />
       function (content: string): string | void {
-        const match = content.match(selfClosingTagPattern)
-        if (match) {
-          // 当前在 element/component 层级
-          if (htmlStack.length === 1) {
-            const element = array.last(htmlStack)
-            element.divider = element.children ? element.children.length : 0
+        // 当前在 element 层级
+        if (currentAttribute) {
+          match = content.match(selfClosingTagPattern)
+          if (match) {
+            // 自闭合标签
             if (match[1] === char.CHAR_SLASH) {
               popStack(
-                element.type
+                currentAttribute.type
               )
             }
-            array.pop(htmlStack)
+            currentAttribute = env.UNDEFINED
+            return match[0]
           }
-          return match[0]
         }
       },
       // 处理 attribute property directive 的 name 部分
       function (content: string): string | void {
-        // 当前在 element/component 层级
-        if (htmlStack.length === 1) {
-          const match = content.match(attributePattern)
+        // 当前在 element 层级
+        if (currentElement && !currentAttribute) {
+          match = content.match(attributePattern)
           if (match) {
-            let name = match[1]
+            let node: Attribute | Directive
+
+            const name = match[1]
             if (helper.builtInDirectives[name]) {
-              addChild(
-                creator.createDirective(
-                  string.camelCase(name),
-                  char.CHAR_BLANK
-                )
+              node = creator.createDirective(
+                string.camelCase(name),
+                char.CHAR_BLANK
               )
             }
             else if (string.startsWith(name, config.DIRECTIVE_EVENT_PREFIX)) {
-              name = slicePrefix(name, config.DIRECTIVE_EVENT_PREFIX)
-              addChild(
-                creator.createDirective(
-                  config.DIRECTIVE_EVENT,
-                  string.camelCase(name)
+              node = creator.createDirective(
+                config.DIRECTIVE_EVENT,
+                string.camelCase(
+                  slicePrefix(name, config.DIRECTIVE_EVENT_PREFIX)
                 )
               )
             }
             else if (string.startsWith(name, config.DIRECTIVE_CUSTOM_PREFIX)) {
-              name = string.slice(name, config.DIRECTIVE_CUSTOM_PREFIX.length)
-              addChild(
-                creator.createDirective(
-                  string.camelCase(name),
-                  char.CHAR_BLANK
-                )
+              node = creator.createDirective(
+                string.camelCase(
+                  slicePrefix(name, config.DIRECTIVE_CUSTOM_PREFIX)
+                ),
+                char.CHAR_BLANK
               )
             }
             else {
-              addChild(
-                creator.createAttribute(
-                  htmlStack[0][env.RAW_COMPONENT]
-                    ? string.camelCase(name)
-                    : name
+              // 组件用驼峰格式
+              if (currentElement.component) {
+                node = creator.createAttribute(
+                  string.camelCase(name),
+                  char.CHAR_BLANK
                 )
-              )
+              }
+              // 原生 html 可能带有命名空间
+              else {
+                const parts = name.split(char.CHAR_COLON)
+                node = parts.length === 1
+                  ? creator.createAttribute(
+                      name,
+                      char.CHAR_BLANK
+                    )
+                  : creator.createAttribute(
+                      parts[1],
+                      parts[0]
+                    )
+              }
             }
-            currentQuote = match[2]
-            if (!currentQuote) {
-              popStack(
-                array.pop(htmlStack).type
-              )
+
+            addChild(node)
+
+            // 这里先记下，下一个 handler 要匹配结束引号
+            startQuote = match[2]
+
+            // 有属性值才需要设置 currentAttribute，便于后续收集属性值
+            if (startQuote) {
+              currentAttribute = node
             }
+
             return match[0]
           }
         }
       },
       function (content: string): string | void {
         // 处理 attribute property directive 的 value 部分
-        if (htmlStack.length === 2) {
-          let index = 0, currentChar, closed
+        if (currentAttribute) {
+          let index = 0, currentChar: string, closed = env.FALSE
           while (currentChar = char.charAt(content, index)) {
-            if (currentChar === currentQuote) {
+            if (currentChar === startQuote) {
               closed = env.TRUE
               break
             }
             index++
           }
           let text = char.CHAR_BLANK
-          if (index) {
+          if (index > 0) {
             text = string.slice(content, 0, index)
-            addChild(
-              creator.createText(text)
-            )
+            addTextChild(text)
           }
           if (closed) {
-            text += currentQuote
-            closed = array.pop(htmlStack)
-            if (!closed.children) {
-              closed[env.RAW_VALUE] = char.CHAR_BLANK
+            text += startQuote
+            if (!currentAttribute.children) {
+              // 至少得有个值，不然就变成布尔类型的属性了
+              addChild(
+                creator.createText(char.CHAR_BLANK)
+              )
             }
-            popStack(closed.type)
+            popStack(currentAttribute.type)
           }
           return text
         }
         else {
           // 跳过 <tag 前面的空白符
-          let match = content.match(tagPattern)
-          if (match && match.index) {
+          match = content.match(tagPattern)
+          if (match && match.index > 0) {
             content = string.slice(content, 0, match.index)
           }
-          // 属性级别的空字符串是没有意义的
-          // 比如 <div      class="xx">
-          if (htmlStack.length !== 1
-            || string.trim(content)
-          ) {
-            addChild(
-              creator.createText(content)
-            )
-          }
+          // 元素内容，如 <div>xxx</div> 中的 xxx
+          addTextChild(content)
           return content
+        }
+      },
+    ],
+
+    delimiterParsers = [
+      // #each
+      function (source: string) {
+        if (string.startsWith(source, config.SYNTAX_EACH)) {
+          source = slicePrefix(source, config.SYNTAX_EACH)
+          const terms = source.replace(/\s+/g, char.CHAR_BLANK).split(char.CHAR_COLON)
+          if (terms[0]) {
+            const expr = exprCompiler.compile(string.trim(terms[0]))
+            if (expr) {
+              return creator.createEach(
+                expr,
+                string.trim(terms[1])
+              )
+            }
+          }
+          reportError(`无效的 each`)
+        }
+      },
+      function (source: string) {
+        if (string.startsWith(source, config.SYNTAX_IMPORT)) {
+          source = slicePrefix(source, config.SYNTAX_IMPORT)
+          return source
+            ? creator.createImport(source)
+            : reportError(`无效的 import`)
+        }
+      },
+      function (source: string) {
+        if (string.startsWith(source, config.SYNTAX_PARTIAL)) {
+          source = slicePrefix(source, config.SYNTAX_PARTIAL)
+          return source
+            ? creator.createPartial(source)
+            : reportError(`无效的 partial`)
+        }
+      },
+      function (source: string) {
+        if (string.startsWith(source, config.SYNTAX_IF)) {
+          source = slicePrefix(source, config.SYNTAX_IF)
+          const expr = exprCompiler.compile(source)
+          if (expr) {
+            return creator.createIf(expr)
+          }
+          reportError(`无效的 if`)
+        }
+      },
+      function (source: string) {
+        if (string.startsWith(source, config.SYNTAX_ELSE_IF)) {
+          source = slicePrefix(source, config.SYNTAX_ELSE_IF)
+          const expr = exprCompiler.compile(source)
+          if (expr) {
+            return creator.createElseIf(expr)
+          }
+          reportError(`无效的 else if`)
+        }
+      },
+      function (source: string) {
+        if (string.startsWith(source, config.SYNTAX_ELSE)) {
+          return creator.createElse()
+        }
+      },
+      function (source: string) {
+        if (string.startsWith(source, config.SYNTAX_SPREAD)) {
+          source = slicePrefix(source, config.SYNTAX_SPREAD)
+          const expr = exprCompiler.compile(source)
+          if (expr) {
+            return creator.createSpread(expr)
+          }
+          reportError(`无效的 spread`)
+        }
+      },
+      function (source: string) {
+        if (!config.SYNTAX_COMMENT.test(source)) {
+          source = string.trim(source)
+          const expr = exprCompiler.compile(source)
+          if (expr) {
+            return creator.createExpression(expr, isSafeBlock)
+          }
+          reportError(`无效的 expression`)
         }
       },
     ],
@@ -607,7 +493,7 @@ export function compile(content: string) {
           array.each(
             delimiterParsers,
             function (parse) {
-              const node = parse(content, all)
+              const node = parse(content)
               if (node) {
                 addChild(node)
                 return env.FALSE
@@ -621,7 +507,11 @@ export function compile(content: string) {
 
     str = content,
 
-    match: RegExpMatchArray | void
+    match: RegExpMatchArray | void,
+
+    length = 0,
+
+    isSafeBlock = env.FALSE
 
   // 干掉 html 注释
   str = str.replace(
@@ -638,9 +528,13 @@ export function compile(content: string) {
           string.slice(str, 0, match.index)
         )
       }
+
+      length = match[1].length
+
       // 避免手误写成 {{{ name }} 或 {{ name }}}
-      if (match[1].length === match[3].length) {
-        index += match[1].length
+      if (length === match[3].length) {
+        index += length
+        isSafeBlock = length === 2
         parseDelimiter(match[2], match[0])
       }
       else {

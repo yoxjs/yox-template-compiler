@@ -8,4 +8,6 @@ export default interface ElseIf extends Node {
 
   expr: ExpressionNode
 
+  next: Node
+
 }

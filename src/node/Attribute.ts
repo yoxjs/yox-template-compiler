@@ -7,4 +7,8 @@ export default interface Attribute extends Node {
 
   name: string
 
+  namespace: string
+
+  children: Node[] | void
+
 }

@@ -1,9 +1,9 @@
+import * as env from 'yox-common/util/env'
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 
 import * as nodeType from './nodeType'
 
 import Attribute from './node/Attribute'
-import Component from './node/Component'
 import Directive from './node/Directive'
 import Each from './node/Each'
 import Element from './node/Element'
@@ -16,17 +16,12 @@ import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Text from './node/Text'
 
-export function createAttribute(name: string): Attribute {
+export function createAttribute(name: string, namespace: string): Attribute {
   return {
     type: nodeType.ATTRIBUTE,
     name,
-  }
-}
-
-export function createComponent(name: string): Component {
-  return {
-    type: nodeType.COMPONENT,
-    name,
+    namespace,
+    children: env.UNDEFINED,
   }
 }
 
@@ -35,6 +30,7 @@ export function createDirective(name: string, modifier: string): Directive {
     type: nodeType.DIRECTIVE,
     name,
     modifier,
+    children: env.UNDEFINED,
   }
 }
 
@@ -46,10 +42,13 @@ export function createEach(expr: ExpressionNode, index: string): Each {
   }
 }
 
-export function createElement(tag: string): Element {
+export function createElement(tag: string, component: boolean): Element {
   return {
     type: nodeType.ELEMENT,
     tag,
+    component,
+    attrs: env.UNDEFINED,
+    children: env.UNDEFINED,
   }
 }
 
@@ -63,6 +62,7 @@ export function createElseIf(expr: ExpressionNode): ElseIf {
   return {
     type: nodeType.ELSE_IF,
     expr,
+    next: env.UNDEFINED,
   }
 }
 
@@ -74,11 +74,12 @@ export function createExpression(expr: ExpressionNode, safe: boolean): Expressio
   }
 }
 
-export function createIf(expr: ExpressionNode, stump: boolean): If {
+export function createIf(expr: ExpressionNode): If {
   return {
     type: nodeType.IF,
     expr,
-    stump,
+    next: env.UNDEFINED,
+    stump: env.FALSE
   }
 }
 

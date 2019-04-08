@@ -8,6 +8,8 @@ export default interface If extends Node {
 
   expr: ExpressionNode
 
+  next: Node
+
   stump: boolean
 
 }
