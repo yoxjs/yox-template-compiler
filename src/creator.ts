@@ -47,7 +47,7 @@ export function createElement(tag: string, component: boolean): Element {
     type: nodeType.ELEMENT,
     tag,
     component,
-    attrs: env.UNDEFINED,
+    divider: 0,
     children: env.UNDEFINED,
   }
 }

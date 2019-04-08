@@ -9,7 +9,7 @@ export default interface Element extends Node {
 
   component: boolean
 
-  attrs: Node[] | void
+  divider: number
 
   children: Node[] | void
 

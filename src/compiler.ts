@@ -174,7 +174,7 @@ export function compile(content: string) {
         popStack(ifNode.type)
       }
       else {
-        let prevNode, currentNode = array.last(nodeStack)
+        let prevNode: Node, currentNode: Attribute | Directive | Element | void = array.last(nodeStack)
         if (currentNode) {
           let children = currentNode.children, divider = currentNode.divider
           if (children) {
@@ -193,11 +193,10 @@ export function compile(content: string) {
         }
       }
 
-
-
       if (helper.ifTypes[type]) {
-        // 只要是 if 节点，并且处于 element 同级，就加上 stump
+        // 只要是 if 节点，并且和 element 同级，就加上 stump
         // 方便 virtual dom 进行对比
+        // 这个跟 virtual dom 的实现原理密切相关，不加 stump 会有问题
         if (!currentElement) {
           node.stump = env.TRUE
         }
@@ -248,16 +247,20 @@ export function compile(content: string) {
       // 处理 > 或 />
       function (content: string): string | void {
         // 当前在 element 层级
-        if (currentAttribute) {
+        if (currentElement && currentAttribute) {
           match = content.match(selfClosingTagPattern)
           if (match) {
+
             // 自闭合标签
             if (match[1] === char.CHAR_SLASH) {
               popStack(
                 currentAttribute.type
               )
             }
+
+            currentElement.divider = currentElement.children ? currentElement.children.length : 0
             currentAttribute = env.UNDEFINED
+
             return match[0]
           }
         }
@@ -477,7 +480,7 @@ export function compile(content: string) {
         if (char.codeAt(content) === char.CODE_SLASH) {
           const name = string.slice(content, 1)
           let type = helper.name2Type[name]
-          if (helper.ifTypes[type]) {
+          if (type === nodeType.IF) {
             const node = array.pop(ifStack)
             if (node) {
               type = node.type
