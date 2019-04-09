@@ -14,6 +14,20 @@ function checkValue(node: any, text: string) {
   }
 }
 
+it('空模板', () => {
+
+  let ast1 = compile(' ')
+
+  expect(ast1.length).toBe(1)
+  expect(ast1[0].type).toBe(nodeType.TEXT)
+  expect(ast1[0].text).toBe(' ')
+
+  let ast2 = compile('')
+
+  expect(ast2.length).toBe(0)
+
+})
+
 it('支持多个根元素', () => {
 
   let ast = compile('<div></div><span></span><ul></ul>text')
