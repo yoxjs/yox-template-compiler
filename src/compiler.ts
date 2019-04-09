@@ -368,7 +368,7 @@ export function compile(content: string) {
       },
     ],
 
-    delimiterParsers = [
+    blockParsers = [
       // #each
       function (source: string) {
         if (string.startsWith(source, config.SYNTAX_EACH)) {
@@ -473,7 +473,7 @@ export function compile(content: string) {
       str = string.slice(str, content.length)
     },
 
-    parseDelimiter = function (content: string, all: string) {
+    parseBlock = function (content: string, all: string) {
       if (content) {
         // 结束当前 block
         // 正则会去掉 {{ xx }} 里面两侧的空白符，因此如果有 /，一定是第一个字符
@@ -494,7 +494,7 @@ export function compile(content: string) {
         else {
           // 开始下一个 block 或表达式
           array.each(
-            delimiterParsers,
+            blockParsers,
             function (parse) {
               const node = parse(content)
               if (node) {
@@ -535,7 +535,7 @@ export function compile(content: string) {
       if (length === match[3].length) {
         index += length
         isSafeBlock = length === 2
-        parseDelimiter(match[2], match[0])
+        parseBlock(match[2], match[0])
       }
       else {
         reportError(`${match[1]} and ${match[3]} is not a pair.`)
