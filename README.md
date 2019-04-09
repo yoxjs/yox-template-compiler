@@ -30,6 +30,4 @@ JSON.stringify(
 
 ## 修改
 
-支持 <User name={{xx}} age={{xx}} /> 类 React 写法
-
 

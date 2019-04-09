@@ -20,8 +20,11 @@ import Directive from './node/Directive'
 // 缓存编译结果
 const compileCache = {},
 
+// 正则编译结果
+patternCache = {},
+
 // 分割符，即 {{ xx }} 和 {{{ xx }}}
-delimiterPattern = /(\{?\{\{)\s*([^\}]+?)\s*(\}\}\}?)/,
+blockPattern = /(\{?\{\{)\s*([^\}]+?)\s*(\}\}\}?)/,
 
 // 标签
 tagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i,
@@ -80,8 +83,6 @@ export function compile(content: string) {
     currentAttribute: Attribute | Directive | void,
 
     str = content,
-
-    index = 0,
 
     startQuote: string | void,
 
@@ -261,7 +262,7 @@ export function compile(content: string) {
           return match[0]
         }
       },
-      // 处理 attribute property directive 的 name 部分
+      // 处理 attribute directive 的 name 部分
       function (content: string): string | void {
         // 当前在 element 层级
         if (currentElement && !currentAttribute) {
@@ -327,49 +328,58 @@ export function compile(content: string) {
         }
       },
       function (content: string): string | void {
-        // 处理 attribute property directive 的 value 部分
-        if (currentAttribute) {
-          let index = 0, currentChar: string, closed = env.FALSE
-          while (currentChar = char.charAt(content, index)) {
-            if (currentChar === startQuote) {
-              closed = env.TRUE
-              break
-            }
-            index++
-          }
-          let text = char.CHAR_BLANK
-          if (index > 0) {
-            text = string.slice(content, 0, index)
+
+        let text: string | void, match: RegExpMatchArray | void
+
+        // 处理 attribute directive 的 value 部分
+        if (currentAttribute && startQuote) {
+
+          match = content.match(patternCache[startQuote] || (patternCache[startQuote] = new RegExp(startQuote)))
+          // 有结束引号
+          if (match) {
+            text = string.slice(content, 0, match.index)
             addTextChild(text)
-          }
-          if (closed) {
+
             text += startQuote
+
+            // attribute directive 结束了
+            // 此时如果一个值都没收集到，需设置一个空字符串
+            // 否则无法区分 <div a b=""> 中的 a 和 b
             if (!currentAttribute.children) {
-              // 至少得有个值，不然就变成布尔类型的属性了
               addChild(
                 creator.createText(char.CHAR_BLANK)
               )
             }
+
             popStack(currentAttribute.type)
             currentAttribute = env.UNDEFINED
+
           }
-          return text
+          // 没有结束引号，整段匹配
+          else {
+            text = content
+            addTextChild(text)
+          }
+
         }
         else {
           // 获取 <tag 前面的字符
-          const match = content.match(tagPattern)
-          if (match && match.index > 0) {
-            content = string.slice(content, 0, match.index)
-          }
-          // 元素内容，如 <div>xxx</div> 中的 xxx
-          addTextChild(content)
-          return content
+          match = content.match(tagPattern)
+
+          text = match && match.index > 0
+            ? string.slice(content, 0, match.index)
+            : content
+
+          // 元素内容
+          addTextChild(text)
         }
+
+        return text
       },
     ],
 
     blockParsers = [
-      // #each
+      // {{#each xx:index}}
       function (source: string) {
         if (string.startsWith(source, config.SYNTAX_EACH)) {
           source = slicePrefix(source, config.SYNTAX_EACH)
@@ -386,6 +396,7 @@ export function compile(content: string) {
           reportError(`无效的 each`)
         }
       },
+      // {{#import name}}
       function (source: string) {
         if (string.startsWith(source, config.SYNTAX_IMPORT)) {
           source = slicePrefix(source, config.SYNTAX_IMPORT)
@@ -395,6 +406,7 @@ export function compile(content: string) {
           reportError(`无效的 import`)
         }
       },
+      // {{#partial name}}
       function (source: string) {
         if (string.startsWith(source, config.SYNTAX_PARTIAL)) {
           source = slicePrefix(source, config.SYNTAX_PARTIAL)
@@ -404,6 +416,7 @@ export function compile(content: string) {
           reportError(`无效的 partial`)
         }
       },
+      // {{#if expr}}
       function (source: string) {
         if (string.startsWith(source, config.SYNTAX_IF)) {
           source = slicePrefix(source, config.SYNTAX_IF)
@@ -414,6 +427,7 @@ export function compile(content: string) {
           reportError(`无效的 if`)
         }
       },
+      // {{else if expr}}
       function (source: string) {
         if (string.startsWith(source, config.SYNTAX_ELSE_IF)) {
           source = slicePrefix(source, config.SYNTAX_ELSE_IF)
@@ -424,6 +438,7 @@ export function compile(content: string) {
           reportError(`无效的 else if`)
         }
       },
+      // {{else}}
       function (source: string) {
         if (string.startsWith(source, config.SYNTAX_ELSE)) {
           source = slicePrefix(source, config.SYNTAX_ELSE)
@@ -433,6 +448,7 @@ export function compile(content: string) {
           reportError(`else 后面不要写乱七八糟的东西`)
         }
       },
+      // {{...obj}}
       function (source: string) {
         if (string.startsWith(source, config.SYNTAX_SPREAD)) {
           source = slicePrefix(source, config.SYNTAX_SPREAD)
@@ -443,6 +459,7 @@ export function compile(content: string) {
           reportError(`无效的 spread`)
         }
       },
+      // {{expr}}
       function (source: string) {
         if (!config.SYNTAX_COMMENT.test(source)) {
           source = string.trim(source)
@@ -464,7 +481,6 @@ export function compile(content: string) {
             const match = parse(tpl)
             if (match) {
               tpl = string.slice(tpl, match.length)
-              index += match.length
               return env.FALSE
             }
           }
@@ -518,7 +534,7 @@ export function compile(content: string) {
 
   while (str) {
     // 匹配 {{ }}
-    match = str.match(delimiterPattern)
+    match = str.match(blockPattern)
     if (match) {
 
       // 裁剪开头到 {{ 之间的模板内容
@@ -533,7 +549,6 @@ export function compile(content: string) {
 
       // 避免手误写成 {{{ name }} 或 {{ name }}}
       if (length === match[3].length) {
-        index += length
         isSafeBlock = length === 2
         parseBlock(match[2], match[0])
       }
