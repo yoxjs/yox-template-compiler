@@ -1,3 +1,4 @@
+import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Branch from './Branch'
 
 /**
@@ -13,6 +14,8 @@ export default interface Directive extends Branch {
   name: string
 
   modifier: string | void
+
+  expr: ExpressionNode | void
 
   value: string | void
 

@@ -120,10 +120,43 @@ export function compile(content: string) {
       const target = array.pop(nodeStack)
       if (target && target.type === type) {
 
-        if (tagName && target.tag !== tagName) {
+        const { tag, children } = target
+
+        if (tagName && tag !== tagName) {
           reportError(`结束标签是${tagName}，开始标签却是${target.tag}`)
         }
 
+        const singleChild = children && children.length === 1 && children[0]
+        if (singleChild) {
+          switch (singleChild.type) {
+
+            case nodeType.TEXT:
+              // 指令的值如果是纯文本，可以预编译表达式，提升性能
+              const { text } = singleChild
+              if (type === nodeType.DIRECTIVE) {
+                target.expr = exprCompiler.compile(text)
+                target.value = text
+                delete target.children
+              }
+              // 属性的值如果是纯文本，直接获取文本值
+              // 减少渲染时的遍历
+              else if (type === nodeType.ATTRIBUTE) {
+                target.value = text
+                delete target.children
+              }
+              break
+
+            case nodeType.EXPRESSION:
+              // <div class="{{className}}">
+              // 把 Attribute 转成 单向绑定 指令，可实现精确更新视图
+              if (type === nodeType.ATTRIBUTE) {
+                target.expr = singleChild.expr
+                delete target.children
+              }
+              break
+
+          }
+        }
       }
       else {
         reportError(`{{/${helper.type2Name[type]}}} is not a pair.`)

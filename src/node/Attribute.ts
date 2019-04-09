@@ -1,3 +1,4 @@
+import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Branch from './Branch'
 
 /**
@@ -8,6 +9,8 @@ export default interface Attribute extends Branch {
   name: string
 
   namespace: string | void
+
+  expr: ExpressionNode | void
 
   value: string | void
 

@@ -23,6 +23,7 @@ export function createAttribute(name: string, namespace?: string): Attribute {
     namespace,
     children: env.UNDEFINED,
     value: env.UNDEFINED,
+    expr: env.UNDEFINED,
   }
 }
 
@@ -33,6 +34,7 @@ export function createDirective(name: string, modifier?: string): Directive {
     modifier,
     children: env.UNDEFINED,
     value: env.UNDEFINED,
+    expr: env.UNDEFINED,
   }
 }
 
