@@ -116,8 +116,8 @@ it('自闭合标签', () => {
 
 it('if', () => {
 
-  let ast = compile('{{#if x > 1}}a{{else if x < 0}}b{{else}}c{{/if}}')
-
+  let ast = compile('{{#if x > 1 1}}a{{else if x < 0}}b{{else}}c{{/if}}')
+  // console.log(JSON.stringify(ast, 4, 4))
   expect(ast.length).toBe(1)
   expect(ast[0].type).toBe(nodeType.IF)
   expect(ast[0].children.length).toBe(1)

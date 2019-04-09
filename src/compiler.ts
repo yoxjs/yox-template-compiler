@@ -126,7 +126,7 @@ export function compile(content: string) {
       }
     },
 
-    addChild = function (node: Node) {
+    addChild = function (node: any) {
 
       /**
        * <div>
@@ -152,7 +152,7 @@ export function compile(content: string) {
         if (lastNode) {
           // lastNode 只能是 if 或 else if 节点
           if (helper.ifTypes[lastNode.type]) {
-            (lastNode as If).next = node
+            lastNode.next = node
             popStack(lastNode.type)
             array.push(ifStack, node)
           }
@@ -184,7 +184,7 @@ export function compile(content: string) {
           // 方便 virtual dom 进行对比
           // 这个跟 virtual dom 的实现原理密切相关，不加 stump 会有问题
           if (!currentElement) {
-            (node as If).stump = env.TRUE
+            node.stump = env.TRUE
           }
           array.push(ifStack, node)
         }
@@ -215,7 +215,6 @@ export function compile(content: string) {
           if (match && match.index === 0) {
             const tag = match[2]
             if (match[1] === char.CHAR_SLASH) {
-
               /**
                * 处理可能存在的自闭合元素，如下
                *
@@ -224,9 +223,7 @@ export function compile(content: string) {
                * </div>
                */
               popSelfClosingElementIfNeeded(tag)
-
               popStack(nodeType.ELEMENT)
-
             }
             else {
               const node = creator.createElement(
@@ -387,17 +384,19 @@ export function compile(content: string) {
       function (source: string) {
         if (string.startsWith(source, config.SYNTAX_IMPORT)) {
           source = slicePrefix(source, config.SYNTAX_IMPORT)
-          return source
-            ? creator.createImport(source)
-            : reportError(`无效的 import`)
+          if (source) {
+            return creator.createImport(source)
+          }
+          reportError(`无效的 import`)
         }
       },
       function (source: string) {
         if (string.startsWith(source, config.SYNTAX_PARTIAL)) {
           source = slicePrefix(source, config.SYNTAX_PARTIAL)
-          return source
-            ? creator.createPartial(source)
-            : reportError(`无效的 partial`)
+          if (source) {
+            return creator.createPartial(source)
+          }
+          reportError(`无效的 partial`)
         }
       },
       function (source: string) {
@@ -422,7 +421,11 @@ export function compile(content: string) {
       },
       function (source: string) {
         if (string.startsWith(source, config.SYNTAX_ELSE)) {
-          return creator.createElse()
+          source = slicePrefix(source, config.SYNTAX_ELSE)
+          if (!string.trim(source)) {
+            return creator.createElse()
+          }
+          reportError(`else 后面不要写乱七八糟的东西`)
         }
       },
       function (source: string) {
