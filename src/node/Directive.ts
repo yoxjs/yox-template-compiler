@@ -14,4 +14,6 @@ export default interface Directive extends Branch {
 
   modifier: string | void
 
+  value: string | void
+
 }

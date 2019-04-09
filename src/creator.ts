@@ -42,7 +42,6 @@ export function createEach(expr: ExpressionNode, index: string): Each {
     expr,
     index,
     children: env.UNDEFINED,
-    value: env.UNDEFINED,
   }
 }
 
@@ -53,7 +52,6 @@ export function createElement(tag: string, component: boolean): Element {
     component,
     divider: 0,
     children: env.UNDEFINED,
-    value: env.UNDEFINED,
   }
 }
 
@@ -61,7 +59,6 @@ export function createElse(): Else {
   return {
     type: nodeType.ELSE,
     children: env.UNDEFINED,
-    value: env.UNDEFINED,
   }
 }
 
@@ -71,7 +68,6 @@ export function createElseIf(expr: ExpressionNode): ElseIf {
     expr,
     next: env.UNDEFINED,
     children: env.UNDEFINED,
-    value: env.UNDEFINED,
   }
 }
 
@@ -90,7 +86,6 @@ export function createIf(expr: ExpressionNode): If {
     stump: env.FALSE,
     next: env.UNDEFINED,
     children: env.UNDEFINED,
-    value: env.UNDEFINED,
   }
 }
 
@@ -106,7 +101,6 @@ export function createPartial(name: string): Partial {
     type: nodeType.PARTIAL,
     name,
     children: env.UNDEFINED,
-    value: env.UNDEFINED,
   }
 }
 
