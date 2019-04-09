@@ -196,13 +196,18 @@ export function compile(content: string) {
           if (match && match.index === 0) {
             const tag = match[2]
             if (match[1] === char.CHAR_SLASH) {
+
               /**
+               * 处理可能存在的自闭合元素，如下
+               *
                * <div>
                *    <input>
                * </div>
                */
               popSelfClosingElementIfNeeded(tag)
+
               popStack(nodeType.ELEMENT)
+
             }
             else {
               const node = creator.createElement(
@@ -216,12 +221,12 @@ export function compile(content: string) {
           }
         }
       },
-      // 处理 > 或 />
       function (content: string): string | void {
-        // 当前在 element 层级
-        if (currentElement && !currentAttribute) {
-          match = content.match(selfClosingTagPattern)
-          if (match) {
+        // 处理标签的 > 或 />，不论开始还是结束标签
+        match = content.match(selfClosingTagPattern)
+        if (match) {
+          // 处理开始标签的 > 或 />
+          if (currentElement && !currentAttribute) {
 
             // 自闭合标签
             if (match[1] === char.CHAR_SLASH) {
@@ -230,9 +235,8 @@ export function compile(content: string) {
 
             currentElement.divider = currentElement.children ? currentElement.children.length : 0
             currentElement = env.UNDEFINED
-
-            return match[0]
           }
+          return match[0]
         }
       },
       // 处理 attribute property directive 的 name 部分
@@ -432,12 +436,10 @@ export function compile(content: string) {
     parseHtml = function (content: string) {
       let tpl = content
       while (tpl) {
-        console.log(tpl)
         array.each(
           htmlParsers,
           function (parse, i) {
             const match = parse(tpl)
-            console.log('    ', i, match, nodeList)
             if (match) {
               tpl = string.slice(tpl, match.length)
               index += match.length
