@@ -74,9 +74,11 @@ it('简单的标签组合', () => {
 
   expect(ast[0].children[1].type).toBe(nodeType.ELEMENT)
   expect(ast[0].children[1].tag).toBe('span')
-  expect(ast[0].children[1].children.length).toBe(1)
-  expect(ast[0].children[1].children[0].type).toBe(nodeType.TEXT)
-  expect(ast[0].children[1].children[0].text).toBe('456')
+  expect(ast[0].children[1].children).toBe(undefined)
+  expect(ast[0].children[1].props.length).toBe(1)
+  expect(ast[0].children[1].props[0].name).toBe('innerText')
+  expect(ast[0].children[1].props[0].value).toBe('456')
+  expect(ast[0].children[1].props[0].expr).toBe(undefined)
 
   expect(ast[0].children[2].type).toBe(nodeType.TEXT)
   expect(ast[0].children[2].text).toBe('789')
@@ -87,7 +89,8 @@ it('attribute', () => {
   let ast = compile('<div id="1" name="2" xml1:age="3" xml2:number="4">5</div>')
   expect(ast.length).toBe(1)
   expect(ast[0].attrs.length).toBe(4)
-  expect(ast[0].children.length).toBe(1)
+  expect(ast[0].props.length).toBe(1)
+  expect(ast[0].children).toBe(undefined)
 
   expect(ast[0].attrs[0].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].attrs[0].name).toBe('id')
@@ -109,8 +112,9 @@ it('attribute', () => {
   expect(ast[0].attrs[3].namespace).toBe('xml2')
   checkValue(ast[0].attrs[3], '4')
 
-  expect(ast[0].children[0].type).toBe(nodeType.TEXT)
-  expect(ast[0].children[0].text).toBe('5')
+  expect(ast[0].props[0].name).toBe('innerText')
+  expect(ast[0].props[0].value).toBe('5')
+  expect(ast[0].props[0].expr).toBe(undefined)
 
 })
 
@@ -129,7 +133,8 @@ it('文本换行', () => {
 
   expect(ast.length).toBe(1)
   expect(ast[0].attrs.length).toBe(4)
-  expect(ast[0].children.length).toBe(1)
+  expect(ast[0].props.length).toBe(1)
+  expect(ast[0].children).toBe(undefined)
 
   expect(ast[0].attrs[0].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].attrs[0].name).toBe('a')
@@ -147,8 +152,9 @@ it('文本换行', () => {
   expect(ast[0].attrs[3].name).toBe('d')
   checkValue(ast[0].attrs[3], '4')
 
-  expect(ast[0].children[0].type).toBe(nodeType.TEXT)
-  expect(ast[0].children[0].text).toBe('5\n      6')
+  expect(ast[0].props[0].name).toBe('innerText')
+  expect(ast[0].props[0].value).toBe('5\n      6')
+  expect(ast[0].props[0].expr).toBe(undefined)
 
 })
 
@@ -160,7 +166,8 @@ it('默认属性值', () => {
 
   expect(ast.length).toBe(1)
   expect(ast[0].attrs.length).toBe(2)
-  expect(ast[0].children.length).toBe(1)
+  expect(ast[0].props.length).toBe(1)
+  expect(ast[0].children).toBe(undefined)
 
   expect(ast[0].attrs[0].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].attrs[0].name).toBe('a')
@@ -170,8 +177,39 @@ it('默认属性值', () => {
   expect(ast[0].attrs[1].name).toBe('b')
   checkValue(ast[0].attrs[1], '')
 
-  expect(ast[0].children[0].type).toBe(nodeType.TEXT)
-  expect(ast[0].children[0].text).toBe('1')
+  expect(ast[0].props[0].name).toBe('innerText')
+  expect(ast[0].props[0].value).toBe('1')
+  expect(ast[0].props[0].expr).toBe(undefined)
+
+})
+
+it('非转义插值', () => {
+
+  let ast1 = compile(`
+    <div>{{a}}</div>
+  `)
+
+  expect(ast1.length).toBe(1)
+  expect(ast1[0].attrs).toBe(undefined)
+  expect(ast1[0].props.length).toBe(1)
+  expect(ast1[0].children).toBe(undefined)
+
+  expect(ast1[0].props[0].name).toBe('innerText')
+  expect(ast1[0].props[0].value).toBe(undefined)
+  expect(typeof ast1[0].props[0].expr).toBe('object')
+
+  let ast2 = compile(`
+    <div>{{{a}}}</div>
+  `)
+
+  expect(ast2.length).toBe(1)
+  expect(ast2[0].attrs).toBe(undefined)
+  expect(ast2[0].props.length).toBe(1)
+  expect(ast2[0].children).toBe(undefined)
+
+  expect(ast2[0].props[0].name).toBe('innerHTML')
+  expect(ast2[0].props[0].value).toBe(undefined)
+  expect(typeof ast2[0].props[0].expr).toBe('object')
 
 })
 

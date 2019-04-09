@@ -14,6 +14,7 @@ import Import from './node/Import'
 import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Text from './node/Text'
+import Pair from './node/Pair';
 
 export function createAttribute(name: string, directive: boolean, namespace?: string): Attribute {
   return {
@@ -42,6 +43,7 @@ export function createElement(tag: string, component: boolean): Element {
     tag,
     component,
     attrs: env.UNDEFINED,
+    props: env.UNDEFINED,
     children: env.UNDEFINED,
   }
 }
@@ -106,5 +108,13 @@ export function createText(text: string): Text {
   return {
     type: nodeType.TEXT,
     text,
+  }
+}
+
+export function createPair(name: string, value: any | void, expr?: ExpressionNode | void): Pair {
+  return {
+    name,
+    value,
+    expr,
   }
 }

@@ -15,6 +15,7 @@ import * as nodeType from './nodeType'
 import Node from './node/Node'
 import Element from './node/Element'
 import Attribute from './node/Attribute'
+import Pair from './node/Pair';
 
 // 缓存编译模板
 const compileCache = {},
@@ -127,30 +128,49 @@ export function compile(content: string) {
 
         const singleChild = children && children.length === 1 && children[0]
         if (singleChild) {
+
           switch (singleChild.type) {
 
             case nodeType.TEXT:
-              // 指令的值如果是纯文本，可以预编译表达式，提升性能
               const { text } = singleChild
-              if (type === nodeType.DIRECTIVE) {
-                target.expr = exprCompiler.compile(text)
-                target.value = text
-                delete target.children
-              }
               // 属性的值如果是纯文本，直接获取文本值
               // 减少渲染时的遍历
-              else if (type === nodeType.ATTRIBUTE) {
+              if (type === nodeType.ATTRIBUTE) {
                 target.value = text
-                delete target.children
+                if (target.directive) {
+                  // 指令的值如果是纯文本，可以预编译表达式，提升性能
+                  target.expr = exprCompiler.compile(text)
+                }
+                target.children = env.UNDEFINED
+              }
+              else if (type === nodeType.ELEMENT) {
+                target.props = [
+                  creator.createPair(
+                    'innerText',
+                    text
+                  )
+                ]
+                target.children = env.UNDEFINED
               }
               break
 
             case nodeType.EXPRESSION:
+              const { expr } = singleChild
               // <div class="{{className}}">
               // 把 Attribute 转成 单向绑定 指令，可实现精确更新视图
               if (type === nodeType.ATTRIBUTE) {
-                target.expr = singleChild.expr
-                delete target.children
+                target.expr = expr
+                target.children = env.UNDEFINED
+              }
+              else if (type === nodeType.ELEMENT) {
+                target.props = [
+                  creator.createPair(
+                    singleChild.safe ? 'innerText' : 'innerHTML',
+                    env.UNDEFINED,
+                    expr
+                  )
+                ]
+                target.children = env.UNDEFINED
               }
               break
 
