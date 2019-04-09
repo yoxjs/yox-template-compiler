@@ -120,9 +120,11 @@ export function compile(content: string) {
     popStack = function (type: number, tagName?: string) {
       const target = array.pop(nodeStack)
       if (target && target.type === type) {
+
         if (tagName && target.tag !== tagName) {
           reportError(`结束标签是${tagName}，开始标签却是${target.tag}`)
         }
+
       }
       else {
         reportError(`{{/${helper.type2Name[type]}}} is not a pair.`)

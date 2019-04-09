@@ -3,6 +3,17 @@ import { compile } from '../src/compiler'
 
 import * as nodeType from '../src/nodeType'
 
+function checkValue(node: any, text: string) {
+  if (node.children) {
+    expect(node.children.length).toBe(1)
+    expect(node.children[0].type).toBe(nodeType.TEXT)
+    expect(node.children[0].text).toBe(text)
+  }
+  else {
+    expect(node.value).toBe(text)
+  }
+}
+
 it('支持多个根元素', () => {
 
   let ast = compile('<div></div><span></span><ul></ul>text')
@@ -80,18 +91,22 @@ it('attribute', () => {
   expect(ast[0].children[0].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].children[0].name).toBe('id')
   expect(ast[0].children[0].namespace).toBe(undefined)
+  checkValue(ast[0].children[0], '1')
 
   expect(ast[0].children[1].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].children[1].name).toBe('name')
   expect(ast[0].children[1].namespace).toBe(undefined)
+  checkValue(ast[0].children[1], '2')
 
   expect(ast[0].children[2].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].children[2].name).toBe('age')
   expect(ast[0].children[2].namespace).toBe('xml1')
+  checkValue(ast[0].children[2], '3')
 
   expect(ast[0].children[3].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].children[3].name).toBe('number')
   expect(ast[0].children[3].namespace).toBe('xml2')
+  checkValue(ast[0].children[3], '4')
 
   expect(ast[0].children[4].type).toBe(nodeType.TEXT)
   expect(ast[0].children[4].text).toBe('5')
@@ -118,15 +133,19 @@ it('文本换行', () => {
 
   expect(ast[0].children[0].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].children[0].name).toBe('a')
+  checkValue(ast[0].children[0], '1')
 
   expect(ast[0].children[1].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].children[1].name).toBe('b')
+  checkValue(ast[0].children[1], '2')
 
   expect(ast[0].children[2].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].children[2].name).toBe('c')
+  checkValue(ast[0].children[2], '3')
 
   expect(ast[0].children[3].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].children[3].name).toBe('d')
+  checkValue(ast[0].children[3], '4')
 
   expect(ast[0].children[4].type).toBe(nodeType.TEXT)
   expect(ast[0].children[4].text).toBe('5\n      6')
@@ -144,9 +163,11 @@ it('默认属性值', () => {
 
   expect(ast[0].children[0].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].children[0].name).toBe('a')
+  checkValue(ast[0].children[0], undefined)
 
   expect(ast[0].children[1].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].children[1].name).toBe('b')
+  checkValue(ast[0].children[1], '')
 
   expect(ast[0].children[2].type).toBe(nodeType.TEXT)
   expect(ast[0].children[2].text).toBe('1')
