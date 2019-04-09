@@ -7,4 +7,6 @@ export default interface Branch extends Node {
 
   children: Node[] | void
 
+  value: string | void
+
 }

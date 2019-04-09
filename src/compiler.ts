@@ -16,8 +16,6 @@ import Node from './node/Node'
 import Element from './node/Element'
 import Attribute from './node/Attribute'
 import Directive from './node/Directive'
-import If from './node/If'
-import ElseIf from './node/ElseIf'
 
 // 缓存编译结果
 const compileCache = {},
@@ -115,13 +113,18 @@ export function compile(content: string) {
         && lastNode.tag !== popingTagName
         && array.has(selfClosingTagNames, lastNode.tag)
       ) {
-        popStack(lastNode.type)
+        popStack(lastNode.type, lastNode.tag)
       }
     },
 
-    popStack = function (type: number) {
+    popStack = function (type: number, tagName?: string) {
       const target = array.pop(nodeStack)
-      if (!target || target.type !== type) {
+      if (target && target.type === type) {
+        if (tagName && target.tag !== tagName) {
+          reportError(`结束标签是${tagName}，开始标签却是${target.tag}`)
+        }
+      }
+      else {
         reportError(`{{/${helper.type2Name[type]}}} is not a pair.`)
       }
     },
@@ -223,7 +226,7 @@ export function compile(content: string) {
                * </div>
                */
               popSelfClosingElementIfNeeded(tag)
-              popStack(nodeType.ELEMENT)
+              popStack(nodeType.ELEMENT, tag)
             }
             else {
               const node = creator.createElement(
@@ -246,7 +249,7 @@ export function compile(content: string) {
 
             // 自闭合标签
             if (match[1] === char.CHAR_SLASH) {
-              popStack(currentElement.type)
+              popStack(currentElement.type, currentElement.tag)
             }
 
             currentElement.divider = currentElement.children ? currentElement.children.length : 0

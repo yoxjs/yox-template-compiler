@@ -22,6 +22,32 @@ it('支持多个根元素', () => {
   expect(ast[3].text).toBe('text')
 })
 
+it('匹配开始结束标签', () => {
+
+  let hasError = false
+
+  try {
+    compile('<div></span>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  try {
+    compile('<div><a></b></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+})
+
 it('简单的标签组合', () => {
 
   let ast = compile('<div>123<span>456</span>789</div>')
@@ -49,6 +75,7 @@ it('attribute', () => {
 
   let ast = compile('<div id="1" name="2" xml1:age="3" xml2:number="4">5</div>')
   expect(ast.length).toBe(1)
+  expect(ast[0].children.length).toBe(5)
 
   expect(ast[0].children[0].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].children[0].name).toBe('id')
@@ -73,8 +100,60 @@ it('attribute', () => {
 
 })
 
-it('自闭合标签', () => {
+it('文本换行', () => {
 
+  let ast = compile(`
+    <div
+      a="1"
+      b="2"      c="3"
+      d="4"
+    >
+      5
+      6
+    </div>
+  `)
+
+  expect(ast.length).toBe(1)
+  expect(ast[0].children.length).toBe(5)
+
+  expect(ast[0].children[0].type).toBe(nodeType.ATTRIBUTE)
+  expect(ast[0].children[0].name).toBe('a')
+
+  expect(ast[0].children[1].type).toBe(nodeType.ATTRIBUTE)
+  expect(ast[0].children[1].name).toBe('b')
+
+  expect(ast[0].children[2].type).toBe(nodeType.ATTRIBUTE)
+  expect(ast[0].children[2].name).toBe('c')
+
+  expect(ast[0].children[3].type).toBe(nodeType.ATTRIBUTE)
+  expect(ast[0].children[3].name).toBe('d')
+
+  expect(ast[0].children[4].type).toBe(nodeType.TEXT)
+  expect(ast[0].children[4].text).toBe('5\n      6')
+
+})
+
+it('默认属性值', () => {
+
+  let ast = compile(`
+    <div a b="">1</div>
+  `)
+
+  expect(ast.length).toBe(1)
+  expect(ast[0].children.length).toBe(3)
+
+  expect(ast[0].children[0].type).toBe(nodeType.ATTRIBUTE)
+  expect(ast[0].children[0].name).toBe('a')
+
+  expect(ast[0].children[1].type).toBe(nodeType.ATTRIBUTE)
+  expect(ast[0].children[1].name).toBe('b')
+
+  expect(ast[0].children[2].type).toBe(nodeType.TEXT)
+  expect(ast[0].children[2].text).toBe('1')
+
+})
+
+it('自闭合标签', () => {
 
   let ast1 = compile('<div><br/></div>')
   expect(ast1.length).toBe(1)
@@ -116,7 +195,7 @@ it('自闭合标签', () => {
 
 it('if', () => {
 
-  let ast = compile('{{#if x > 1 1}}a{{else if x < 0}}b{{else}}c{{/if}}')
+  let ast = compile('{{#if x > 1}}a{{else if x < 0}}b{{else}}c{{/if}}')
   // console.log(JSON.stringify(ast, 4, 4))
   expect(ast.length).toBe(1)
   expect(ast[0].type).toBe(nodeType.IF)
