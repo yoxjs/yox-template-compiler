@@ -1,13 +1,7 @@
-
-import toJSON from 'yox-common/function/toJSON'
-
-import * as is from 'yox-common/util/is'
-import * as env from 'yox-common/util/env'
-import * as char from 'yox-common/util/char'
-import * as array from 'yox-common/util/array'
-import * as object from 'yox-common/util/object'
-
 import * as config from 'yox-config'
+
+import * as env from 'yox-common/util/env'
+import * as object from 'yox-common/util/object'
 
 import * as nodeType from './nodeType'
 
@@ -48,78 +42,3 @@ object.each(
     type2Name[type] = name
   }
 )
-
-export function stringifyObject(obj) {
-  if (obj) {
-    let keys = object.keys(obj)
-    if (keys[env.RAW_LENGTH]) {
-      let result = []
-      array.each(
-        keys,
-        function (key) {
-          let value = obj[key]
-          if (is.string(value)) {
-            value = toJSON(value)
-          }
-          else if (is.array(value)) {
-            if (key === env.RAW_CHILDREN) {
-              value = stringifyArray(value, 'x')
-              if (value) {
-                value = stringifyFunction(value)
-              }
-            }
-            else {
-              value = stringifyArray(value)
-            }
-          }
-          else if (is.object(value)) {
-            value = stringifyObject(value)
-          }
-          if (value == env.NULL) {
-            return
-          }
-          array.push(result, `${key}:${value}`)
-        }
-      )
-      if (result[env.RAW_LENGTH]) {
-        return `{${array.join(result, char.CHAR_COMMA)}}`
-      }
-    }
-  }
-}
-
-export function stringifyArray(arr, name): string {
-  if (arr && arr[env.RAW_LENGTH]) {
-    let result = arr.map(
-      function (item) {
-        if (item.stringify) {
-          return item.stringify()
-        }
-        if (is.string(item)) {
-          return toJSON(item)
-        }
-        if (is.object(item)) {
-          return stringifyObject(item)
-        }
-        return item
-      }
-    )
-    return name
-      ? stringifyCall(name, result)
-      : `[${array.join(result, char.CHAR_COMMA)}]`
-  }
-}
-
-export function stringifyExpression(expr) {
-  if (expr) {
-    return stringifyCall('o', toJSON(expr))
-  }
-}
-
-export function stringifyCall(name, params) {
-  return `${name}(${is.array(params) ? array.join(params, char.CHAR_COMMA) : params})`
-}
-
-export function stringifyFunction(str) {
-  return `${env.RAW_FUNCTION}(){${str || char.CHAR_BLANK}}`
-}
