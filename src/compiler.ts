@@ -54,8 +54,6 @@ function slicePrefix(str: string, prefix: string): string {
  *
  * 换行符比较神奇，有时候你明明看不到换行符，却真的存在一个，那就是 \r
  *
- * @param content
- * @return
  */
 function trimBreakline(content: string): string {
   return content.replace(
@@ -93,7 +91,7 @@ export function compile(content: string) {
     match: RegExpMatchArray | void,
 
     reportError = function (msg: string) {
-      logger.fatal(`Error compiling ${env.RAW_TEMPLATE}:${char.CHAR_BREAKLINE}${content}${char.CHAR_BREAKLINE}- ${msg}`)
+      logger.fatal(`Error compiling ${env.RAW_TEMPLATE}:\n${content}\n- ${msg}`)
     },
 
     /**
@@ -220,7 +218,7 @@ export function compile(content: string) {
           // 如果 <tag 前面有别的字符，会走进第四个 parser
           if (match && match.index === 0) {
             const tag = match[2]
-            if (match[1] === char.CHAR_SLASH) {
+            if (match[1] === '/') {
               /**
                * 处理可能存在的自闭合元素，如下
                *
@@ -251,7 +249,7 @@ export function compile(content: string) {
           if (currentElement && !currentAttribute) {
 
             // 自闭合标签
-            if (match[1] === char.CHAR_SLASH) {
+            if (match[1] === '/') {
               popStack(currentElement.type, currentElement.tag)
             }
 
@@ -300,7 +298,7 @@ export function compile(content: string) {
               }
               // 原生 html 可能带有命名空间
               else {
-                const parts = name.split(char.CHAR_COLON)
+                const parts = name.split(':')
                 node = parts.length === 1
                   ? creator.createAttribute(name)
                   : creator.createAttribute(
@@ -383,7 +381,7 @@ export function compile(content: string) {
       function (source: string) {
         if (string.startsWith(source, config.SYNTAX_EACH)) {
           source = slicePrefix(source, config.SYNTAX_EACH)
-          const terms = source.replace(/\s+/g, char.CHAR_BLANK).split(char.CHAR_COLON)
+          const terms = source.replace(/\s+/g, char.CHAR_BLANK).split(':')
           if (terms[0]) {
             const expr = exprCompiler.compile(string.trim(terms[0]))
             if (expr) {
@@ -493,7 +491,7 @@ export function compile(content: string) {
       if (content) {
         // 结束当前 block
         // 正则会去掉 {{ xx }} 里面两侧的空白符，因此如果有 /，一定是第一个字符
-        if (char.charAt(content) === char.CHAR_SLASH) {
+        if (char.charAt(content) === '/') {
           const name = string.slice(content, 1)
           let type = helper.name2Type[name]
           if (type === nodeType.IF) {
