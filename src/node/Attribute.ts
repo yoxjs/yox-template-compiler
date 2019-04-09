@@ -8,12 +8,12 @@ export default interface Attribute extends Branch {
 
   name: string
 
+  directive: boolean
+
   namespace: string | void
 
   expr: ExpressionNode | void
 
   value: string | void
-
-  directive: boolean
 
 }
