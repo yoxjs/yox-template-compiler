@@ -14,7 +14,7 @@ import Import from './node/Import'
 import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Text from './node/Text'
-import Pair from './node/Pair';
+import Pair from './node/Pair'
 
 export function createAttribute(name: string, directive: boolean, namespace?: string): Attribute {
   return {

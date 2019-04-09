@@ -15,7 +15,6 @@ import * as nodeType from './nodeType'
 import Node from './node/Node'
 import Element from './node/Element'
 import Attribute from './node/Attribute'
-import Pair from './node/Pair';
 
 // 缓存编译模板
 const compileCache = {},
