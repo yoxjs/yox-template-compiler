@@ -15,8 +15,6 @@ export const leafTypes = {}
 export const builtInDirectives = {}
 // 名称 -> 类型的映射
 export const name2Type = {}
-// 类型 -> 名称的映射
-export const type2Name = {}
 
 ifTypes[nodeType.IF] =
 ifTypes[nodeType.ELSE_IF] =
@@ -36,9 +34,3 @@ name2Type['if'] = nodeType.IF
 name2Type['each'] = nodeType.EACH
 name2Type['partial'] = nodeType.PARTIAL
 
-object.each(
-  name2Type,
-  function (type, name) {
-    type2Name[type] = name
-  }
-)

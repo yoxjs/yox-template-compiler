@@ -1,4 +1,5 @@
 import Branch from './Branch'
+import Attribute from './Attribute'
 
 /**
  * 元素节点
@@ -9,7 +10,6 @@ export default interface Element extends Branch {
 
   component: boolean
 
-  // 用于区分 attribute 和 children
-  divider: number
+  attrs: Attribute[] | void
 
 }

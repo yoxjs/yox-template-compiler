@@ -4,7 +4,6 @@ import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import * as nodeType from './nodeType'
 
 import Attribute from './node/Attribute'
-import Directive from './node/Directive'
 import Each from './node/Each'
 import Element from './node/Element'
 import Else from './node/Else'
@@ -16,22 +15,12 @@ import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Text from './node/Text'
 
-export function createAttribute(name: string, namespace?: string): Attribute {
+export function createAttribute(name: string, directive: boolean, namespace?: string): Attribute {
   return {
     type: nodeType.ATTRIBUTE,
     name,
     namespace,
-    children: env.UNDEFINED,
-    value: env.UNDEFINED,
-    expr: env.UNDEFINED,
-  }
-}
-
-export function createDirective(name: string, modifier?: string): Directive {
-  return {
-    type: nodeType.DIRECTIVE,
-    name,
-    modifier,
+    directive,
     children: env.UNDEFINED,
     value: env.UNDEFINED,
     expr: env.UNDEFINED,
@@ -52,7 +41,7 @@ export function createElement(tag: string, component: boolean): Element {
     type: nodeType.ELEMENT,
     tag,
     component,
-    divider: 0,
+    attrs: env.UNDEFINED,
     children: env.UNDEFINED,
   }
 }

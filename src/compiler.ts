@@ -15,7 +15,6 @@ import * as nodeType from './nodeType'
 import Node from './node/Node'
 import Element from './node/Element'
 import Attribute from './node/Attribute'
-import Directive from './node/Directive'
 
 // 缓存编译模板
 const compileCache = {},
@@ -78,7 +77,7 @@ export function compile(content: string) {
 
     currentElement: Element | void,
 
-    currentAttribute: Attribute | Directive | void,
+    currentAttribute: Attribute | void,
 
     str = content,
 
@@ -159,7 +158,7 @@ export function compile(content: string) {
         }
       }
       else {
-        reportError(`{{/${helper.type2Name[type]}}} is not a pair.`)
+        reportError(`出栈节点类型不匹配`)
       }
     },
 
@@ -208,7 +207,9 @@ export function compile(content: string) {
 
         if (currentNode) {
           array.push(
-            currentNode.children || (currentNode.children = []),
+            currentElement && !currentAttribute
+              ? currentNode.attrs || (currentNode.attrs = [])
+              : currentNode.children || (currentNode.children = []),
             node
           )
         }
@@ -286,7 +287,6 @@ export function compile(content: string) {
               popStack(currentElement.type, currentElement.tag)
             }
 
-            currentElement.divider = currentElement.children ? currentElement.children.length : 0
             currentElement = env.UNDEFINED
           }
           // 处理结束标签的 >
@@ -299,43 +299,51 @@ export function compile(content: string) {
         if (currentElement && !currentAttribute) {
           const match = content.match(attributePattern)
           if (match) {
-            let node: Attribute | Directive
+            let node: Attribute
 
             const name = match[1]
             if (helper.builtInDirectives[name]) {
-              node = creator.createDirective(
-                string.camelCase(name)
+              node = creator.createAttribute(
+                string.camelCase(name),
+                env.TRUE,
               )
             }
             else if (string.startsWith(name, config.DIRECTIVE_EVENT_PREFIX)) {
-              node = creator.createDirective(
-                config.DIRECTIVE_EVENT,
+              node = creator.createAttribute(
                 string.camelCase(
                   slicePrefix(name, config.DIRECTIVE_EVENT_PREFIX)
-                )
+                ),
+                env.TRUE,
+                config.DIRECTIVE_EVENT
               )
             }
             else if (string.startsWith(name, config.DIRECTIVE_CUSTOM_PREFIX)) {
-              node = creator.createDirective(
+              node = creator.createAttribute(
                 string.camelCase(
                   slicePrefix(name, config.DIRECTIVE_CUSTOM_PREFIX)
-                )
+                ),
+                env.TRUE
               )
             }
             else {
               // 组件用驼峰格式
               if (currentElement.component) {
                 node = creator.createAttribute(
-                  string.camelCase(name)
+                  string.camelCase(name),
+                  env.FALSE
                 )
               }
               // 原生 html 可能带有命名空间
               else {
                 const parts = name.split(':')
                 node = parts.length === 1
-                  ? creator.createAttribute(name)
+                  ? creator.createAttribute(
+                      name,
+                      env.FALSE
+                    )
                   : creator.createAttribute(
                       parts[1],
+                      env.FALSE,
                       parts[0]
                     )
               }
