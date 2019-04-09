@@ -4,6 +4,7 @@ import * as env from 'yox-common/util/env'
 import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
 import * as string from 'yox-common/util/string'
+import * as logger from 'yox-common/util/logger'
 
 import * as exprCompiler from 'yox-expression-compiler/src/compiler'
 
@@ -73,17 +74,25 @@ export function compile(content: string) {
 
   let nodeStack: Node[] = [],
 
-    ifStack: Node[] = [],
+    ifStack: If[] = [],
 
     currentElement: Element | void,
 
     currentAttribute: Attribute | Directive | void,
 
+    str = content,
+
     index = 0,
 
     startQuote: string | void,
 
-    reportError = function (msg) {
+    length: number | void,
+
+    isSafeBlock = env.FALSE,
+
+    match: RegExpMatchArray | void,
+
+    reportError = function (msg: string) {
       logger.fatal(`Error compiling ${env.RAW_TEMPLATE}:${char.CHAR_BREAKLINE}${content}${char.CHAR_BREAKLINE}- ${msg}`)
     },
 
@@ -99,55 +108,21 @@ export function compile(content: string) {
      * </div>
      */
     popSelfClosingElementIfNeeded = function (popingTagName?: string) {
-      let lastNode = array.last(nodeStack)
+      const lastNode = array.last(nodeStack)
       if (lastNode
         && lastNode.type === nodeType.ELEMENT
         && lastNode.tag !== popingTagName
         && array.has(selfClosingTagNames, lastNode.tag)
       ) {
-        popStack(
-          lastNode.type,
-          lastNode.tag
-        )
+        popStack(lastNode.type)
       }
     },
 
-    popStack = function (type: number, expectedTagName?: string) {
-
-      /**
-       * <div>
-       *    <input>
-       * </div>
-       */
-      if (expectedTagName) {
-        popSelfClosingElementIfNeeded(expectedTagName)
-      }
-
-      let target: Node | void
-
-      array.each(
-        nodeStack,
-        function (node, index) {
-          if (node.type === type) {
-            target = nodeStack.splice(index, 1)[0]
-            return env.FALSE
-          }
-        },
-        env.TRUE
-      )
-
-      if (target) {
-
-        let { tag } = target
-        if (type === nodeType.ELEMENT && expectedTagName && tag !== expectedTagName) {
-          reportError(`end ${env.RAW_TAG} expected </${tag}> to be </${expectedTagName}>.`)
-        }
-
-      }
-      else {
+    popStack = function (type: number) {
+      const target = array.pop(nodeStack)
+      if (target && target.type !== type) {
         reportError(`{{/${helper.type2Name[type]}}} is not a pair.`)
       }
-
     },
 
     addChild = function (node: Node) {
@@ -168,27 +143,21 @@ export function compile(content: string) {
 
       const type = node.type
 
+      // else 系列只是 if 的递进节点，不需要加入 nodeList
       if (helper.elseTypes[type]) {
-        const ifNode: If | ElseIf = array.pop(ifStack)
+        const ifNode: If = array.pop(ifStack)
         ifNode.next = node
         popStack(ifNode.type)
       }
       else {
-        let prevNode: Node, currentNode: Attribute | Directive | Element | void = array.last(nodeStack)
+        const currentNode: Attribute | Directive | Element | void = array.last(nodeStack)
         if (currentNode) {
-          let children = currentNode.children, divider = currentNode.divider
-          if (children) {
-            if (children.length !== divider) {
-              prevNode = children[children.length - 1]
-            }
-          }
-          else {
-            children = currentNode.children = []
-          }
-          array.push(children, node)
+          array.push(
+            currentNode.children || (currentNode.children = []),
+            node
+          )
         }
         else {
-          prevNode = array.last(nodeList)
           array.push(nodeList, node)
         }
       }
@@ -198,7 +167,7 @@ export function compile(content: string) {
         // 方便 virtual dom 进行对比
         // 这个跟 virtual dom 的实现原理密切相关，不加 stump 会有问题
         if (!currentElement) {
-          node.stump = env.TRUE
+          (node as If).stump = env.TRUE
         }
         array.push(ifStack, node)
       }
@@ -225,17 +194,20 @@ export function compile(content: string) {
           // 必须以 <tag 开头才能继续
           // 如果 <tag 前面有别的字符，会走进第四个 parser
           if (match && match.index === 0) {
-            const tagName = match[2]
+            const tag = match[2]
             if (match[1] === char.CHAR_SLASH) {
-              popStack(
-                nodeType.ELEMENT,
-                tagName
-              )
+              /**
+               * <div>
+               *    <input>
+               * </div>
+               */
+              popSelfClosingElementIfNeeded(tag)
+              popStack(nodeType.ELEMENT)
             }
             else {
               const node = creator.createElement(
-                tagName,
-                componentNamePattern.test(tagName)
+                tag,
+                componentNamePattern.test(tag)
               )
               addChild(node)
               currentElement = node
@@ -247,19 +219,17 @@ export function compile(content: string) {
       // 处理 > 或 />
       function (content: string): string | void {
         // 当前在 element 层级
-        if (currentElement && currentAttribute) {
+        if (currentElement && !currentAttribute) {
           match = content.match(selfClosingTagPattern)
           if (match) {
 
             // 自闭合标签
             if (match[1] === char.CHAR_SLASH) {
-              popStack(
-                currentAttribute.type
-              )
+              popStack(currentElement.type)
             }
 
             currentElement.divider = currentElement.children ? currentElement.children.length : 0
-            currentAttribute = env.UNDEFINED
+            currentElement = env.UNDEFINED
 
             return match[0]
           }
@@ -328,6 +298,9 @@ export function compile(content: string) {
             if (startQuote) {
               currentAttribute = node
             }
+            else {
+              popStack(node.type)
+            }
 
             return match[0]
           }
@@ -358,11 +331,12 @@ export function compile(content: string) {
               )
             }
             popStack(currentAttribute.type)
+            currentAttribute = env.UNDEFINED
           }
           return text
         }
         else {
-          // 跳过 <tag 前面的空白符
+          // 获取 <tag 前面的字符
           match = content.match(tagPattern)
           if (match && match.index > 0) {
             content = string.slice(content, 0, match.index)
@@ -458,10 +432,12 @@ export function compile(content: string) {
     parseHtml = function (content: string) {
       let tpl = content
       while (tpl) {
+        console.log(tpl)
         array.each(
           htmlParsers,
-          function (parse) {
+          function (parse, i) {
             const match = parse(tpl)
+            console.log('    ', i, match, nodeList)
             if (match) {
               tpl = string.slice(tpl, match.length)
               index += match.length
@@ -477,7 +453,7 @@ export function compile(content: string) {
       if (content) {
         // 结束当前 block
         // 正则会去掉 {{ xx }} 里面两侧的空白符，因此如果有 /，一定是第一个字符
-        if (char.codeAt(content) === char.CODE_SLASH) {
+        if (char.charAt(content) === char.CHAR_SLASH) {
           const name = string.slice(content, 1)
           let type = helper.name2Type[name]
           if (type === nodeType.IF) {
@@ -506,15 +482,9 @@ export function compile(content: string) {
         }
       }
       str = string.slice(str, all.length)
-    },
+    }
 
-    str = content,
 
-    match: RegExpMatchArray | void,
-
-    length = 0,
-
-    isSafeBlock = env.FALSE
 
   // 干掉 html 注释
   str = str.replace(
@@ -526,12 +496,15 @@ export function compile(content: string) {
     // 匹配 {{ }}
     match = str.match(delimiterPattern)
     if (match) {
-      if (match.index) {
+
+      // 裁剪开头到 {{ 之间的模板内容
+      if (match.index > 0) {
         parseHtml(
           string.slice(str, 0, match.index)
         )
       }
 
+      // 获取开始分隔符的长度，用于判断是否是安全输出
       length = match[1].length
 
       // 避免手误写成 {{{ name }} 或 {{ name }}}
@@ -543,6 +516,7 @@ export function compile(content: string) {
       else {
         reportError(`${match[1]} and ${match[3]} is not a pair.`)
       }
+
     }
     else {
       parseHtml(str)

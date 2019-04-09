@@ -63,6 +63,7 @@ export function createElseIf(expr: ExpressionNode): ElseIf {
     type: nodeType.ELSE_IF,
     expr,
     next: env.UNDEFINED,
+    stump: env.FALSE,
   }
 }
 
@@ -79,7 +80,7 @@ export function createIf(expr: ExpressionNode): If {
     type: nodeType.IF,
     expr,
     next: env.UNDEFINED,
-    stump: env.FALSE
+    stump: env.FALSE,
   }
 }
 

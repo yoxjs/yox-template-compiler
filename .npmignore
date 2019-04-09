@@ -3,3 +3,6 @@ node_modules
 .babelrc
 .gitignore
 .npmignore
+dist
+package-lock.json
+yarn.lock
