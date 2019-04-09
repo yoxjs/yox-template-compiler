@@ -270,8 +270,7 @@ export function compile(content: string) {
             const name = match[1]
             if (helper.builtInDirectives[name]) {
               node = creator.createDirective(
-                string.camelCase(name),
-                char.CHAR_BLANK
+                string.camelCase(name)
               )
             }
             else if (string.startsWith(name, config.DIRECTIVE_EVENT_PREFIX)) {
@@ -286,26 +285,21 @@ export function compile(content: string) {
               node = creator.createDirective(
                 string.camelCase(
                   slicePrefix(name, config.DIRECTIVE_CUSTOM_PREFIX)
-                ),
-                char.CHAR_BLANK
+                )
               )
             }
             else {
               // 组件用驼峰格式
               if (currentElement.component) {
                 node = creator.createAttribute(
-                  string.camelCase(name),
-                  char.CHAR_BLANK
+                  string.camelCase(name)
                 )
               }
               // 原生 html 可能带有命名空间
               else {
                 const parts = name.split(char.CHAR_COLON)
                 node = parts.length === 1
-                  ? creator.createAttribute(
-                      name,
-                      char.CHAR_BLANK
-                    )
+                  ? creator.createAttribute(name)
                   : creator.createAttribute(
                       parts[1],
                       parts[0]

@@ -45,6 +45,34 @@ it('简单的标签组合', () => {
   expect(ast[0].children[2].text).toBe('789')
 })
 
+it('attribute', () => {
+
+  let ast = compile('<div id="1" name="2" xml1:age="3" xml2:number="4">5</div>')
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].children[0].type).toBe(nodeType.ATTRIBUTE)
+  expect(ast[0].children[0].name).toBe('id')
+  expect(ast[0].children[0].namespace).toBe(undefined)
+
+  expect(ast[0].children[1].type).toBe(nodeType.ATTRIBUTE)
+  expect(ast[0].children[1].name).toBe('name')
+  expect(ast[0].children[1].namespace).toBe(undefined)
+
+  expect(ast[0].children[2].type).toBe(nodeType.ATTRIBUTE)
+  expect(ast[0].children[2].name).toBe('age')
+  expect(ast[0].children[2].namespace).toBe('xml1')
+
+  expect(ast[0].children[3].type).toBe(nodeType.ATTRIBUTE)
+  expect(ast[0].children[3].name).toBe('number')
+  expect(ast[0].children[3].namespace).toBe('xml2')
+
+  expect(ast[0].children[4].type).toBe(nodeType.TEXT)
+  expect(ast[0].children[4].text).toBe('5')
+
+  expect(ast[0].divider).toBe(4)
+
+})
+
 it('自闭合标签', () => {
 
 

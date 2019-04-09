@@ -16,7 +16,7 @@ import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Text from './node/Text'
 
-export function createAttribute(name: string, namespace: string): Attribute {
+export function createAttribute(name: string, namespace?: string): Attribute {
   return {
     type: nodeType.ATTRIBUTE,
     name,
@@ -25,7 +25,7 @@ export function createAttribute(name: string, namespace: string): Attribute {
   }
 }
 
-export function createDirective(name: string, modifier: string): Directive {
+export function createDirective(name: string, modifier?: string): Directive {
   return {
     type: nodeType.DIRECTIVE,
     name,

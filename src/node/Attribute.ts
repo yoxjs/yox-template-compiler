@@ -7,6 +7,6 @@ export default interface Attribute extends Branch {
 
   name: string
 
-  namespace: string
+  namespace: string | void
 
 }

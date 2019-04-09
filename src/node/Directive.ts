@@ -12,6 +12,6 @@ export default interface Directive extends Branch {
 
   name: string
 
-  modifier: string
+  modifier: string | void
 
 }
