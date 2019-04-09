@@ -1,12 +1,10 @@
-import Node from './Node'
+import Branch from './Branch'
 
 /**
  * Partial 节点
  */
-export default interface Partial extends Node {
+export default interface Partial extends Branch {
 
   name: string
-
-  children: Node[] | void
 
 }

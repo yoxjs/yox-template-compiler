@@ -1,4 +1,4 @@
-import Node from './Node'
+import Branch from './Branch'
 
 /**
  * 指令节点
@@ -8,12 +8,10 @@ import Node from './Node'
  * @param name 指令名
  * @param modifier 指令修饰符
  */
-export default interface Directive extends Node {
+export default interface Directive extends Branch {
 
   name: string
 
   modifier: string
-
-  children: Node[] | void
 
 }

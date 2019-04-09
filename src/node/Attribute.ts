@@ -1,14 +1,12 @@
-import Node from './Node'
+import Branch from './Branch'
 
 /**
  * 属性节点
  */
-export default interface Attribute extends Node {
+export default interface Attribute extends Branch {
 
   name: string
 
   namespace: string
-
-  children: Node[] | void
 
 }

@@ -1,10 +1,8 @@
-import Node from './Node'
+import Branch from './Branch'
 
 /**
  * else 节点
  */
-export default interface Else extends Node {
-
-  children: Node[] | void
+export default interface Else extends Branch {
 
 }
