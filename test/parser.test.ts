@@ -90,7 +90,7 @@ it('简单的标签组合', () => {
   expect(ast[0].children[1].tag).toBe('span')
   expect(ast[0].children[1].children).toBe(undefined)
   expect(ast[0].children[1].props.length).toBe(1)
-  expect(ast[0].children[1].props[0].name).toBe('innerText')
+  expect(ast[0].children[1].props[0].name).toBe('text')
   expect(ast[0].children[1].props[0].value).toBe('456')
   expect(ast[0].children[1].props[0].expr).toBe(undefined)
 
@@ -126,7 +126,7 @@ it('attribute', () => {
   expect(ast[0].attrs[3].namespace).toBe('xml2')
   checkValue(ast[0].attrs[3], '4')
 
-  expect(ast[0].props[0].name).toBe('innerText')
+  expect(ast[0].props[0].name).toBe('text')
   expect(ast[0].props[0].value).toBe('5')
   expect(ast[0].props[0].expr).toBe(undefined)
 
@@ -166,7 +166,7 @@ it('文本换行', () => {
   expect(ast[0].attrs[3].name).toBe('d')
   checkValue(ast[0].attrs[3], '4')
 
-  expect(ast[0].props[0].name).toBe('innerText')
+  expect(ast[0].props[0].name).toBe('text')
   expect(ast[0].props[0].value).toBe('5\n      6')
   expect(ast[0].props[0].expr).toBe(undefined)
 
@@ -191,7 +191,7 @@ it('默认属性值', () => {
   expect(ast[0].attrs[1].name).toBe('b')
   checkValue(ast[0].attrs[1], '')
 
-  expect(ast[0].props[0].name).toBe('innerText')
+  expect(ast[0].props[0].name).toBe('text')
   expect(ast[0].props[0].value).toBe('1')
   expect(ast[0].props[0].expr).toBe(undefined)
 
@@ -208,7 +208,7 @@ it('非转义插值', () => {
   expect(ast1[0].props.length).toBe(1)
   expect(ast1[0].children).toBe(undefined)
 
-  expect(ast1[0].props[0].name).toBe('innerText')
+  expect(ast1[0].props[0].name).toBe('text')
   expect(ast1[0].props[0].value).toBe(undefined)
   expect(typeof ast1[0].props[0].expr).toBe('object')
 
@@ -221,7 +221,7 @@ it('非转义插值', () => {
   expect(ast2[0].props.length).toBe(1)
   expect(ast2[0].children).toBe(undefined)
 
-  expect(ast2[0].props[0].name).toBe('innerHTML')
+  expect(ast2[0].props[0].name).toBe('html')
   expect(ast2[0].props[0].value).toBe(undefined)
   expect(typeof ast2[0].props[0].expr).toBe('object')
 

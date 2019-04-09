@@ -145,7 +145,7 @@ export function compile(content: string) {
               else if (type === nodeType.ELEMENT) {
                 target.props = [
                   creator.createPair(
-                    'innerText',
+                    'text',
                     text
                   )
                 ]
@@ -164,7 +164,7 @@ export function compile(content: string) {
               else if (type === nodeType.ELEMENT) {
                 target.props = [
                   creator.createPair(
-                    singleChild.safe ? 'innerText' : 'innerHTML',
+                    singleChild.safe ? 'text' : 'html',
                     env.UNDEFINED,
                     expr
                   )
