@@ -13,4 +13,6 @@ export default interface Each extends Node {
 
   index: string
 
+  children: Node[] | void
+
 }

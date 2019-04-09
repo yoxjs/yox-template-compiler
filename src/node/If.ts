@@ -8,8 +8,10 @@ export default interface If extends Node {
 
   expr: ExpressionNode
 
+  stump: boolean
+
   next: Node
 
-  stump: boolean
+  children: Node[] | void
 
 }

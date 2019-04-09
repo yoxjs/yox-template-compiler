@@ -74,7 +74,8 @@ export function compile(content: string) {
 
   let nodeStack: Node[] = [],
 
-    ifStack: If[] = [],
+    // 持有 if/elseif/else 节点
+    ifStack: Node[] = [],
 
     currentElement: Element | void,
 
@@ -120,7 +121,7 @@ export function compile(content: string) {
 
     popStack = function (type: number) {
       const target = array.pop(nodeStack)
-      if (target && target.type !== type) {
+      if (!target || target.type !== type) {
         reportError(`{{/${helper.type2Name[type]}}} is not a pair.`)
       }
     },
@@ -145,12 +146,29 @@ export function compile(content: string) {
 
       // else 系列只是 if 的递进节点，不需要加入 nodeList
       if (helper.elseTypes[type]) {
-        const ifNode: If = array.pop(ifStack)
-        ifNode.next = node
-        popStack(ifNode.type)
+
+        const lastNode = array.pop(ifStack)
+
+        if (lastNode) {
+          // lastNode 只能是 if 或 else if 节点
+          if (helper.ifTypes[lastNode.type]) {
+            (lastNode as If).next = node
+            popStack(lastNode.type)
+            array.push(ifStack, node)
+          }
+          else {
+            reportError('大哥，只能写一个 else 啊！！')
+          }
+        }
+        else {
+          reportError('不写 if 是几个意思？？')
+        }
+
       }
       else {
-        const currentNode: Attribute | Directive | Element | void = array.last(nodeStack)
+
+        const currentNode = array.last(nodeStack)
+
         if (currentNode) {
           array.push(
             currentNode.children || (currentNode.children = []),
@@ -160,16 +178,17 @@ export function compile(content: string) {
         else {
           array.push(nodeList, node)
         }
-      }
 
-      if (helper.ifTypes[type]) {
-        // 只要是 if 节点，并且和 element 同级，就加上 stump
-        // 方便 virtual dom 进行对比
-        // 这个跟 virtual dom 的实现原理密切相关，不加 stump 会有问题
-        if (!currentElement) {
-          (node as If).stump = env.TRUE
+        if (type === nodeType.IF) {
+          // 只要是 if 节点，并且和 element 同级，就加上 stump
+          // 方便 virtual dom 进行对比
+          // 这个跟 virtual dom 的实现原理密切相关，不加 stump 会有问题
+          if (!currentElement) {
+            (node as If).stump = env.TRUE
+          }
+          array.push(ifStack, node)
         }
-        array.push(ifStack, node)
+
       }
 
       if (!helper.leafTypes[type]) {
@@ -190,7 +209,7 @@ export function compile(content: string) {
     htmlParsers = [
       function (content: string): string | void {
         if (!currentElement) {
-          match = content.match(tagPattern)
+          const match = content.match(tagPattern)
           // 必须以 <tag 开头才能继续
           // 如果 <tag 前面有别的字符，会走进第四个 parser
           if (match && match.index === 0) {
@@ -221,9 +240,9 @@ export function compile(content: string) {
           }
         }
       },
+      // 处理标签的 > 或 />，不论开始还是结束标签
       function (content: string): string | void {
-        // 处理标签的 > 或 />，不论开始还是结束标签
-        match = content.match(selfClosingTagPattern)
+        const match = content.match(selfClosingTagPattern)
         if (match) {
           // 处理开始标签的 > 或 />
           if (currentElement && !currentAttribute) {
@@ -236,6 +255,7 @@ export function compile(content: string) {
             currentElement.divider = currentElement.children ? currentElement.children.length : 0
             currentElement = env.UNDEFINED
           }
+          // 处理结束标签的 >
           return match[0]
         }
       },
@@ -243,7 +263,7 @@ export function compile(content: string) {
       function (content: string): string | void {
         // 当前在 element 层级
         if (currentElement && !currentAttribute) {
-          match = content.match(attributePattern)
+          const match = content.match(attributePattern)
           if (match) {
             let node: Attribute | Directive
 
@@ -341,7 +361,7 @@ export function compile(content: string) {
         }
         else {
           // 获取 <tag 前面的字符
-          match = content.match(tagPattern)
+          const match = content.match(tagPattern)
           if (match && match.index > 0) {
             content = string.slice(content, 0, match.index)
           }
@@ -438,7 +458,7 @@ export function compile(content: string) {
       while (tpl) {
         array.each(
           htmlParsers,
-          function (parse, i) {
+          function (parse) {
             const match = parse(tpl)
             if (match) {
               tpl = string.slice(tpl, match.length)
@@ -464,7 +484,7 @@ export function compile(content: string) {
               type = node.type
             }
             else {
-              reportError(`if is not begined.`)
+              reportError(`if 还没开始就结束了？`)
             }
           }
           popStack(type)

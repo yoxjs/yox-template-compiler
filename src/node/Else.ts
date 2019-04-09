@@ -5,4 +5,6 @@ import Node from './Node'
  */
 export default interface Else extends Node {
 
+  children: Node[] | void
+
 }

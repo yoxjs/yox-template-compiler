@@ -7,4 +7,6 @@ export default interface Partial extends Node {
 
   name: string
 
+  children: Node[] | void
+
 }
