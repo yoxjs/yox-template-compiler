@@ -20,8 +20,8 @@ export function createAttribute(name: string, directive: boolean, namespace?: st
   return {
     type: nodeType.ATTRIBUTE,
     name,
-    namespace,
     directive,
+    namespace,
     children: env.UNDEFINED,
     value: env.UNDEFINED,
     expr: env.UNDEFINED,
