@@ -17,10 +17,10 @@ import Element from './node/Element'
 import Attribute from './node/Attribute'
 import Directive from './node/Directive'
 
-// 缓存编译结果
+// 缓存编译模板
 const compileCache = {},
 
-// 正则编译结果
+// 缓存编译正则
 patternCache = {},
 
 // 分割符，即 {{ xx }} 和 {{{ xx }}}
