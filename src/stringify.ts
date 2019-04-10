@@ -12,25 +12,25 @@ import * as keypathUtil from 'yox-common/util/keypath'
 
 import * as config from 'yox-config'
 
+import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
+import * as nodeType from './nodeType'
+
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
+import ExpressionLiteral from 'yox-expression-compiler/src/node/Literal'
 import ExpressionIdentifier from 'yox-expression-compiler/src/node/Identifier'
 import ExpressionCall from 'yox-expression-compiler/src/node/Call'
-import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
-
-import * as nodeType from './nodeType'
 
 import Node from './node/Node'
 import Text from './node/Text'
 import If from './node/If'
 import ElseIf from './node/ElseIf'
-import Else from './node/Else'
-import Element from './node/Element';
-import Attribute from './node/Attribute';
-import Expression from './node/Expression';
-import Import from './node/Import';
-import Partial from './node/Partial';
-import Spread from './node/Spread';
-import Pair from './node/Pair';
+import Element from './node/Element'
+import Attribute from './node/Attribute'
+import Expression from './node/Expression'
+import Import from './node/Import'
+import Partial from './node/Partial'
+import Spread from './node/Spread'
+import Pair from './node/Pair'
 
 /**
  * 序列化有两个难点：
@@ -72,6 +72,12 @@ function stringifyCall(name: string, args?: any[]): string {
 }
 
 function stringifyExpression(expr: ExpressionNode): string {
+  if (expr.type === exprNodeType.IDENTIFIER) {
+    return stringifyCall('_e', [toJSON((expr as ExpressionIdentifier).name)])
+  }
+  else if (expr.type === exprNodeType.LITERAL) {
+    return toJSON((expr as ExpressionLiteral).value)
+  }
   return stringifyCall('_e', [toJSON(expr)])
 }
 
@@ -111,9 +117,23 @@ function stringifyDirective(value: string, expr: ExpressionNode): string | void 
 
 function stringifyChildren(children: Node[] | void): string | void {
   if (children) {
-    return stringifyArray(
-      children.map(stringify)
+    // 如果 children 只包含 Text 和 Expression，则用 + 连起来提升运行时性能
+    let childs = [], hasComplexNode = env.FALSE
+    array.each(
+      children,
+      function (child: Node) {
+        if (!hasComplexNode
+          && child.type !== nodeType.TEXT
+          && child.type !== nodeType.EXPRESSION
+        ) {
+          hasComplexNode = env.TRUE
+        }
+        array.push(childs, stringify(child))
+      }
     )
+    return hasComplexNode
+      ? stringifyArray(childs)
+      : `[ ${array.join(childs, ' + ')} ]`
   }
 }
 

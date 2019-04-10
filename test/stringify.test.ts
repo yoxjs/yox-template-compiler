@@ -6,9 +6,7 @@ it('html 元素', () => {
   let ast = compile(`
     <div>
       1
-      {{#if a}}
-          a
-      {{/if}}
+      {{a + 1}}
       2
     </div>
   `)
