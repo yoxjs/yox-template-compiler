@@ -7,8 +7,8 @@ export default interface Pair {
 
   name: string
 
-  value: any | void
+  value: any | undefined
 
-  expr: ExpressionNode | void
+  expr: ExpressionNode | undefined
 
 }

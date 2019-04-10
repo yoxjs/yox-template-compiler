@@ -10,10 +10,10 @@ export default interface Attribute extends Branch {
 
   directive: boolean
 
-  namespace: string | void
+  namespace: string | undefined
 
-  expr: ExpressionNode | void
+  expr: ExpressionNode | undefined
 
-  value: string | void
+  value: string | undefined
 
 }

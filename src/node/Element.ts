@@ -1,5 +1,6 @@
 import Branch from './Branch'
 import Attribute from './Attribute'
+import Spread from './Spread'
 import Pair from './Pair'
 
 /**
@@ -11,8 +12,8 @@ export default interface Element extends Branch {
 
   component: boolean
 
-  attrs: Attribute[] | void
+  attrs: (Attribute | Spread)[] | undefined
 
-  props: Pair[] | void
+  props: Pair[] | undefined
 
 }

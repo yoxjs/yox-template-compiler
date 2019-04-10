@@ -117,7 +117,7 @@ function stringifyEvent(expr: ExpressionNode): any {
   }
 }
 
-function stringifyDirective(value: string, expr: ExpressionNode): string | void {
+function stringifyDirective(value: string | undefined, expr: ExpressionNode | undefined): string | void {
   return stringifyObject({
     value: toJSON(value),
     expr: toJSON(expr),
@@ -159,32 +159,58 @@ function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[
   }
 }
 
-function stringifyComponentData(attrs: Attribute[] | void, props: Pair[] | void): string | void {
+function stringifyComponentData(attrs: (Attribute | Spread)[] | void, props: Pair[] | void): string | void {
 
   const data: any = {
     component: env.TRUE,
   },
 
-  componentProps = {},
+  // 比如 <Custom {{...obj1}} {{...obj2}}/>
+  // 用对象有两个问题，第一是延展操作不好写 key，第二是无法保证顺序
+  componentProps = [],
 
   componentOn = {},
 
-  componentDirectives = {}
+  componentDirectives = {},
+
+  addAttr = function (attr: Attribute) {
+    if (attr.directive) {
+      if (attr.expr && attr.namespace === config.DIRECTIVE_EVENT) {
+        componentOn[attr.name] = stringifyEvent(attr.expr)
+      }
+      else {
+        componentDirectives[attr.name] = stringifyDirective(attr.value, attr.expr)
+      }
+    }
+    else {
+      array.push(
+        componentProps,
+        stringifyObject({
+          name: toJSON(attr.name),
+          value: stringifyValue(attr.value, attr.expr, attr.children),
+        })
+      )
+    }
+  },
+
+  addSpread = function (spread: Spread) {
+    array.push(
+      componentProps,
+      stringifyObject({
+        spread: stringifyExpression(spread.expr)
+      })
+    )
+  }
 
   if (attrs) {
     array.each(
       attrs,
-      function (attr) {
-        if (attr.directive) {
-          if (attr.namespace === config.DIRECTIVE_EVENT) {
-            componentOn[attr.name] = stringifyEvent(attr.expr)
-          }
-          else {
-            componentDirectives[attr.name] = stringifyDirective(attr.value, attr.expr)
-          }
+      function (attr: Attribute | Spread) {
+        if (attr.type === nodeType.ATTRIBUTE) {
+          addAttr(attr as Attribute)
         }
         else {
-          componentProps[attr.name] = stringifyValue(attr.value, attr.expr, attr.children)
+          addSpread(attr as Spread)
         }
       }
     )
@@ -200,8 +226,8 @@ function stringifyComponentData(attrs: Attribute[] | void, props: Pair[] | void)
     )
   }
 
-  if (!object.empty(componentProps)) {
-    data.props = stringifyObject(componentProps)
+  if (componentProps.length) {
+    data.props = stringifyArray(componentProps)
   }
 
   if (!object.empty(componentOn)) {
@@ -216,7 +242,7 @@ function stringifyComponentData(attrs: Attribute[] | void, props: Pair[] | void)
 
 }
 
-function stringifyElementData(attrs: Attribute[] | void, props: Pair[] | void): string | void {
+function stringifyElementData(attrs: (Attribute | Spread)[] | void, props: Pair[] | void): string | void {
 
   const data: any = {},
 
@@ -231,7 +257,7 @@ function stringifyElementData(attrs: Attribute[] | void, props: Pair[] | void): 
   if (attrs) {
     array.each(
       attrs,
-      function (attr) {
+      function (attr: Attribute) {
         if (attr.directive) {
           if (attr.namespace === config.DIRECTIVE_EVENT) {
             nativeOn[attr.name] = stringifyEvent(attr.expr)
