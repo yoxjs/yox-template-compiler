@@ -40,6 +40,15 @@ import Pair from './node/Pair'
  *
  */
 
+const FUNC_ELEMENT = '_c'
+const FUNC_COMMENT = '_m'
+const FUNC_EMPTY = '_n'
+const FUNC_EXPR = '_e'
+const FUNC_RENDER = '_r'
+
+const SEP_COMMA = ', '
+const SEP_PLUS = ' + '
+
 function stringifyObject(obj: Object): string | void {
   const fields = []
   object.each(
@@ -54,39 +63,39 @@ function stringifyObject(obj: Object): string | void {
     }
   )
   if (fields.length) {
-    return `{ ${array.join(fields, ', ')} }`
+    return `{ ${array.join(fields, SEP_COMMA)} }`
   }
 }
 
 function stringifyArray(arr: any[]): string | void {
   if (arr.length) {
-    return `[ ${array.join(arr, ', ')} ]`
+    return `[ ${array.join(arr, SEP_COMMA)} ]`
   }
 }
 
 function stringifyCall(name: string, args?: any[]): string {
   const tuple = args
-    ? array.join(args, ', ')
+    ? array.join(args, SEP_COMMA)
     : char.CHAR_BLANK
   return `${name}(${tuple})`
 }
 
 function stringifyExpression(expr: ExpressionNode): string {
   if (expr.type === exprNodeType.IDENTIFIER) {
-    return stringifyCall('_e', [toJSON((expr as ExpressionIdentifier).name)])
+    return stringifyCall(FUNC_EXPR, [toJSON((expr as ExpressionIdentifier).name)])
   }
   else if (expr.type === exprNodeType.LITERAL) {
     return toJSON((expr as ExpressionLiteral).value)
   }
-  return stringifyCall('_e', [toJSON(expr)])
+  return stringifyCall(FUNC_EXPR, [toJSON(expr)])
 }
 
 function stringifyEmpty(): string {
-  return stringifyCall('_n')
+  return stringifyCall(FUNC_EMPTY)
 }
 
 function stringifyComment(): string {
-  return stringifyCall('_m')
+  return stringifyCall(FUNC_COMMENT)
 }
 
 function stringifyEvent(expr: ExpressionNode): any {
@@ -115,6 +124,7 @@ function stringifyDirective(value: string, expr: ExpressionNode): string | void 
   })
 }
 
+
 function stringifyChildren(children: Node[] | void): string | void {
   if (children) {
     // 如果 children 只包含 Text 和 Expression，则用 + 连起来提升运行时性能
@@ -132,8 +142,8 @@ function stringifyChildren(children: Node[] | void): string | void {
       }
     )
     return hasComplexNode
-      ? stringifyArray(childs)
-      : `[ ${array.join(childs, ' + ')} ]`
+      ? stringifyCall(FUNC_RENDER, childs)
+      : array.join(childs, SEP_PLUS)
   }
 }
 
@@ -145,11 +155,11 @@ function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[
     return stringifyExpression(expr)
   }
   else if (children) {
-    return stringifyCall('_s', children.map(stringify))
+    return stringifyChildren(children)
   }
 }
 
-function stringifyComponentData(attrs: Attribute[] | void, props: Pair[] | void): Object {
+function stringifyComponentData(attrs: Attribute[] | void, props: Pair[] | void): string | void {
 
   const data: any = {
     component: env.TRUE,
@@ -174,11 +184,7 @@ function stringifyComponentData(attrs: Attribute[] | void, props: Pair[] | void)
           }
         }
         else {
-          componentProps[attr.name] = {
-            value: attr.value,
-            expr: attr.expr,
-
-          }
+          componentProps[attr.name] = stringifyValue(attr.value, attr.expr, attr.children)
         }
       }
     )
@@ -195,18 +201,18 @@ function stringifyComponentData(attrs: Attribute[] | void, props: Pair[] | void)
   }
 
   if (!object.empty(componentProps)) {
-    data.props = componentProps
+    data.props = stringifyObject(componentProps)
   }
 
   if (!object.empty(componentOn)) {
-    data.on = componentOn
+    data.on = stringifyObject(componentOn)
   }
 
   if (!object.empty(componentDirectives)) {
-    data.directives = componentDirectives
+    data.directives = stringifyObject(componentDirectives)
   }
 
-  return data
+  return stringifyObject(data)
 
 }
 
@@ -296,7 +302,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     )
   }
 
-  return stringifyCall('_c', args)
+  return stringifyCall(FUNC_ELEMENT, args)
 
 }
 

@@ -12,6 +12,7 @@ import * as helper from './helper'
 import * as creator from './creator'
 import * as nodeType from './nodeType'
 
+import If from './node/If'
 import Node from './node/Node'
 import Element from './node/Element'
 import Attribute from './node/Attribute'
@@ -193,7 +194,7 @@ export function compile(content: string) {
       }
     },
 
-    addChild = function (node: any) {
+    addChild = function (node: Node) {
 
       /**
        * <div>
@@ -253,7 +254,7 @@ export function compile(content: string) {
           // 方便 virtual dom 进行对比
           // 这个跟 virtual dom 的实现原理密切相关，不加 stump 会有问题
           if (!currentElement) {
-            node.stump = env.TRUE
+            (node as If).stump = env.TRUE
           }
           array.push(ifStack, node)
         }
@@ -432,7 +433,11 @@ export function compile(content: string) {
           }
 
         }
-        else {
+        // 如果不加判断，类似 <div {{...obj}}> 这样写，会把空格当做一个属性
+        // 收集文本只有两处：属性值、元素内容
+        // 属性值通过上面的 if 处理过了，这里只需要处理元素内容
+        else if (!currentElement) {
+
           // 获取 <tag 前面的字符
           match = content.match(tagPattern)
 
@@ -440,8 +445,11 @@ export function compile(content: string) {
             ? string.slice(content, 0, match.index)
             : content
 
-          // 元素内容
           addTextChild(text)
+
+        }
+        else {
+          text = content
         }
 
         return text
@@ -524,7 +532,12 @@ export function compile(content: string) {
           source = slicePrefix(source, config.SYNTAX_SPREAD)
           const expr = exprCompiler.compile(source)
           if (expr) {
-            return creator.createSpread(expr)
+            if (currentElement && currentElement.component) {
+              return creator.createSpread(expr)
+            }
+            else {
+              reportError(`延展属性只能用于组件属性`)
+            }
           }
           reportError(`无效的 spread`)
         }
