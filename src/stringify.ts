@@ -1,6 +1,5 @@
 import isDef from 'yox-common/function/isDef'
 import toJSON from 'yox-common/function/toJSON'
-import toString from 'yox-common/function/toString'
 
 import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
@@ -73,21 +72,24 @@ function stringifyArray(arr: any[]): string | void {
   }
 }
 
-function stringifyCall(name: string, args?: any[]): string {
-  const tuple = args
-    ? array.join(args, SEP_COMMA)
-    : char.CHAR_BLANK
-  return `${name}(${tuple})`
+function stringifyMultiCall(name: string, args: any[]): string {
+  return `${name}(${array.join(args, SEP_COMMA)})`
+}
+
+function stringifySingleCall(name: string, arg: string): string {
+  return `${name}(${arg})`
+}
+
+function stringifyCall(name: string): string {
+  return `${name}()`
 }
 
 function stringifyExpression(expr: ExpressionNode): string {
-  if (expr.type === exprNodeType.IDENTIFIER) {
-    return stringifyCall(FUNC_EXPR, [toJSON((expr as ExpressionIdentifier).name)])
-  }
-  else if (expr.type === exprNodeType.LITERAL) {
-    return toJSON((expr as ExpressionLiteral).value)
-  }
-  return stringifyCall(FUNC_EXPR, [toJSON(expr)])
+  return expr.type === exprNodeType.IDENTIFIER
+    ? stringifySingleCall(FUNC_EXPR, toJSON((expr as ExpressionIdentifier).name))
+    : expr.type === exprNodeType.LITERAL
+      ? toJSON((expr as ExpressionLiteral).value)
+      : stringifySingleCall(FUNC_EXPR, toJSON(expr))
 }
 
 function stringifyEmpty(): string {
@@ -124,6 +126,17 @@ function stringifyDirective(value: string | undefined, expr: ExpressionNode | un
   })
 }
 
+function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[] | void): string | void {
+  if (isDef(value)) {
+    return toJSON(value)
+  }
+  else if (expr) {
+    return stringifyExpression(expr)
+  }
+  else if (children) {
+    return stringifyChildren(children)
+  }
+}
 
 function stringifyChildren(children: Node[] | void): string | void {
   if (children) {
@@ -142,20 +155,8 @@ function stringifyChildren(children: Node[] | void): string | void {
       }
     )
     return hasComplexNode
-      ? stringifyCall(FUNC_RENDER, childs)
+      ? stringifyMultiCall(FUNC_RENDER, childs)
       : array.join(childs, SEP_PLUS)
-  }
-}
-
-function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[] | void) : string | void {
-  if (isDef(value)) {
-    return toJSON(value)
-  }
-  else if (expr) {
-    return stringifyExpression(expr)
-  }
-  else if (children) {
-    return stringifyChildren(children)
   }
 }
 
@@ -220,8 +221,8 @@ function stringifyComponentData(attrs: (Attribute | Spread)[] | void, props: Pai
   if (props) {
     array.each(
       props,
-      function (prop) {
-        componentProps[prop.name] = prop.value
+      function (prop: Pair) {
+        componentProps[prop.name] = stringifyValue(prop.value, prop.expr)
       }
     )
   }
@@ -281,8 +282,8 @@ function stringifyElementData(attrs: (Attribute | Spread)[] | void, props: Pair[
   if (props) {
     array.each(
       props,
-      function (prop) {
-        nativeProps[prop.name === 'text' ? 'textContent' : 'innerHTML'] = prop.value
+      function (prop: Pair) {
+        nativeProps[prop.name === 'text' ? 'textContent' : 'innerHTML'] = stringifyValue(prop.value, prop.expr)
       }
     )
   }
@@ -328,7 +329,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     )
   }
 
-  return stringifyCall(FUNC_ELEMENT, args)
+  return stringifyMultiCall(FUNC_ELEMENT, args)
 
 }
 
