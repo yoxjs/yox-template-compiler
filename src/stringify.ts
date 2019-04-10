@@ -32,6 +32,13 @@ import Partial from './node/Partial';
 import Spread from './node/Spread';
 import Pair from './node/Pair';
 
+/**
+ * 序列化有两个难点：
+ *
+ * 1. 区分函数名和正常字符串的序列化
+ * 2. 区分 node 数组和数据数组
+ *
+ */
 
 function stringifyObject(obj: Object): string | void {
   const fields = []
@@ -64,14 +71,16 @@ function stringifyCall(name: string, args?: any[]): string {
   return `${name}(${tuple})`
 }
 
-const nodeStringify = {}
-
-nodeStringify[nodeType.TEXT] = function (node: Text): string {
-  return toJSON(node.text)
+function stringifyExpression(expr: ExpressionNode): string {
+  return stringifyCall('_e', [toJSON(expr)])
 }
 
-nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
-  return stringifyCall('_s', [toJSON(node.expr)])
+function stringifyEmpty(): string {
+  return stringifyCall('_n')
+}
+
+function stringifyComment(): string {
+  return stringifyCall('_m')
 }
 
 function stringifyEvent(expr: ExpressionNode): any {
@@ -93,9 +102,8 @@ function stringifyEvent(expr: ExpressionNode): any {
   }
 }
 
-function stringifyDirective(name: string, value: string, expr: ExpressionNode): string | void {
+function stringifyDirective(value: string, expr: ExpressionNode): string | void {
   return stringifyObject({
-    name: toJSON(name),
     value: toJSON(value),
     expr: toJSON(expr),
   })
@@ -106,6 +114,18 @@ function stringifyChildren(children: Node[] | void): string | void {
     return stringifyArray(
       children.map(stringify)
     )
+  }
+}
+
+function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[] | void) : string | void {
+  if (isDef(value)) {
+    return toJSON(value)
+  }
+  else if (expr) {
+    return stringifyExpression(expr)
+  }
+  else if (children) {
+    return stringifyCall('_s', children.map(stringify))
   }
 }
 
@@ -130,11 +150,15 @@ function stringifyComponentData(attrs: Attribute[] | void, props: Pair[] | void)
             componentOn[attr.name] = stringifyEvent(attr.expr)
           }
           else {
-            componentDirectives[attr.name] = stringifyDirective(attr.name, attr.value, attr.expr)
+            componentDirectives[attr.name] = stringifyDirective(attr.value, attr.expr)
           }
         }
         else {
-          componentProps[attr.name] = attr.value
+          componentProps[attr.name] = {
+            value: attr.value,
+            expr: attr.expr,
+
+          }
         }
       }
     )
@@ -187,15 +211,14 @@ function stringifyElementData(attrs: Attribute[] | void, props: Pair[] | void): 
             nativeOn[attr.name] = stringifyEvent(attr.expr)
           }
           else {
-            nativeDirectives[attr.name] = stringifyDirective(attr.name, attr.value, attr.expr)
+            nativeDirectives[attr.name] = stringifyDirective(attr.value, attr.expr)
           }
         }
         else {
           nativeAttrs[keypathUtil.join(attr.namespace, attr.name)] = stringifyObject({
             namespace: toJSON(attr.namespace),
             name: toJSON(attr.name),
-            value: toJSON(attr.value),
-            children: stringifyChildren(attr.children),
+            value: stringifyValue(attr.value, attr.expr, attr.children),
           })
         }
       }
@@ -232,6 +255,8 @@ function stringifyElementData(attrs: Attribute[] | void, props: Pair[] | void): 
 
 }
 
+const nodeStringify = {}
+
 nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   const { tag, component, attrs, props, children } = node,
@@ -239,7 +264,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   args: any[] = [toJSON(tag)],
 
   data = component ? stringifyComponentData(attrs, props) : stringifyElementData(attrs, props)
-console.log(data)
+
   if (data) {
     array.push(args, data)
   }
@@ -255,7 +280,50 @@ console.log(data)
 
 }
 
+nodeStringify[nodeType.TEXT] = function (node: Text): string {
+  return toJSON(node.text)
+}
+
+nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
+  return stringifyExpression(node.expr)
+}
+
+nodeStringify[nodeType.IF] = function (node: If): string {
+
+  const { stump } = node,
+
+  loop = function (node: If | ElseIf) {
+
+    let expr = stringifyExpression(node.expr),
+
+    children = stringifyChildren(node.children),
+
+    nextNode = node.next,
+
+    nextValue: string | void
+
+    if (nextNode) {
+      // 递归到最后一个条件
+      if (nextNode.type === nodeType.ELSE) {
+        nextValue = stringifyChildren(nextNode.children)
+      }
+      else {
+        nextValue = loop(nextNode as ElseIf)
+      }
+    }
+    // 到达最后一个条件，发现第一个 if 语句带有 stump，需标记出来
+    else if (stump) {
+      nextValue = stringifyComment()
+    }
+
+    return `${expr} ? ${isDef(children) ? children : stringifyEmpty()} : ${isDef(nextValue) ? nextValue : stringifyEmpty()}`
+
+  }
+
+  return loop(node)
+
+}
+
 export function stringify(node: Node): string {
-  console.log(node.type)
   return nodeStringify[node.type](node)
 }
