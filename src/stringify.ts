@@ -222,7 +222,13 @@ function stringifyComponentData(attrs: (Attribute | Spread)[] | void, props: Pai
     array.each(
       props,
       function (prop: Pair) {
-        componentProps[prop.name] = stringifyValue(prop.value, prop.expr)
+        array.push(
+          componentProps,
+          stringifyObject({
+            name: toJSON(prop.name),
+            value: stringifyValue(prop.value, prop.expr),
+          })
+        )
       }
     )
   }
@@ -249,7 +255,8 @@ function stringifyElementData(attrs: (Attribute | Spread)[] | void, props: Pair[
 
   nativeAttrs = {},
 
-  nativeProps = {},
+  // 和组件保持一致，采用数组
+  nativeProps = [],
 
   nativeOn = {},
 
@@ -283,7 +290,13 @@ function stringifyElementData(attrs: (Attribute | Spread)[] | void, props: Pair[
     array.each(
       props,
       function (prop: Pair) {
-        nativeProps[prop.name === 'text' ? 'textContent' : 'innerHTML'] = stringifyValue(prop.value, prop.expr)
+        array.push(
+          nativeProps,
+          stringifyObject({
+            name: toJSON(prop.name),
+            value: stringifyValue(prop.value, prop.expr),
+          })
+        )
       }
     )
   }
@@ -292,8 +305,8 @@ function stringifyElementData(attrs: (Attribute | Spread)[] | void, props: Pair[
     data.attrs = stringifyObject(nativeAttrs)
   }
 
-  if (!object.empty(nativeProps)) {
-    data.props = stringifyObject(nativeProps)
+  if (nativeProps.length) {
+    data.props = stringifyArray(nativeProps)
   }
 
   if (!object.empty(nativeOn)) {
