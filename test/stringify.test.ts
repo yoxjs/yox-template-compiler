@@ -6,17 +6,16 @@ it('html 元素', () => {
   let ast = compile(`
     <div
       id="id"
-      class="class"
+      class="class{{name}}1"
       xml:name="name"
-      style="display:block;{{#if large}}width:100px{{else}}width:50px{{/if}};margin: {{px}}px"
+      style="display:block;"
       on-click="xx"
       on-mousedown="open()"
       on-mouseup="open(1, a)"
       o-log="yy"
     >
-      <a>link</a>
-      <b>strong</b>
-      <input/>
+      <span>1</span>
+      <form></form>
     </div>
   `)
 
