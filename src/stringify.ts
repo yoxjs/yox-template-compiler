@@ -36,18 +36,8 @@ function stringifyExpression(expr: Object): string {
   return stringifyCall('_s', toJSON(expr))
 }
 
-function stringifyCall(name: string, params?: any[]): string {
-
-  const tuple = params
-    ? array.join(params, ', ')
-    : char.CHAR_BLANK
-
-  return `${name}(${tuple})`
-
-}
-
-function stringifyFunction(str) {
-  return `${env.RAW_FUNCTION}(){${str || char.CHAR_BLANK}}`
+function stringifyCall(name: string, args?: string): string {
+  return `${name}(${args})`
 }
 
 const nodeStringify = {}
@@ -79,7 +69,7 @@ function stringifyEvent(expr: ExpressionNode): any {
   }
 }
 
-function stringifyComponentData(attrs: Attribute[] | void, props: Pair[] | void): string | void {
+function stringifyComponentData(attrs: Attribute[] | void, props: Pair[] | void): Object {
 
   const data = {
     component: env.TRUE,
@@ -139,11 +129,11 @@ function stringifyComponentData(attrs: Attribute[] | void, props: Pair[] | void)
     data.directives = componentDirectives
   }
 
-  return toJSON(data)
+  return data
 
 }
 
-function stringifyElementData(attrs: Attribute[] | void, props: Pair[] | void): string | void {
+function stringifyElementData(attrs: Attribute[] | void, props: Pair[] | void): Object {
 
   const data = {
     attrs: env.UNDEFINED,
@@ -214,7 +204,7 @@ function stringifyElementData(attrs: Attribute[] | void, props: Pair[] | void): 
     data.directives = nativeDirectives
   }
 
-  return toJSON(data)
+  return data
 
 }
 
@@ -222,7 +212,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   const { tag, component, attrs, props, children } = node,
 
-  args: any[] = [toJSON(tag)],
+  args: any[] = [tag],
 
   data = component ? stringifyComponentData(attrs, props) : stringifyElementData(attrs, props)
 
@@ -236,7 +226,8 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     )
   }
 
-  return stringifyCall('_c', args)
+  return args
+  // return stringifyCall('_c', toJSON(args))
 
 }
 

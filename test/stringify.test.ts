@@ -14,6 +14,9 @@ it('html 元素', () => {
       on-mouseup="open(1, a)"
       o-log="yy"
     >
+      <a>link</a>
+      <b>strong</b>
+      <input/>
     </div>
   `)
 
