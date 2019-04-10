@@ -6,6 +6,7 @@ import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
 import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
+import * as string from 'yox-common/util/string'
 import * as object from 'yox-common/util/object'
 import * as keypathUtil from 'yox-common/util/keypath'
 
@@ -37,7 +38,7 @@ function stringifyExpression(expr: Object): string {
 }
 
 function stringifyCall(name: string, args?: string): string {
-  return `${name}(${args})`
+  return `${name}(${args ? string.slice(args, 1, -1) : char.CHAR_BLANK})`
 }
 
 const nodeStringify = {}
@@ -216,9 +217,9 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   data = component ? stringifyComponentData(attrs, props) : stringifyElementData(attrs, props)
 
-  if (data) {
-    array.push(args, data)
-  }
+  // if (data) {
+  //   array.push(args, data)
+  // }
 
   if (children && children.length) {
     args.push(
@@ -226,8 +227,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     )
   }
 
-  return args
-  // return stringifyCall('_c', toJSON(args))
+  return stringifyCall('_c', toJSON(args))
 
 }
 
