@@ -1,12 +1,20 @@
+import isDef from 'yox-common/function/isDef'
 import toJSON from 'yox-common/function/toJSON'
+import toString from 'yox-common/function/toString'
 
 import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
 import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
+import * as keypathUtil from 'yox-common/util/keypath'
 
 import * as config from 'yox-config'
+
+import ExpressionNode from 'yox-expression-compiler/src/node/Node'
+import ExpressionIdentifier from 'yox-expression-compiler/src/node/Identifier'
+import ExpressionCall from 'yox-expression-compiler/src/node/Call'
+import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 
 import * as nodeType from './nodeType'
 
@@ -21,36 +29,21 @@ import Expression from './node/Expression';
 import Import from './node/Import';
 import Partial from './node/Partial';
 import Spread from './node/Spread';
+import Pair from './node/Pair';
 
-function stringifyObject() {}
-function stringifyArray(arr, name): string {
-  if (arr && arr.length) {
-    let result = arr.map(
-      function (item) {
-        if (item.stringify) {
-          return item.stringify()
-        }
-        if (is.string(item)) {
-          return toJSON(item)
-        }
-        if (is.object(item)) {
-          return stringifyObject(item)
-        }
-        return item
-      }
-    )
-    return name
-      ? stringifyCall(name, result)
-      : `[${array.join(result, char.CHAR_COMMA)}]`
-  }
-}
 
 function stringifyExpression(expr: Object): string {
   return stringifyCall('_s', toJSON(expr))
 }
 
-function stringifyCall(name: string, params: any[]): string {
-  return `${name}(${is.array(params) ? array.join(params, char.CHAR_COMMA) : params})`
+function stringifyCall(name: string, params?: any[]): string {
+
+  const tuple = params
+    ? array.join(params, ', ')
+    : char.CHAR_BLANK
+
+  return `${name}(${tuple})`
+
 }
 
 function stringifyFunction(str) {
@@ -67,187 +60,180 @@ nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
   return stringifyExpression(node.expr)
 }
 
-// nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
-//   stringifyObject
-// }
+function stringifyEvent(expr: ExpressionNode): any {
+  if (expr.type === exprNodeType.IDENTIFIER) {
+    return {
+      event: (expr as ExpressionIdentifier).name
+    }
+  }
+  else if (expr.type === exprNodeType.CALL) {
+    let { callee, args } = expr as ExpressionCall
+    if (callee.type === exprNodeType.IDENTIFIER) {
+      return {
+        method: (callee as ExpressionIdentifier).name,
+        args: args.length > 0
+          ? args
+          : env.UNDEFINED,
+      }
+    }
+  }
+}
 
-// nodeStringify[nodeType.DIRECTIVE] = function (node: Node) {
-//   let generate = stringifyArray(node.children, 'x')
-//   if (generate) {
-//     let params = [
-//       toJSON(this[env.RAW_EXPR]),
-//       stringifyFunction(generate)
-//     ]
-//     if (this[env.RAW_INDEX]) {
-//       array.push(
-//         params,
-//         toJSON(this[env.RAW_INDEX])
-//       )
-//     }
-//     return stringifyFunction(
-//       stringifyCall('e', params)
-//     )
-//   }
-// }
+function stringifyComponentData(attrs: Attribute[] | void, props: Pair[] | void): string | void {
 
-// stringify[nodeType.IF] = function (node: If): string {
+  const data = {
+    component: env.TRUE,
+    props: env.UNDEFINED,
+    on: env.UNDEFINED,
+    directives: env.UNDEFINED,
+  },
 
-//   let { stump } = node
+  componentProps = {},
 
-//   let stringify = function (node: If | ElseIf) {
-//     let expr = stringifyExpression(node.expr)
-//     let children = stringifyArray(node.children, 'x')
-//     let next = node.next
-//     if (next) {
-//       next = stringify(next)
-//     }
-//     else if (stump) {
-//       next = 'x(m())'
-//     }
-//     if (expr) {
-//       if (children) {
-//         return next
-//           ? `${expr} ? ${children} : ${next}`
-//           : `${expr} && ${children}`
-//       }
-//       else if (next) {
-//         return `!${expr} && ${next}`
-//       }
-//     }
-//     else if (children) {
-//       return children
-//     }
-//   }
+  componentOn = {},
 
-//   let str = stringify(node)
-//   if (str) {
-//     return stringifyFunction(str)
-//   }
-// }
+  componentDirectives = {}
 
-// nodeStringify[nodeType.IMPORT] = function (node: Import): string {
-//   return stringifyCall(
-//     '_i',
-//     toJSON(node.name)
-//   )
-// }
+  if (attrs) {
+    array.each(
+      attrs,
+      function (attr) {
+        if (attr.directive) {
+          if (attr.namespace === config.DIRECTIVE_EVENT) {
+            componentOn[attr.name] = stringifyEvent(attr.expr)
+          }
+          else {
+            componentDirectives[attr.name] = {
+              name: attr.name,
+              value: attr.value,
+              expr: attr.expr,
+            }
+          }
+        }
+        else {
+          componentProps[attr.name] = attr.value
+        }
+      }
+    )
+  }
 
-// nodeStringify[nodeType.PARTIAL] = function (node: Partial): string {
-//   return stringifyCall(
-//     '_p',
-//     [
-//       toJSON(node.name),
-//       stringifyFunction(
-//         stringifyArray(node.children, 'x')
-//       )
-//     ]
-//   )
-// }
+  // 目前只可能存在两个属性：text 和 html
+  if (props) {
+    array.each(
+      props,
+      function (prop) {
+        componentProps[prop.name] = prop.value
+      }
+    )
+  }
 
-// stringify[nodeType.SPREAD] = function (node: Spread): string {
-//   return stringifyCall(
-//     '_s',
-//     toJSON(node.expr)
-//   )
-// }
+  if (!object.empty(componentProps)) {
+    data.props = componentProps
+  }
+
+  if (!object.empty(componentOn)) {
+    data.props = componentOn
+  }
+
+  if (!object.empty(componentDirectives)) {
+    data.directives = componentDirectives
+  }
+
+  return toJSON(data)
+
+}
+
+function stringifyElementData(attrs: Attribute[] | void, props: Pair[] | void): string | void {
+
+  const data = {
+    attrs: env.UNDEFINED,
+    props: env.UNDEFINED,
+    on: env.UNDEFINED,
+    directives: env.UNDEFINED,
+  },
+
+  nativeAttrs = {},
+
+  nativeProps = {},
+
+  nativeOn = {},
+
+  nativeDirectives = {}
+
+  if (attrs) {
+    array.each(
+      attrs,
+      function (attr) {
+        if (attr.directive) {
+          if (attr.namespace === config.DIRECTIVE_EVENT) {
+            nativeOn[attr.name] = stringifyEvent(attr.expr)
+          }
+          else {
+            nativeDirectives[attr.name] = {
+              name: attr.name,
+              value: attr.value,
+              expr: attr.expr,
+            }
+          }
+        }
+        else {
+          nativeAttrs[keypathUtil.join(attr.namespace, attr.name)] = {
+            namespace: attr.namespace,
+            name: attr.name,
+            value: attr.value,
+            children: attr.children,
+          }
+        }
+      }
+    )
+  }
+
+  // 目前只可能存在两个属性：text 和 html
+  if (props) {
+    array.each(
+      props,
+      function (prop) {
+        nativeProps[prop.name === 'text' ? 'textContent' : 'innerHTML'] = prop.value
+      }
+    )
+  }
+
+  if (!object.empty(nativeAttrs)) {
+    data.attrs = nativeAttrs
+  }
+
+  if (!object.empty(nativeProps)) {
+    data.props = nativeProps
+  }
+
+  if (!object.empty(nativeOn)) {
+    data.on = nativeOn
+  }
+
+  if (!object.empty(nativeDirectives)) {
+    data.directives = nativeDirectives
+  }
+
+  return toJSON(data)
+
+}
 
 nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
-  let { tag, component, props, attrs, children } = node
+  const { tag, component, attrs, props, children } = node,
 
-  let args: any[] = [ toJSON(tag) ], data: any = { }, childs = [ ]
+  args: any[] = [toJSON(tag)],
 
-  if (component) {
+  data = component ? stringifyComponentData(attrs, props) : stringifyElementData(attrs, props)
 
-    data.component = component
-
-    let componentProps = {}
-
-    if (attrs) {
-      array.each(
-        attrs,
-        function (attr) {
-          if (attr.directive) {
-
-          }
-          else {
-            componentProps[attr.name] = attr.value
-          }
-        }
-      )
-    }
-
-    // 目前只可能存在两个属性：text 和 html
-    if (props) {
-      array.each(
-        props,
-        function (prop) {
-          componentProps[prop.name] = prop.value
-        }
-      )
-    }
-
-    if (object.keys(componentProps).length) {
-      data.props = componentProps
-    }
-
-  }
-  else {
-    if (attrs) {
-      let nativeAttrs = {}, nativeOn = {}, directives = []
-      array.each(
-        attrs,
-        function (attr) {
-          if (attr.directive) {
-            if (attr.namespace === config.DIRECTIVE_EVENT) {
-              nativeOn[attr.name] = attr.expr
-            }
-            else {
-              array.push(
-                directives,
-                {
-                  name: attr.name,
-                  value: attr.value,
-                  expr: attr.expr,
-                }
-              )
-            }
-          }
-          else {
-            nativeAttrs[attr.name] = attr.value
-          }
-        }
-      )
-      if (!object.empty(nativeAttrs)) {
-        data.nativeAttrs = nativeAttrs
-      }
-      if (!object.empty(nativeOn)) {
-        data.nativeOn = nativeOn
-      }
-      if (directives.length) {
-        data.directives = directives
-      }
-    }
-
-    // 目前只可能存在两个属性：text 和 html
-    if (props) {
-      let nativeProps = {}
-      array.each(
-        props,
-        function (prop) {
-          nativeProps[prop.name === 'text' ? 'textContent' : 'innerHTML'] = prop.value
-        }
-      )
-      data.nativeProps = nativeProps
-    }
+  if (data) {
+    array.push(args, data)
   }
 
-  if (!object.empty(data)) {
-    array.push(args, toJSON(data))
-  }
-
-  if (childs.length) {
-    args.push(toJSON(childs))
+  if (children && children.length) {
+    args.push(
+      children.map(stringify)
+    )
   }
 
   return stringifyCall('_c', args)

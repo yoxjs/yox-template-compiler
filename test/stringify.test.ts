@@ -3,7 +3,19 @@ import { stringify } from '../src/stringify'
 
 it('html 元素', () => {
 
-  let ast = compile('<div id="id" class="class" style="display:block;margin: 10px" on-click="xx">11</div>')
+  let ast = compile(`
+    <div
+      id="id"
+      class="class"
+      xml:name="name"
+      style="display:block;{{#if large}}width:100px{{else}}width:50px{{/if}};margin: {{px}}px"
+      on-click="xx"
+      on-mousedown="open()"
+      on-mouseup="open(1, a)"
+      o-log="yy"
+    >
+    </div>
+  `)
 
   console.log(JSON.stringify(ast, 4, 4))
 

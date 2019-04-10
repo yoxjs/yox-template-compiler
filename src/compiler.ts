@@ -119,7 +119,7 @@ export function compile(content: string) {
       const target = array.pop(nodeStack)
       if (target && target.type === type) {
 
-        const { tag, children } = target
+        const { tag, namespace, directive, children } = target
 
         if (tagName && tag !== tagName) {
           reportError(`结束标签是${tagName}，开始标签却是${target.tag}`)
@@ -136,7 +136,7 @@ export function compile(content: string) {
               // 减少渲染时的遍历
               if (type === nodeType.ATTRIBUTE) {
                 target.value = text
-                if (target.directive) {
+                if (directive) {
                   // 指令的值如果是纯文本，可以预编译表达式，提升性能
                   target.expr = exprCompiler.compile(text)
                 }
@@ -175,6 +175,18 @@ export function compile(content: string) {
 
           }
         }
+
+        // 不支持 on-click="1{{xx}}2" 或是 on-click="1{{#if x}}x{{else}}y{{/if}}2"
+        // 1. 很难做性能优化
+        // 2. 全局搜索不到事件名，不利于代码维护
+        // 为了统一，所有指令不支持这样写
+
+        else if (type === nodeType.ATTRIBUTE
+          && directive
+        ) {
+          reportError(`指令的值不能用插值语法`)
+        }
+
       }
       else {
         reportError(`出栈节点类型不匹配`)
