@@ -1,54 +1,54 @@
 /**
  * 元素 节点
  */
-export const ELEMENT: number = 1
+export const ELEMENT = 1
 
 /**
  * 属性 节点
  */
-export const ATTRIBUTE: number = 2
+export const ATTRIBUTE = 2
 
 /**
  * 文本 节点
  */
-export const TEXT: number = 3
+export const TEXT = 3
 
 /**
  * if 节点
  */
-export const IF: number = 4
+export const IF = 4
 
 /**
  * else if 节点
  */
-export const ELSE_IF: number = 5
+export const ELSE_IF = 5
 
 /**
  * else 节点
  */
-export const ELSE: number = 6
+export const ELSE = 6
 
 /**
  * each 节点
  */
-export const EACH: number = 7
+export const EACH = 7
 
 /**
  * partial 节点
  */
-export const PARTIAL: number = 8
+export const PARTIAL = 8
 
 /**
  * import 节点
  */
-export const IMPORT: number = 9
+export const IMPORT = 9
 
 /**
  * 表达式 节点
  */
-export const EXPRESSION: number = 10
+export const EXPRESSION = 10
 
 /**
  * 延展操作 节点
  */
-export const SPREAD: number = 11
+export const SPREAD = 11
