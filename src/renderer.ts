@@ -3,6 +3,7 @@ import * as env from 'yox-common/util/env'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
 import * as keypathUtil from 'yox-common/util/keypath'
+import isDef from 'yox-common/function/isDef';
 
 export const ELEMENT = '_c'
 
@@ -10,81 +11,98 @@ export const COMPONENT = '_d'
 
 export const EACH = '_l'
 
+export const EMPTY = '_e'
+
 export const COMMENT = '_m'
 
-export const EMPTY = '_n'
-
-export const EXPRESSION = '_s'
+export const EXPRESSION = '_x'
 
 export const CHILDREN = '_v'
 
 const renderer = {}
 
+function addNodes(list: any[], nodes: Node[]) {
+  // nodes 会出现二维数组
+  array.each(
+    nodes,
+    function (node) {
+      // 某些节点计算得到空值，需要过滤
+      if (isDef(node)) {
+        array.push(list, node)
+      }
+    }
+  )
+}
+
+renderer[EMPTY] = function () {
+  return env.UNDEFINED
+}
+
+renderer[COMMENT] = function () {
+  return 'comment'
+}
+
 renderer[EXPRESSION] = function (expr: string) {
+  return 'expr'
+}
+
+renderer[CHILDREN] = function (nodes: Node[]) {
+
+  const list = []
+
+  addNodes(list, nodes)
+
+  return list
 
 }
 
-renderer[CHILDREN] = function (...nodes: Node[]) {
+renderer[ELEMENT] = function (tag: string, data: any | void, children: any[] | void): Object {
 
-}
-
-renderer[ELEMENT] = function (tag: string, data: any | void, children: any[] | void) {
+  const result: any = { tag }
 
   if (is.array(data)) {
     children = data
     data = env.UNDEFINED
   }
 
-  if (children) {
-
+  if (data) {
+    object.extend(result, data)
   }
 
+  if (children) {
+    result.children = children
+  }
+
+  return result
+
 }
 
-renderer[COMPONENT] = function (tag: string, data: any | void) {
+renderer[COMPONENT] = function (tag: string, data: any | void): Object {
+
+  const result: any = { tag }
+
+  if (data) {
+    object.extend(result, data)
+  }
+
+  return result
 
 }
 
-renderer[EACH] = function (value: any, index: string | Function, callback: Function | void) {
+renderer[EACH] = function (value: any, index: string | Function, callback?: Function) {
 
   if (is.func(index)) {
     callback = index as Function
     index = env.UNDEFINED
   }
 
+  const list = []
+
   if (is.array(value)) {
     array.each(
       value,
-      function (item: any, index: number) {
-
-        // let lastScope = scope, lastKeypath = keypath, lastKeypathStack = keypathStack
-
-        // scope = {}
-        // keypath = keypathUtil.join(eachKeypath, key)
-        // keypathStack = object.copy(keypathStack)
-        // array.push(keypathStack, keypath)
-        // array.push(keypathStack, scope)
-
-        // // 从下面这几句赋值可以看出
-        // // scope 至少会有 'keypath' 'this' 'index' 等几个值
-        // scope[config.SPECIAL_KEYPATH] = keypath
-
-        // // 类似 {{#each 1 -> 10}} 这样的临时循环，需要在 scope 上加上当前项
-        // // 因为通过 instance.get() 无法获取数据
-        // if (!absoluteKeypath) {
-        //   scope[env.RAW_THIS] = item
-        // }
-
-        // if (index) {
-        //   scope[index] = key
-        // }
-
-        // generate()
-
-        // scope = lastScope
-        // keypath = lastKeypath
-        // keypathStack = lastKeypathStack
-
+      function (item: any, idx: number) {
+        addNodes(list, callback())
       }
     )
   }
@@ -92,12 +110,30 @@ renderer[EACH] = function (value: any, index: string | Function, callback: Funct
     object.each(
       value,
       function (value: any, key: string) {
-
+        addNodes(list, callback())
       }
     )
   }
   else if (is.func(value)) {
-    value(callback)
+    value(
+      function () {
+        addNodes(list, callback())
+      }
+    )
   }
 
+  return list
+
+}
+
+export function render(result: Function) {
+  return result(
+    renderer[EMPTY],
+    renderer[COMMENT],
+    renderer[EXPRESSION],
+    renderer[CHILDREN],
+    renderer[EACH],
+    renderer[COMPONENT],
+    renderer[ELEMENT]
+  )
 }

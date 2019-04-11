@@ -16,7 +16,6 @@ import * as helper from './helper'
 import * as renderer from './renderer'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
-import ExpressionLiteral from 'yox-expression-compiler/src/node/Literal'
 import ExpressionIdentifier from 'yox-expression-compiler/src/node/Identifier'
 import ExpressionCall from 'yox-expression-compiler/src/node/Call'
 
@@ -141,7 +140,7 @@ function stringifyNormalChildren(children: Node[] | void): string | void {
     children,
     function (childs: string[], hasComplexChild: boolean): string {
       return hasComplexChild
-        ? stringifyCall(renderer.CHILDREN, array.join(childs, SEP_COMMA))
+        ? stringifyCall(renderer.CHILDREN, `[ ${array.join(childs, SEP_COMMA)} ]`)
         : array.join(childs, SEP_PLUS)
     }
   )
@@ -417,4 +416,17 @@ nodeStringify[nodeType.EACH] = function (node: Each): string {
 
 export function stringify(node: Node): string {
   return nodeStringify[node.type](node)
+}
+
+export function convert(node: Node): Function {
+  return new Function(
+    renderer.EMPTY,
+    renderer.COMMENT,
+    renderer.EXPRESSION,
+    renderer.CHILDREN,
+    renderer.EACH,
+    renderer.COMPONENT,
+    renderer.ELEMENT,
+    `return ${stringify(node)}`
+  )
 }
