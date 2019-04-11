@@ -66,10 +66,10 @@ function stringifyCall(name: string, arg: string): string {
   return `${name}(${arg})`
 }
 
-function stringifyExpression(expr: any): string {
+function stringifyExpression(expr: ExpressionNode): string {
   return stringifyCall(
     renderer.EXPRESSION,
-    toJSON(expr.staticKeypath || expr)
+    toJSON(expr)
   )
 }
 
