@@ -112,7 +112,7 @@ export function createText(text: string): Text {
   }
 }
 
-export function createPair(name: string, value: any | void, expr?: ExpressionNode | void): Pair {
+export function createPair(name: string, value: any | void, expr?: ExpressionNode): Pair {
   return {
     name,
     value,

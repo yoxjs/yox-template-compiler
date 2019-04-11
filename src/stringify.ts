@@ -33,14 +33,6 @@ import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Pair from './node/Pair'
 
-/**
- * 序列化有两个难点：
- *
- * 1. 区分函数名和正常字符串的序列化
- * 2. 区分 node 数组和数据数组
- *
- */
-
 const SEP_COMMA = ', '
 const SEP_COLON = ': '
 const SEP_PLUS = ' + '
@@ -181,6 +173,7 @@ function getComponentSlots(children: Node[] | void): Object {
       }
       // slot 即使是空也必须覆盖组件旧值
       // 否则当组件更新时会取到旧值
+      // 这里不能写 undefined，否则序列化会被干掉
       else {
         slots[name] = env.NULL
       }
