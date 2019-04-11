@@ -151,56 +151,76 @@ function stringifyChildren(children: Node[] | void, outputArray?: boolean): stri
   }
 }
 
-function stringifyComponentData(attrs: (Attribute | Spread)[] | void, props: Pair[] | void): string | void {
+const nodeStringify = {}
 
-  const data: any = {
-    component: env.TRUE,
-  },
+nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
+
+  let { tag, component, attrs, props, children } = node,
+
+  args: any[] = [toJSON(tag)],
+
+  data: any = { },
 
   // 比如 <Custom {{...obj1}} {{...obj2}}/>
   // 用对象有两个问题，第一是延展操作不好写 key，第二是无法保证顺序
-  componentProps = [],
+  elementProps = [],
 
-  componentOn = {},
+  elementAttrs = {},
 
-  componentDirectives = {},
+  elementOn = {},
 
-  addAttr = function (attr: Attribute) {
-    if (attr.directive) {
-      if (attr.expr && attr.namespace === config.DIRECTIVE_EVENT) {
-        componentOn[attr.name] = stringifyEvent(attr.expr)
-      }
-      else {
-        componentDirectives[attr.name] = stringifyDirective(attr.value, attr.expr)
-      }
-    }
-    else if (attr.name === 'ref'
-      || attr.name === 'key'
-      || attr.name === 'transition'
-    ) {
-      data[attr.name] = stringifyValue(attr.value, attr.expr, attr.children)
-    }
-    else {
-      array.push(
-        componentProps,
-        stringifyObject({
-          name: toJSON(attr.name),
-          value: stringifyValue(attr.value, attr.expr, attr.children),
-        })
-      )
-    }
-  },
+  elementDirectives = {},
 
-  addSpread = function (spread: Spread) {
-    array.push(
-      componentProps,
-      stringifyObject({
-        spread: stringifyExpression(spread.expr)
-      })
-    )
+  childs = stringifyChildren(children, env.TRUE)
+
+  if (component) {
+    data.component = env.TRUE
   }
 
   if (attrs) {
+
+    const addAttr = function (attr: Attribute) {
+      if (attr.directive) {
+        if (attr.expr && attr.namespace === config.DIRECTIVE_EVENT) {
+          elementOn[attr.name] = stringifyEvent(attr.expr)
+        }
+        else {
+          elementDirectives[attr.name] = stringifyDirective(attr.value, attr.expr)
+        }
+      }
+      else if (attr.name === 'ref'
+        || attr.name === 'key'
+        || attr.name === 'transition'
+      ) {
+        data[attr.name] = stringifyValue(attr.value, attr.expr, attr.children)
+      }
+      else if (component) {
+        array.push(
+          elementProps,
+          stringifyObject({
+            name: toJSON(attr.name),
+            value: stringifyValue(attr.value, attr.expr, attr.children),
+          })
+        )
+      }
+      else {
+        elementAttrs[keypathUtil.join(attr.namespace, attr.name)] = stringifyObject({
+          namespace: toJSON(attr.namespace),
+          name: toJSON(attr.name),
+          value: stringifyValue(attr.value, attr.expr, attr.children),
+        })
+      }
+    },
+
+    addSpread = function (spread: Spread) {
+      array.push(
+        elementProps,
+        stringifyObject({
+          spread: stringifyExpression(spread.expr)
+        })
+      )
+    }
+
     array.each(
       attrs,
       function (attr: Attribute | Spread) {
@@ -212,6 +232,7 @@ function stringifyComponentData(attrs: (Attribute | Spread)[] | void, props: Pai
         }
       }
     )
+
   }
 
   // 目前只可能存在两个属性：text 和 html
@@ -220,7 +241,7 @@ function stringifyComponentData(attrs: (Attribute | Spread)[] | void, props: Pai
       props,
       function (prop: Pair) {
         array.push(
-          componentProps,
+          elementProps,
           stringifyObject({
             name: toJSON(prop.name),
             value: stringifyValue(prop.value, prop.expr),
@@ -230,113 +251,24 @@ function stringifyComponentData(attrs: (Attribute | Spread)[] | void, props: Pai
     )
   }
 
-  if (componentProps.length) {
-    data.props = stringifyArray(componentProps)
+  if (elementProps.length) {
+    data.props = stringifyArray(elementProps)
   }
 
-  if (!object.empty(componentOn)) {
-    data.on = stringifyObject(componentOn)
+  if (!object.empty(elementAttrs)) {
+    data.attrs = stringifyObject(elementAttrs)
   }
 
-  if (!object.empty(componentDirectives)) {
-    data.directives = stringifyObject(componentDirectives)
+  if (!object.empty(elementOn)) {
+    data.on = stringifyObject(elementOn)
   }
 
-  return stringifyObject(data)
-
-}
-
-function stringifyElementData(attrs: (Attribute | Spread)[] | void, props: Pair[] | void): string | void {
-
-  const data: any = {},
-
-  nativeAttrs = {},
-
-  // 和组件保持一致，采用数组
-  nativeProps = [],
-
-  nativeOn = {},
-
-  nativeDirectives = {}
-
-  if (attrs) {
-    array.each(
-      attrs,
-      function (attr: Attribute) {
-        if (attr.directive) {
-          if (attr.namespace === config.DIRECTIVE_EVENT) {
-            nativeOn[attr.name] = stringifyEvent(attr.expr)
-          }
-          else {
-            nativeDirectives[attr.name] = stringifyDirective(attr.value, attr.expr)
-          }
-        }
-        else if (attr.name === 'ref'
-          || attr.name === 'key'
-          || attr.name === 'transition'
-        ) {
-          data[attr.name] = stringifyValue(attr.value, attr.expr, attr.children)
-        }
-        else {
-          nativeAttrs[keypathUtil.join(attr.namespace, attr.name)] = stringifyObject({
-            namespace: toJSON(attr.namespace),
-            name: toJSON(attr.name),
-            value: stringifyValue(attr.value, attr.expr, attr.children),
-          })
-        }
-      }
-    )
+  if (!object.empty(elementDirectives)) {
+    data.directives = stringifyObject(elementDirectives)
   }
 
-  // 目前只可能存在两个属性：text 和 html
-  if (props) {
-    array.each(
-      props,
-      function (prop: Pair) {
-        array.push(
-          nativeProps,
-          stringifyObject({
-            name: toJSON(prop.name),
-            value: stringifyValue(prop.value, prop.expr),
-          })
-        )
-      }
-    )
-  }
-
-  if (!object.empty(nativeAttrs)) {
-    data.attrs = stringifyObject(nativeAttrs)
-  }
-
-  if (nativeProps.length) {
-    data.props = stringifyArray(nativeProps)
-  }
-
-  if (!object.empty(nativeOn)) {
-    data.on = stringifyObject(nativeOn)
-  }
-
-  if (!object.empty(nativeDirectives)) {
-    data.directives = stringifyObject(nativeDirectives)
-  }
-
-  return stringifyObject(data)
-
-}
-
-const nodeStringify = {}
-
-nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
-
-  const { tag, component, attrs, props, children } = node,
-
-  args: any[] = [toJSON(tag)],
-
-  data = component ? stringifyComponentData(attrs, props) : stringifyElementData(attrs, props),
-
-  childs = stringifyChildren(children, env.TRUE)
-
-  if (data) {
+  data = stringifyObject(data)
+  if (isDef(data)) {
     array.push(args, data)
   }
 
