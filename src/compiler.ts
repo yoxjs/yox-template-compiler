@@ -8,6 +8,7 @@ import * as string from 'yox-common/util/string'
 import * as logger from 'yox-common/util/logger'
 
 import * as exprCompiler from 'yox-expression-compiler/src/compiler'
+import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 
 import * as helper from './helper'
 import * as creator from './creator'
@@ -168,11 +169,21 @@ export function compile(content: string) {
 
             case nodeType.EXPRESSION:
               const { expr } = singleChild
-              // <div class="{{className}}">
-              // 把 Attribute 转成 单向绑定 指令，可实现精确更新视图
-              if (isAttribute) {
+              if (currentElement && isAttribute) {
                 target.expr = expr
                 target.children = env.UNDEFINED
+
+                // <div class="{{className}}">
+                // 把 Attribute 转成 单向绑定 指令，可实现精确更新视图
+                if (expr.staticKeypath) {
+                  const directive = creator.createAttribute(
+                    config.DIRECTIVE_BINDING,
+                    env.TRUE
+                  )
+                  directive.expr = expr
+                  // 此时 attrs 一定是个数组，因为 attr 都出栈了...
+                  array.push(currentElement.attrs, directive)
+                }
               }
               else if (needProps) {
                 target.props = [
@@ -188,13 +199,20 @@ export function compile(content: string) {
 
           }
         }
-
-        // 不支持 on-click="1{{xx}}2" 或是 on-click="1{{#if x}}x{{else}}y{{/if}}2"
-        // 1. 很难做性能优化
-        // 2. 全局搜索不到事件名，不利于代码维护
-        // 为了统一，所有指令不支持这样写
-        else if (isAttribute && target.directive) {
-          reportError(`指令的值不能用插值语法`)
+        else if (isAttribute) {
+          if (children) {
+            // 不支持 on-click="1{{xx}}2" 或是 on-click="1{{#if x}}x{{else}}y{{/if}}2"
+            // 1. 很难做性能优化
+            // 2. 全局搜索不到事件名，不利于代码维护
+            // 为了统一，所有指令不支持这样写
+            if (target.directive) {
+              reportError(`指令的值不能用插值语法`)
+            }
+          }
+          // 没有值的属性
+          else if (currentElement) {
+            target.value = currentElement.component ? env.TRUE : target.name
+          }
         }
 
         if (isElement) {

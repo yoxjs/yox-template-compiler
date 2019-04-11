@@ -1,15 +1,13 @@
+import * as config from 'yox-config'
+
 import isDef from 'yox-common/function/isDef'
 import toJSON from 'yox-common/function/toJSON'
 
-import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
 import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
-import * as string from 'yox-common/util/string'
 import * as object from 'yox-common/util/object'
 import * as keypathUtil from 'yox-common/util/keypath'
-
-import * as config from 'yox-config'
 
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'

@@ -185,7 +185,7 @@ it('默认属性值', () => {
 
   expect(ast[0].attrs[0].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].attrs[0].name).toBe('a')
-  checkValue(ast[0].attrs[0], undefined)
+  checkValue(ast[0].attrs[0], 'a')
 
   expect(ast[0].attrs[1].type).toBe(nodeType.ATTRIBUTE)
   expect(ast[0].attrs[1].name).toBe('b')

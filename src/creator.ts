@@ -42,6 +42,7 @@ export function createElement(tag: string, component: boolean): Element {
     type: nodeType.ELEMENT,
     tag,
     component,
+    slot: env.UNDEFINED,
     attrs: env.UNDEFINED,
     props: env.UNDEFINED,
     children: env.UNDEFINED,
