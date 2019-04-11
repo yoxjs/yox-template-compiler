@@ -22,6 +22,7 @@ import ExpressionCall from 'yox-expression-compiler/src/node/Call'
 
 import Node from './node/Node'
 import Text from './node/Text'
+import Each from './node/Each'
 import If from './node/If'
 import ElseIf from './node/ElseIf'
 import Element from './node/Element'
@@ -44,10 +45,12 @@ const FUNC_ELEMENT = '_c'
 const FUNC_COMMENT = '_m'
 const FUNC_EMPTY = '_n'
 const FUNC_EXPR = '_s'
+const FUNC_EACH = '_l'
 const FUNC_RENDER = '_v'
 
 const SEP_COMMA = ', '
 const SEP_PLUS = ' + '
+const SEP_COLON = ': '
 
 function stringifyObject(obj: Object): string | void {
   const fields = []
@@ -57,7 +60,7 @@ function stringifyObject(obj: Object): string | void {
       if (isDef(value)) {
         array.push(
           fields,
-          `${toJSON(key)}: ${value}`
+          `${toJSON(key)}${SEP_COLON}${value}`
         )
       }
     }
@@ -323,6 +326,18 @@ nodeStringify[nodeType.IF] = function (node: If): string {
   }
 
   return render(node)
+
+}
+
+nodeStringify[nodeType.EACH] = function (node: Each): string {
+
+  const list = stringifyValue(node.expr),
+
+  index = node.index ? `, ${toJSON(node.index)}` : char.CHAR_BLANK,
+
+  children = stringifyChildren(node.children)
+
+  return stringifyCall(FUNC_EACH, `${list}${index}, function () { return ${children} }`)
 
 }
 

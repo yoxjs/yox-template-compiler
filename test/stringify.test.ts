@@ -5,14 +5,10 @@ it('html 元素', () => {
 
   let ast = compile(`
     <div
-      ref="123"
-      key="1{{x}}2"
-      transition="{{#if a}}b{{else}}c{{/if}}d"
-      slot="123"
     >
-      123
-      {{a}}
-      cvcc
+      {{#each list:index}}
+          <span>{{index}}</span>
+      {{/each}}
     </div>
   `)
 
