@@ -250,11 +250,11 @@ export function compile(content: string) {
         }
 
         if (type === nodeType.IF) {
-          // 只要是 if 节点，并且和 element 同级，就加上 stump
+          // 只要是 if 节点，并且和 element 同级，就加上 stub
           // 方便 virtual dom 进行对比
-          // 这个跟 virtual dom 的实现原理密切相关，不加 stump 会有问题
+          // 这个跟 virtual dom 的实现原理密切相关，不加 stub 会有问题
           if (!currentElement) {
-            (node as If).stump = env.TRUE
+            (node as If).stub = env.TRUE
           }
           array.push(ifStack, node)
         }

@@ -8,6 +8,7 @@ it('html 元素', () => {
       ref="123"
       key="1{{x}}2"
       transition="{{#if a}}b{{else}}c{{/if}}d"
+      slot="123"
     >
       123
       {{a}}

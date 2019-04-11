@@ -76,7 +76,7 @@ export function createIf(expr: ExpressionNode): If {
   return {
     type: nodeType.IF,
     expr,
-    stump: env.FALSE,
+    stub: env.FALSE,
     next: env.UNDEFINED,
     children: env.UNDEFINED,
   }

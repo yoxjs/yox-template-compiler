@@ -43,8 +43,8 @@ import Pair from './node/Pair'
 const FUNC_ELEMENT = '_c'
 const FUNC_COMMENT = '_m'
 const FUNC_EMPTY = '_n'
-const FUNC_EXPR = '_e'
-const FUNC_RENDER = '_r'
+const FUNC_EXPR = '_s'
+const FUNC_RENDER = '_v'
 
 const SEP_COMMA = ', '
 const SEP_PLUS = ' + '
@@ -188,9 +188,8 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
           elementDirectives[attr.name] = stringifyDirective(attr.value, attr.expr)
         }
       }
-      else if (attr.name === 'ref'
-        || attr.name === 'key'
-        || attr.name === 'transition'
+      else if (helper.specialAttrs[attr.name]
+        || tag === env.RAW_SLOT && attr.name === env.RAW_NAME
       ) {
         data[attr.name] = stringifyValue(attr.value, attr.expr, attr.children)
       }
@@ -293,9 +292,9 @@ nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
 
 nodeStringify[nodeType.IF] = function (node: If): string {
 
-  const { stump } = node,
+  const { stub } = node,
 
-  loop = function (node: If | ElseIf) {
+  render = function (node: If | ElseIf) {
 
     let expr = stringifyExpression(node.expr),
 
@@ -311,11 +310,11 @@ nodeStringify[nodeType.IF] = function (node: If): string {
         nextValue = stringifyChildren(nextNode.children)
       }
       else {
-        nextValue = loop(nextNode as ElseIf)
+        nextValue = render(nextNode as ElseIf)
       }
     }
-    // 到达最后一个条件，发现第一个 if 语句带有 stump，需标记出来
-    else if (stump) {
+    // 到达最后一个条件，发现第一个 if 语句带有 stub，需标记出来
+    else if (stub) {
       nextValue = stringifyComment()
     }
 
@@ -323,7 +322,7 @@ nodeStringify[nodeType.IF] = function (node: If): string {
 
   }
 
-  return loop(node)
+  return render(node)
 
 }
 
