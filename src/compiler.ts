@@ -173,16 +173,13 @@ export function compile(content: string) {
                 target.expr = expr
                 target.children = env.UNDEFINED
 
-                // <div class="{{className}}">
-                // 把 Attribute 转成 单向绑定 指令，可实现精确更新视图
+                // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
+                // <div class="{{className}}"> 类似的转为 <div :class="className">（其实没这个指令）
                 if (expr.staticKeypath) {
-                  const directive = creator.createAttribute(
-                    config.DIRECTIVE_BINDING,
-                    env.TRUE
-                  )
-                  directive.expr = expr
-                  // 此时 attrs 一定是个数组，因为 attr 都出栈了...
-                  array.push(currentElement.attrs, directive)
+                  target.directive = env.TRUE
+                  target.namespace = config.DIRECTIVE_BINDING
+                  target.value = expr.staticKeypath
+                  target.expr = env.UNDEFINED
                 }
               }
               else if (needProps) {

@@ -65,12 +65,11 @@ function stringifyCall(name: string, arg: string): string {
   return `${name}(${arg})`
 }
 
-function stringifyExpression(expr: ExpressionNode): string {
-  return expr.type === exprNodeType.IDENTIFIER
-    ? stringifyCall(renderer.EXPR, toJSON((expr as ExpressionIdentifier).name))
-    : expr.type === exprNodeType.LITERAL
-      ? toJSON((expr as ExpressionLiteral).value)
-      : stringifyCall(renderer.EXPR, toJSON(expr))
+function stringifyExpression(expr: any): string {
+  return stringifyCall(
+    renderer.EXPRESSION,
+    toJSON(expr.staticKeypath || expr)
+  )
 }
 
 function stringifyEmpty(): string {
@@ -142,7 +141,7 @@ function stringifyNormalChildren(children: Node[] | void): string | void {
     children,
     function (childs: string[], hasComplexChild: boolean): string {
       return hasComplexChild
-        ? stringifyCall(renderer.RENDER, array.join(childs, SEP_COMMA))
+        ? stringifyCall(renderer.CHILDREN, array.join(childs, SEP_COMMA))
         : array.join(childs, SEP_PLUS)
     }
   )
@@ -234,14 +233,19 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   elementOn = {},
 
+  elementBind = {},
+
   elementDirectives = {}
 
   if (attrs) {
 
     const addAttr = function (attr: Attribute) {
       if (attr.directive) {
-        if (attr.expr && attr.namespace === config.DIRECTIVE_EVENT) {
+        if (attr.namespace === config.DIRECTIVE_EVENT) {
           elementOn[attr.name] = stringifyEvent(attr.expr)
+        }
+        else if (attr.namespace === config.DIRECTIVE_BINDING) {
+          elementBind[attr.name] = toJSON(attr.value)
         }
         else {
           elementDirectives[attr.name] = stringifyDirective(attr.value, attr.expr)
@@ -329,6 +333,10 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   if (!object.empty(elementOn)) {
     data.on = stringifyObject(elementOn)
+  }
+
+  if (!object.empty(elementBind)) {
+    data.bind = stringifyObject(elementBind)
   }
 
   if (!object.empty(elementDirectives)) {
