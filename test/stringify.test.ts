@@ -6,6 +6,10 @@ it('html 元素', () => {
   let ast = compile(`
     <Dog>
       <div>111</div>
+
+      <span>22</span>
+
+      <template slot="xx">333</template>
     </Dog>
   `)
 

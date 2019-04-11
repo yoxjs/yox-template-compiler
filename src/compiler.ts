@@ -296,6 +296,23 @@ export function compile(content: string) {
               popStack(nodeType.ELEMENT, tag)
             }
             else {
+
+              /**
+               * template 只能写在组件的第一级，如下：
+               *
+               * <Component>
+               *   <template slot="xx">
+               *     111
+               *   </template>
+               * </Component>
+               */
+              if (tag === env.RAW_TEMPLATE) {
+                const lastNode = array.last(nodeStack)
+                if (!lastNode || !lastNode.component) {
+                  reportError('<template> 只能写在组件标签内')
+                }
+              }
+
               const node = creator.createElement(
                 tag,
                 componentNamePattern.test(tag)
