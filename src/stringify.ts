@@ -13,7 +13,9 @@ import * as config from 'yox-config'
 
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'
+
 import * as helper from './helper'
+import * as renderer from './renderer'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import ExpressionLiteral from 'yox-expression-compiler/src/node/Literal'
@@ -40,14 +42,6 @@ import Pair from './node/Pair'
  * 2. 区分 node 数组和数据数组
  *
  */
-
-const FUNC_ELEMENT = '_c'
-const FUNC_COMPONENT = '_d'
-const FUNC_COMMENT = '_m'
-const FUNC_EMPTY = '_n'
-const FUNC_EXPR = '_s'
-const FUNC_EACH = '_l'
-const FUNC_RENDER = '_v'
 
 const SEP_COMMA = ', '
 const SEP_PLUS = ' + '
@@ -83,18 +77,18 @@ function stringifyCall(name: string, arg: string): string {
 
 function stringifyExpression(expr: ExpressionNode): string {
   return expr.type === exprNodeType.IDENTIFIER
-    ? stringifyCall(FUNC_EXPR, toJSON((expr as ExpressionIdentifier).name))
+    ? stringifyCall(renderer.EXPR, toJSON((expr as ExpressionIdentifier).name))
     : expr.type === exprNodeType.LITERAL
       ? toJSON((expr as ExpressionLiteral).value)
-      : stringifyCall(FUNC_EXPR, toJSON(expr))
+      : stringifyCall(renderer.EXPR, toJSON(expr))
 }
 
 function stringifyEmpty(): string {
-  return stringifyCall(FUNC_EMPTY, char.CHAR_BLANK)
+  return stringifyCall(renderer.EMPTY, char.CHAR_BLANK)
 }
 
 function stringifyComment(): string {
-  return stringifyCall(FUNC_COMMENT, char.CHAR_BLANK)
+  return stringifyCall(renderer.COMMENT, char.CHAR_BLANK)
 }
 
 function stringifyEvent(expr: ExpressionNode): any {
@@ -150,7 +144,7 @@ function stringifyChildren(children: Node[] | void, outputArray?: boolean): stri
     return outputArray
       ? `[ ${value} ]`
       : hasComplexChild
-        ? stringifyCall(FUNC_RENDER, value)
+        ? stringifyCall(renderer.RENDER, value)
         : value
   }
 }
@@ -276,7 +270,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   return stringifyCall(
-    component ? FUNC_COMPONENT : FUNC_ELEMENT,
+    component ? renderer.COMPONENT : renderer.ELEMENT,
     array.join(args, SEP_COMMA)
   )
 
@@ -334,7 +328,7 @@ nodeStringify[nodeType.EACH] = function (node: Each): string {
 
   children = stringifyChildren(node.children)
 
-  return stringifyCall(FUNC_EACH, `${list}${index}, function () { return ${children} }`)
+  return stringifyCall(renderer.EACH, `${list}${index}, function () { return ${children} }`)
 
 }
 
