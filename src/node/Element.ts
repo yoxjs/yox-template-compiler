@@ -12,6 +12,8 @@ export default interface Element extends Branch {
 
   component: boolean
 
+  slot: string | undefined
+
   attrs: (Attribute | Spread)[] | undefined
 
   props: Pair[] | undefined

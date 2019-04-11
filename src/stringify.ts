@@ -44,8 +44,8 @@ import Pair from './node/Pair'
  */
 
 const SEP_COMMA = ', '
-const SEP_PLUS = ' + '
 const SEP_COLON = ': '
+const SEP_PLUS = ' + '
 
 function stringifyObject(obj: Object): string | void {
   const fields = []
@@ -122,13 +122,16 @@ function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[
     ? toJSON(value)
     : expr
       ? stringifyExpression(expr)
-      : stringifyChildren(children)
+      : stringifyNormalChildren(children)
 }
 
-function stringifyChildren(children: Node[] | void, outputArray?: boolean): string | void {
+function stringifyChildren(
+  children: Node[] | void,
+  callback: (childs: string[], hasComplexChild: boolean) => string
+): string | void {
   if (children && children.length) {
     // 如果 children 只包含简单子节点，则用 + 连起来提升运行时性能
-    let childs = [], hasComplexChild = env.FALSE
+    let childs: string[] = [], hasComplexChild = env.FALSE
     array.each(
       children,
       function (child: Node) {
@@ -140,12 +143,81 @@ function stringifyChildren(children: Node[] | void, outputArray?: boolean): stri
         array.push(childs, stringify(child))
       }
     )
-    const value = array.join(childs, hasComplexChild ? SEP_COMMA : SEP_PLUS)
-    return outputArray
-      ? `[ ${value} ]`
-      : hasComplexChild
-        ? stringifyCall(renderer.RENDER, value)
-        : value
+    return callback(childs, hasComplexChild)
+  }
+}
+
+function stringifyNormalChildren(children: Node[] | void): string | void {
+  return stringifyChildren(
+    children,
+    function (childs: string[], hasComplexChild: boolean): string {
+      return hasComplexChild
+        ? stringifyCall(renderer.RENDER, array.join(childs, SEP_COMMA))
+        : array.join(childs, SEP_PLUS)
+    }
+  )
+}
+
+function stringifyElementChildren(children: Node[] | void): string | void {
+  return stringifyChildren(
+    children,
+    function (childs: string[], hasComplexChild: boolean): string {
+      return `[ ${array.join(childs, hasComplexChild ? SEP_COMMA : SEP_PLUS)} ]`
+    }
+  )
+}
+
+function getComponentSlots(children: Node[] | void): Object {
+  // 这里不用判断数组长度，因为下面会判断有效的 slot
+  if (children) {
+
+    const slots = { },
+
+    addSlot = function (name: string, nodes: Node[]) {
+
+      if (nodes && nodes.length) {
+        array.push(
+          slots[name] || (slots[name] = []),
+          nodes
+        )
+      }
+      // slot 即使是空也必须覆盖组件旧值
+      // 否则当组件更新时会取到旧值
+      else {
+        slots[name] = env.NULL
+      }
+
+    }
+
+    array.each(
+      children,
+      function (child: Node) {
+
+        // 找到具名 slot
+        if (child.type === nodeType.ELEMENT) {
+          const element = child as Element
+          if (element.slot) {
+            addSlot(element.slot, element.children)
+            return
+          }
+        }
+
+        // 匿名 slot，名称统一为 children
+        addSlot(env.RAW_CHILDREN, [child])
+
+      }
+    )
+
+    // 全部收集完成之后，再序列化
+    object.each(
+      slots,
+      function (list: any, name: string) {
+        slots[name] = stringifyNormalChildren(list)
+      }
+    )
+
+    return slots
+
   }
 }
 
@@ -159,6 +231,10 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   data: any = { },
 
+  slots: any,
+
+  childs: any,
+
   // 比如 <Custom {{...obj1}} {{...obj2}}/>
   // 用对象有两个问题，第一是延展操作不好写 key，第二是无法保证顺序
   elementProps = [],
@@ -167,9 +243,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   elementOn = {},
 
-  elementDirectives = {},
-
-  childs = stringifyChildren(children, env.TRUE)
+  elementDirectives = {}
 
   if (attrs) {
 
@@ -244,6 +318,16 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     )
   }
 
+  if (component) {
+    slots = getComponentSlots(children)
+    if (slots && !object.empty(slots)) {
+      data.slots = stringifyObject(slots)
+    }
+  }
+  else {
+    childs = stringifyElementChildren(children)
+  }
+
   if (elementProps.length) {
     data.props = stringifyArray(elementProps)
   }
@@ -292,7 +376,7 @@ nodeStringify[nodeType.IF] = function (node: If): string {
 
     let expr = stringifyExpression(node.expr),
 
-    children = stringifyChildren(node.children),
+    children = stringifyNormalChildren(node.children),
 
     nextNode = node.next,
 
@@ -301,7 +385,7 @@ nodeStringify[nodeType.IF] = function (node: If): string {
     if (nextNode) {
       // 递归到最后一个条件
       if (nextNode.type === nodeType.ELSE) {
-        nextValue = stringifyChildren(nextNode.children)
+        nextValue = stringifyNormalChildren(nextNode.children)
       }
       else {
         nextValue = render(nextNode as ElseIf)
@@ -326,7 +410,7 @@ nodeStringify[nodeType.EACH] = function (node: Each): string {
 
   index = node.index ? `, ${toJSON(node.index)}` : char.CHAR_BLANK,
 
-  children = stringifyChildren(node.children)
+  children = stringifyNormalChildren(node.children)
 
   return stringifyCall(renderer.EACH, `${list}${index}, function () { return ${children} }`)
 

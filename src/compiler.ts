@@ -1,5 +1,6 @@
 import * as config from 'yox-config'
 
+import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
 import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
@@ -120,13 +121,24 @@ export function compile(content: string) {
       const target = array.pop(nodeStack)
       if (target && target.type === type) {
 
-        const { tag, namespace, directive, children } = target
+        const { tag, children } = target,
+
+        isElement = type === nodeType.ELEMENT,
+
+        isAttribute = type === nodeType.ATTRIBUTE,
+
+        // 是否可以收集 props 需满足以下条件
+        // 1. 当前元素不是组件，因为组件的子节点要作为 slot 节点
+        // 2. 当前元素不是插槽，因为后续要收集插槽的子节点
+        needProps = isElement && !target.component && !target.slot,
+
+        // 优化单个子节点
+        singleChild = children && children.length === 1 && children[0]
 
         if (tagName && tag !== tagName) {
-          reportError(`结束标签是${tagName}，开始标签却是${target.tag}`)
+          reportError(`结束标签是${tagName}，开始标签却是${tag}`)
         }
 
-        const singleChild = children && children.length === 1 && children[0]
         if (singleChild) {
 
           switch (singleChild.type) {
@@ -135,15 +147,15 @@ export function compile(content: string) {
               const { text } = singleChild
               // 属性的值如果是纯文本，直接获取文本值
               // 减少渲染时的遍历
-              if (type === nodeType.ATTRIBUTE) {
+              if (isAttribute) {
                 target.value = text
-                if (directive) {
+                if (target.directive) {
                   // 指令的值如果是纯文本，可以预编译表达式，提升性能
                   target.expr = exprCompiler.compile(text)
                 }
                 target.children = env.UNDEFINED
               }
-              else if (type === nodeType.ELEMENT) {
+              else if (needProps) {
                 target.props = [
                   creator.createPair(
                     'text',
@@ -158,11 +170,11 @@ export function compile(content: string) {
               const { expr } = singleChild
               // <div class="{{className}}">
               // 把 Attribute 转成 单向绑定 指令，可实现精确更新视图
-              if (type === nodeType.ATTRIBUTE) {
+              if (isAttribute) {
                 target.expr = expr
                 target.children = env.UNDEFINED
               }
-              else if (type === nodeType.ELEMENT) {
+              else if (needProps) {
                 target.props = [
                   creator.createPair(
                     singleChild.safe ? 'text' : 'html',
@@ -181,11 +193,24 @@ export function compile(content: string) {
         // 1. 很难做性能优化
         // 2. 全局搜索不到事件名，不利于代码维护
         // 为了统一，所有指令不支持这样写
-
-        else if (type === nodeType.ATTRIBUTE
-          && directive
-        ) {
+        else if (isAttribute && target.directive) {
           reportError(`指令的值不能用插值语法`)
+        }
+
+        if (isElement) {
+          if (tag === env.RAW_TEMPLATE && !target.slot) {
+            reportError(`<template> 不写 slot 属性是几个意思？`)
+          }
+        }
+
+        else if (isAttribute && target.name === env.RAW_SLOT && currentElement) {
+          if (string.falsy(target.value)) {
+            reportError(`slot 属性的值只支持字符串字面量，且不能为空字符串`)
+          }
+          else {
+            currentElement.slot = target.value
+            array.remove(currentElement.attrs, target)
+          }
         }
 
       }
@@ -268,6 +293,14 @@ export function compile(content: string) {
     },
 
     addTextChild = function (text: string) {
+      // [注意]
+      // 这里不能随便删掉
+      // 因为收集组件的子节点会受影响，举个例子：
+      // <Component>
+      //
+      // </Component>
+      // 按现在的逻辑，这样的组件是没有子节点的，因为在这里过滤掉了，因此该组件没有 slot
+      // 如果这里放开了，组件就会有一个 slot
       text = trimBreakline(text)
       if (text) {
         addChild(
