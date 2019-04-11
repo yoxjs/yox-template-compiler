@@ -7,7 +7,6 @@ import * as env from 'yox-common/util/env'
 import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
-import * as keypathUtil from 'yox-common/util/keypath'
 
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'
@@ -66,6 +65,10 @@ function stringifyCall(name: string, arg: string): string {
   return `${name}(${arg})`
 }
 
+function stringifyFunction(result: string | void): string {
+  return `function () { return ${result || char.CHAR_BLANK} }`
+}
+
 function stringifyExpression(expr: ExpressionNode): string {
   return stringifyCall(
     renderer.EXPRESSION,
@@ -93,7 +96,10 @@ function stringifyEvent(expr: ExpressionNode): any {
       return stringifyObject({
         method: toJSON((callee as ExpressionIdentifier).name),
         args: args.length > 0
-          ? toJSON(args)
+          // 为了实现运行时动态收集参数，这里序列化成函数
+          ? stringifyFunction(
+              stringifyArray(args.map(stringifyExpression))
+            )
           : env.UNDEFINED,
       })
     }
@@ -417,13 +423,15 @@ nodeStringify[nodeType.IF] = function (node: If): string {
 
 nodeStringify[nodeType.EACH] = function (node: Each): string {
 
-  const list = stringifyValue(node.expr),
+  const expr = toJSON(node.expr),
 
   index = node.index ? `, ${toJSON(node.index)}` : char.CHAR_BLANK,
 
-  children = stringifyNormalChildren(node.children)
+  children = stringifyFunction(
+    stringifyNormalChildren(node.children)
+  )
 
-  return stringifyCall(renderer.EACH, `${list}${index}, function () { return ${children} }`)
+  return stringifyCall(renderer.EACH, `${expr}${index}, ${children}`)
 
 }
 
@@ -431,15 +439,15 @@ export function stringify(node: Node): string {
   return nodeStringify[node.type](node)
 }
 
-export function convert(node: Node): Function {
+export function convert(code: string): Function {
   return new Function(
     renderer.EMPTY,
     renderer.COMMENT,
-    renderer.EXPRESSION,
     renderer.CHILDREN,
-    renderer.EACH,
     renderer.COMPONENT,
     renderer.ELEMENT,
-    `return ${stringify(node)}`
+    renderer.EXPRESSION,
+    renderer.EACH,
+    `return ${code}`
   )
 }

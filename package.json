@@ -21,8 +21,7 @@
     "babel-register": "^6.24.0",
     "yox-common": "^0.17.4",
     "yox-config": "0.0.9",
-    "yox-expression-compiler": "^0.16.0",
-    "yox-snabbdom": "^0.19.5"
+    "yox-expression-compiler": "^0.16.1"
   },
   "repository": {
     "type": "git",

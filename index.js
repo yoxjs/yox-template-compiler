@@ -124,8 +124,7 @@ export function render(render, getter, instance) {
   },
 
   addAttr = function (name, value) {
-    let attrs = currentElement.attrs || (currentElement.attrs = { })
-    attrs[ name ] = value
+
   },
 
   addDirective = function (name, modifier, value) {
@@ -141,46 +140,12 @@ export function render(render, getter, instance) {
 
   addChild = function (node) {
 
-    let children = currentElement[ env.RAW_CHILDREN ], lastChild = currentElement.lastChild
 
-    if (snabbdom.isVnode(node)) {
-      if (node[ env.RAW_COMPONENT ]) {
-        node.parent = instance
-      }
-      array.push(children, node)
-      if (lastChild) {
-        currentElement.lastChild = env.NULL
-      }
-    }
-    else if (snabbdom.isTextVnode(lastChild)) {
-      lastChild[ env.RAW_TEXT ] += toString(node)
-    }
-    else {
-      array.push(
-        children,
-        currentElement.lastChild = snabbdom.createTextVnode(node)
-      )
-    }
 
   },
 
   addSlot = function (name, slot) {
-    let slots = currentComponent.slots || (currentComponent.slots = { })
-    if (slot[ env.RAW_LENGTH ]) {
-      if (slots[ name ]) {
-        array.push(
-          slots[ name ],
-          slot
-        )
-      }
-      else {
-        slots[ name ] = slot
-      }
-    }
-    // slot 即使是空也必须覆盖组件旧值
-    else {
-      slots[ name ] = env.UNDEFINED
-    }
+
   },
 
   attrHandler = function (node) {
@@ -196,13 +161,6 @@ export function render(render, getter, instance) {
           }
           else if (expr) {
             value = o(expr, expr[ env.RAW_STATIC_KEYPATH ])
-            if (expr[ env.RAW_STATIC_KEYPATH ]) {
-              addDirective(
-                config.DIRECTIVE_BINDING,
-                name,
-                expr[ env.RAW_ABSOLUTE_KEYPATH ]
-              )
-            }
           }
           else if (node[ env.RAW_CHILDREN ]) {
             value = getValue(node[ env.RAW_CHILDREN ])
@@ -230,41 +188,9 @@ export function render(render, getter, instance) {
   },
 
   childHandler = function (node) {
-    if (isDef(node)) {
-      if (is.func(node)) {
-        node()
-      }
-      else if (values) {
-        values[ values[ env.RAW_LENGTH ] ] = node
-      }
-      else if (currentElement[ env.RAW_CHILDREN ]) {
 
-        if (is.array(node)) {
-          array.each(
-            node,
-            addChild
-          )
-        }
-        else {
-          addChild(node)
-        }
-
-      }
-      else {
-        attrHandler(node)
-      }
-    }
   },
 
-  getValue = function (generate) {
-    values = [ ]
-    generate()
-    let value = values[ env.RAW_LENGTH ] > 1
-      ? array.join(values, '')
-      : values[ 0 ]
-    values = env.NULL
-    return value
-  },
 
   // 处理 children
   x = function () {
@@ -308,24 +234,6 @@ export function render(render, getter, instance) {
   // template
   a = function (name, childs) {
 
-    if (currentComponent && (name = getValue(name))) {
-
-      let lastElement = currentElement, children = [ ]
-
-      pushElement({
-        children,
-      })
-
-      childs()
-
-      addSlot(
-        config.SLOT_DATA_PREFIX + name,
-        children
-      )
-
-      popElement(lastElement)
-
-    }
 
   },
   // slot
@@ -344,51 +252,7 @@ export function render(render, getter, instance) {
 
     let lastElement = currentElement, lastComponent = currentComponent
 
-    pushElement({
-      component,
-    })
 
-    if (component) {
-      pushComponent(currentElement)
-    }
-
-    if (key) {
-      key = getValue(key)
-    }
-
-    if (transition) {
-      transition = getValue(transition)
-    }
-
-    if (ref) {
-      ref = getValue(ref)
-    }
-
-    if (attrs) {
-      attrs()
-    }
-
-    if (props) {
-      props()
-    }
-
-    let children
-    if (childs) {
-      children = currentElement[ env.RAW_CHILDREN ] = [ ]
-      childs()
-      if (component) {
-        addSlot(
-          config.SLOT_DATA_PREFIX + env.RAW_CHILDREN,
-          children
-        )
-        children = env.UNDEFINED
-      }
-    }
-
-    if (string.startsWith(tag, '$')) {
-      let name = string.slice(tag, 1)
-      tag = o(new Identifier(name, name))
-    }
 
     let result = snabbdom[ component ? 'createComponentVnode' : 'createElementVnode' ](
       tag,
@@ -404,11 +268,6 @@ export function render(render, getter, instance) {
       instance.transition(transition)
     )
 
-    popElement(lastElement)
-
-    if (component) {
-      popComponent(lastComponent)
-    }
 
     return result
 
@@ -454,15 +313,7 @@ export function render(render, getter, instance) {
 
       }
 
-    if (is.array(value)) {
-      array.each(value, eachHandler)
-    }
-    else if (is.object(value)) {
-      object.each(value, eachHandler)
-    }
-    else if (is.func(value)) {
-      value(eachHandler)
-    }
+
 
   },
   // output（e 被 each 占了..)

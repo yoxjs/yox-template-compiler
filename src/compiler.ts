@@ -8,7 +8,6 @@ import * as string from 'yox-common/util/string'
 import * as logger from 'yox-common/util/logger'
 
 import * as exprCompiler from 'yox-expression-compiler/src/compiler'
-import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 
 import * as helper from './helper'
 import * as creator from './creator'
