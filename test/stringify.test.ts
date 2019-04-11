@@ -4,7 +4,11 @@ import { stringify } from '../src/stringify'
 it('html 元素', () => {
 
   let ast = compile(`
-    <div>
+    <div
+      ref="123"
+      key="1{{x}}2"
+      transition="{{#if a}}b{{else}}c{{/if}}d"
+    >
       123
       {{a}}
       cvcc

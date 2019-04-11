@@ -174,6 +174,12 @@ function stringifyComponentData(attrs: (Attribute | Spread)[] | void, props: Pai
         componentDirectives[attr.name] = stringifyDirective(attr.value, attr.expr)
       }
     }
+    else if (attr.name === 'ref'
+      || attr.name === 'key'
+      || attr.name === 'transition'
+    ) {
+      data[attr.name] = stringifyValue(attr.value, attr.expr, attr.children)
+    }
     else {
       array.push(
         componentProps,
@@ -264,6 +270,12 @@ function stringifyElementData(attrs: (Attribute | Spread)[] | void, props: Pair[
           else {
             nativeDirectives[attr.name] = stringifyDirective(attr.value, attr.expr)
           }
+        }
+        else if (attr.name === 'ref'
+          || attr.name === 'key'
+          || attr.name === 'transition'
+        ) {
+          data[attr.name] = stringifyValue(attr.value, attr.expr, attr.children)
         }
         else {
           nativeAttrs[keypathUtil.join(attr.namespace, attr.name)] = stringifyObject({
