@@ -54,10 +54,12 @@ function stringifyObject(obj: Object): string | void {
   }
 }
 
-function stringifyArray(arr: any[]): string | void {
-  if (arr.length) {
-    return `[ ${array.join(arr, SEP_COMMA)} ]`
-  }
+function stringifyArray(arr: any[]): string {
+  return `[ ${array.join(arr, SEP_COMMA)} ]`
+}
+
+function stringifyArrayString(str: string): string {
+  return `[ ${str} ]`
 }
 
 function stringifyCall(name: string, arg: string): string {
@@ -140,7 +142,7 @@ function stringifyNormalChildren(children: Node[] | void): string | void {
     children,
     function (childs: string[], hasComplexChild: boolean): string {
       return hasComplexChild
-        ? stringifyCall(renderer.CHILDREN, `[ ${array.join(childs, SEP_COMMA)} ]`)
+        ? stringifyCall(renderer.CHILDREN, stringifyArray(childs))
         : array.join(childs, SEP_PLUS)
     }
   )
@@ -150,7 +152,9 @@ function stringifyElementChildren(children: Node[] | void): string | void {
   return stringifyChildren(
     children,
     function (childs: string[], hasComplexChild: boolean): string {
-      return `[ ${array.join(childs, hasComplexChild ? SEP_COMMA : SEP_PLUS)} ]`
+      return stringifyArrayString(
+        array.join(childs, hasComplexChild ? SEP_COMMA : SEP_PLUS)
+      )
     }
   )
 }
