@@ -4,7 +4,11 @@ import { stringify } from '../src/stringify'
 it('html 元素', () => {
 
   let ast = compile(`
-    <Dog {{...obj}}>
+    <div>
+      123
+      {{a}}
+      cvcc
+    </div>
   `)
 
   console.log(JSON.stringify(ast, 4, 4))

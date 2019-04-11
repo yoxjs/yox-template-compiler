@@ -13,6 +13,7 @@ import * as config from 'yox-config'
 
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'
+import * as helper from './helper'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import ExpressionLiteral from 'yox-expression-compiler/src/node/Literal'
@@ -72,32 +73,24 @@ function stringifyArray(arr: any[]): string | void {
   }
 }
 
-function stringifyMultiCall(name: string, args: any[]): string {
-  return `${name}(${array.join(args, SEP_COMMA)})`
-}
-
-function stringifySingleCall(name: string, arg: string): string {
+function stringifyCall(name: string, arg: string): string {
   return `${name}(${arg})`
-}
-
-function stringifyCall(name: string): string {
-  return `${name}()`
 }
 
 function stringifyExpression(expr: ExpressionNode): string {
   return expr.type === exprNodeType.IDENTIFIER
-    ? stringifySingleCall(FUNC_EXPR, toJSON((expr as ExpressionIdentifier).name))
+    ? stringifyCall(FUNC_EXPR, toJSON((expr as ExpressionIdentifier).name))
     : expr.type === exprNodeType.LITERAL
       ? toJSON((expr as ExpressionLiteral).value)
-      : stringifySingleCall(FUNC_EXPR, toJSON(expr))
+      : stringifyCall(FUNC_EXPR, toJSON(expr))
 }
 
 function stringifyEmpty(): string {
-  return stringifyCall(FUNC_EMPTY)
+  return stringifyCall(FUNC_EMPTY, char.CHAR_BLANK)
 }
 
 function stringifyComment(): string {
-  return stringifyCall(FUNC_COMMENT)
+  return stringifyCall(FUNC_COMMENT, char.CHAR_BLANK)
 }
 
 function stringifyEvent(expr: ExpressionNode): any {
@@ -127,36 +120,34 @@ function stringifyDirective(value: string | undefined, expr: ExpressionNode | un
 }
 
 function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[] | void): string | void {
-  if (isDef(value)) {
-    return toJSON(value)
-  }
-  else if (expr) {
-    return stringifyExpression(expr)
-  }
-  else if (children) {
-    return stringifyChildren(children)
-  }
+  return isDef(value)
+    ? toJSON(value)
+    : expr
+      ? stringifyExpression(expr)
+      : stringifyChildren(children)
 }
 
-function stringifyChildren(children: Node[] | void): string | void {
-  if (children) {
-    // 如果 children 只包含 Text 和 Expression，则用 + 连起来提升运行时性能
-    let childs = [], hasComplexNode = env.FALSE
+function stringifyChildren(children: Node[] | void, outputArray?: boolean): string | void {
+  if (children && children.length) {
+    // 如果 children 只包含简单子节点，则用 + 连起来提升运行时性能
+    let childs = [], hasComplexChild = env.FALSE
     array.each(
       children,
       function (child: Node) {
-        if (!hasComplexNode
-          && child.type !== nodeType.TEXT
-          && child.type !== nodeType.EXPRESSION
+        if (!hasComplexChild
+          && !helper.simpleChildTypes[child.type]
         ) {
-          hasComplexNode = env.TRUE
+          hasComplexChild = env.TRUE
         }
         array.push(childs, stringify(child))
       }
     )
-    return hasComplexNode
-      ? stringifyMultiCall(FUNC_RENDER, childs)
-      : array.join(childs, SEP_PLUS)
+    const value = array.join(childs, hasComplexChild ? SEP_COMMA : SEP_PLUS)
+    return outputArray
+      ? `[ ${value} ]`
+      : hasComplexChild
+        ? stringifyCall(FUNC_RENDER, value)
+        : value
   }
 }
 
@@ -329,20 +320,22 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   args: any[] = [toJSON(tag)],
 
-  data = component ? stringifyComponentData(attrs, props) : stringifyElementData(attrs, props)
+  data = component ? stringifyComponentData(attrs, props) : stringifyElementData(attrs, props),
+
+  childs = stringifyChildren(children, env.TRUE)
 
   if (data) {
     array.push(args, data)
   }
 
-  if (children && children.length) {
-    array.push(
-      args,
-      stringifyChildren(children)
-    )
+  if (isDef(childs)) {
+    array.push(args, childs)
   }
 
-  return stringifyMultiCall(FUNC_ELEMENT, args)
+  return stringifyCall(
+    FUNC_ELEMENT,
+    array.join(args, SEP_COMMA)
+  )
 
 }
 
