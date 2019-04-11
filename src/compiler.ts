@@ -530,10 +530,19 @@ export function compile(content: string) {
           if (terms[0]) {
             const expr = exprCompiler.compile(string.trim(terms[0]))
             if (expr) {
-              return creator.createEach(
-                expr,
-                string.trim(terms[1])
-              )
+              if (!currentElement) {
+                return creator.createEach(
+                  expr,
+                  string.trim(terms[1])
+                )
+              }
+              else {
+                reportError(
+                  currentAttribute
+                    ? `each 不能写在属性的值里`
+                    : `each 不能写在属性层级`
+                )
+              }
             }
           }
           reportError(`无效的 each`)
@@ -544,7 +553,16 @@ export function compile(content: string) {
         if (string.startsWith(source, config.SYNTAX_IMPORT)) {
           source = slicePrefix(source, config.SYNTAX_IMPORT)
           if (source) {
-            return creator.createImport(source)
+            if (!currentElement) {
+              return creator.createImport(source)
+            }
+            else {
+              reportError(
+                currentAttribute
+                  ? `import 不能写在属性的值里`
+                  : `import 不能写在属性层级`
+              )
+            }
           }
           reportError(`无效的 import`)
         }

@@ -232,13 +232,13 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   // 用对象有两个问题，第一是延展操作不好写 key，第二是无法保证顺序
   elementProps = [],
 
-  elementAttrs = {},
+  elementAttrs = [],
 
   elementOn = {},
 
   elementBind = {},
 
-  elementDirectives = {}
+  elementDirectives = []
 
   if (attrs) {
 
@@ -251,7 +251,13 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
           elementBind[attr.name] = toJSON(attr.value)
         }
         else {
-          elementDirectives[attr.name] = stringifyDirective(attr.value, attr.expr)
+          array.push(
+            elementDirectives,
+            stringifyObject({
+              name: toJSON(attr.name),
+              value: stringifyDirective(attr.value, attr.expr)
+            })
+          )
         }
       }
       else if (helper.specialAttrs[attr.name]
@@ -269,11 +275,14 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
         )
       }
       else {
-        elementAttrs[keypathUtil.join(attr.namespace, attr.name)] = stringifyObject({
-          namespace: toJSON(attr.namespace),
-          name: toJSON(attr.name),
-          value: stringifyValue(attr.value, attr.expr, attr.children),
-        })
+        array.push(
+          elementAttrs,
+          stringifyObject({
+            namespace: toJSON(attr.namespace),
+            name: toJSON(attr.name),
+            value: stringifyValue(attr.value, attr.expr, attr.children),
+          })
+        )
       }
     },
 
@@ -330,8 +339,12 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     data.props = stringifyArray(elementProps)
   }
 
-  if (!object.empty(elementAttrs)) {
-    data.attrs = stringifyObject(elementAttrs)
+  if (elementAttrs.length) {
+    data.attrs = stringifyArray(elementAttrs)
+  }
+
+  if (elementDirectives.length) {
+    data.directives = stringifyArray(elementDirectives)
   }
 
   if (!object.empty(elementOn)) {
@@ -340,10 +353,6 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   if (!object.empty(elementBind)) {
     data.bind = stringifyObject(elementBind)
-  }
-
-  if (!object.empty(elementDirectives)) {
-    data.directives = stringifyObject(elementDirectives)
   }
 
   data = stringifyObject(data)

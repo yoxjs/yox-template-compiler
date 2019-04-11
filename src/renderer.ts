@@ -21,8 +21,12 @@ export const CHILDREN = '_v'
 
 const renderer = {}
 
+/**
+ * nodes 是动态计算出来的节点，因此节点本身可能是数组
+ * 这里的数组不是从 `数据` 取来的，而是一个结构性的数组
+ * 节点本身也可能是空，即 EMPTY renderer 返回的结果
+ */
 function addNodes(list: any[], nodes: Node[]) {
-  // nodes 会出现二维数组
   array.each(
     nodes,
     function (node) {
@@ -79,7 +83,7 @@ renderer[ELEMENT] = function (tag: string, data: any | void, children: any[] | v
 
 renderer[COMPONENT] = function (tag: string, data: any | void): Object {
 
-  const result: any = { tag }
+  const result: any = { tag, parent: this }
 
   if (data) {
     object.extend(result, data)
