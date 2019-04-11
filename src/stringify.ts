@@ -42,6 +42,7 @@ import Pair from './node/Pair'
  */
 
 const FUNC_ELEMENT = '_c'
+const FUNC_COMPONENT = '_d'
 const FUNC_COMMENT = '_m'
 const FUNC_EMPTY = '_n'
 const FUNC_EXPR = '_s'
@@ -176,10 +177,6 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   childs = stringifyChildren(children, env.TRUE)
 
-  if (component) {
-    data.component = env.TRUE
-  }
-
   if (attrs) {
 
     const addAttr = function (attr: Attribute) {
@@ -279,7 +276,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   return stringifyCall(
-    FUNC_ELEMENT,
+    component ? FUNC_COMPONENT : FUNC_ELEMENT,
     array.join(args, SEP_COMMA)
   )
 

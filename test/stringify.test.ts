@@ -4,12 +4,9 @@ import { stringify } from '../src/stringify'
 it('html 元素', () => {
 
   let ast = compile(`
-    <div
-    >
-      {{#each list:index}}
-          <span>{{index}}</span>
-      {{/each}}
-    </div>
+    <Dog>
+      <div>111</div>
+    </Dog>
   `)
 
   console.log(JSON.stringify(ast, 4, 4))
