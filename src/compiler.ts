@@ -1,8 +1,6 @@
 import * as config from 'yox-config'
 
-import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
-import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
 import * as string from 'yox-common/util/string'
 import * as logger from 'yox-common/util/logger'
@@ -59,7 +57,7 @@ function slicePrefix(str: string, prefix: string): string {
 function trimBreakline(content: string): string {
   return content.replace(
     /^\s*[\n\r]\s*|\s*[\n\r]\s*$/g,
-    char.CHAR_BLANK
+    env.EMPTY_STRING
   )
 }
 
@@ -482,7 +480,7 @@ export function compile(content: string) {
             // 否则无法区分 <div a b=""> 中的 a 和 b
             if (!currentAttribute.children) {
               addChild(
-                creator.createText(char.CHAR_BLANK)
+                creator.createText(env.EMPTY_STRING)
               )
             }
 
@@ -525,7 +523,7 @@ export function compile(content: string) {
       function (source: string) {
         if (string.startsWith(source, config.SYNTAX_EACH)) {
           source = slicePrefix(source, config.SYNTAX_EACH)
-          const terms = source.replace(/\s+/g, char.CHAR_BLANK).split(':')
+          const terms = source.replace(/\s+/g, env.EMPTY_STRING).split(':')
           if (terms[0]) {
             const expr = exprCompiler.compile(string.trim(terms[0]))
             if (expr) {
@@ -658,7 +656,7 @@ export function compile(content: string) {
       if (content) {
         // 结束当前 block
         // 正则会去掉 {{ xx }} 里面两侧的空白符，因此如果有 /，一定是第一个字符
-        if (char.charAt(content) === '/') {
+        if (string.charAt(content) === '/') {
           const name = string.slice(content, 1)
           let type = helper.name2Type[name]
           if (type === nodeType.IF) {
@@ -694,7 +692,7 @@ export function compile(content: string) {
   // 干掉 html 注释
   str = str.replace(
     /<!--[\s\S]*?-->/g,
-    char.CHAR_BLANK
+    env.EMPTY_STRING
   )
 
   while (str) {

@@ -4,7 +4,6 @@ import isDef from 'yox-common/function/isDef'
 import toJSON from 'yox-common/function/toJSON'
 
 import * as env from 'yox-common/util/env'
-import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
 
@@ -75,7 +74,7 @@ function stringifyCall(name: string, arg: string): string {
 }
 
 function stringifyFunction(result: string | void): string {
-  return `function () { return ${result || char.CHAR_BLANK} }`
+  return `function () { return ${result || env.EMPTY_STRING} }`
 }
 
 function stringifyExpression(expr: ExpressionNode): string {
@@ -86,11 +85,11 @@ function stringifyExpression(expr: ExpressionNode): string {
 }
 
 function stringifyEmpty(): string {
-  return stringifyCall(RENDER_EMPTY, char.CHAR_BLANK)
+  return stringifyCall(RENDER_EMPTY, env.EMPTY_STRING)
 }
 
 function stringifyComment(): string {
-  return stringifyCall(RENDER_COMMENT, char.CHAR_BLANK)
+  return stringifyCall(RENDER_COMMENT, env.EMPTY_STRING)
 }
 
 function stringifyEvent(expr: ExpressionNode): any {
@@ -434,7 +433,7 @@ nodeStringify[nodeType.EACH] = function (node: Each): string {
 
   const expr = toJSON(node.expr),
 
-  index = node.index ? `, ${toJSON(node.index)}` : char.CHAR_BLANK,
+  index = node.index ? `, ${toJSON(node.index)}` : env.EMPTY_STRING,
 
   children = stringifyFunction(
     stringifyNormalChildren(node.children)

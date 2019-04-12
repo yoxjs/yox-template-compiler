@@ -2,7 +2,6 @@ import isDef from 'yox-common/function/isDef'
 
 import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
-import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
 import * as logger from 'yox-common/util/logger'
@@ -49,7 +48,7 @@ export function render(
   createComment: (text?: string) => any,
 ) {
 
-  let keypath = char.CHAR_BLANK,
+  let keypath = env.EMPTY_STRING,
 
   scope: any = { keypath },
 
@@ -124,7 +123,7 @@ export function render(
         // 比如 new Array(10) 然后遍历这个数组，每一项肯定是空
 
         // 取 this
-        if (formated === char.CHAR_BLANK) {
+        if (formated === env.EMPTY_STRING) {
           value = scope
           return keypath
         }
