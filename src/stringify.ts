@@ -33,7 +33,6 @@ const RENDER_ELEMENT = '_c'
 const RENDER_COMPONENT = '_d'
 const RENDER_EACH = '_l'
 const RENDER_EMPTY = '_e'
-const RENDER_COMMENT = '_m'
 const RENDER_EXPRESSION = '_x'
 const RENDER_CHILDREN = '_v'
 const RENDER_PARTIAL = '_p'
@@ -466,7 +465,6 @@ export function stringify(node: Node): string {
 export function convert(code: string): Function {
   return new Function(
     RENDER_EMPTY,
-    RENDER_COMMENT,
     RENDER_CHILDREN,
     RENDER_COMPONENT,
     RENDER_ELEMENT,

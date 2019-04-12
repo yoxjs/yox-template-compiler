@@ -44,8 +44,7 @@ export function render(
   instance: any,
   result: Function,
   createElement: (tag: string, data?: any[] | Object, children?: any[]) => any,
-  createComponent: (tag: string, data?: Object) => any,
-  createComment: (text?: string) => any,
+  createComponent: (tag: string, data?: Object) => any
 ) {
 
   let keypath = env.EMPTY_STRING,
@@ -170,7 +169,6 @@ export function render(
 
   return result(
     renderEmpty,
-    createComment,
     renderChildren,
     createComponent,
     createElement,
