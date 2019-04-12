@@ -59,9 +59,7 @@ export function render(
 
     // 初始查找位置
     // keypathStack 的结构是 keypath, scope 作为一组
-    let index = keypathStack.length - 2,
-
-    formateds = []
+    let index = keypathStack.length - 2, formateds = []
 
     // 格式化 key
     keypathUtil.each(
@@ -76,7 +74,10 @@ export function render(
       }
     )
 
-    return { formated: array.join(formateds, env.KEYPATH_SEPARATOR), index }
+    return {
+      formated: array.join(formateds, env.KEYPATH_SEPARATOR),
+      index
+    }
 
   },
 
@@ -153,7 +154,7 @@ export function render(
       absoluteKeypath = keypath
     }
     else {
-      value = instance.filter(key)
+      value = instance.filter(formated)
     }
 
     node.absoluteKeypath = absoluteKeypath
