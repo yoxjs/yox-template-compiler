@@ -12,7 +12,6 @@ import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'
 
 import * as helper from './helper'
-import * as renderer from './renderer'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import ExpressionIdentifier from 'yox-expression-compiler/src/node/Identifier'
@@ -30,6 +29,16 @@ import Import from './node/Import'
 import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Pair from './node/Pair'
+
+const RENDER_ELEMENT = '_c'
+const RENDER_COMPONENT = '_d'
+const RENDER_EACH = '_l'
+const RENDER_EMPTY = '_e'
+const RENDER_COMMENT = '_m'
+const RENDER_EXPRESSION = '_x'
+const RENDER_CHILDREN = '_v'
+const RENDER_PARTIAL = '_p'
+const RENDER_IMPORT = '_i'
 
 const SEP_COMMA = ', '
 const SEP_COLON = ': '
@@ -71,17 +80,17 @@ function stringifyFunction(result: string | void): string {
 
 function stringifyExpression(expr: ExpressionNode): string {
   return stringifyCall(
-    renderer.EXPRESSION,
+    RENDER_EXPRESSION,
     toJSON(expr)
   )
 }
 
 function stringifyEmpty(): string {
-  return stringifyCall(renderer.EMPTY, char.CHAR_BLANK)
+  return stringifyCall(RENDER_EMPTY, char.CHAR_BLANK)
 }
 
 function stringifyComment(): string {
-  return stringifyCall(renderer.COMMENT, char.CHAR_BLANK)
+  return stringifyCall(RENDER_COMMENT, char.CHAR_BLANK)
 }
 
 function stringifyEvent(expr: ExpressionNode): any {
@@ -148,7 +157,7 @@ function stringifyNormalChildren(children: Node[] | void): string | void {
     children,
     function (childs: string[], hasComplexChild: boolean): string {
       return hasComplexChild
-        ? stringifyCall(renderer.CHILDREN, stringifyArray(childs))
+        ? stringifyCall(RENDER_CHILDREN, stringifyArray(childs))
         : array.join(childs, SEP_PLUS)
     }
   )
@@ -371,7 +380,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   return stringifyCall(
-    component ? renderer.COMPONENT : renderer.ELEMENT,
+    component ? RENDER_COMPONENT : RENDER_ELEMENT,
     array.join(args, SEP_COMMA)
   )
 
@@ -431,7 +440,27 @@ nodeStringify[nodeType.EACH] = function (node: Each): string {
     stringifyNormalChildren(node.children)
   )
 
-  return stringifyCall(renderer.EACH, `${expr}${index}, ${children}`)
+  return stringifyCall(RENDER_EACH, `${expr}${index}, ${children}`)
+
+}
+
+nodeStringify[nodeType.PARTIAL] = function (node: Partial): string {
+
+  const name = toJSON(node.name),
+
+  children = stringifyFunction(
+    stringifyNormalChildren(node.children)
+  )
+
+  return stringifyCall(RENDER_PARTIAL, `${name}, ${children}`)
+
+}
+
+nodeStringify[nodeType.IMPORT] = function (node: Import): string {
+
+  const name = toJSON(node.name)
+
+  return stringifyCall(RENDER_IMPORT, `${name}`)
 
 }
 
@@ -441,13 +470,15 @@ export function stringify(node: Node): string {
 
 export function convert(code: string): Function {
   return new Function(
-    renderer.EMPTY,
-    renderer.COMMENT,
-    renderer.CHILDREN,
-    renderer.COMPONENT,
-    renderer.ELEMENT,
-    renderer.EXPRESSION,
-    renderer.EACH,
+    RENDER_EMPTY,
+    RENDER_COMMENT,
+    RENDER_CHILDREN,
+    RENDER_COMPONENT,
+    RENDER_ELEMENT,
+    RENDER_EXPRESSION,
+    RENDER_PARTIAL,
+    RENDER_IMPORT,
+    RENDER_EACH,
     `return ${code}`
   )
 }

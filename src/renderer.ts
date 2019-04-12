@@ -1,29 +1,18 @@
+import isDef from 'yox-common/function/isDef'
+
 import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
 import * as char from 'yox-common/util/char'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
+import * as logger from 'yox-common/util/logger'
 import * as keypathUtil from 'yox-common/util/keypath'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
+import Keypath from 'yox-expression-compiler/src/node/Keypath'
+
+import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as exprExecutor from 'yox-expression-compiler/src/executor'
-
-import isDef from 'yox-common/function/isDef'
-import Keypath from 'yox-expression-compiler/src/node/Keypath';
-
-export const ELEMENT = '_c'
-
-export const COMPONENT = '_d'
-
-export const EACH = '_l'
-
-export const EMPTY = '_e'
-
-export const COMMENT = '_m'
-
-export const EXPRESSION = '_x'
-
-export const CHILDREN = '_v'
 
 /**
  * nodes 是动态计算出来的节点，因此节点本身可能是数组
@@ -57,7 +46,7 @@ export function render(
   result: Function,
   createElement: (tag: string, data?: any[] | Object, children?: any[]) => any,
   createComponent: (tag: string, data?: Object) => any,
-  createComment: (comment?: string) => any,
+  createComment: (text?: string) => any,
 ) {
 
   let scope: any = {},
@@ -65,6 +54,8 @@ export function render(
   keypath = char.CHAR_BLANK,
 
   keypathStack = [keypath, scope],
+
+  localPartials = {},
 
   format = function (key: string) {
 
@@ -106,11 +97,13 @@ export function render(
 
     getKeypath = function () {
 
-      let keypath = keypathUtil.join(keypathStack[index], formated)
+      let keypath = keypathUtil.join(keypathStack[index], formated),
+
+      scope = keypathStack[index + 1]
+
       if (!absoluteKeypath) {
         absoluteKeypath = keypath
       }
-      let scope = keypathStack[index + 1]
 
       // #each 时，scope 存储是当前循环的数据，如 keypath、index 等
       // scope 无法直接拿到当前数组项，它存在于 scope[ 'this' ] 上
@@ -124,8 +117,8 @@ export function render(
         return keypath
       }
       // 如果取的是数组项，则要更进一步
-      else if (object.has(scope, env.RAW_THIS)) {
-        scope = scope[env.RAW_THIS]
+      else if (object.has(scope, 'item')) {
+        scope = scope.item
 
         // 到这里 scope 可能为空
         // 比如 new Array(10) 然后遍历这个数组，每一项肯定是空
@@ -162,19 +155,17 @@ export function render(
       absoluteKeypath = keypath
     }
     else {
-      value = env.UNDEFINED
-      if (filters) {
-        let result = object.get(filters, key)
-        if (result) {
-          value = result[env.RAW_VALUE]
-        }
-      }
+      value = instance.filter(key)
     }
 
-    node[env.RAW_ABSOLUTE_KEYPATH] = absoluteKeypath
+    node.absoluteKeypath = absoluteKeypath
 
     return value
 
+  },
+
+  get = function (expr: ExpressionNode): any {
+    return exprExecutor.execute(expr, lookup, instance)
   }
 
   return result(
@@ -183,8 +174,21 @@ export function render(
     renderChildren,
     createComponent,
     createElement,
-    function (expr: ExpressionNode) {
-      value = exprExecutor.execute(expr, lookup, instance)
+    get,
+    function (name: string, generate: Function) {
+      localPartials[name] = generate
+    },
+    function (name: string) {
+      if (localPartials[name]) {
+        return localPartials[name]()
+      }
+      else {
+        const partial = instance.importPartial(name)
+        if (partial) {
+          return partial()
+        }
+      }
+      logger.fatal(`"${name}" partial is not found.`)
     },
     function (expr: ExpressionNode, index: string | Function, callback?: Function) {
 
@@ -197,7 +201,9 @@ export function render(
 
       value = get(expr),
 
-      absoluteKeypath = expr.absoluteKeypath,
+      absoluteKeypath = expr.type === exprNodeType.IDENTIFIER || expr.type === exprNodeType.MEMBER
+        ? (expr as Keypath).absoluteKeypath
+        : env.UNDEFINED,
 
       eachKeypath = absoluteKeypath || keypathUtil.join(keypath, expr.raw),
 
@@ -213,13 +219,13 @@ export function render(
         array.push(keypathStack, scope)
 
         // 从下面这几句赋值可以看出
-        // scope 至少会有 'keypath' 'this' 'index' 等几个值
+        // scope 至少会有 'keypath' 'item' 'index' 等几个值
         scope.keypath = keypath
 
         // 类似 {{#each 1 -> 10}} 这样的临时循环，需要在 scope 上加上当前项
         // 因为通过 instance.get() 无法获取数据
         if (!absoluteKeypath) {
-          scope[env.RAW_THIS] = item
+          scope.item = item
         }
 
         if (index) {
