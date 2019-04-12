@@ -14,9 +14,7 @@
     "@babel/core": "^7.4.3",
     "@babel/preset-env": "^7.4.3",
     "@babel/preset-typescript": "^7.3.3",
-    "babel-jest": "^24.7.1",
-    "yox-common": "0.17.5",
-    "yox-expression-compiler": "0.16.2"
+    "babel-jest": "^24.7.1"
   },
   "repository": {
     "type": "git",
@@ -30,6 +28,8 @@
   },
   "homepage": "https://github.com/yoxjs/yox-template-compiler#readme",
   "dependencies": {
-    "yox-config": "^0.0.9"
+    "yox-config": "0.1.0",
+    "yox-common": "0.17.5",
+    "yox-expression-compiler": "0.16.2"
   }
 }

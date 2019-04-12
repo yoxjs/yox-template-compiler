@@ -174,7 +174,7 @@ export function compile(content: string) {
                 // <div class="{{className}}"> 类似的转为 <div :class="className">（其实没这个指令）
                 if (expr.staticKeypath) {
                   target.directive = env.TRUE
-                  target.namespace = config.DIRECTIVE_BINDING
+                  target.namespace = config.DIRECTIVE_BIND
                   target.value = expr.staticKeypath
                   target.expr = env.UNDEFINED
                 }

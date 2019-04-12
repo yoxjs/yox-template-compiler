@@ -65,10 +65,6 @@ function stringifyArray(arr: any[]): string {
   return `[ ${array.join(arr, SEP_COMMA)} ]`
 }
 
-function stringifyArrayString(str: string): string {
-  return `[ ${str} ]`
-}
-
 function stringifyCall(name: string, arg: string): string {
   return `${name}(${arg})`
 }
@@ -86,10 +82,6 @@ function stringifyExpression(expr: ExpressionNode): string {
 
 function stringifyEmpty(): string {
   return stringifyCall(RENDER_EMPTY, env.EMPTY_STRING)
-}
-
-function stringifyComment(): string {
-  return stringifyCall(RENDER_COMMENT, env.EMPTY_STRING)
 }
 
 function stringifyEvent(expr: ExpressionNode): any {
@@ -166,9 +158,10 @@ function stringifyElementChildren(children: Node[] | void): string | void {
   return stringifyChildren(
     children,
     function (childs: string[], hasComplexChild: boolean): string {
-      return stringifyArrayString(
-        array.join(childs, hasComplexChild ? SEP_COMMA : SEP_PLUS)
-      )
+      // 遵循 virtual dom 行业规则，children 可以是 string 或 array
+      return hasComplexChild
+        ? stringifyArray(childs)
+        : array.join(childs, SEP_PLUS)
     }
   )
 }
@@ -261,7 +254,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
         if (attr.namespace === config.DIRECTIVE_EVENT) {
           elementOn[attr.name] = stringifyEvent(attr.expr)
         }
-        else if (attr.namespace === config.DIRECTIVE_BINDING) {
+        else if (attr.namespace === config.DIRECTIVE_BIND) {
           elementBind[attr.name] = toJSON(attr.value)
         }
         else {
@@ -416,9 +409,12 @@ nodeStringify[nodeType.IF] = function (node: If): string {
         nextValue = render(nextNode as ElseIf)
       }
     }
-    // 到达最后一个条件，发现第一个 if 语句带有 stub，需标记出来
+    // 到达最后一个条件，发现第一个 if 语句带有 stub，需创建一个注释标签占位
     else if (stub) {
-      nextValue = stringifyComment()
+      nextValue = stringifyCall(
+        RENDER_ELEMENT,
+        `${toJSON(config.TAG_COMMENT)}, ${toJSON(env.EMPTY_STRING)}`
+      )
     }
 
     return `${expr} ? ${isDef(children) ? children : stringifyEmpty()} : ${isDef(nextValue) ? nextValue : stringifyEmpty()}`
