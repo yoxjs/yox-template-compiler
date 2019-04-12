@@ -28,8 +28,8 @@
   },
   "homepage": "https://github.com/yoxjs/yox-template-compiler#readme",
   "dependencies": {
-    "yox-config": "0.1.0",
     "yox-common": "0.17.5",
+    "yox-config": "0.1.1",
     "yox-expression-compiler": "0.16.2"
   }
 }

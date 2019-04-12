@@ -27,7 +27,7 @@ import Expression from './node/Expression'
 import Import from './node/Import'
 import Partial from './node/Partial'
 import Spread from './node/Spread'
-import Pair from './node/Pair'
+import Property from './node/Property'
 
 const RENDER_ELEMENT = '_c'
 const RENDER_COMPONENT = '_d'
@@ -315,16 +315,16 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   }
 
-  // 目前只可能存在两个属性：text 和 html
   if (props) {
     array.each(
       props,
-      function (prop: Pair) {
+      function (prop: Property) {
         array.push(
           elementProps,
           stringifyObject({
             name: toJSON(prop.name),
-            value: stringifyValue(prop.value, prop.expr),
+            hint: prop.hint,
+            value: stringifyValue(prop.value, prop.expr, prop.children),
           })
         )
       }

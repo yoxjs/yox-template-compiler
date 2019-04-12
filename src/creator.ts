@@ -3,6 +3,7 @@ import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 
 import * as nodeType from './nodeType'
 
+import Node from './node/Node'
 import Attribute from './node/Attribute'
 import Each from './node/Each'
 import Element from './node/Element'
@@ -14,7 +15,7 @@ import Import from './node/Import'
 import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Text from './node/Text'
-import Pair from './node/Pair'
+import Property from './node/Property'
 
 export function createAttribute(name: string, directive: boolean, namespace?: string): Attribute {
   return {
@@ -28,6 +29,17 @@ export function createAttribute(name: string, directive: boolean, namespace?: st
   }
 }
 
+export function createProperty(name: string, hint: number, value: string | number | boolean | void, expr?: ExpressionNode, children?: Node[]): Property {
+  return {
+    type: nodeType.PROPERTY,
+    name,
+    hint,
+    value,
+    expr,
+    children,
+  }
+}
+
 export function createEach(expr: ExpressionNode, index: string): Each {
   return {
     type: nodeType.EACH,
@@ -37,10 +49,11 @@ export function createEach(expr: ExpressionNode, index: string): Each {
   }
 }
 
-export function createElement(tag: string, component: boolean): Element {
+export function createElement(tag: string, svg: boolean, component: boolean): Element {
   return {
     type: nodeType.ELEMENT,
     tag,
+    svg,
     component,
     slot: env.UNDEFINED,
     attrs: env.UNDEFINED,
@@ -109,13 +122,5 @@ export function createText(text: string): Text {
   return {
     type: nodeType.TEXT,
     text,
-  }
-}
-
-export function createPair(name: string, value: any | void, expr?: ExpressionNode): Pair {
-  return {
-    name,
-    value,
-    expr,
   }
 }

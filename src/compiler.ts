@@ -1,5 +1,8 @@
 import * as config from 'yox-config'
 
+import isDef from 'yox-common/function/isDef'
+import toNumber from 'yox-common/function/toNumber'
+
 import * as env from 'yox-common/util/env'
 import * as array from 'yox-common/util/array'
 import * as string from 'yox-common/util/string'
@@ -37,8 +40,35 @@ componentNamePattern = /^[$A-Z]|-/,
 // 自闭合标签
 selfClosingTagPattern = /^\s*(\/)?>/,
 
-// 支持的自闭合标签名
-selfClosingTagNames = 'area,base,embed,track,source,param,input,slot,col,img,br,hr'.split(',')
+// 常见的自闭合标签
+selfClosingTagNames = 'area,base,embed,track,source,param,input,slot,col,img,br,hr'.split(','),
+
+// 常见的 svg 标签
+svgTagNames = 'svg,g,defs,desc,metadata,symbol,use,image,path,rect,circle,line,ellipse,polyline,polygon,text,tspan,tref,textpath,marker,pattern,clippath,mask,filter,cursor,view,animate,font,font-face,glyph,missing-glyph,foreignObject'.split(','),
+
+// 常见的字符串类型的属性
+// 注意：autocomplete,autocapitalize 不是布尔类型
+stringProperyNames = 'id,class,name,value,for,accesskey,title,style,src,type,href,target,alt,placeholder,preload,poster,wrap,accept,pattern,dir,autocomplete,autocapitalize'.split(','),
+
+// 常见的数字类型的属性
+numberProperyNames = 'min,minlength,max,maxlength,step,width,height,size,rows,cols,tabindex'.split(','),
+
+// 常见的布尔类型的属性
+booleanProperyNames = 'disabled,checked,required,multiple,readonly,autofocus,autoplay,controls,loop,muted,novalidate,draggable,hidden,spellcheck'.split(','),
+
+// 某些属性 attribute name 和 property name 不同
+attr2Prop = {}
+
+// 列举几个常见的
+attr2Prop['for'] = 'htmlFor'
+attr2Prop['accesskey'] = 'accessKey'
+attr2Prop['class'] = 'className'
+attr2Prop['style'] = 'style.cssText'
+attr2Prop['novalidate'] = 'noValidate'
+attr2Prop['readonly'] = 'readOnly'
+attr2Prop['tabindex'] = 'tabIndex'
+attr2Prop['minlength'] = 'minLength'
+attr2Prop['maxlength'] = 'maxLength'
 
 
 /**
@@ -154,12 +184,14 @@ export function compile(content: string) {
                 target.children = env.UNDEFINED
               }
               else if (needProps) {
-                target.props = [
-                  creator.createPair(
-                    'text',
+                array.push(
+                  target.props || (target.props = []),
+                  creator.createProperty(
+                    'textContent',
+                    config.HINT_STRING,
                     text
                   )
-                ]
+                )
                 target.children = env.UNDEFINED
               }
               break
@@ -180,13 +212,15 @@ export function compile(content: string) {
                 }
               }
               else if (needProps) {
-                target.props = [
-                  creator.createPair(
-                    singleChild.safe ? 'text' : 'html',
+                array.push(
+                  target.props || (target.props = []),
+                  creator.createProperty(
+                    singleChild.safe ? 'textContent' : 'innerHTML',
+                    config.HINT_STRING,
                     env.UNDEFINED,
                     expr
                   )
-                ]
+                )
                 target.children = env.UNDEFINED
               }
               break
@@ -215,19 +249,82 @@ export function compile(content: string) {
           }
         }
 
-        else if (isAttribute && target.name === env.RAW_SLOT && currentElement) {
-          if (string.falsy(target.value)) {
-            reportError(`slot 属性的值只支持字符串字面量，且不能为空字符串`)
+        else if (isAttribute && !target.directive && currentElement) {
+
+          const name = target.name as string
+
+          if (name === env.RAW_SLOT) {
+            if (string.falsy(target.value)) {
+              reportError(`slot 属性的值只支持字符串字面量，且不能为空字符串`)
+            }
+            else {
+              currentElement.slot = target.value
+              removeAttr(currentElement, target)
+            }
           }
-          else {
-            currentElement.slot = target.value
-            array.remove(currentElement.attrs, target)
+          // 优化 html 属性
+          else if (!currentElement.component) {
+
+            const lowerName = name.toLowerCase()
+
+            if (array.has(stringProperyNames, lowerName)) {
+              addProperty(currentElement, target, lowerName, config.HINT_STRING)
+            }
+            else if (array.has(numberProperyNames, lowerName)) {
+              addProperty(currentElement, target, lowerName, config.HINT_NUMBER)
+            }
+            else if (array.has(booleanProperyNames, lowerName)) {
+              addProperty(currentElement, target, lowerName, config.HINT_BOOLEAN)
+            }
+
           }
+
         }
 
       }
       else {
         reportError(`出栈节点类型不匹配`)
+      }
+    },
+
+    addProperty = function (element: Element, attr: Attribute, name: string, hint: number) {
+
+      // 优化 value
+      let oldValue = attr.value, newValue: string | number | boolean
+
+      if (isDef(oldValue)) {
+        // 转成数字
+        if (hint === config.HINT_NUMBER) {
+          newValue = toNumber(oldValue)
+        }
+        // 转成布尔
+        else if (hint === config.HINT_BOOLEAN) {
+          newValue = oldValue === env.RAW_TRUE || oldValue === name
+        }
+        else if (hint === config.HINT_STRING) {
+          newValue = oldValue
+        }
+      }
+
+      array.push(
+        element.props || (element.props = []),
+        creator.createProperty(
+          attr2Prop[name] || name,
+          hint,
+          newValue,
+          attr.expr,
+          attr.children
+        )
+      )
+
+      removeAttr(element, attr)
+
+    },
+
+    removeAttr = function (element: Element, attr: Attribute) {
+      array.remove(element.attrs, attr)
+      if (!element.attrs.length) {
+        element.attrs = env.UNDEFINED
       }
     },
 
@@ -358,10 +455,16 @@ export function compile(content: string) {
                 }
               }
 
-              const node = creator.createElement(
-                tag,
-                componentNamePattern.test(tag)
-              )
+              // 是否是 svg
+              const isSvg = array.has(svgTagNames, tag),
+
+              // 是否是组件
+              isComponent = componentNamePattern.test(tag),
+
+              // 是 svg 就不可能是组件
+              // 加这个判断的原因是，svg 某些标签含有 连字符 和 大写字母，比较蛋疼
+              node = creator.createElement(tag, isSvg, !isSvg && isComponent)
+
               addChild(node)
               currentElement = node
             }

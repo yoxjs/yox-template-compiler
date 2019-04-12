@@ -1,11 +1,14 @@
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
+import Branch from './Branch'
 
 /**
  * 键值对
  */
-export default interface Pair {
+export default interface Property extends Branch {
 
   name: string
+
+  hint: number
 
   value: any | undefined
 

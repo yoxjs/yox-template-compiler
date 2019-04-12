@@ -47,6 +47,48 @@ it('支持多个根元素', () => {
   expect(ast[3].text).toBe('text')
 })
 
+it('svg', () => {
+
+  let ast: any
+
+  ast = compile('<svg></svg')
+
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+  expect(ast[0].tag).toBe('svg')
+  expect(ast[0].svg).toBe(true)
+  expect(ast[0].component).toBe(false)
+
+  ast = compile('<font-face></font-face')
+
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+  expect(ast[0].tag).toBe('font-face')
+  expect(ast[0].svg).toBe(true)
+  expect(ast[0].component).toBe(false)
+
+  ast = compile('<missing-glyph></missing-glyph')
+
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+  expect(ast[0].tag).toBe('missing-glyph')
+  expect(ast[0].svg).toBe(true)
+  expect(ast[0].component).toBe(false)
+
+  ast = compile('<foreignObject></foreignObject')
+
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+  expect(ast[0].tag).toBe('foreignObject')
+  expect(ast[0].svg).toBe(true)
+  expect(ast[0].component).toBe(false)
+
+})
+
 it('匹配开始结束标签', () => {
 
   let hasError = false
@@ -90,7 +132,7 @@ it('简单的标签组合', () => {
   expect(ast[0].children[1].tag).toBe('span')
   expect(ast[0].children[1].children).toBe(undefined)
   expect(ast[0].children[1].props.length).toBe(1)
-  expect(ast[0].children[1].props[0].name).toBe('text')
+  expect(ast[0].children[1].props[0].name).toBe('textContent')
   expect(ast[0].children[1].props[0].value).toBe('456')
   expect(ast[0].children[1].props[0].expr).toBe(undefined)
 
@@ -101,34 +143,33 @@ it('简单的标签组合', () => {
 it('attribute', () => {
 
   let ast = compile('<div id="1" name="2" xml1:age="3" xml2:number="4">5</div>')
+
   expect(ast.length).toBe(1)
-  expect(ast[0].attrs.length).toBe(4)
-  expect(ast[0].props.length).toBe(1)
+  expect(ast[0].attrs.length).toBe(2)
+  expect(ast[0].props.length).toBe(3)
   expect(ast[0].children).toBe(undefined)
 
+  expect(ast[0].props[0].type).toBe(nodeType.PROPERTY)
+  expect(ast[0].props[0].name).toBe('id')
+  checkValue(ast[0].props[0], '1')
+
+  expect(ast[0].props[1].type).toBe(nodeType.PROPERTY)
+  expect(ast[0].props[1].name).toBe('name')
+  checkValue(ast[0].props[1], '2')
+
   expect(ast[0].attrs[0].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[0].name).toBe('id')
-  expect(ast[0].attrs[0].namespace).toBe(undefined)
-  checkValue(ast[0].attrs[0], '1')
+  expect(ast[0].attrs[0].name).toBe('age')
+  expect(ast[0].attrs[0].namespace).toBe('xml1')
+  checkValue(ast[0].attrs[0], '3')
 
   expect(ast[0].attrs[1].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[1].name).toBe('name')
-  expect(ast[0].attrs[1].namespace).toBe(undefined)
-  checkValue(ast[0].attrs[1], '2')
+  expect(ast[0].attrs[1].name).toBe('number')
+  expect(ast[0].attrs[1].namespace).toBe('xml2')
+  checkValue(ast[0].attrs[1], '4')
 
-  expect(ast[0].attrs[2].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[2].name).toBe('age')
-  expect(ast[0].attrs[2].namespace).toBe('xml1')
-  checkValue(ast[0].attrs[2], '3')
-
-  expect(ast[0].attrs[3].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[3].name).toBe('number')
-  expect(ast[0].attrs[3].namespace).toBe('xml2')
-  checkValue(ast[0].attrs[3], '4')
-
-  expect(ast[0].props[0].name).toBe('text')
-  expect(ast[0].props[0].value).toBe('5')
-  expect(ast[0].props[0].expr).toBe(undefined)
+  expect(ast[0].props[2].name).toBe('textContent')
+  expect(ast[0].props[2].value).toBe('5')
+  expect(ast[0].props[2].expr).toBe(undefined)
 
 })
 
@@ -166,7 +207,7 @@ it('文本换行', () => {
   expect(ast[0].attrs[3].name).toBe('d')
   checkValue(ast[0].attrs[3], '4')
 
-  expect(ast[0].props[0].name).toBe('text')
+  expect(ast[0].props[0].name).toBe('textContent')
   expect(ast[0].props[0].value).toBe('5\n      6')
   expect(ast[0].props[0].expr).toBe(undefined)
 
@@ -191,7 +232,7 @@ it('默认属性值', () => {
   expect(ast[0].attrs[1].name).toBe('b')
   checkValue(ast[0].attrs[1], '')
 
-  expect(ast[0].props[0].name).toBe('text')
+  expect(ast[0].props[0].name).toBe('textContent')
   expect(ast[0].props[0].value).toBe('1')
   expect(ast[0].props[0].expr).toBe(undefined)
 
@@ -208,7 +249,7 @@ it('非转义插值', () => {
   expect(ast1[0].props.length).toBe(1)
   expect(ast1[0].children).toBe(undefined)
 
-  expect(ast1[0].props[0].name).toBe('text')
+  expect(ast1[0].props[0].name).toBe('textContent')
   expect(ast1[0].props[0].value).toBe(undefined)
   expect(typeof ast1[0].props[0].expr).toBe('object')
 
@@ -221,7 +262,7 @@ it('非转义插值', () => {
   expect(ast2[0].props.length).toBe(1)
   expect(ast2[0].children).toBe(undefined)
 
-  expect(ast2[0].props[0].name).toBe('html')
+  expect(ast2[0].props[0].name).toBe('innerHTML')
   expect(ast2[0].props[0].value).toBe(undefined)
   expect(typeof ast2[0].props[0].expr).toBe('object')
 
