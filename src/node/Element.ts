@@ -16,8 +16,6 @@ export default interface Element extends Branch {
 
   slot: string | undefined
 
-  attrs: (Attribute | Spread)[] | undefined
-
-  props: Property[] | undefined
+  attrs: (Attribute | Property | Spread)[] | undefined
 
 }

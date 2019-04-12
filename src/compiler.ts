@@ -93,7 +93,7 @@ function trimBreakline(content: string): string {
 
 export function compile(content: string) {
 
-  let nodeList = compileCache[content]
+  let nodeList: Node[] = compileCache[content]
   if (nodeList) {
     return nodeList
   }
@@ -185,7 +185,7 @@ export function compile(content: string) {
               }
               else if (needProps) {
                 array.push(
-                  target.props || (target.props = []),
+                  target.attrs || (target.attrs = []),
                   creator.createProperty(
                     'textContent',
                     config.HINT_STRING,
@@ -213,7 +213,7 @@ export function compile(content: string) {
               }
               else if (needProps) {
                 array.push(
-                  target.props || (target.props = []),
+                  target.attrs || (target.attrs = []),
                   creator.createProperty(
                     singleChild.safe ? 'textContent' : 'innerHTML',
                     config.HINT_STRING,
@@ -259,7 +259,10 @@ export function compile(content: string) {
             }
             else {
               currentElement.slot = target.value
-              removeAttr(currentElement, target)
+              array.remove(currentElement.attrs, target)
+              if (!currentElement.attrs.length) {
+                currentElement.attrs = env.UNDEFINED
+              }
             }
           }
           // 优化 html 属性
@@ -268,13 +271,13 @@ export function compile(content: string) {
             const lowerName = name.toLowerCase()
 
             if (array.has(stringProperyNames, lowerName)) {
-              addProperty(currentElement, target, lowerName, config.HINT_STRING)
+              setProperty(target, lowerName, config.HINT_STRING)
             }
             else if (array.has(numberProperyNames, lowerName)) {
-              addProperty(currentElement, target, lowerName, config.HINT_NUMBER)
+              setProperty(target, lowerName, config.HINT_NUMBER)
             }
             else if (array.has(booleanProperyNames, lowerName)) {
-              addProperty(currentElement, target, lowerName, config.HINT_BOOLEAN)
+              setProperty(target, lowerName, config.HINT_BOOLEAN)
             }
 
           }
@@ -287,45 +290,41 @@ export function compile(content: string) {
       }
     },
 
-    addProperty = function (element: Element, attr: Attribute, name: string, hint: number) {
+    setProperty = function (attr: Attribute, name: string, hint: number) {
 
       // 优化 value
-      let oldValue = attr.value, newValue: string | number | boolean
+      let { value, expr, children } = attr, newValue: string | number | boolean
 
-      if (isDef(oldValue)) {
+      if (isDef(value)) {
         // 转成数字
         if (hint === config.HINT_NUMBER) {
-          newValue = toNumber(oldValue)
+          newValue = toNumber(value)
         }
         // 转成布尔
         else if (hint === config.HINT_BOOLEAN) {
-          newValue = oldValue === env.RAW_TRUE || oldValue === name
+          newValue = value === env.RAW_TRUE || value === name
         }
         else if (hint === config.HINT_STRING) {
-          newValue = oldValue
+          newValue = value
         }
       }
 
-      array.push(
-        element.props || (element.props = []),
-        creator.createProperty(
-          attr2Prop[name] || name,
-          hint,
-          newValue,
-          attr.expr,
-          attr.children
-        )
+      const currentNode = array.last(nodeStack),
+
+      nodeList = currentNode.type === nodeType.ELEMENT
+        ? currentNode.attrs
+        : currentNode.children
+
+      // attr 一定在 nodeList 里面
+      // 因为是刚加入去的
+      nodeList[array.indexOf(nodeList, attr)] = creator.createProperty(
+        attr2Prop[name] || name,
+        hint,
+        newValue,
+        expr,
+        children
       )
 
-      removeAttr(element, attr)
-
-    },
-
-    removeAttr = function (element: Element, attr: Attribute) {
-      array.remove(element.attrs, attr)
-      if (!element.attrs.length) {
-        element.attrs = env.UNDEFINED
-      }
     },
 
     addChild = function (node: Node) {
@@ -373,7 +372,12 @@ export function compile(content: string) {
 
         if (currentNode) {
           array.push(
-            currentElement && !currentAttribute
+            // 这里不能写 currentElement && !currentAttribute，举个例子
+            //
+            // <div id="x" {{#if}} name="xx" alt="xx" {{/if}}
+            //
+            // 当 name 属性结束后，条件满足，但此时已不是元素属性层级了
+            currentElement && currentNode.type === nodeType.ELEMENT
               ? currentNode.attrs || (currentNode.attrs = [])
               : currentNode.children || (currentNode.children = []),
             node

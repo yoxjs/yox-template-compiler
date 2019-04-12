@@ -57,7 +57,6 @@ export function createElement(tag: string, svg: boolean, component: boolean): El
     component,
     slot: env.UNDEFINED,
     attrs: env.UNDEFINED,
-    props: env.UNDEFINED,
     children: env.UNDEFINED,
   }
 }

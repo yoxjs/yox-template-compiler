@@ -224,7 +224,7 @@ const nodeStringify = {}
 
 nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
-  let { tag, component, attrs, props, children } = node,
+  let { tag, component, attrs, children } = node,
 
   args: any[] = [toJSON(tag)],
 
@@ -292,6 +292,17 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
       }
     },
 
+    addProp = function (prop: Property) {
+      array.push(
+        elementProps,
+        stringifyObject({
+          name: toJSON(prop.name),
+          hint: prop.hint,
+          value: stringifyValue(prop.value, prop.expr, prop.children),
+        })
+      )
+    },
+
     addSpread = function (spread: Spread) {
       array.push(
         elementProps,
@@ -307,28 +318,15 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
         if (attr.type === nodeType.ATTRIBUTE) {
           addAttr(attr as Attribute)
         }
+        else if (attr.type === nodeType.PROPERTY) {
+          addProp(attr as Property)
+        }
         else {
           addSpread(attr as Spread)
         }
       }
     )
 
-  }
-
-  if (props) {
-    array.each(
-      props,
-      function (prop: Property) {
-        array.push(
-          elementProps,
-          stringifyObject({
-            name: toJSON(prop.name),
-            hint: prop.hint,
-            value: stringifyValue(prop.value, prop.expr, prop.children),
-          })
-        )
-      }
-    )
   }
 
   if (component) {
