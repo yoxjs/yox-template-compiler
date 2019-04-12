@@ -49,9 +49,9 @@ export function render(
   createComment: (text?: string) => any,
 ) {
 
-  let scope: any = {},
+  let keypath = char.CHAR_BLANK,
 
-  keypath = char.CHAR_BLANK,
+  scope: any = { keypath },
 
   keypathStack = [keypath, scope],
 
@@ -167,6 +167,7 @@ export function render(
   get = function (expr: ExpressionNode): any {
     return exprExecutor.execute(expr, lookup, instance)
   }
+
 
   return result(
     renderEmpty,
