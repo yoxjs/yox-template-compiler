@@ -5,6 +5,8 @@ import * as nodeType from './nodeType'
 
 import Node from './node/Node'
 import Attribute from './node/Attribute'
+import Directive from './node/Directive'
+import Property from './node/Property'
 import Each from './node/Each'
 import Element from './node/Element'
 import Else from './node/Else'
@@ -15,13 +17,11 @@ import Import from './node/Import'
 import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Text from './node/Text'
-import Property from './node/Property'
 
-export function createAttribute(name: string, directive: boolean, namespace?: string): Attribute {
+export function createAttribute(name: string, namespace?: string): Attribute {
   return {
     type: nodeType.ATTRIBUTE,
     name,
-    directive,
     namespace,
     children: env.UNDEFINED,
     value: env.UNDEFINED,
@@ -29,7 +29,18 @@ export function createAttribute(name: string, directive: boolean, namespace?: st
   }
 }
 
-export function createProperty(name: string, hint: number, value: string | number | boolean | void, expr?: ExpressionNode, children?: Node[]): Property {
+export function createDirective(name: string, modifier?: string, value?: string, expr?: ExpressionNode, children?: Node[]): Directive {
+  return {
+    type: nodeType.DIRECTIVE,
+    name,
+    modifier,
+    value,
+    expr,
+    children,
+  }
+}
+
+export function createProperty(name: string, hint: number, value?: string | number | boolean, expr?: ExpressionNode, children?: Node[]): Property {
   return {
     type: nodeType.PROPERTY,
     name,
@@ -56,6 +67,10 @@ export function createElement(tag: string, svg: boolean, component: boolean): El
     svg,
     component,
     slot: env.UNDEFINED,
+    name: env.UNDEFINED,
+    ref: env.UNDEFINED,
+    key: env.UNDEFINED,
+    transition: env.UNDEFINED,
     attrs: env.UNDEFINED,
     children: env.UNDEFINED,
   }

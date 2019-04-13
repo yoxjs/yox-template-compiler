@@ -23,11 +23,12 @@ import If from './node/If'
 import ElseIf from './node/ElseIf'
 import Element from './node/Element'
 import Attribute from './node/Attribute'
+import Directive from './node/Directive'
+import Property from './node/Property'
 import Expression from './node/Expression'
 import Import from './node/Import'
 import Partial from './node/Partial'
 import Spread from './node/Spread'
-import Property from './node/Property'
 
 const RENDER_ELEMENT = '_c'
 const RENDER_COMPONENT = '_d'
@@ -42,7 +43,7 @@ const SEP_COMMA = ', '
 const SEP_COLON = ': '
 const SEP_PLUS = ' + '
 
-function stringifyObject(obj: Object): string | void {
+function stringifyObject(obj: Object): string {
   const fields = []
   object.each(
     obj,
@@ -55,9 +56,7 @@ function stringifyObject(obj: Object): string | void {
       }
     }
   )
-  if (fields.length) {
-    return `{ ${array.join(fields, SEP_COMMA)} }`
-  }
+  return `{ ${array.join(fields, SEP_COMMA)} }`
 }
 
 function stringifyArray(arr: any[]): string {
@@ -105,7 +104,7 @@ function stringifyEvent(expr: ExpressionNode): any {
   }
 }
 
-function stringifyDirective(value: string | undefined, expr: ExpressionNode | undefined): string | void {
+function stringifyDirective(value: string | undefined, expr: ExpressionNode | undefined): string {
   return stringifyObject({
     value: toJSON(value),
     expr: toJSON(expr),
@@ -224,7 +223,7 @@ const nodeStringify = {}
 
 nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
-  let { tag, component, attrs, children } = node,
+  let { tag, component, slot, name, ref, key, transition, attrs, children } = node,
 
   args: any[] = [toJSON(tag)],
 
@@ -249,44 +248,25 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   if (attrs) {
 
     const addAttr = function (attr: Attribute) {
-      if (attr.directive) {
-        if (attr.namespace === config.DIRECTIVE_EVENT) {
-          elementOn[attr.name] = stringifyEvent(attr.expr)
-        }
-        else if (attr.namespace === config.DIRECTIVE_BIND) {
-          elementBind[attr.name] = toJSON(attr.value)
-        }
-        else {
-          array.push(
-            elementDirectives,
-            stringifyObject({
-              name: toJSON(attr.name),
-              value: stringifyDirective(attr.value, attr.expr)
-            })
-          )
-        }
+      array.push(
+        component ? elementProps : elementAttrs,
+        stringify(attr)
+      )
+    },
+
+    addDirective = function (directive: Directive) {
+      if (directive.name === config.DIRECTIVE_EVENT) {
+        elementOn[directive.modifier] = stringifyEvent(directive.expr)
       }
-      else if (helper.specialAttrs[attr.name]
-        || tag === env.RAW_SLOT && attr.name === env.RAW_NAME
-      ) {
-        data[attr.name] = stringifyValue(attr.value, attr.expr, attr.children)
-      }
-      else if (component) {
-        array.push(
-          elementProps,
-          stringifyObject({
-            name: toJSON(attr.name),
-            value: stringifyValue(attr.value, attr.expr, attr.children),
-          })
-        )
+      else if (directive.name === config.DIRECTIVE_BIND) {
+        elementBind[directive.modifier] = toJSON(directive.value)
       }
       else {
         array.push(
-          elementAttrs,
+          elementDirectives,
           stringifyObject({
-            namespace: toJSON(attr.namespace),
-            name: toJSON(attr.name),
-            value: stringifyValue(attr.value, attr.expr, attr.children),
+            name: toJSON(directive.name),
+            value: stringifyDirective(directive.value, directive.expr)
           })
         )
       }
@@ -295,11 +275,14 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     addProp = function (prop: Property) {
       array.push(
         elementProps,
-        stringifyObject({
-          name: toJSON(prop.name),
-          hint: prop.hint,
-          value: stringifyValue(prop.value, prop.expr, prop.children),
-        })
+        stringify(prop)
+      )
+    },
+
+    addIf = function (node: If) {
+      array.push(
+        component ? elementProps : elementAttrs,
+        stringify(node)
       )
     },
 
@@ -318,8 +301,14 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
         if (attr.type === nodeType.ATTRIBUTE) {
           addAttr(attr as Attribute)
         }
+        else if (attr.type === nodeType.DIRECTIVE) {
+          addDirective(attr as Directive)
+        }
         else if (attr.type === nodeType.PROPERTY) {
           addProp(attr as Property)
+        }
+        else if (attr.type === nodeType.IF) {
+          addIf(attr as If)
         }
         else {
           addSpread(attr as Spread)
@@ -327,6 +316,26 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
       }
     )
 
+  }
+
+  if (isDef(slot)) {
+    data.slot = slot
+  }
+
+  if (isDef(name)) {
+    data.name = name
+  }
+
+  if (isDef(transition)) {
+    data.transition = transition
+  }
+
+  if (ref) {
+    data.ref = stringifyValue(ref.value, ref.expr, ref.children)
+  }
+
+  if (key) {
+    data.key = stringifyValue(key.value, key.expr, key.children)
   }
 
   if (component) {
@@ -359,9 +368,8 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     data.bind = stringifyObject(elementBind)
   }
 
-  data = stringifyObject(data)
-  if (isDef(data)) {
-    array.push(args, data)
+  if (!object.empty(data)) {
+    array.push(args, stringifyObject(data))
   }
 
   if (isDef(childs)) {
@@ -373,6 +381,26 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     array.join(args, SEP_COMMA)
   )
 
+}
+
+nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
+  return stringifyObject({
+    namespace: toJSON(node.namespace),
+    name: toJSON(node.name),
+    value: stringifyValue(node.value, node.expr, node.children),
+  })
+}
+
+nodeStringify[nodeType.DIRECTIVE] = function (node: Attribute): string {
+  return toJSON(node.text)
+}
+
+nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
+  return stringifyObject({
+    name: toJSON(node.name),
+    hint: node.hint,
+    value: stringifyValue(node.value, node.expr, node.children),
+  })
 }
 
 nodeStringify[nodeType.TEXT] = function (node: Text): string {
@@ -457,6 +485,7 @@ nodeStringify[nodeType.IMPORT] = function (node: Import): string {
 }
 
 export function stringify(node: Node): string {
+  console.log(node.type, nodeStringify[node.type])
   return nodeStringify[node.type](node)
 }
 

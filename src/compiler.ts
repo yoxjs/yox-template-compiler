@@ -1,6 +1,5 @@
 import * as config from 'yox-config'
 
-import isDef from 'yox-common/function/isDef'
 import toNumber from 'yox-common/function/toNumber'
 
 import * as env from 'yox-common/util/env'
@@ -18,6 +17,8 @@ import If from './node/If'
 import Node from './node/Node'
 import Element from './node/Element'
 import Attribute from './node/Attribute'
+import Directive from './node/Directive'
+import Property from './node/Property'
 
 // 缓存编译模板
 const compileCache = {},
@@ -61,8 +62,8 @@ attr2Prop = {}
 
 // 列举几个常见的
 attr2Prop['for'] = 'htmlFor'
-attr2Prop['accesskey'] = 'accessKey'
 attr2Prop['class'] = 'className'
+attr2Prop['accesskey'] = 'accessKey'
 attr2Prop['style'] = 'style.cssText'
 attr2Prop['novalidate'] = 'noValidate'
 attr2Prop['readonly'] = 'readOnly'
@@ -107,7 +108,7 @@ export function compile(content: string) {
 
     currentElement: Element | void,
 
-    currentAttribute: Attribute | void,
+    currentAttribute: Attribute | Directive | Property | void,
 
     // 干掉 html 注释
     str = content.replace(
@@ -153,16 +154,20 @@ export function compile(content: string) {
       const target = array.pop(nodeStack)
       if (target && target.type === type) {
 
-        const { tag, children } = target,
+        const { tag, name, children } = target,
 
         isElement = type === nodeType.ELEMENT,
 
         isAttribute = type === nodeType.ATTRIBUTE,
 
-        // 是否可以收集 props 需满足以下条件
+        isDirective = type === nodeType.DIRECTIVE,
+
+        isProperty = type === nodeType.PROPERTY,
+
+        // children 是否可以转换成 props 需满足以下条件
         // 1. 当前元素不是组件，因为组件的子节点要作为 slot 节点
         // 2. 当前元素不是插槽，因为后续要收集插槽的子节点
-        needProps = isElement && !target.component && !target.slot,
+        children2Prop = isElement && !target.component && !target.slot,
 
         // 优化单个子节点
         singleChild = children && children.length === 1 && children[0]
@@ -171,23 +176,34 @@ export function compile(content: string) {
           reportError(`结束标签是${tagName}，开始标签却是${tag}`)
         }
 
+        // 除了 helper.specialAttrs 里指定的特殊属性，attrs 里的任何节点都不能单独拎出来赋给 element
+        // 因为 attrs 可能存在 if，所以每个 attr 最终都不一定会存在
         if (singleChild) {
+
+          const { text, expr } = singleChild
 
           switch (singleChild.type) {
 
             case nodeType.TEXT:
-              const { text } = singleChild
               // 属性的值如果是纯文本，直接获取文本值
               // 减少渲染时的遍历
-              if (isAttribute) {
+              if (isAttribute || isDirective || isProperty) {
                 target.value = text
-                if (target.directive) {
+                if (isDirective) {
                   // 指令的值如果是纯文本，可以预编译表达式，提升性能
                   target.expr = exprCompiler.compile(text)
                 }
+                else if (isProperty) {
+                  if (target.hint === config.HINT_NUMBER) {
+                    target.value = toNumber(text)
+                  }
+                  else if (target.hint === config.HINT_BOOLEAN) {
+                    target.value = text === env.RAW_TRUE || text === name
+                  }
+                }
                 target.children = env.UNDEFINED
               }
-              else if (needProps) {
+              if (children2Prop) {
                 array.push(
                   target.attrs || (target.attrs = []),
                   creator.createProperty(
@@ -201,21 +217,28 @@ export function compile(content: string) {
               break
 
             case nodeType.EXPRESSION:
-              const { expr } = singleChild
-              if (currentElement && isAttribute) {
-                target.expr = expr
-                target.children = env.UNDEFINED
-
+              if (isAttribute || isDirective || isProperty) {
                 // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
                 // <div class="{{className}}"> 类似的转为 <div :class="className">（其实没这个指令）
-                if (expr.staticKeypath) {
-                  target.directive = env.TRUE
-                  target.namespace = config.DIRECTIVE_BIND
-                  target.value = expr.staticKeypath
-                  target.expr = env.UNDEFINED
+                if (expr.staticKeypath && (isAttribute || isProperty)) {
+
+                  // 转换成指令
+                  replaceChild(
+                    target,
+                    creator.createDirective(
+                      config.DIRECTIVE_BIND,
+                      name,
+                      expr.staticKeypath
+                    )
+                  )
+
+                }
+                else {
+                  target.expr = expr
+                  target.children = env.UNDEFINED
                 }
               }
-              else if (needProps) {
+              if (children2Prop) {
                 array.push(
                   target.attrs || (target.attrs = []),
                   creator.createProperty(
@@ -231,60 +254,72 @@ export function compile(content: string) {
 
           }
         }
-        else if (isAttribute) {
-          if (children) {
-            // 不支持 on-click="1{{xx}}2" 或是 on-click="1{{#if x}}x{{else}}y{{/if}}2"
-            // 1. 很难做性能优化
-            // 2. 全局搜索不到事件名，不利于代码维护
-            // 为了统一，所有指令不支持这样写
-            if (target.directive) {
-              reportError(`指令的值不能用插值语法`)
+        // 大于 1 个子节点，即有插值或 if 写法
+        else if (children) {
+          // 不支持 on-click="1{{xx}}2" 或是 on-click="1{{#if x}}x{{else}}y{{/if}}2"
+          // 1. 很难做性能优化
+          // 2. 全局搜索不到事件名，不利于代码维护
+          // 为了统一，所有指令不支持这样写
+          if (isDirective) {
+            reportError(`指令的值不能用插值或 if 语法`)
+          }
+        }
+        // 0 个子节点
+        else if (currentElement) {
+          if (isProperty) {
+            if (target.hint === config.HINT_BOOLEAN) {
+              target.value = env.TRUE
+            }
+            else {
+              // string 或 number 类型的属性，如果不写值，直接忽略
+              replaceChild(target)
             }
           }
-          // 没有值的属性
-          else if (currentElement) {
-            target.value = currentElement.component ? env.TRUE : target.name
+          else if (isAttribute) {
+            if (isSpecialAttr(currentElement, name)) {
+              reportError(`${name} 忘了写值吧？`)
+            }
+            // 可能存在没收集到的布尔类型的 property
+            else {
+              target.value = currentElement.component ? env.TRUE : name
+            }
+          }
+          else if (isDirective) {
+            reportError(`${name} 指令忘了写值吧？`)
           }
         }
 
         if (isElement) {
-          if (tag === env.RAW_TEMPLATE && !target.slot) {
+          if (target.slot) {
+            if (tag !== env.RAW_TEMPLATE) {
+              reportError(`slot 属性只能用于 <template>`)
+            }
+          }
+          else if (tag === env.RAW_TEMPLATE) {
             reportError(`<template> 不写 slot 属性是几个意思？`)
           }
         }
 
-        else if (isAttribute && !target.directive && currentElement) {
+        else if (currentElement && isAttribute && isSpecialAttr(currentElement, name)) {
 
-          const name = target.name as string
-
-          if (name === env.RAW_SLOT) {
-            if (string.falsy(target.value)) {
-              reportError(`slot 属性的值只支持字符串字面量，且不能为空字符串`)
-            }
-            else {
-              currentElement.slot = target.value
-              array.remove(currentElement.attrs, target)
-              if (!currentElement.attrs.length) {
-                currentElement.attrs = env.UNDEFINED
-              }
-            }
+          // 因为要拎出来给 element，所以不能用 if
+          if (array.last(nodeStack) !== currentElement) {
+            reportError(`${name} 不能写在 if 内`)
           }
-          // 优化 html 属性
-          else if (!currentElement.component) {
 
-            const lowerName = name.toLowerCase()
+          // 这三个属性值要求是字符串
+          const isStringValueRequired = name === env.RAW_NAME || name === env.RAW_SLOT || name === env.RAW_TRANSITION
 
-            if (array.has(stringProperyNames, lowerName)) {
-              setProperty(target, lowerName, config.HINT_STRING)
-            }
-            else if (array.has(numberProperyNames, lowerName)) {
-              setProperty(target, lowerName, config.HINT_NUMBER)
-            }
-            else if (array.has(booleanProperyNames, lowerName)) {
-              setProperty(target, lowerName, config.HINT_BOOLEAN)
-            }
-
+          // 对于所有特殊属性来说，空字符串是肯定不行的，没有任何意义
+          if (target.value === env.EMPTY_STRING) {
+            reportError(`${name} 的值不能是空字符串`)
           }
+          else if (isStringValueRequired && string.falsy(target.value)) {
+            reportError(`${name} 的值只能是字符串字面量`)
+          }
+
+          currentElement[name] = isStringValueRequired ? target.value : target
+          replaceChild(target)
 
         }
 
@@ -294,40 +329,32 @@ export function compile(content: string) {
       }
     },
 
-    setProperty = function (attr: Attribute, name: string, hint: number) {
+    isSpecialAttr = function (element: Element, attrName: string): boolean {
+      return helper.specialAttrs[attrName]
+        || element.tag === env.RAW_SLOT && attrName === env.RAW_NAME
+    },
 
-      // 优化 value
-      let { value, expr, children } = attr, newValue: string | number | boolean
-
-      if (isDef(value)) {
-        // 转成数字
-        if (hint === config.HINT_NUMBER) {
-          newValue = toNumber(value)
-        }
-        // 转成布尔
-        else if (hint === config.HINT_BOOLEAN) {
-          newValue = value === env.RAW_TRUE || value === name
-        }
-        else if (hint === config.HINT_STRING) {
-          newValue = value
-        }
-      }
+    replaceChild = function (oldNode: Node, newNode?: Node) {
 
       const currentNode = array.last(nodeStack),
 
-      nodeList = currentNode.type === nodeType.ELEMENT
-        ? currentNode.attrs
-        : currentNode.children
+      prop = currentElement && currentNode.type === nodeType.ELEMENT ? 'attrs' : 'children',
 
-      // attr 一定在 nodeList 里面
-      // 因为是刚加入去的
-      nodeList[array.indexOf(nodeList, attr)] = creator.createProperty(
-        attr2Prop[name] || name,
-        hint,
-        newValue,
-        expr,
-        children
-      )
+      nodeList = currentNode[prop],
+
+      index = array.indexOf(nodeList, oldNode)
+
+      if (index >= 0) {
+        if (newNode) {
+          nodeList[index] = newNode
+        }
+        else {
+          nodeList.splice(index, 1)
+          if (!nodeList.length) {
+            currentNode[prop] = env.UNDEFINED
+          }
+        }
+      }
 
     },
 
@@ -504,53 +531,71 @@ export function compile(content: string) {
         if (currentElement && !currentAttribute) {
           const match = content.match(attributePattern)
           if (match) {
-            let node: Attribute
+            let node: Attribute | Directive | Property, name = match[1]
 
-            const name = match[1]
             if (helper.builtInDirectives[name]) {
-              node = creator.createAttribute(
-                string.camelCase(name),
-                env.TRUE,
+              node = creator.createDirective(
+                string.camelCase(name)
               )
             }
             else if (string.startsWith(name, config.DIRECTIVE_EVENT_PREFIX)) {
-              node = creator.createAttribute(
+              node = creator.createDirective(
+                config.DIRECTIVE_EVENT,
                 string.camelCase(
                   slicePrefix(name, config.DIRECTIVE_EVENT_PREFIX)
-                ),
-                env.TRUE,
-                config.DIRECTIVE_EVENT
+                )
               )
             }
             else if (string.startsWith(name, config.DIRECTIVE_CUSTOM_PREFIX)) {
-              node = creator.createAttribute(
+              node = creator.createDirective(
                 string.camelCase(
                   slicePrefix(name, config.DIRECTIVE_CUSTOM_PREFIX)
-                ),
-                env.TRUE
+                )
               )
             }
             else {
               // 组件用驼峰格式
               if (currentElement.component) {
                 node = creator.createAttribute(
-                  string.camelCase(name),
-                  env.FALSE
+                  string.camelCase(name)
                 )
               }
               // 原生 html 可能带有命名空间
               else {
                 const parts = name.split(':')
-                node = parts.length === 1
-                  ? creator.createAttribute(
-                      name,
-                      env.FALSE
+
+                if (parts.length === 1) {
+
+                  // 把 attr 优化成 prop
+                  const lowerName = name.toLowerCase()
+
+                  if (array.has(stringProperyNames, lowerName)) {
+                    node = creator.createProperty(
+                      attr2Prop[lowerName] || lowerName,
+                      config.HINT_STRING
                     )
-                  : creator.createAttribute(
-                      parts[1],
-                      env.FALSE,
-                      parts[0]
+                  }
+                  else if (array.has(numberProperyNames, lowerName)) {
+                    node = creator.createProperty(
+                      attr2Prop[lowerName] || lowerName,
+                      config.HINT_NUMBER
                     )
+                  }
+                  else if (array.has(booleanProperyNames, lowerName)) {
+                    node = creator.createProperty(
+                      attr2Prop[lowerName] || lowerName,
+                      config.HINT_BOOLEAN
+                    )
+                  }
+                  else {
+                    node = creator.createAttribute(name)
+                  }
+
+                }
+                else {
+                  node = creator.createAttribute(parts[1], parts[0])
+                }
+
               }
             }
 

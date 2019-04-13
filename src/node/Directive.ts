@@ -2,13 +2,13 @@ import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Branch from './Branch'
 
 /**
- * 属性
+ * 指令
  */
-export default interface Attribute extends Branch {
+export default interface Directive extends Branch {
 
   name: string
 
-  namespace: string | undefined
+  modifier: string | undefined
 
   expr: ExpressionNode | undefined
 

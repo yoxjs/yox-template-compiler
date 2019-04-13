@@ -1,6 +1,6 @@
 
 import { compile } from '../src/compiler'
-
+import * as config from 'yox-config'
 import * as nodeType from '../src/nodeType'
 
 function checkValue(node: any, text: string) {
@@ -25,6 +25,104 @@ it('空模板', () => {
   let ast2 = compile('')
 
   expect(ast2.length).toBe(0)
+
+})
+
+it('template 和 slot', () => {
+
+  let hasError = false
+
+  // template 必须搭配 slot 属性
+  try {
+    compile('<template></template>')
+  }
+  catch {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // template 必须在组件内使用
+  try {
+    compile('<template slot="xx"></template>')
+  }
+  catch (e) {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // slot 不能用插值
+  try {
+    compile('<Dog><template slot="{{a}}"></template></Dog>')
+  }
+  catch (e) {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // slot 不能是空字符串
+  try {
+    compile('<Dog><template slot=""></template></Dog>')
+  }
+  catch (e) {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // slot 不能不写值
+  try {
+    compile('<Dog><template slot></template></Dog>')
+  }
+  catch (e) {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // slot 只能和 template 搭配使用
+  try {
+    compile('<Dog><div slot="xx"></div></Dog>')
+  }
+  catch (e) {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // slot 不能位于 if 内
+  try {
+    compile('<Dog><template {{#if a}}slot="xx"{{/if}}></template></Dog>')
+  }
+  catch (e) {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+
+  hasError = false
+
+  try {
+    let ast = compile('<Dog><template slot="xx" ref="yy"></template></Dog>')
+    expect(ast[0].children[0].slot != null).toBe(true)
+    expect(ast[0].children[0].slot).toBe('xx')
+    expect(ast[0].children[0].ref != null).toBe(true)
+    expect(ast[0].children[0].ref.value).toBe('yy')
+    expect(ast[0].children[0].attrs).toBe(undefined)
+  }
+  catch (e) {
+    console.log(e)
+    hasError = true
+  }
+  expect(hasError).toBe(false)
 
 })
 
@@ -169,6 +267,61 @@ it('attribute', () => {
   expect(ast[0].attrs[4].name).toBe('textContent')
   expect(ast[0].attrs[4].value).toBe('5')
   expect(ast[0].attrs[4].expr).toBe(undefined)
+
+})
+
+it('property', () => {
+
+  // 布尔类型为 true，它的值只能是 属性名或 true，其他都是 false
+  let ast = compile('<div data-index="1" id="2" width="100" checked disabled="disabled" required="true" autofocus="false" muted="1" for="xx"></div>')
+
+  expect(ast.length).toBe(1)
+  expect(ast[0].attrs.length).toBe(9)
+  expect(ast[0].children).toBe(undefined)
+
+  expect(ast[0].attrs[0].type).toBe(nodeType.ATTRIBUTE)
+  expect(ast[0].attrs[0].name).toBe('data-index')
+  checkValue(ast[0].attrs[0], '1')
+
+  expect(ast[0].attrs[1].type).toBe(nodeType.PROPERTY)
+  expect(ast[0].attrs[1].name).toBe('id')
+  expect(ast[0].attrs[1].hint).toBe(config.HINT_STRING)
+  checkValue(ast[0].attrs[1], '2')
+
+  expect(ast[0].attrs[2].type).toBe(nodeType.PROPERTY)
+  expect(ast[0].attrs[2].name).toBe('width')
+  expect(ast[0].attrs[2].hint).toBe(config.HINT_NUMBER)
+  checkValue(ast[0].attrs[2], 100)
+
+  expect(ast[0].attrs[3].type).toBe(nodeType.PROPERTY)
+  expect(ast[0].attrs[3].name).toBe('checked')
+  expect(ast[0].attrs[3].hint).toBe(config.HINT_BOOLEAN)
+  checkValue(ast[0].attrs[3], true)
+
+  expect(ast[0].attrs[4].type).toBe(nodeType.PROPERTY)
+  expect(ast[0].attrs[4].name).toBe('disabled')
+  expect(ast[0].attrs[4].hint).toBe(config.HINT_BOOLEAN)
+  checkValue(ast[0].attrs[4], true)
+
+  expect(ast[0].attrs[5].type).toBe(nodeType.PROPERTY)
+  expect(ast[0].attrs[5].name).toBe('required')
+  expect(ast[0].attrs[5].hint).toBe(config.HINT_BOOLEAN)
+  checkValue(ast[0].attrs[5], true)
+
+  expect(ast[0].attrs[6].type).toBe(nodeType.PROPERTY)
+  expect(ast[0].attrs[6].name).toBe('autofocus')
+  expect(ast[0].attrs[6].hint).toBe(config.HINT_BOOLEAN)
+  checkValue(ast[0].attrs[6], false)
+
+  expect(ast[0].attrs[7].type).toBe(nodeType.PROPERTY)
+  expect(ast[0].attrs[7].name).toBe('muted')
+  expect(ast[0].attrs[7].hint).toBe(config.HINT_BOOLEAN)
+  checkValue(ast[0].attrs[7], false)
+
+  expect(ast[0].attrs[8].type).toBe(nodeType.PROPERTY)
+  expect(ast[0].attrs[8].name).toBe('htmlFor')
+  expect(ast[0].attrs[8].hint).toBe(config.HINT_STRING)
+  checkValue(ast[0].attrs[8], 'xx')
 
 })
 
