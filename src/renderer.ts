@@ -171,9 +171,13 @@ export function render(
   return result(
     renderEmpty,
     renderChildren,
-    createComponent,
-    createElement,
     get,
+    function (tag: string, data?: Object) {
+
+    },
+    function (tag: string, data?: Object, children?: string | any[]) {
+
+    },
     function (name: string, generate: Function) {
       localPartials[name] = generate
     },
@@ -182,7 +186,7 @@ export function render(
         return localPartials[name]()
       }
       else {
-        const partial = instance.importPartial(name)
+        const partial = instance.partial(name)
         if (partial) {
           return partial()
         }

@@ -145,6 +145,58 @@ it('支持多个根元素', () => {
   expect(ast[3].text).toBe('text')
 })
 
+it('静态子树', () => {
+
+  let ast: any
+
+  ast = compile('<div><span id="xx">1123</span></div>')
+
+  expect(ast[0].static).toBe(true)
+  expect(ast[0].children[0].static).toBe(true)
+
+  ast = compile('<div><span id="xx">{{x}}</span></div>')
+
+  expect(ast[0].static).toBe(false)
+  expect(ast[0].children[0].static).toBe(false)
+
+  ast = compile('<div><span id="xx">{{#if x}}x{{/if}}</span></div>')
+
+  expect(ast[0].static).toBe(false)
+  expect(ast[0].children[0].static).toBe(false)
+
+  ast = compile('<div><span id="xx">{{> name}}</span></div>')
+
+  expect(ast[0].static).toBe(false)
+  expect(ast[0].children[0].static).toBe(false)
+
+  ast = compile('<div><span id="{{x}}"></span></div>')
+
+  expect(ast[0].static).toBe(false)
+  expect(ast[0].children[0].static).toBe(false)
+
+  ast = compile('<div><span on-click="x"></span></div>')
+
+  expect(ast[0].static).toBe(false)
+  expect(ast[0].children[0].static).toBe(false)
+
+  ast = compile('<div><span o-x="x"></span></div>')
+
+  expect(ast[0].static).toBe(false)
+  expect(ast[0].children[0].static).toBe(false)
+
+  ast = compile(`
+    <div>
+      <div>xx</div>
+      <div>{{x}}</div>
+    </div>
+  `)
+
+  expect(ast[0].static).toBe(false)
+  expect(ast[0].children[0].static).toBe(true)
+  expect(ast[0].children[1].static).toBe(false)
+
+})
+
 it('svg', () => {
 
   let ast: any

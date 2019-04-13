@@ -414,9 +414,9 @@ export function convert(code: string): Function {
   return new Function(
     RENDER_EMPTY,
     RENDER_CHILDREN,
+    RENDER_EXPRESSION,
     RENDER_COMPONENT,
     RENDER_ELEMENT,
-    RENDER_EXPRESSION,
     RENDER_PARTIAL,
     RENDER_IMPORT,
     RENDER_EACH,

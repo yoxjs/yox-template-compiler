@@ -154,6 +154,10 @@ export function compile(content: string) {
       const target = array.pop(nodeStack)
       if (target && target.type === type) {
 
+        if (nodeStack.length && !target.static) {
+          array.last(nodeStack).static = env.FALSE
+        }
+
         const { tag, name, children } = target,
 
         isElement = type === nodeType.ELEMENT,
@@ -374,7 +378,7 @@ export function compile(content: string) {
         popSelfClosingElementIfNeeded()
       }
 
-      const type = node.type
+      const type = node.type, currentNode = array.last(nodeStack)
 
       // else 系列只是 if 的递进节点，不需要加入 nodeList
       if (helper.elseTypes[type]) {
@@ -398,8 +402,6 @@ export function compile(content: string) {
 
       }
       else {
-
-        const currentNode = array.last(nodeStack)
 
         if (currentNode) {
           array.push(
@@ -430,7 +432,12 @@ export function compile(content: string) {
 
       }
 
-      if (!helper.leafTypes[type]) {
+      if (helper.leafTypes[type]) {
+        if (currentNode && currentNode.static && !node.static) {
+          currentNode.static = env.FALSE
+        }
+      }
+      else {
         array.push(nodeStack, node)
       }
 
