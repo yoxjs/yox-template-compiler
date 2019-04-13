@@ -43,12 +43,12 @@ const SEP_COMMA = ', '
 const SEP_COLON = ': '
 const SEP_PLUS = ' + '
 
-function stringifyObject(obj: Object): string {
+function stringifyObject(obj: Object, loose?: boolean): string {
   const fields = []
   object.each(
     obj,
     function (value: any, key: string) {
-      if (isDef(value)) {
+      if (loose || isDef(value)) {
         array.push(
           fields,
           `${toJSON(key)}${SEP_COLON}${value}`
@@ -164,7 +164,7 @@ function stringifyElementChildren(children: Node[] | void): string | void {
   )
 }
 
-function getComponentSlots(children: Node[] | void): Object {
+function getComponentSlots(children: Node[] | void): string | void {
   // 这里不用判断数组长度，因为下面会判断有效的 slot
   if (children) {
 
@@ -180,9 +180,8 @@ function getComponentSlots(children: Node[] | void): Object {
       }
       // slot 即使是空也必须覆盖组件旧值
       // 否则当组件更新时会取到旧值
-      // 这里不能写 undefined，否则序列化会被干掉
       else {
-        slots[name] = env.NULL
+        slots[name] = env.UNDEFINED
       }
 
     }
@@ -214,7 +213,10 @@ function getComponentSlots(children: Node[] | void): Object {
       }
     )
 
-    return slots
+    if (!object.empty(slots)) {
+      // 这里调用加上第二个参数，否则 undefined 会被干掉
+      return stringifyObject(slots, env.TRUE)
+    }
 
   }
 }
@@ -233,89 +235,18 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   childs: any,
 
-  // 比如 <Custom {{...obj1}} {{...obj2}}/>
-  // 用对象有两个问题，第一是延展操作不好写 key，第二是无法保证顺序
-  elementProps = [],
-
-  elementAttrs = [],
-
-  elementOn = {},
-
-  elementBind = {},
-
-  elementDirectives = []
+  attributes: any[] = []
 
   if (attrs) {
-
-    const addAttr = function (attr: Attribute) {
-      array.push(
-        component ? elementProps : elementAttrs,
-        stringify(attr)
-      )
-    },
-
-    addDirective = function (directive: Directive) {
-      if (directive.name === config.DIRECTIVE_EVENT) {
-        elementOn[directive.modifier] = stringifyEvent(directive.expr)
-      }
-      else if (directive.name === config.DIRECTIVE_BIND) {
-        elementBind[directive.modifier] = toJSON(directive.value)
-      }
-      else {
-        array.push(
-          elementDirectives,
-          stringifyObject({
-            name: toJSON(directive.name),
-            value: stringifyDirective(directive.value, directive.expr)
-          })
-        )
-      }
-    },
-
-    addProp = function (prop: Property) {
-      array.push(
-        elementProps,
-        stringify(prop)
-      )
-    },
-
-    addIf = function (node: If) {
-      array.push(
-        component ? elementProps : elementAttrs,
-        stringify(node)
-      )
-    },
-
-    addSpread = function (spread: Spread) {
-      array.push(
-        elementProps,
-        stringifyObject({
-          spread: stringifyExpression(spread.expr)
-        })
-      )
-    }
-
     array.each(
       attrs,
-      function (attr: Attribute | Spread) {
-        if (attr.type === nodeType.ATTRIBUTE) {
-          addAttr(attr as Attribute)
-        }
-        else if (attr.type === nodeType.DIRECTIVE) {
-          addDirective(attr as Directive)
-        }
-        else if (attr.type === nodeType.PROPERTY) {
-          addProp(attr as Property)
-        }
-        else if (attr.type === nodeType.IF) {
-          addIf(attr as If)
-        }
-        else {
-          addSpread(attr as Spread)
-        }
+      function (attr: Node) {
+        array.push(
+          attributes,
+          stringify(attr)
+        )
       }
     )
-
   }
 
   if (isDef(slot)) {
@@ -340,32 +271,16 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   if (component) {
     slots = getComponentSlots(children)
-    if (slots && !object.empty(slots)) {
-      data.slots = stringifyObject(slots)
+    if (slots) {
+      data.slots = slots
     }
   }
   else {
     childs = stringifyElementChildren(children)
   }
 
-  if (elementProps.length) {
-    data.props = stringifyArray(elementProps)
-  }
-
-  if (elementAttrs.length) {
-    data.attrs = stringifyArray(elementAttrs)
-  }
-
-  if (elementDirectives.length) {
-    data.directives = stringifyArray(elementDirectives)
-  }
-
-  if (!object.empty(elementOn)) {
-    data.on = stringifyObject(elementOn)
-  }
-
-  if (!object.empty(elementBind)) {
-    data.bind = stringifyObject(elementBind)
+  if (attributes.length) {
+    data.attrs = stringifyArray(attributes)
   }
 
   if (!object.empty(data)) {
@@ -385,21 +300,34 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
 nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
   return stringifyObject({
+    type: node.type,
     namespace: toJSON(node.namespace),
     name: toJSON(node.name),
     value: stringifyValue(node.value, node.expr, node.children),
   })
 }
 
-nodeStringify[nodeType.DIRECTIVE] = function (node: Attribute): string {
-  return toJSON(node.text)
+nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
+  return stringifyObject({
+    type: node.type,
+    name: toJSON(node.name),
+    modifier: toJSON(node.modifier),
+    value: stringifyDirective(node.value, node.expr)
+  })
 }
 
 nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
   return stringifyObject({
+    type: node.type,
     name: toJSON(node.name),
     hint: node.hint,
     value: stringifyValue(node.value, node.expr, node.children),
+  })
+}
+
+nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
+  return stringifyObject({
+    spread: stringifyExpression(node.expr)
   })
 }
 
@@ -485,7 +413,6 @@ nodeStringify[nodeType.IMPORT] = function (node: Import): string {
 }
 
 export function stringify(node: Node): string {
-  console.log(node.type, nodeStringify[node.type])
   return nodeStringify[node.type](node)
 }
 
