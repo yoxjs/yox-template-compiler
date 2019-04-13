@@ -250,7 +250,7 @@ export function compile(content: string) {
         if (isElement) {
           checkSlot(node as Element)
         }
-        else if (currentElement && isAttribute && isSpecialAttr(currentElement, name)) {
+        else if (currentElement && isAttribute && isSpecialAttr(currentElement, node as Attribute)) {
           bindSpecialAttr(currentElement, node as Attribute)
         }
 
@@ -323,7 +323,7 @@ export function compile(content: string) {
         prop.value = toNumber(text)
       }
       else if (prop.hint === config.HINT_BOOLEAN) {
-        prop.value = text === env.RAW_TRUE || text === name
+        prop.value = text === env.RAW_TRUE || text === prop.name
       }
       else {
         prop.value = text
@@ -344,14 +344,12 @@ export function compile(content: string) {
 
     processAttributeEmptyChildren = function (element: Element, attr: Attribute) {
 
-      const { name } = attr
-
-      if (isSpecialAttr(element, name)) {
-        reportError(`${name} 忘了写值吧？`)
+      if (isSpecialAttr(element, attr)) {
+        reportError(`${attr.name} 忘了写值吧？`)
       }
       // 可能存在没收集到的布尔类型的 property
       else {
-        attr.value = element.component ? env.TRUE : name
+        attr.value = element.component ? env.TRUE : attr.name
       }
 
     },
@@ -437,9 +435,9 @@ export function compile(content: string) {
 
     },
 
-    isSpecialAttr = function (element: Element, attrName: string): boolean {
-      return helper.specialAttrs[attrName]
-        || element.tag === env.RAW_SLOT && attrName === env.RAW_NAME
+    isSpecialAttr = function (element: Element, attr: Attribute): boolean {
+      return helper.specialAttrs[attr.name]
+        || element.tag === env.RAW_SLOT && attr.name === env.RAW_NAME
     },
 
     convertToBindDirective = function (node: Attribute | Property, child: Expression): boolean | void {
