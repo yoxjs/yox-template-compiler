@@ -109,7 +109,11 @@ export function compile(content: string) {
 
     currentAttribute: Attribute | void,
 
-    str = content,
+    // 干掉 html 注释
+    str = content.replace(
+      /<!--[\s\S]*?-->/g,
+      env.EMPTY_STRING
+    ),
 
     startQuote: string | void,
 
@@ -793,14 +797,6 @@ export function compile(content: string) {
       }
       str = string.slice(str, all.length)
     }
-
-
-
-  // 干掉 html 注释
-  str = str.replace(
-    /<!--[\s\S]*?-->/g,
-    env.EMPTY_STRING
-  )
 
   while (str) {
     // 匹配 {{ }}
