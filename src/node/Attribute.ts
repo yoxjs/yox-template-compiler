@@ -12,6 +12,6 @@ export default interface Attribute extends Branch {
 
   expr: ExpressionNode | undefined
 
-  value: string | undefined
+  value: any | undefined
 
 }
