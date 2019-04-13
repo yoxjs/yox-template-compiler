@@ -416,6 +416,28 @@ it('文本换行', () => {
 
 })
 
+it('自动 bind', () => {
+
+  let ast = compile(`
+    <div id="{{id}}" class="2"></div>
+  `)
+
+  expect(ast.length).toBe(1)
+  expect(ast[0].attrs.length).toBe(2)
+  expect(ast[0].children).toBe(undefined)
+
+  expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
+  expect(ast[0].attrs[0].name).toBe(config.DIRECTIVE_BIND)
+  expect(ast[0].attrs[0].modifier).toBe('id')
+  expect(ast[0].attrs[0].expr).toBe(undefined)
+  expect(ast[0].attrs[0].value).toBe('id')
+
+  expect(ast[0].attrs[1].type).toBe(nodeType.PROPERTY)
+  expect(ast[0].attrs[1].name).toBe('className')
+  expect(ast[0].attrs[1].value).toBe('2')
+
+})
+
 it('默认属性值', () => {
 
   let ast = compile(`

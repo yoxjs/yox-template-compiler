@@ -335,10 +335,10 @@ export function compile(content: string) {
 
     processPropertySingleExpression = function (prop: Property, child: Expression) {
 
-      if (!convertToBindDirective(prop, child)) {
-        prop.expr = child.expr
-        prop.children = env.UNDEFINED
-      }
+      prop.expr = child.expr
+      prop.children = env.UNDEFINED
+
+      convertToBindDirective(prop)
 
     },
 
@@ -363,10 +363,10 @@ export function compile(content: string) {
 
     processAttributeSingleExpression = function (attr: Attribute, child: Expression) {
 
-      if (!convertToBindDirective(attr, child)) {
-        attr.expr = child.expr
-        attr.children = env.UNDEFINED
-      }
+      attr.expr = child.expr
+      attr.children = env.UNDEFINED
+
+      convertToBindDirective(attr)
 
     },
 
@@ -440,9 +440,9 @@ export function compile(content: string) {
         || element.tag === env.RAW_SLOT && attr.name === env.RAW_NAME
     },
 
-    convertToBindDirective = function (node: Attribute | Property, child: Expression): boolean | void {
+    convertToBindDirective = function (node: Attribute | Property) {
 
-      const { expr } = child
+      const { expr } = node
 
       // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
       // <div class="{{className}}">

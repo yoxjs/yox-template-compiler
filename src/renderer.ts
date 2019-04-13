@@ -175,7 +175,7 @@ export function render(
     function (tag: string, data?: Object) {
 
     },
-    function (tag: string, data?: Object, children?: string | any[]) {
+    function (tag: string, data?: Object | string | any[], children?: string | any[]) {
 
     },
     function (name: string, generate: Function) {
