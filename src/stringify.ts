@@ -43,12 +43,12 @@ const SEP_COMMA = ', '
 const SEP_COLON = ': '
 const SEP_PLUS = ' + '
 
-function stringifyObject(obj: Object, loose?: boolean): string {
+function stringifyObject(obj: Object): string {
   const fields = []
   object.each(
     obj,
     function (value: any, key: string) {
-      if (loose || isDef(value)) {
+      if (isDef(value)) {
         array.push(
           fields,
           `${toJSON(key)}${SEP_COLON}${value}`
@@ -170,18 +170,13 @@ function getComponentSlots(children: Node[] | void): string | void {
 
     const slots = { },
 
-    addSlot = function (name: string, nodes: Node[]) {
+    addSlot = function (name: string, nodes: Node[] | void) {
 
       if (nodes && nodes.length) {
         array.push(
           slots[name] || (slots[name] = []),
           nodes
         )
-      }
-      // slot 即使是空也必须覆盖组件旧值
-      // 否则当组件更新时会取到旧值
-      else {
-        slots[name] = env.UNDEFINED
       }
 
     }
@@ -214,8 +209,7 @@ function getComponentSlots(children: Node[] | void): string | void {
     )
 
     if (!object.empty(slots)) {
-      // 这里调用加上第二个参数，否则 undefined 会被干掉
-      return stringifyObject(slots, env.TRUE)
+      return stringifyObject(slots)
     }
 
   }
