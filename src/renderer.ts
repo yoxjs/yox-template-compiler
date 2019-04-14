@@ -12,7 +12,6 @@ import * as keypathUtil from 'yox-common/util/keypath'
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Keypath from 'yox-expression-compiler/src/node/Keypath'
 
-import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as exprExecutor from 'yox-expression-compiler/src/executor'
 
 import * as nodeType from './nodeType'
