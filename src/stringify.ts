@@ -285,9 +285,8 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     data.attrs = stringifyArray(attributes)
   }
 
-  if (!object.empty(data)) {
-    array.push(args, stringifyObject(data))
-  }
+  // data 一定有值，即使 <div></div> 也有一个  isStatic: true
+  array.push(args, stringifyObject(data))
 
   if (isDef(childs)) {
     array.push(args, childs)
@@ -329,7 +328,8 @@ nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
 
 nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
   return stringifyObject({
-    spread: stringifyExpression(node.expr)
+    type: node.type,
+    value: stringifyExpression(node.expr)
   })
 }
 
