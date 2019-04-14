@@ -1,7 +1,7 @@
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 
 /**
- * 属性
+ * 指令
  */
 export default interface Directive {
 

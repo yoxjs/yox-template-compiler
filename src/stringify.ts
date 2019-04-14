@@ -81,28 +81,6 @@ function stringifyEmpty(): string {
   return stringifyCall(RENDER_EMPTY, env.EMPTY_STRING)
 }
 
-function stringifyEvent(expr: ExpressionNode): any {
-  if (expr.type === exprNodeType.IDENTIFIER) {
-    return stringifyObject({
-      event: toJSON((expr as ExpressionIdentifier).name)
-    })
-  }
-  else if (expr.type === exprNodeType.CALL) {
-    const { callee, args } = expr as ExpressionCall
-    if (callee.type === exprNodeType.IDENTIFIER) {
-      return stringifyObject({
-        method: toJSON((callee as ExpressionIdentifier).name),
-        args: args.length > 0
-          // 为了实现运行时动态收集参数，这里序列化成函数
-          ? stringifyFunction(
-              stringifyArray(args.map(stringifyExpression))
-            )
-          : env.UNDEFINED,
-      })
-    }
-  }
-}
-
 function stringifyDirective(value: string | undefined, expr: ExpressionNode | undefined): string {
   return stringifyObject({
     value: toJSON(value),
@@ -118,35 +96,47 @@ function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[
       : stringifyNormalChildren(children)
 }
 
+const simpleStack = []
+
 function stringifyChildren(
   children: Node[] | void,
-  callback: (childs: string[], hasComplexChild: boolean) => string
+  callback: (childs: string[], isSimple: boolean) => string
 ): string | void {
   if (children && children.length) {
+
+    const childs: string[] = []
+
     // 如果 children 只包含简单子节点，则用 + 连起来提升运行时性能
-    let childs: string[] = [], hasComplexChild = env.FALSE
+    array.push(simpleStack, env.TRUE)
+
     array.each(
       children,
       function (child: Node) {
-        if (!hasComplexChild
+        if (array.last(simpleStack)
           && !helper.simpleChildTypes[child.type]
         ) {
-          hasComplexChild = env.TRUE
+          simpleStack[simpleStack.length - 1] = env.FALSE
         }
         array.push(childs, stringify(child))
       }
     )
-    return callback(childs, hasComplexChild)
+
+    const isSimple = array.pop(simpleStack)
+    if (!isSimple && simpleStack.length) {
+      simpleStack[simpleStack.length - 1] = env.FALSE
+    }
+
+    return callback(childs, isSimple)
   }
 }
 
 function stringifyNormalChildren(children: Node[] | void): string | void {
   return stringifyChildren(
     children,
-    function (childs: string[], hasComplexChild: boolean): string {
-      return hasComplexChild
-        ? stringifyCall(RENDER_CHILDREN, stringifyArray(childs))
-        : array.join(childs, SEP_PLUS)
+    function (childs: string[], isSimple: boolean): string {
+      return isSimple
+        ? array.join(childs, SEP_PLUS)
+        : stringifyCall(RENDER_CHILDREN, stringifyArray(childs))
     }
   )
 }
@@ -154,11 +144,11 @@ function stringifyNormalChildren(children: Node[] | void): string | void {
 function stringifyElementChildren(children: Node[] | void): string | void {
   return stringifyChildren(
     children,
-    function (childs: string[], hasComplexChild: boolean): string {
+    function (childs: string[], isSimple: boolean): string {
       // 遵循 virtual dom 行业规则，children 可以是 string 或 array
-      return hasComplexChild
-        ? stringifyArray(childs)
-        : array.join(childs, SEP_PLUS)
+      return isSimple
+        ? array.join(childs, SEP_PLUS)
+        : stringifyArray(childs)
     }
   )
 }
@@ -311,11 +301,54 @@ nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
 }
 
 nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
+  let { type, name, expr } = node
+  if (name === config.DIRECTIVE_EVENT) {
+    if (expr.type === exprNodeType.IDENTIFIER) {
+      return stringifyObject({
+        type,
+        name: toJSON(name),
+        event: toJSON((expr as ExpressionIdentifier).name)
+      })
+    }
+    else if (expr.type === exprNodeType.CALL) {
+      const { callee, args } = expr as ExpressionCall
+      if (callee.type === exprNodeType.IDENTIFIER) {
+        return stringifyObject({
+          type,
+          name: toJSON(name),
+          method: toJSON((callee as ExpressionIdentifier).name),
+          args: args.length > 0
+            // 为了实现运行时动态收集参数，这里序列化成函数
+            ? stringifyFunction(
+                stringifyArray(args.map(stringifyExpression))
+              )
+            : env.UNDEFINED,
+        })
+      }
+    }
+  }
+  // <input model="id"> 和 <div id="{{id}}">
+  else if (name === config.DIRECTIVE_MODEL || name === config.DIRECTIVE_BIND) {
+    return stringifyObject({
+      type,
+      name: toJSON(name),
+      expr: toJSON(node.expr),
+    })
+  }
+  // <div lazy="100">
+  else if (name === config.DIRECTIVE_LAZY) {
+    return stringifyObject({
+      type,
+      name: toJSON(name),
+      // 只可能是 number 或 boolean，不需要 toJSON
+      value: node.value,
+    })
+  }
   return stringifyObject({
-    type: node.type,
-    name: toJSON(node.name),
+    type,
+    name: toJSON(name),
     modifier: toJSON(node.modifier),
-    value: stringifyDirective(node.value, node.expr)
+    value: stringifyDirective(node.value, expr)
   })
 }
 

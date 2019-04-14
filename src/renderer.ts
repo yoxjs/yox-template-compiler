@@ -20,6 +20,10 @@ import * as nodeType from './nodeType'
 import Attribute from './render/Attribute'
 import Property from './render/Property'
 import Directive from './render/Directive'
+import Event from './render/Event'
+import Lazy from './render/Lazy'
+import Bind from './render/Bind'
+import Model from './render/Model'
 
 /**
  * nodes 是动态计算出来的节点，因此节点本身可能是数组
@@ -27,6 +31,7 @@ import Directive from './render/Directive'
  * 节点本身也可能是空，即 EMPTY renderer 返回的结果
  */
 function addNodes(list: any[], nodes: Node[]) {
+  // [TODO] 连续的 string/number/boolean/null 合并成一个节点
   array.each(
     nodes,
     function (node) {
@@ -189,15 +194,15 @@ export function render(
 
         nativeAttrs: Record<string, Attribute> = {},
 
-        on: Record<string, Directive> = {},
+        on: Record<string, Event> = {},
 
-        bind: Record<string, Directive> = {},
+        bind: Record<string, Bind> = {},
 
-        lazy: Record<string, Directive> = {},
+        lazy: Record<string, Lazy> = {},
 
         directives: Record<string, Directive> = {},
 
-        model: Directive | void
+        model: Model | void
 
         array.each(
           data.attrs,
@@ -221,27 +226,42 @@ export function render(
               }
             }
             else if (attr.type === nodeType.DIRECTIVE) {
-              const directive: Directive = {
-                name,
-                modifier: attr.modifier,
-                value: attr.value,
-                expr: attr.expr,
-                keypath,
-              }
               if (name === config.DIRECTIVE_EVENT) {
-                on[name] = directive
-              }
-              else if (name === config.DIRECTIVE_BIND) {
-                bind[name] = directive
-              }
-              else if (name === config.DIRECTIVE_LAZY) {
-                lazy[name] = directive
+                on[name] = {
+                  name,
+                  event: attr.event,
+                  method: attr.method,
+                  args: attr.args,
+                }
               }
               else if (name === config.DIRECTIVE_MODEL) {
-                model = directive
+                model = {
+                  name,
+                  value: get(attr.expr),
+                  keypath: attr.absoluteKeypath,
+                }
+              }
+              else if (name === config.DIRECTIVE_BIND) {
+                bind[name] = {
+                  name,
+                  value: get(attr.expr),
+                  keypath: attr.absoluteKeypath,
+                }
+              }
+              else if (name === config.DIRECTIVE_LAZY) {
+                lazy[name] = {
+                  name,
+                  value: attr.value,
+                }
               }
               else {
-                directives[name] = directive
+                directives[name] = {
+                  name,
+                  modifier: attr.modifier,
+                  value: attr.value,
+                  expr: attr.expr,
+                  keypath,
+                }
               }
             }
             else if (attr.type === nodeType.SPREAD) {

@@ -2,11 +2,13 @@ import * as config from 'yox-config'
 
 import toNumber from 'yox-common/function/toNumber'
 
+import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
 import * as array from 'yox-common/util/array'
 import * as string from 'yox-common/util/string'
 import * as logger from 'yox-common/util/logger'
 
+import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as exprCompiler from 'yox-expression-compiler/src/compiler'
 
 import * as helper from './helper'
@@ -383,12 +385,42 @@ export function compile(content: string) {
 
     processDirectiveSingleText = function (directive: Directive, child: Text) {
 
-      directive.value = child.text
+      const { text } = child
 
-      // 指令的值如果是纯文本，可以预编译表达式，提升性能
-      const expr = exprCompiler.compile(child.text)
-      if (expr) {
-        directive.expr = expr
+      // lazy 不需要编译表达式
+      // 因为 lazy 的值必须是大于 0 的数字
+      if (directive.name === config.DIRECTIVE_LAZY) {
+        if (is.numeric(text)) {
+          const value = toNumber(text)
+          if (value > 0) {
+            directive.value = value
+          }
+          else {
+            fatal(`lazy 指令的值 [${text}] 必须大于 0`)
+          }
+        }
+        else {
+          fatal(`lazy 指令的值 [${text}] 必须是数字`)
+        }
+      }
+      else {
+
+        // 指令的值是纯文本，可以预编译表达式，提升性能
+        const expr = exprCompiler.compile(text)
+        if (expr) {
+          directive.expr = expr
+        }
+
+        // model="xx" 值只能是标识符
+        if (directive.name === config.DIRECTIVE_MODEL) {
+          if (!expr || expr.type !== exprNodeType.IDENTIFIER) {
+            fatal(`model 指令的值 [${text}] 格式错误`)
+          }
+        }
+        else {
+          directive.value = text
+        }
+
       }
 
       directive.children = env.UNDEFINED
@@ -458,7 +490,8 @@ export function compile(content: string) {
           creator.createDirective(
             config.DIRECTIVE_BIND,
             node.name,
-            node.expr[env.RAW_STATIC_KEYPATH]
+            env.UNDEFINED,
+            node.expr
           )
         )
 

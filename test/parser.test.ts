@@ -530,14 +530,12 @@ it('自动 bind', () => {
   expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
   expect(ast[0].attrs[0].name).toBe(config.DIRECTIVE_BIND)
   expect(ast[0].attrs[0].modifier).toBe('id')
-  expect(ast[0].attrs[0].expr).toBe(undefined)
-  expect(ast[0].attrs[0].value).toBe('id')
+  expect(ast[0].attrs[0].expr.staticKeypath).toBe('id')
 
   expect(ast[0].attrs[1].type).toBe(nodeType.DIRECTIVE)
   expect(ast[0].attrs[1].name).toBe(config.DIRECTIVE_BIND)
   expect(ast[0].attrs[1].modifier).toBe('className')
-  expect(ast[0].attrs[1].expr).toBe(undefined)
-  expect(ast[0].attrs[1].value).toBe('a.b.c')
+  expect(ast[0].attrs[1].expr.staticKeypath).toBe('a.b.c')
 
   expect(ast[0].attrs[2].type).toBe(nodeType.PROPERTY)
   expect(ast[0].attrs[2].name).toBe('name')
@@ -545,6 +543,77 @@ it('自动 bind', () => {
   expect(ast[0].attrs[3].type).toBe(nodeType.PROPERTY)
   expect(ast[0].attrs[3].name).toBe('title')
   expect(ast[0].attrs[3].value).toBe('1')
+
+})
+
+it('lazy 指令自动转型', () => {
+
+  let ast: any
+
+  ast = compile(`
+    <div lazy></div>
+  `)
+
+  expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
+  expect(ast[0].attrs[0].name).toBe(config.DIRECTIVE_LAZY)
+  expect(ast[0].attrs[0].modifier).toBe(undefined)
+  expect(ast[0].attrs[0].expr).toBe(undefined)
+  expect(ast[0].attrs[0].value).toBe(true)
+
+
+  ast = compile(`
+    <div lazy="100"></div>
+  `)
+
+  expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
+  expect(ast[0].attrs[0].name).toBe(config.DIRECTIVE_LAZY)
+  expect(ast[0].attrs[0].modifier).toBe(undefined)
+  expect(ast[0].attrs[0].expr).toBe(undefined)
+  expect(ast[0].attrs[0].value).toBe(100)
+
+  let hasError = false
+
+  // 必须大于 0
+  try {
+    compile('<div lazy="0"></div>')
+  }
+  catch {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // 必须大于 0
+  try {
+    compile('<div lazy="-1"></div>')
+  }
+  catch {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // 必须大于 0
+  try {
+    compile('<div lazy="haha"></div>')
+  }
+  catch {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // 必须大于 0
+  try {
+    compile('<div lazy=""></div>')
+  }
+  catch {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
 
 })
 

@@ -30,6 +30,9 @@ leafTypes[nodeType.EXPRESSION] =
 
 simpleChildTypes[nodeType.TEXT] =
 simpleChildTypes[nodeType.EXPRESSION] =
+simpleChildTypes[nodeType.IF] =
+simpleChildTypes[nodeType.ELSE_IF] =
+simpleChildTypes[nodeType.ELSE] =
 
 specialAttrs[env.RAW_KEY] =
 specialAttrs[env.RAW_REF] =
