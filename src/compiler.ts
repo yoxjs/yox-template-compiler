@@ -824,9 +824,11 @@ export function compile(content: string) {
 
         }
         else {
+          if (string.trim(content)) {
+            fatal(`<${currentElement.tag}> 属性里不要写乱七八糟的字符`)
+          }
           text = content
         }
-
         return text
       },
     ],

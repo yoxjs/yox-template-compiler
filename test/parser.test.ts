@@ -314,6 +314,17 @@ it('属性引号', () => {
 
   expect(hasError).toBe(true)
 
+  hasError = false
+
+  try {
+    compile('<div class="11" name="xxx" "></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
 })
 
 it('attribute', () => {
