@@ -29,7 +29,7 @@
   "homepage": "https://github.com/yoxjs/yox-template-compiler#readme",
   "dependencies": {
     "yox-common": "0.17.5",
-    "yox-config": "0.1.1",
+    "yox-config": "0.1.2",
     "yox-expression-compiler": "0.16.2"
   }
 }

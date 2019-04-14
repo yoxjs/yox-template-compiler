@@ -29,6 +29,9 @@ const compileCache = {},
 // 缓存编译正则
 patternCache = {},
 
+// 指令分隔符，如 on-click 和  lazy-click
+SEP_DIRECTIVE = '-',
+
 // 分割符，即 {{ xx }} 和 {{{ xx }}}
 blockPattern = /(\{?\{\{)\s*([^\}]+?)\s*(\}\}\}?)/,
 
@@ -374,7 +377,7 @@ export function compile(content: string) {
 
     processDirectiveEmptyChildren = function (element: Element, directive: Directive) {
 
-      fatal(`${directive.name} 指令忘了写值吧？`)
+      directive.value = env.TRUE
 
     },
 
@@ -665,6 +668,8 @@ export function compile(content: string) {
           const match = content.match(attributePattern)
           if (match) {
 
+
+
             // <div class="11 name="xxx"></div>
             // 这里会匹配上 xxx"，match[2] 就是那个引号
             if (match[2]) {
@@ -678,12 +683,15 @@ export function compile(content: string) {
                 string.camelCase(name)
               )
             }
-            else if (string.startsWith(name, config.DIRECTIVE_EVENT_PREFIX)) {
+            // 这里要用 on- 判断前缀，否则 on 太容易重名了
+            else if (string.startsWith(name, config.DIRECTIVE_ON + SEP_DIRECTIVE)) {
+              const event = slicePrefix(name, config.DIRECTIVE_ON + SEP_DIRECTIVE)
+              if (!event) {
+                fatal('缺少事件名称')
+              }
               node = creator.createDirective(
                 config.DIRECTIVE_EVENT,
-                string.camelCase(
-                  slicePrefix(name, config.DIRECTIVE_EVENT_PREFIX)
-                )
+                string.camelCase(event)
               )
             }
             // 当一个元素绑定了多个事件时，可分别指定每个事件的 lazy
@@ -691,7 +699,7 @@ export function compile(content: string) {
             // <div on-click="xx" lazy-click
             else if (string.startsWith(name, config.DIRECTIVE_LAZY)) {
               let lazy = slicePrefix(name, config.DIRECTIVE_LAZY)
-              if (lazy && string.startsWith(lazy, '-')) {
+              if (lazy && string.startsWith(lazy, SEP_DIRECTIVE)) {
                 lazy = string.slice(lazy, 1)
               }
               node = creator.createDirective(
@@ -799,6 +807,7 @@ export function compile(content: string) {
 
           }
           // 没有结束引号，整段匹配
+          // 如 id="1{{x}}2" 中的 1
           else if (nextIsBlock) {
             text = content
             addTextChild(text)
