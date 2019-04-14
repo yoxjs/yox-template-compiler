@@ -30,6 +30,9 @@ import Import from './node/Import'
 import Partial from './node/Partial'
 import Spread from './node/Spread'
 
+
+import ElementVNode from './vnode/Element'
+
 const RENDER_ELEMENT = '_c'
 const RENDER_EACH = '_l'
 const RENDER_EMPTY = '_e'
@@ -210,7 +213,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   let { tag, isComponent, isSvg, isStatic, slot, name, ref, key, transition, attrs, children } = node,
 
-  args: any[] = [toJSON(tag)],
+  args: any[] = [],
 
   data: Record<string, any> = { },
 
@@ -232,16 +235,18 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     )
   }
 
+  data.tag = toJSON(tag)
+
   if (isDef(slot)) {
-    data.slot = slot
+    data.slot = toJSON(slot)
   }
 
   if (isDef(name)) {
-    data.name = name
+    data.name = toJSON(name)
   }
 
   if (isDef(transition)) {
-    data.transition = transition
+    data.transition = toJSON(transition)
   }
 
   if (ref) {
@@ -269,6 +274,9 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
   else {
     childs = stringifyElementChildren(children)
+    if (isDef(childs)) {
+      data.children = childs
+    }
   }
 
   array.push(args, stringifyObject(data))
@@ -278,10 +286,6 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     args,
     stringifyArray(attributes)
   )
-
-  if (isDef(childs)) {
-    array.push(args, childs)
-  }
 
   return stringifyCall(
     RENDER_ELEMENT,

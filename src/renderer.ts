@@ -16,13 +16,14 @@ import * as exprExecutor from 'yox-expression-compiler/src/executor'
 
 import * as nodeType from './nodeType'
 
-import Attribute from './render/Attribute'
-import Property from './render/Property'
-import Directive from './render/Directive'
-import Event from './render/Event'
-import Lazy from './render/Lazy'
-import Bind from './render/Bind'
-import Model from './render/Model'
+import Element from './vnode/Element'
+import Attribute from './vnode/Attribute'
+import Property from './vnode/Property'
+import Directive from './vnode/Directive'
+import Event from './vnode/Event'
+import Lazy from './vnode/Lazy'
+import Bind from './vnode/Bind'
+import Model from './vnode/Model'
 
 /**
  * nodes 是动态计算出来的节点，因此节点本身可能是数组
@@ -183,7 +184,7 @@ export function render(
     renderEmpty,
     renderChildren,
     get,
-    function (tag: string, data: Record<string, any>, attrs: any[], children?: string | any[]) {
+    function (data: Element, attrs: any[]) {
 
       if (attrs.length) {
 
@@ -204,7 +205,7 @@ export function render(
         model: Model | void
 
         array.each(
-          data.attrs,
+          attrs,
           function (attr: any) {
             const name = attr.name
             if (attr.type === nodeType.ATTRIBUTE) {
@@ -294,11 +295,8 @@ export function render(
 
       }
 
-      return createElement(
-        tag,
-        data,
-        children
-      )
+      return data
+
     },
     function (name: string, generate: Function) {
       localPartials[name] = generate
