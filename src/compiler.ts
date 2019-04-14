@@ -36,7 +36,7 @@ blockPattern = /(\{?\{\{)\s*([^\}]+?)\s*(\}\}\}?)/,
 tagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i,
 
 // 属性的 name
-attributePattern = /^\s*([-:\w]+)(?:=(['"]))?/,
+attributePattern = /^\s*([-:\w]+)(['"])?(?:=(['"]))?/,
 
 // 首字母大写，或中间包含 -
 componentNamePattern = /^[$A-Z]|-/,
@@ -125,9 +125,11 @@ export function compile(content: string) {
 
     isSafeBlock = env.FALSE,
 
+    nextIsBlock = env.FALSE,
+
     match: RegExpMatchArray | void,
 
-    reportError = function (msg: string) {
+    fatal = function (msg: string) {
       logger.fatal(`Error compiling ${env.RAW_TEMPLATE}:\n${content}\n- ${msg}`)
     },
 
@@ -180,7 +182,7 @@ export function compile(content: string) {
         if (isElement) {
           const element = node as Element
           if (tagName && element.tag !== tagName) {
-            reportError(`结束标签是${tagName}，开始标签却是${element.tag}`)
+            fatal(`结束标签是${tagName}，开始标签却是${element.tag}`)
           }
         }
 
@@ -231,7 +233,7 @@ export function compile(content: string) {
           // 2. 全局搜索不到事件名，不利于代码维护
           // 为了统一，所有指令不支持这样写
           if (isDirective) {
-            reportError(`指令的值不能用插值或 if 语法`)
+            fatal(`指令的值不能用插值或 if 语法`)
           }
         }
         // 0 个子节点
@@ -256,7 +258,7 @@ export function compile(content: string) {
 
       }
       else {
-        reportError(`出栈节点类型不匹配`)
+        fatal(`出栈节点类型不匹配`)
       }
     },
 
@@ -345,7 +347,7 @@ export function compile(content: string) {
     processAttributeEmptyChildren = function (element: Element, attr: Attribute) {
 
       if (isSpecialAttr(element, attr)) {
-        reportError(`${attr.name} 忘了写值吧？`)
+        fatal(`${attr.name} 忘了写值吧？`)
       }
       // 可能存在没收集到的布尔类型的 property
       else {
@@ -372,7 +374,7 @@ export function compile(content: string) {
 
     processDirectiveEmptyChildren = function (element: Element, directive: Directive) {
 
-      reportError(`${directive.name} 指令忘了写值吧？`)
+      fatal(`${directive.name} 指令忘了写值吧？`)
 
     },
 
@@ -401,11 +403,11 @@ export function compile(content: string) {
 
       if (element.slot) {
         if (element.tag !== env.RAW_TEMPLATE) {
-          reportError(`slot 属性只能用于 <template>`)
+          fatal(`slot 属性只能用于 <template>`)
         }
       }
       else if (element.tag === env.RAW_TEMPLATE) {
-        reportError(`<template> 不写 slot 属性是几个意思？`)
+        fatal(`<template> 不写 slot 属性是几个意思？`)
       }
 
     },
@@ -416,7 +418,7 @@ export function compile(content: string) {
 
       // 因为要拎出来给 element，所以不能用 if
       if (array.last(nodeStack) !== element) {
-        reportError(`${name} 不能写在 if 内`)
+        fatal(`${name} 不能写在 if 内`)
       }
 
       // 这三个属性值要求是字符串
@@ -424,10 +426,10 @@ export function compile(content: string) {
 
       // 对于所有特殊属性来说，空字符串是肯定不行的，没有任何意义
       if (value === env.EMPTY_STRING) {
-        reportError(`${name} 的值不能是空字符串`)
+        fatal(`${name} 的值不能是空字符串`)
       }
       else if (isStringValueRequired && string.falsy(value)) {
-        reportError(`${name} 的值只能是字符串字面量`)
+        fatal(`${name} 的值只能是字符串字面量`)
       }
 
       element[name] = isStringValueRequired ? value : attr
@@ -520,11 +522,11 @@ export function compile(content: string) {
             array.push(ifStack, node)
           }
           else {
-            reportError('大哥，只能写一个 else 啊！！')
+            fatal('大哥，只能写一个 else 啊！！')
           }
         }
         else {
-          reportError('不写 if 是几个意思？？')
+          fatal('不写 if 是几个意思？？')
         }
 
       }
@@ -620,7 +622,7 @@ export function compile(content: string) {
               if (tag === env.RAW_TEMPLATE) {
                 const lastNode = array.last(nodeStack)
                 if (!lastNode || !lastNode.isComponent) {
-                  reportError('<template> 只能写在组件标签内')
+                  fatal('<template> 只能写在组件标签内')
                 }
               }
 
@@ -641,6 +643,7 @@ export function compile(content: string) {
       function (content: string): string | void {
         const match = content.match(selfClosingTagPattern)
         if (match) {
+
           // 处理开始标签的 > 或 />
           if (currentElement && !currentAttribute) {
 
@@ -661,6 +664,13 @@ export function compile(content: string) {
         if (currentElement && !currentAttribute) {
           const match = content.match(attributePattern)
           if (match) {
+
+            // <div class="11 name="xxx"></div>
+            // 这里会匹配上 xxx"，match[2] 就是那个引号
+            if (match[2]) {
+              fatal('上一个属性似乎没有正常结束')
+            }
+
             let node: Attribute | Directive | Property, name = match[1]
 
             if (helper.builtInDirectives[name]) {
@@ -674,6 +684,19 @@ export function compile(content: string) {
                 string.camelCase(
                   slicePrefix(name, config.DIRECTIVE_EVENT_PREFIX)
                 )
+              )
+            }
+            // 当一个元素绑定了多个事件时，可分别指定每个事件的 lazy
+            // 当只有一个事件时，可简写成 lazy
+            // <div on-click="xx" lazy-click
+            else if (string.startsWith(name, config.DIRECTIVE_LAZY)) {
+              let lazy = slicePrefix(name, config.DIRECTIVE_LAZY)
+              if (lazy && string.startsWith(lazy, '-')) {
+                lazy = string.slice(lazy, 1)
+              }
+              node = creator.createDirective(
+                config.DIRECTIVE_LAZY,
+                lazy ? string.camelCase(lazy) : env.UNDEFINED
               )
             }
             else if (string.startsWith(name, config.DIRECTIVE_CUSTOM_PREFIX)) {
@@ -732,7 +755,7 @@ export function compile(content: string) {
             addChild(node)
 
             // 这里先记下，下一个 handler 要匹配结束引号
-            startQuote = match[2]
+            startQuote = match[3]
 
             // 有属性值才需要设置 currentAttribute，便于后续收集属性值
             if (startQuote) {
@@ -754,6 +777,7 @@ export function compile(content: string) {
         if (currentAttribute && startQuote) {
 
           match = content.match(patternCache[startQuote] || (patternCache[startQuote] = new RegExp(startQuote)))
+
           // 有结束引号
           if (match) {
             text = string.slice(content, 0, match.index)
@@ -775,9 +799,12 @@ export function compile(content: string) {
 
           }
           // 没有结束引号，整段匹配
-          else {
+          else if (nextIsBlock) {
             text = content
             addTextChild(text)
+          }
+          else {
+            fatal(`${currentAttribute.name} 没有找到结束引号`)
           }
 
         }
@@ -820,7 +847,7 @@ export function compile(content: string) {
                 )
               }
               else {
-                reportError(
+                fatal(
                   currentAttribute
                     ? `each 不能写在属性的值里`
                     : `each 不能写在属性层级`
@@ -828,7 +855,7 @@ export function compile(content: string) {
               }
             }
           }
-          reportError(`无效的 each`)
+          fatal(`无效的 each`)
         }
       },
       // {{#import name}}
@@ -840,14 +867,14 @@ export function compile(content: string) {
               return creator.createImport(source)
             }
             else {
-              reportError(
+              fatal(
                 currentAttribute
                   ? `import 不能写在属性的值里`
                   : `import 不能写在属性层级`
               )
             }
           }
-          reportError(`无效的 import`)
+          fatal(`无效的 import`)
         }
       },
       // {{#partial name}}
@@ -857,7 +884,7 @@ export function compile(content: string) {
           if (source) {
             return creator.createPartial(source)
           }
-          reportError(`无效的 partial`)
+          fatal(`无效的 partial`)
         }
       },
       // {{#if expr}}
@@ -868,7 +895,7 @@ export function compile(content: string) {
           if (expr) {
             return creator.createIf(expr)
           }
-          reportError(`无效的 if`)
+          fatal(`无效的 if`)
         }
       },
       // {{else if expr}}
@@ -879,7 +906,7 @@ export function compile(content: string) {
           if (expr) {
             return creator.createElseIf(expr)
           }
-          reportError(`无效的 else if`)
+          fatal(`无效的 else if`)
         }
       },
       // {{else}}
@@ -889,7 +916,7 @@ export function compile(content: string) {
           if (!string.trim(source)) {
             return creator.createElse()
           }
-          reportError(`else 后面不要写乱七八糟的东西`)
+          fatal(`else 后面不要写乱七八糟的东西`)
         }
       },
       // {{...obj}}
@@ -902,10 +929,10 @@ export function compile(content: string) {
               return creator.createSpread(expr)
             }
             else {
-              reportError(`延展属性只能用于组件属性`)
+              fatal(`延展属性只能用于组件属性`)
             }
           }
-          reportError(`无效的 spread`)
+          fatal(`无效的 spread`)
         }
       },
       // {{expr}}
@@ -916,7 +943,7 @@ export function compile(content: string) {
           if (expr) {
             return creator.createExpression(expr, isSafeBlock)
           }
-          reportError(`无效的 expression`)
+          fatal(`无效的 expression`)
         }
       },
     ],
@@ -951,7 +978,7 @@ export function compile(content: string) {
               type = node.type
             }
             else {
-              reportError(`if 还没开始就结束了？`)
+              fatal(`if 还没开始就结束了？`)
             }
           }
           popStack(type)
@@ -978,6 +1005,8 @@ export function compile(content: string) {
     match = str.match(blockPattern)
     if (match) {
 
+      nextIsBlock = env.TRUE
+
       // 裁剪开头到 {{ 之间的模板内容
       if (match.index > 0) {
         parseHtml(
@@ -994,11 +1023,12 @@ export function compile(content: string) {
         parseBlock(match[2], match[0])
       }
       else {
-        reportError(`${match[1]} and ${match[3]} is not a pair.`)
+        fatal(`${match[1]} and ${match[3]} is not a pair.`)
       }
 
     }
     else {
+      nextIsBlock = env.FALSE
       parseHtml(str)
     }
   }

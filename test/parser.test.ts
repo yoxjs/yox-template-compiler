@@ -290,6 +290,32 @@ it('简单的标签组合', () => {
   expect(ast[0].children[2].text).toBe('789')
 })
 
+it('属性引号', () => {
+
+  let hasError = false
+
+  try {
+    compile('<div class="11></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  try {
+    compile('<div class="11 name="xxx"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+})
+
 it('attribute', () => {
 
   let ast = compile('<div id="1" name="2" xml1:age="3" xml2:number="4">5</div>')
