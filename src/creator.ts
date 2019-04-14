@@ -65,6 +65,11 @@ export function createEach(expr: ExpressionNode, index: string): Each {
 }
 
 export function createElement(tag: string, isSvg: boolean, isComponent: boolean): Element {
+  // 是 svg 就不可能是组件
+  // 加这个判断的原因是，svg 某些标签含有 连字符 和 大写字母，比较蛋疼
+  if (isSvg) {
+    isComponent = env.FALSE
+  }
   return {
     type: nodeType.ELEMENT,
     tag,

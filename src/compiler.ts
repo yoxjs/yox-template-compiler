@@ -624,15 +624,11 @@ export function compile(content: string) {
                 }
               }
 
-              // 是否是 svg
-              const isSvg = array.has(svgTagNames, tag),
-
-              // 是否是组件
-              isComponent = componentNamePattern.test(tag),
-
-              // 是 svg 就不可能是组件
-              // 加这个判断的原因是，svg 某些标签含有 连字符 和 大写字母，比较蛋疼
-              node = creator.createElement(tag, isSvg, !isSvg && isComponent)
+              const node = creator.createElement(
+                tag,
+                array.has(svgTagNames, tag),
+                componentNamePattern.test(tag)
+              )
 
               addChild(node)
               currentElement = node
