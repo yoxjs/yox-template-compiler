@@ -668,8 +668,6 @@ export function compile(content: string) {
           const match = content.match(attributePattern)
           if (match) {
 
-
-
             // <div class="11 name="xxx"></div>
             // 这里会匹配上 xxx"，match[2] 就是那个引号
             if (match[2]) {

@@ -414,6 +414,31 @@ it('property', () => {
 
 })
 
+it('directive', () => {
+
+  let hasError = false
+
+  try {
+    compile('<div on-=></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+  let ast = compile('<div lazy></div>')
+
+  expect(ast.length).toBe(1)
+  expect(ast[0].attrs.length).toBe(1)
+
+  expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
+  expect(ast[0].attrs[0].name).toBe(config.DIRECTIVE_LAZY)
+  expect(ast[0].attrs[0].value).toBe(true)
+
+})
+
 it('文本换行', () => {
 
   let ast = compile(`
