@@ -222,7 +222,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   args: any[] = [toJSON(tag)],
 
-  data: any = { },
+  data: Record<string, any> = { },
 
   slots: any,
 
@@ -281,12 +281,14 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     childs = stringifyElementChildren(children)
   }
 
-  if (attributes.length) {
-    data.attrs = stringifyArray(attributes)
-  }
-
   // data 一定有值，即使 <div></div> 也有一个  isStatic: true
   array.push(args, stringifyObject(data))
+
+  // data 可以透传，但是 attributes 还需要 render 继续分析
+  array.push(
+    args,
+    stringifyArray(attributes)
+  )
 
   if (isDef(childs)) {
     array.push(args, childs)
@@ -329,7 +331,7 @@ nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
 nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
   return stringifyObject({
     type: node.type,
-    value: stringifyExpression(node.expr)
+    expr: toJSON(node.expr)
   })
 }
 

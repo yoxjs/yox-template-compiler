@@ -14,8 +14,6 @@ export const leafTypes = {}
 export const simpleChildTypes = {}
 // 特殊属性
 export const specialAttrs = {}
-// 内置指令，无需加前缀
-export const builtInDirectives = {}
 // 名称 -> 类型的映射
 export const name2Type = {}
 
@@ -36,10 +34,7 @@ simpleChildTypes[nodeType.EXPRESSION] =
 specialAttrs[env.RAW_KEY] =
 specialAttrs[env.RAW_REF] =
 specialAttrs[env.RAW_SLOT] =
-specialAttrs[env.RAW_TRANSITION] =
-
-builtInDirectives[config.DIRECTIVE_LAZY] =
-builtInDirectives[config.DIRECTIVE_MODEL] = env.TRUE
+specialAttrs[env.RAW_TRANSITION] = env.TRUE
 
 name2Type['if'] = nodeType.IF
 name2Type['each'] = nodeType.EACH

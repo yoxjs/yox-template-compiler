@@ -290,6 +290,45 @@ it('简单的标签组合', () => {
   expect(ast[0].children[2].text).toBe('789')
 })
 
+it('延展属性', () => {
+
+  let hasError = false
+
+  // 延展属性只能用于组件
+  try {
+    compile('<div {{...obj}}></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  try {
+    compile('<Dog {{...obj}}></Dog>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(false)
+
+  // 只能用于属性层级
+  hasError = false
+
+  try {
+    compile('<Dog>{{...obj}}</Dog>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+})
+
 it('属性引号', () => {
 
   let hasError = false

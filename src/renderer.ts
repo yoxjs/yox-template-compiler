@@ -1,3 +1,5 @@
+import * as config from 'yox-config'
+
 import isDef from 'yox-common/function/isDef'
 
 import * as is from 'yox-common/util/is'
@@ -12,6 +14,12 @@ import Keypath from 'yox-expression-compiler/src/node/Keypath'
 
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as exprExecutor from 'yox-expression-compiler/src/executor'
+
+import * as nodeType from './nodeType'
+
+import Attribute from './render/Attribute'
+import Property from './render/Property'
+import Directive from './render/Directive'
 
 /**
  * nodes 是动态计算出来的节点，因此节点本身可能是数组
@@ -43,8 +51,7 @@ function renderChildren(nodes: Node[]) {
 export function render(
   instance: any,
   result: Function,
-  createElement: (tag: string, data?: any[] | Object, children?: any[]) => any,
-  createComponent: (tag: string, data?: Object) => any
+  createElement: (tag: string, data: Object, children?: string | any[]) => any
 ) {
 
   let keypath = env.EMPTY_STRING,
@@ -172,8 +179,108 @@ export function render(
     renderEmpty,
     renderChildren,
     get,
-    function (tag: string, data?: Object | string | any[], children?: string | any[]) {
+    function (tag: string, data: Record<string, any>, attrs: any[], children?: string | any[]) {
 
+      if (attrs.length) {
+
+        let props: Record<string, any> = {},
+
+        nativeProps: Record<string, Property> = {},
+
+        nativeAttrs: Record<string, Attribute> = {},
+
+        on: Record<string, Directive> = {},
+
+        bind: Record<string, Directive> = {},
+
+        lazy: Record<string, Directive> = {},
+
+        directives: Record<string, Directive> = {},
+
+        model: Directive | void
+
+        array.each(
+          data.attrs,
+          function (attr: any) {
+            const name = attr.name
+            if (attr.type === nodeType.ATTRIBUTE) {
+              if (data.isComponent) {
+                props[name] = attr.value
+              }
+              else {
+                nativeAttrs[name] = {
+                  namespace: attr.component,
+                  value: attr.value,
+                }
+              }
+            }
+            else if (attr.type === nodeType.PROPERTY) {
+              nativeProps[name] = {
+                hint: attr.hint,
+                value: attr.value,
+              }
+            }
+            else if (attr.type === nodeType.DIRECTIVE) {
+              const directive: Directive = {
+                name,
+                modifier: attr.modifier,
+                value: attr.value,
+                expr: attr.expr,
+                keypath,
+              }
+              if (name === config.DIRECTIVE_EVENT) {
+                on[name] = directive
+              }
+              else if (name === config.DIRECTIVE_BIND) {
+                bind[name] = directive
+              }
+              else if (name === config.DIRECTIVE_LAZY) {
+                lazy[name] = directive
+              }
+              else if (name === config.DIRECTIVE_MODEL) {
+                model = directive
+              }
+              else {
+                directives[name] = directive
+              }
+            }
+            else if (attr.type === nodeType.SPREAD) {
+              const expr = attr.expr, value = get(expr)
+              // 数组也算一种对象
+              if (is.object(value) && !is.array(value)) {
+                object.each(
+                  value,
+                  function (value: any, key: string) {
+                    props[key] = value
+                  }
+                )
+                // [TODO] 绑定
+                const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH]
+
+              }
+              else {
+                logger.warn(`[${expr.raw}] 不是对象，延展个毛啊`)
+              }
+            }
+          }
+        )
+
+        data.props = props
+        data.nativeAttrs = nativeAttrs
+        data.nativeProps = nativeProps
+        data.directives = directives
+        data.on = on
+        data.bind = bind
+        data.lazy = lazy
+        data.model = model
+
+      }
+
+      return createElement(
+        tag,
+        data,
+        children
+      )
     },
     function (name: string, generate: Function) {
       localPartials[name] = generate
@@ -201,9 +308,7 @@ export function render(
 
       value = get(expr),
 
-      absoluteKeypath = expr.type === exprNodeType.IDENTIFIER || expr.type === exprNodeType.MEMBER
-        ? (expr as Keypath).absoluteKeypath
-        : env.UNDEFINED,
+      absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH],
 
       eachKeypath = absoluteKeypath || keypathUtil.join(keypath, expr.raw),
 

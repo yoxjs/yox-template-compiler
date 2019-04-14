@@ -450,7 +450,7 @@ export function compile(content: string) {
       // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
       // <div class="{{className}}">
 
-      if (node.expr['staticKeypath']) {
+      if (node.expr[env.RAW_STATIC_KEYPATH]) {
 
         // 转换成指令
         replaceChild(
@@ -458,7 +458,7 @@ export function compile(content: string) {
           creator.createDirective(
             config.DIRECTIVE_BIND,
             node.name,
-            node.expr['staticKeypath']
+            node.expr[env.RAW_STATIC_KEYPATH]
           )
         )
 
@@ -676,7 +676,7 @@ export function compile(content: string) {
 
             let node: Attribute | Directive | Property, name = match[1]
 
-            if (helper.builtInDirectives[name]) {
+            if (name === config.DIRECTIVE_MODEL) {
               node = creator.createDirective(
                 string.camelCase(name)
               )
@@ -891,7 +891,16 @@ export function compile(content: string) {
         if (string.startsWith(source, config.SYNTAX_PARTIAL)) {
           source = slicePrefix(source, config.SYNTAX_PARTIAL)
           if (source) {
-            return creator.createPartial(source)
+            if (!currentElement) {
+              return creator.createPartial(source)
+            }
+            else {
+              fatal(
+                currentAttribute
+                  ? `partial 不能写在属性的值里`
+                  : `partial 不能写在属性层级`
+              )
+            }
           }
           fatal(`无效的 partial`)
         }
