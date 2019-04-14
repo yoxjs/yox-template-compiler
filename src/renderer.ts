@@ -226,8 +226,9 @@ export function render(
               }
             }
             else if (attr.type === nodeType.DIRECTIVE) {
+              const modifier = attr.modifier
               if (name === config.DIRECTIVE_EVENT) {
-                on[name] = {
+                on[modifier] = {
                   name,
                   event: attr.event,
                   method: attr.method,
@@ -242,21 +243,20 @@ export function render(
                 }
               }
               else if (name === config.DIRECTIVE_BIND) {
-                bind[name] = {
+                bind[modifier] = {
                   name,
                   value: get(attr.expr),
                   keypath: attr.absoluteKeypath,
                 }
               }
               else if (name === config.DIRECTIVE_LAZY) {
-                lazy[name] = {
+                lazy[modifier] = {
                   name,
                   value: attr.value,
                 }
               }
               else {
                 directives[name] = {
-                  name,
                   modifier: attr.modifier,
                   value: attr.value,
                   expr: attr.expr,

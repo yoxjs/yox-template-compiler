@@ -5,8 +5,6 @@ import ExpressionNode from 'yox-expression-compiler/src/node/Node'
  */
 export default interface Directive {
 
-  name: string
-
   modifier: string | undefined
 
   value: any
