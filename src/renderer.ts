@@ -172,9 +172,6 @@ export function render(
     renderEmpty,
     renderChildren,
     get,
-    function (tag: string, data?: Object) {
-
-    },
     function (tag: string, data?: Object | string | any[], children?: string | any[]) {
 
     },

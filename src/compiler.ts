@@ -159,9 +159,9 @@ export function compile(content: string) {
 
       if (node && node.type === type) {
 
-        const currentNode = array.last(nodeStack)
-        if (currentNode && currentNode.static && !node.static) {
-          currentNode.static = env.FALSE
+        const currentNode: Branch = array.last(nodeStack)
+        if (currentNode && currentNode.isStatic && !node.isStatic) {
+          currentNode.isStatic = env.FALSE
         }
 
         const { children } = node,
@@ -265,7 +265,7 @@ export function compile(content: string) {
       // children 是否可以转换成 props 需满足以下条件
       // 1. 当前元素不是组件，因为组件的子节点要作为 slot 节点
       // 2. 当前元素不是插槽，因为后续要收集插槽的子节点
-      if (!element.component && !element.slot) {
+      if (!element.isComponent && !element.slot) {
 
         array.push(
           element.attrs || (element.attrs = []),
@@ -286,7 +286,7 @@ export function compile(content: string) {
       // children 是否可以转换成 props 需满足以下条件
       // 1. 当前元素不是组件，因为组件的子节点要作为 slot 节点
       // 2. 当前元素不是插槽，因为后续要收集插槽的子节点
-      if (!element.component && !element.slot) {
+      if (!element.isComponent && !element.slot) {
 
         array.push(
           element.attrs || (element.attrs = []),
@@ -349,7 +349,7 @@ export function compile(content: string) {
       }
       // 可能存在没收集到的布尔类型的 property
       else {
-        attr.value = element.component ? env.TRUE : attr.name
+        attr.value = element.isComponent ? env.TRUE : attr.name
       }
 
     },
@@ -442,12 +442,10 @@ export function compile(content: string) {
 
     convertToBindDirective = function (node: Attribute | Property) {
 
-      const { expr } = node
-
       // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
       // <div class="{{className}}">
 
-      if (expr['staticKeypath']) {
+      if (node.expr['staticKeypath']) {
 
         // 转换成指令
         replaceChild(
@@ -455,7 +453,7 @@ export function compile(content: string) {
           creator.createDirective(
             config.DIRECTIVE_BIND,
             node.name,
-            expr['staticKeypath']
+            node.expr['staticKeypath']
           )
         )
 
@@ -502,7 +500,7 @@ export function compile(content: string) {
         popSelfClosingElementIfNeeded()
       }
 
-      const type = node.type, currentNode = array.last(nodeStack)
+      const type = node.type, currentNode: Branch = array.last(nodeStack)
 
       // else 系列只是 if 的递进节点，不需要加入 nodeList
       if (helper.elseTypes[type]) {
@@ -535,7 +533,7 @@ export function compile(content: string) {
             //
             // 当 name 属性结束后，条件满足，但此时已不是元素属性层级了
             currentElement && currentNode.type === nodeType.ELEMENT
-              ? currentNode.attrs || (currentNode.attrs = [])
+              ? currentElement.attrs || (currentElement.attrs = [])
               : currentNode.children || (currentNode.children = []),
             node
           )
@@ -557,8 +555,8 @@ export function compile(content: string) {
       }
 
       if (helper.leafTypes[type]) {
-        if (currentNode && currentNode.static && !node.static) {
-          currentNode.static = env.FALSE
+        if (currentNode && currentNode.isStatic && !node.isStatic) {
+          currentNode.isStatic = env.FALSE
         }
       }
       else {
@@ -616,7 +614,7 @@ export function compile(content: string) {
                */
               if (tag === env.RAW_TEMPLATE) {
                 const lastNode = array.last(nodeStack)
-                if (!lastNode || !lastNode.component) {
+                if (!lastNode || !lastNode.isComponent) {
                   reportError('<template> 只能写在组件标签内')
                 }
               }
@@ -686,7 +684,7 @@ export function compile(content: string) {
             }
             else {
               // 组件用驼峰格式
-              if (currentElement.component) {
+              if (currentElement.isComponent) {
                 node = creator.createAttribute(
                   string.camelCase(name)
                 )
@@ -899,7 +897,7 @@ export function compile(content: string) {
           source = slicePrefix(source, config.SYNTAX_SPREAD)
           const expr = exprCompiler.compile(source)
           if (expr) {
-            if (currentElement && currentElement.component) {
+            if (currentElement && currentElement.isComponent) {
               return creator.createSpread(expr)
             }
             else {

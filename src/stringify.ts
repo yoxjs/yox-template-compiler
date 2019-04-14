@@ -31,7 +31,6 @@ import Partial from './node/Partial'
 import Spread from './node/Spread'
 
 const RENDER_ELEMENT = '_c'
-const RENDER_COMPONENT = '_d'
 const RENDER_EACH = '_l'
 const RENDER_EMPTY = '_e'
 const RENDER_EXPRESSION = '_x'
@@ -219,7 +218,7 @@ const nodeStringify = {}
 
 nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
-  let { tag, component, slot, name, ref, key, transition, attrs, children } = node,
+  let { tag, isComponent, isSvg, isStatic, slot, name, ref, key, transition, attrs, children } = node,
 
   args: any[] = [toJSON(tag)],
 
@@ -263,7 +262,16 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     data.key = stringifyValue(key.value, key.expr, key.children)
   }
 
-  if (component) {
+  if (isSvg) {
+    data.isSvg = env.TRUE
+  }
+
+  if (isStatic) {
+    data.isStatic = env.TRUE
+  }
+
+  if (isComponent) {
+    data.isComponent = env.TRUE
     slots = getComponentSlots(children)
     if (slots) {
       data.slots = slots
@@ -286,7 +294,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   return stringifyCall(
-    component ? RENDER_COMPONENT : RENDER_ELEMENT,
+    RENDER_ELEMENT,
     array.join(args, SEP_COMMA)
   )
 
@@ -415,7 +423,6 @@ export function convert(code: string): Function {
     RENDER_EMPTY,
     RENDER_CHILDREN,
     RENDER_EXPRESSION,
-    RENDER_COMPONENT,
     RENDER_ELEMENT,
     RENDER_PARTIAL,
     RENDER_IMPORT,

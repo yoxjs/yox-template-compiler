@@ -5,6 +5,6 @@ export default interface Node {
 
   type: number
 
-  static: boolean
+  isStatic: boolean
 
 }

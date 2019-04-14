@@ -21,7 +21,7 @@ import Text from './node/Text'
 export function createAttribute(name: string, namespace?: string): Attribute {
   return {
     type: nodeType.ATTRIBUTE,
-    static: env.TRUE,
+    isStatic: env.TRUE,
     name,
     namespace,
     children: env.UNDEFINED,
@@ -34,7 +34,7 @@ export function createDirective(name: string, modifier?: string, value?: string,
   return {
     type: nodeType.DIRECTIVE,
     name,
-    static: env.FALSE,
+    isStatic: env.FALSE,
     modifier,
     value,
     expr,
@@ -45,7 +45,7 @@ export function createDirective(name: string, modifier?: string, value?: string,
 export function createProperty(name: string, hint: number, value?: string | number | boolean, expr?: ExpressionNode, children?: Node[]): Property {
   return {
     type: nodeType.PROPERTY,
-    static: env.TRUE,
+    isStatic: env.TRUE,
     name,
     hint,
     value,
@@ -59,18 +59,18 @@ export function createEach(expr: ExpressionNode, index: string): Each {
     type: nodeType.EACH,
     expr,
     index,
-    static: env.FALSE,
+    isStatic: env.FALSE,
     children: env.UNDEFINED,
   }
 }
 
-export function createElement(tag: string, svg: boolean, component: boolean): Element {
+export function createElement(tag: string, isSvg: boolean, isComponent: boolean): Element {
   return {
     type: nodeType.ELEMENT,
     tag,
-    svg,
-    component,
-    static: !component,
+    isSvg,
+    isComponent,
+    isStatic: !isComponent,
     slot: env.UNDEFINED,
     name: env.UNDEFINED,
     ref: env.UNDEFINED,
@@ -84,7 +84,7 @@ export function createElement(tag: string, svg: boolean, component: boolean): El
 export function createElse(): Else {
   return {
     type: nodeType.ELSE,
-    static: env.FALSE,
+    isStatic: env.FALSE,
     children: env.UNDEFINED,
   }
 }
@@ -93,7 +93,7 @@ export function createElseIf(expr: ExpressionNode): ElseIf {
   return {
     type: nodeType.ELSE_IF,
     expr,
-    static: env.FALSE,
+    isStatic: env.FALSE,
     next: env.UNDEFINED,
     children: env.UNDEFINED,
   }
@@ -103,7 +103,7 @@ export function createExpression(expr: ExpressionNode, safe: boolean): Expressio
   return {
     type: nodeType.EXPRESSION,
     expr,
-    static: env.FALSE,
+    isStatic: env.FALSE,
     safe,
   }
 }
@@ -112,7 +112,7 @@ export function createIf(expr: ExpressionNode): If {
   return {
     type: nodeType.IF,
     expr,
-    static: env.FALSE,
+    isStatic: env.FALSE,
     stub: env.FALSE,
     next: env.UNDEFINED,
     children: env.UNDEFINED,
@@ -123,7 +123,7 @@ export function createImport(name: string): Import {
   return {
     type: nodeType.IMPORT,
     name,
-    static: env.FALSE,
+    isStatic: env.FALSE,
   }
 }
 
@@ -131,7 +131,7 @@ export function createPartial(name: string): Partial {
   return {
     type: nodeType.PARTIAL,
     name,
-    static: env.FALSE,
+    isStatic: env.FALSE,
     children: env.UNDEFINED,
   }
 }
@@ -140,7 +140,7 @@ export function createSpread(expr: ExpressionNode): Spread {
   return {
     type: nodeType.SPREAD,
     expr,
-    static: env.FALSE,
+    isStatic: env.FALSE,
   }
 }
 
@@ -148,6 +148,6 @@ export function createText(text: string): Text {
   return {
     type: nodeType.TEXT,
     text,
-    static: env.TRUE,
+    isStatic: env.TRUE,
   }
 }

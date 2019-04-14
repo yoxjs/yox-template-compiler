@@ -151,38 +151,38 @@ it('静态子树', () => {
 
   ast = compile('<div><span id="xx">1123</span></div>')
 
-  expect(ast[0].static).toBe(true)
-  expect(ast[0].children[0].static).toBe(true)
+  expect(ast[0].isStatic).toBe(true)
+  expect(ast[0].children[0].isStatic).toBe(true)
 
   ast = compile('<div><span id="xx">{{x}}</span></div>')
 
-  expect(ast[0].static).toBe(false)
-  expect(ast[0].children[0].static).toBe(false)
+  expect(ast[0].isStatic).toBe(false)
+  expect(ast[0].children[0].isStatic).toBe(false)
 
   ast = compile('<div><span id="xx">{{#if x}}x{{/if}}</span></div>')
 
-  expect(ast[0].static).toBe(false)
-  expect(ast[0].children[0].static).toBe(false)
+  expect(ast[0].isStatic).toBe(false)
+  expect(ast[0].children[0].isStatic).toBe(false)
 
   ast = compile('<div><span id="xx">{{> name}}</span></div>')
 
-  expect(ast[0].static).toBe(false)
-  expect(ast[0].children[0].static).toBe(false)
+  expect(ast[0].isStatic).toBe(false)
+  expect(ast[0].children[0].isStatic).toBe(false)
 
   ast = compile('<div><span id="{{x}}"></span></div>')
 
-  expect(ast[0].static).toBe(false)
-  expect(ast[0].children[0].static).toBe(false)
+  expect(ast[0].isStatic).toBe(false)
+  expect(ast[0].children[0].isStatic).toBe(false)
 
   ast = compile('<div><span on-click="x"></span></div>')
 
-  expect(ast[0].static).toBe(false)
-  expect(ast[0].children[0].static).toBe(false)
+  expect(ast[0].isStatic).toBe(false)
+  expect(ast[0].children[0].isStatic).toBe(false)
 
   ast = compile('<div><span o-x="x"></span></div>')
 
-  expect(ast[0].static).toBe(false)
-  expect(ast[0].children[0].static).toBe(false)
+  expect(ast[0].isStatic).toBe(false)
+  expect(ast[0].children[0].isStatic).toBe(false)
 
   ast = compile(`
     <div>
@@ -191,9 +191,9 @@ it('静态子树', () => {
     </div>
   `)
 
-  expect(ast[0].static).toBe(false)
-  expect(ast[0].children[0].static).toBe(true)
-  expect(ast[0].children[1].static).toBe(false)
+  expect(ast[0].isStatic).toBe(false)
+  expect(ast[0].children[0].isStatic).toBe(true)
+  expect(ast[0].children[1].isStatic).toBe(false)
 
 })
 
@@ -207,8 +207,8 @@ it('svg', () => {
 
   expect(ast[0].type).toBe(nodeType.ELEMENT)
   expect(ast[0].tag).toBe('svg')
-  expect(ast[0].svg).toBe(true)
-  expect(ast[0].component).toBe(false)
+  expect(ast[0].isSvg).toBe(true)
+  expect(ast[0].isComponent).toBe(false)
 
   ast = compile('<font-face></font-face')
 
@@ -216,8 +216,8 @@ it('svg', () => {
 
   expect(ast[0].type).toBe(nodeType.ELEMENT)
   expect(ast[0].tag).toBe('font-face')
-  expect(ast[0].svg).toBe(true)
-  expect(ast[0].component).toBe(false)
+  expect(ast[0].isSvg).toBe(true)
+  expect(ast[0].isComponent).toBe(false)
 
   ast = compile('<missing-glyph></missing-glyph')
 
@@ -225,8 +225,8 @@ it('svg', () => {
 
   expect(ast[0].type).toBe(nodeType.ELEMENT)
   expect(ast[0].tag).toBe('missing-glyph')
-  expect(ast[0].svg).toBe(true)
-  expect(ast[0].component).toBe(false)
+  expect(ast[0].isSvg).toBe(true)
+  expect(ast[0].isComponent).toBe(false)
 
   ast = compile('<foreignObject></foreignObject')
 
@@ -234,8 +234,8 @@ it('svg', () => {
 
   expect(ast[0].type).toBe(nodeType.ELEMENT)
   expect(ast[0].tag).toBe('foreignObject')
-  expect(ast[0].svg).toBe(true)
-  expect(ast[0].component).toBe(false)
+  expect(ast[0].isSvg).toBe(true)
+  expect(ast[0].isComponent).toBe(false)
 
 })
 

@@ -12,9 +12,9 @@ export default interface Element extends Branch {
 
   tag: string
 
-  svg: boolean
+  isSvg: boolean
 
-  component: boolean
+  isComponent: boolean
 
   // <template slot="xx">
   slot: string | undefined
