@@ -464,9 +464,9 @@ export function compile(content: string) {
 
       const currentNode = array.last(nodeStack),
 
-      prop = currentElement && currentNode.type === nodeType.ELEMENT ? 'attrs' : 'children',
+      isAttr = currentElement && currentNode.type === nodeType.ELEMENT,
 
-      nodeList = currentNode[prop],
+      nodeList = isAttr ? currentNode.attrs : currentNode.children,
 
       index = array.indexOf(nodeList, oldNode)
 
@@ -477,7 +477,12 @@ export function compile(content: string) {
         else {
           nodeList.splice(index, 1)
           if (!nodeList.length) {
-            currentNode[prop] = env.UNDEFINED
+            if (isAttr) {
+              currentNode.attrs = env.UNDEFINED
+            }
+            else {
+              currentNode.children = env.UNDEFINED
+            }
           }
         }
       }
