@@ -260,7 +260,6 @@ export function render(
                   modifier: attr.modifier,
                   value: attr.value,
                   expr: attr.expr,
-                  keypath,
                 }
               }
             }

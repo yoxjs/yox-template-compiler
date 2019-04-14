@@ -13,6 +13,4 @@ export default interface Directive {
 
   expr: ExpressionNode | undefined
 
-  keypath: string
-
 }
