@@ -276,6 +276,7 @@ export function render(instance: any, result: Function) {
                   binding[name] = {
                     name: name,
                     hint: env.UNDEFINED,
+                    namespace: attr.namespace,
                     binding: result.binding as string,
                   }
                 }
@@ -287,7 +288,7 @@ export function render(instance: any, result: Function) {
               else {
                 nativeAttrs[name] = {
                   name,
-                  namespace: attr.component,
+                  namespace: attr.namespace,
                   value,
                 }
               }
@@ -302,6 +303,7 @@ export function render(instance: any, result: Function) {
                   binding[name] = {
                     name: name,
                     hint: attr.hint,
+                    namespace: env.UNDEFINED,
                     binding: result.binding as string,
                   }
                 }
@@ -363,14 +365,15 @@ export function render(instance: any, result: Function) {
                   }
                 )
 
-                const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH],
-
-                binding = keypathUtil.join(absoluteKeypath, '*')
-
-                binding[binding] = {
-                  name: env.UNDEFINED,
-                  hint: env.UNDEFINED,
-                  binding,
+                const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH]
+                if (absoluteKeypath) {
+                  const fuzzyKeypath = keypathUtil.join(absoluteKeypath, '*')
+                  binding[fuzzyKeypath] = {
+                    name: env.UNDEFINED,
+                    hint: env.UNDEFINED,
+                    namespace: env.UNDEFINED,
+                    binding: fuzzyKeypath,
+                  }
                 }
 
               }

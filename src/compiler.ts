@@ -79,7 +79,6 @@ attr2Prop['tabindex'] = 'tabIndex'
 attr2Prop['minlength'] = 'minLength'
 attr2Prop['maxlength'] = 'maxLength'
 
-
 /**
  * 截取前缀之后的字符串
  */
@@ -100,7 +99,7 @@ function trimBreakline(content: string): string {
   )
 }
 
-export function compile(content: string) {
+export function compile(content: string): Node[] {
 
   let nodeList: Node[] = compileCache[content]
   if (nodeList) {
@@ -174,7 +173,7 @@ export function compile(content: string) {
         const { children } = node,
 
         // 优化单个子节点
-        singleChild = children && children.length === 1 && children[0],
+        child = children && children.length === 1 && children[0],
 
         isElement = type === nodeType.ELEMENT,
 
@@ -193,39 +192,39 @@ export function compile(content: string) {
 
         // 除了 helper.specialAttrs 里指定的特殊属性，attrs 里的任何节点都不能单独拎出来赋给 element
         // 因为 attrs 可能存在 if，所以每个 attr 最终都不一定会存在
-        if (singleChild) {
+        if (child) {
 
-          switch (singleChild.type) {
+          switch (child.type) {
 
             case nodeType.TEXT:
               // 属性的值如果是纯文本，直接获取文本值
               // 减少渲染时的遍历
               if (isElement) {
-                processElementSingleText(node as Element, singleChild as Text)
+                processElementSingleText(node as Element, child as Text)
               }
               else if (isAttribute) {
-                processAttributeSingleText(node as Attribute, singleChild as Text)
+                processAttributeSingleText(node as Attribute, child as Text)
               }
               else if (isProperty) {
-                processPropertySingleText(node as Property, singleChild as Text)
+                processPropertySingleText(node as Property, child as Text)
               }
               else if (isDirective) {
-                processDirectiveSingleText(node as Directive, singleChild as Text)
+                processDirectiveSingleText(node as Directive, child as Text)
               }
               break
 
             case nodeType.EXPRESSION:
               if (isElement) {
-                processElementSingleExpression(node as Element, singleChild as Expression)
+                processElementSingleExpression(node as Element, child as Expression)
               }
               else if (isAttribute) {
-                processAttributeSingleExpression(node as Attribute, singleChild as Expression)
+                processAttributeSingleExpression(node as Attribute, child as Expression)
               }
               else if (isProperty) {
-                processPropertySingleExpression(node as Property, singleChild as Expression)
+                processPropertySingleExpression(node as Property, child as Expression)
               }
               else if (isDirective) {
-                processDirectiveSingleExpression(node as Directive, singleChild as Expression)
+                processDirectiveSingleExpression(node as Directive, child as Expression)
               }
               break
 
