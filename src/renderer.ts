@@ -9,6 +9,8 @@ import * as object from 'yox-common/util/object'
 import * as logger from 'yox-common/util/logger'
 import * as keypathUtil from 'yox-common/util/keypath'
 
+import EventObject from 'yox-common/util/Event'
+
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Keypath from 'yox-expression-compiler/src/node/Keypath'
 
@@ -21,9 +23,8 @@ import Attribute from './vnode/Attribute'
 import Property from './vnode/Property'
 import Directive from './vnode/Directive'
 import Event from './vnode/Event'
-import Lazy from './vnode/Lazy'
-import Bind from './vnode/Bind'
 import Model from './vnode/Model'
+import Bind from './vnode/Bind'
 
 /**
  * nodes 是动态计算出来的节点，因此节点本身可能是数组
@@ -171,7 +172,7 @@ export function render(instance: any, result: Function) {
 
   },
 
-  renderValue = function (expr: ExpressionNode): any {
+  renderValue = function (expr: ExpressionNode, simple?: boolean): any {
     return exprExecutor.execute(expr, lookup, instance)
   }
 
@@ -203,42 +204,80 @@ export function render(instance: any, result: Function) {
         array.each(
           attrs,
           function (attr: any) {
+
             const name = attr.name
+
             if (attr.type === nodeType.ATTRIBUTE) {
+              let value = attr.value
+              if (attr.binding) {
+                value = renderValue(attr.expr, env.TRUE)
+                if (isDef(attr.absoluteKeypath)) {
+                  bind[name] = {
+                    name: name,
+                    isAttr: env.TRUE,
+                    keypath: attr.absoluteKeypath,
+                  }
+                }
+              }
+
               if (data.isComponent) {
-                props[name] = attr.value
+                props[name] = value
               }
               else {
                 nativeAttrs[name] = {
+                  name,
                   namespace: attr.component,
-                  value: attr.value,
+                  value,
                 }
               }
             }
             else if (attr.type === nodeType.PROPERTY) {
+              let value = attr.value
+              if (attr.binding) {
+                value = renderValue(attr.expr, env.TRUE)
+                if (isDef(attr.absoluteKeypath)) {
+                  bind[name] = {
+                    name: name,
+                    isAttr: env.FALSE,
+                    keypath: attr.absoluteKeypath,
+                  }
+                }
+              }
               nativeProps[name] = {
+                name,
                 hint: attr.hint,
-                value: attr.value,
+                value,
               }
             }
             else if (attr.type === nodeType.DIRECTIVE) {
+
               const modifier = attr.modifier
+
               if (name === config.DIRECTIVE_EVENT) {
                 on[modifier] = {
-                  event: attr.event,
-                  method: attr.method,
-                  args: attr.args,
+                  name: modifier,
+                  lazy: env.FALSE,
+                  listener: attr.event
+                    ? function (event: EventObject, data: any) {
+                        if (event.type !== attr.event) {
+                          event = new EventObject(event)
+                          event.type = attr.event
+                        }
+                        instance.fire(event, data)
+                      }
+                    : function (event: EventObject, data: any) {
+                        if (attr.args) {
+
+                        }
+                        else {
+
+                        }
+                      }
                 }
               }
               else if (name === config.DIRECTIVE_MODEL) {
                 model = {
                   name: env.RAW_VALUE,
-                  value: renderValue(attr.expr),
-                  absoluteKeypath: attr.absoluteKeypath,
-                }
-              }
-              else if (name === config.DIRECTIVE_BIND) {
-                bind[modifier] = {
                   value: renderValue(attr.expr),
                   absoluteKeypath: attr.absoluteKeypath,
                 }
@@ -277,13 +316,34 @@ export function render(instance: any, result: Function) {
           }
         )
 
+        // lazy 必须和 on 搭配使用，只有一个 lazy 啥也干不了
+        object.each(
+          lazy,
+          function (value: number | boolean, name: string) {
+            if (name) {
+              if (on[name]) {
+                on[name].lazy = value
+              }
+            }
+            else {
+              object.each(
+                on,
+                function (event: Event) {
+                  if (event.lazy === env.FALSE) {
+                    event.lazy = value
+                  }
+                }
+              )
+            }
+          }
+        )
+
         data.props = props
         data.nativeAttrs = nativeAttrs
         data.nativeProps = nativeProps
         data.directives = directives
         data.on = on
         data.bind = bind
-        data.lazy = lazy
         data.model = model
 
       }
