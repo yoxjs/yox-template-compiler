@@ -11,7 +11,7 @@ export default interface Directive {
 
   expr: ExpressionNode | undefined
 
-  hooks: Record<string, Function> | undefined
+  hooks: Record<string, Function>
 
   keypath: string
 
