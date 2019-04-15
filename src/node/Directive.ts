@@ -12,7 +12,7 @@ export default interface Directive extends Branch {
 
   expr: ExpressionNode | undefined
 
-  // bind 指令的 value 是 number
-  value: string | number | undefined
+  // bind 指令的 value 是 number, lazy 是 boolean
+  value: string | number | boolean | undefined
 
 }

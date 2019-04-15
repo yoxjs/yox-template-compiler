@@ -18,12 +18,6 @@ export default interface Bind {
    */
   isAttr: boolean
 
-  /**
-   * absoluteKeypath 可能为空
-   * 比如 <div id="{{xx}}">，数据找不到 xx 时，absoluteKeypath为空
-   */
-  absoluteKeypath: string | void
-
-  value: any | void
+  keypath: string
 
 }

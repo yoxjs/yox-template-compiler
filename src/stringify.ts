@@ -299,12 +299,35 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 }
 
 nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
-  return stringifyObject({
+  const result: Record<string, any> = {
     type: node.type,
     namespace: toJSON(node.namespace),
     name: toJSON(node.name),
-    value: stringifyValue(node.value, node.expr, node.children),
-  })
+    binding: node.binding,
+  }
+  if (node.binding) {
+    result.expr = toJSON(node.expr)
+  }
+  else {
+    result.value = stringifyValue(node.value, node.expr, node.children)
+  }
+  return stringifyObject(result)
+}
+
+nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
+  const result: Record<string, any> = {
+    type: node.type,
+    name: toJSON(node.name),
+    hint: node.hint,
+    binding: node.binding,
+  }
+  if (node.binding) {
+    result.expr = toJSON(node.expr)
+  }
+  else {
+    result.value = stringifyValue(node.value, node.expr, node.children)
+  }
+  return stringifyObject(result)
 }
 
 nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
@@ -341,11 +364,9 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
       logger.fatal('事件指令格式错误')
     }
   }
-  // <input model="id"> 和 <div id="{{id}}">
-  else if (name === config.DIRECTIVE_MODEL || name === config.DIRECTIVE_BIND) {
+  // <input model="id">
+  else if (name === config.DIRECTIVE_MODEL) {
     result.expr = toJSON(expr)
-    // 只有 bind 是 number，不需要 toJSON
-    result.value = value
   }
   // <div lazy="100">
   else if (name === config.DIRECTIVE_LAZY) {
@@ -358,15 +379,6 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 
   return stringifyObject(result)
 
-}
-
-nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
-  return stringifyObject({
-    type: node.type,
-    name: toJSON(node.name),
-    hint: node.hint,
-    value: stringifyValue(node.value, node.expr, node.children),
-  })
 }
 
 nodeStringify[nodeType.SPREAD] = function (node: Spread): string {

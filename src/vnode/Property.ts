@@ -3,8 +3,10 @@
  */
 export default interface Property {
 
-  hint: number
+  name: string
 
   value: any
+
+  hint: number
 
 }

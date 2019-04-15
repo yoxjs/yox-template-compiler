@@ -4,7 +4,6 @@ import Directive from './Directive'
 import Event from './Event'
 import Model from './Model'
 import Bind from './Bind'
-import Lazy from './Lazy'
 
 /**
  * 元素
@@ -30,8 +29,6 @@ export default interface Element {
   on: Record<string, Event> | void
 
   bind: Record<string, Bind> | void
-
-  lazy: Record<string, Lazy> | void
 
   directives: Record<string, Directive> | void
 

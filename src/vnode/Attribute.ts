@@ -3,8 +3,10 @@
  */
 export default interface Attribute {
 
-  namespace: string | undefined
+  name: string
 
   value: any
+
+  namespace: string | undefined
 
 }

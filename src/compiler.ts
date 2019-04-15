@@ -342,10 +342,17 @@ export function compile(content: string) {
 
     processPropertySingleExpression = function (prop: Property, child: Expression) {
 
-      prop.expr = child.expr
+      const { expr } = child
+
+      prop.expr = expr
       prop.children = env.UNDEFINED
 
-      convertToBindDirective(prop)
+      // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
+      // <div class="{{className}}">
+
+      if (expr[env.RAW_STATIC_KEYPATH]) {
+        prop.binding = env.TRUE
+      }
 
     },
 
@@ -370,10 +377,17 @@ export function compile(content: string) {
 
     processAttributeSingleExpression = function (attr: Attribute, child: Expression) {
 
-      attr.expr = child.expr
+      const { expr } = child
+
+      attr.expr = expr
       attr.children = env.UNDEFINED
 
-      convertToBindDirective(attr)
+      // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
+      // <div class="{{className}}">
+
+      if (expr[env.RAW_STATIC_KEYPATH]) {
+        attr.binding = env.TRUE
+      }
 
     },
 
@@ -475,29 +489,6 @@ export function compile(content: string) {
     isSpecialAttr = function (element: Element, attr: Attribute): boolean {
       return helper.specialAttrs[attr.name]
         || element.tag === env.RAW_SLOT && attr.name === env.RAW_NAME
-    },
-
-    convertToBindDirective = function (node: Attribute | Property) {
-
-      // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
-      // <div class="{{className}}">
-
-      if (node.expr[env.RAW_STATIC_KEYPATH]) {
-
-        // 转换成指令
-        replaceChild(
-          node,
-          creator.createDirective(
-            config.DIRECTIVE_BIND,
-            node.name,
-            // 因为组件绑定的肯定是 prop
-            // 对于 DOM 元素来说，需要区分是否是 attr
-            node.type,
-            node.expr
-          )
-        )
-
-      }
     },
 
     replaceChild = function (oldNode: Node, newNode?: Node) {

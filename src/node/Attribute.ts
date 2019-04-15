@@ -14,4 +14,6 @@ export default interface Attribute extends Branch {
 
   value: any | undefined
 
+  binding: boolean | undefined
+
 }

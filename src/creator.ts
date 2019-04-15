@@ -24,9 +24,10 @@ export function createAttribute(name: string, namespace?: string): Attribute {
     isStatic: env.TRUE,
     name,
     namespace,
-    children: env.UNDEFINED,
     value: env.UNDEFINED,
     expr: env.UNDEFINED,
+    children: env.UNDEFINED,
+    binding: env.UNDEFINED,
   }
 }
 
@@ -51,6 +52,7 @@ export function createProperty(name: string, hint: number, value?: string | numb
     value,
     expr,
     children,
+    binding: env.UNDEFINED,
   }
 }
 
