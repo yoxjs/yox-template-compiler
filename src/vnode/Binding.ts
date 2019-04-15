@@ -1,7 +1,7 @@
 /**
- * bind 指令
+ * binding 指令
  */
-export default interface Bind {
+export default interface Binding {
 
   /**
    * 绑定的属性名称，比如 <div id="{{xx}}" 中的 id
@@ -18,6 +18,6 @@ export default interface Bind {
    */
   isAttr: boolean
 
-  keypath: string
+  binding: string
 
 }

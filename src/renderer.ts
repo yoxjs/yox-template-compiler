@@ -18,13 +18,13 @@ import * as exprExecutor from 'yox-expression-compiler/src/executor'
 
 import * as nodeType from './nodeType'
 
-import Element from './vnode/Element'
+import VNode from './vnode/VNode'
 import Attribute from './vnode/Attribute'
 import Property from './vnode/Property'
 import Directive from './vnode/Directive'
 import Event from './vnode/Event'
 import Model from './vnode/Model'
-import Bind from './vnode/Bind'
+import Binding from './vnode/Binding'
 
 /**
  * nodes 是动态计算出来的节点，因此节点本身可能是数组
@@ -174,6 +174,17 @@ export function render(instance: any, result: Function) {
 
   renderValue = function (expr: ExpressionNode, simple?: boolean): any {
     return exprExecutor.execute(expr, lookup, instance)
+  },
+
+  getBindingValue = function (expr: Keypath) {
+    const value = renderValue(expr, env.TRUE)
+    if (!expr.absoluteKeypath) {
+      logger.warn(`can't find value by the keypath "${expr.raw}".`)
+    }
+    return {
+      value,
+      binding: expr.absoluteKeypath,
+    }
   }
 
 
@@ -181,7 +192,7 @@ export function render(instance: any, result: Function) {
     renderEmpty,
     renderChildren,
     renderValue,
-    function (data: Element, attrs: any[]) {
+    function (data: VNode, attrs: any[]) {
 
       if (attrs.length) {
 
@@ -193,7 +204,7 @@ export function render(instance: any, result: Function) {
 
         on: Record<string, Event> = {},
 
-        bind: Record<string, Bind> = {},
+        binding: Record<string, Binding> = {},
 
         lazy: Record<string, number | boolean> = {},
 
@@ -210,12 +221,14 @@ export function render(instance: any, result: Function) {
             if (attr.type === nodeType.ATTRIBUTE) {
               let value = attr.value
               if (attr.binding) {
-                value = renderValue(attr.expr, env.TRUE)
-                if (isDef(attr.absoluteKeypath)) {
-                  bind[name] = {
+                const result = getBindingValue(attr.expr)
+                value = result.value
+
+                if (is.string(result.binding)) {
+                  binding[name] = {
                     name: name,
                     isAttr: env.TRUE,
-                    keypath: attr.absoluteKeypath,
+                    binding: result.binding as string,
                   }
                 }
               }
@@ -234,12 +247,14 @@ export function render(instance: any, result: Function) {
             else if (attr.type === nodeType.PROPERTY) {
               let value = attr.value
               if (attr.binding) {
-                value = renderValue(attr.expr, env.TRUE)
-                if (isDef(attr.absoluteKeypath)) {
-                  bind[name] = {
+                const result = getBindingValue(attr.expr)
+                value = result.value
+
+                if (is.string(result.binding)) {
+                  binding[name] = {
                     name: name,
                     isAttr: env.FALSE,
-                    keypath: attr.absoluteKeypath,
+                    binding: result.binding as string,
                   }
                 }
               }
@@ -276,11 +291,17 @@ export function render(instance: any, result: Function) {
                 }
               }
               else if (name === config.DIRECTIVE_MODEL) {
-                model = {
-                  name: env.RAW_VALUE,
-                  value: renderValue(attr.expr),
-                  absoluteKeypath: attr.absoluteKeypath,
+
+                const result = getBindingValue(attr.expr)
+
+                if (is.string(result.binding)) {
+                  model = {
+                    name: env.RAW_VALUE,
+                    value: result.value,
+                    binding: result.binding as string,
+                  }
                 }
+
               }
               else if (name === config.DIRECTIVE_LAZY) {
                 lazy[modifier] = attr.value
@@ -343,7 +364,7 @@ export function render(instance: any, result: Function) {
         data.nativeProps = nativeProps
         data.directives = directives
         data.on = on
-        data.bind = bind
+        data.binding = binding
         data.model = model
 
       }

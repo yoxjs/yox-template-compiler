@@ -1,3 +1,5 @@
+import EventObject from 'yox-common/util/Event'
+
 /**
  * 事件指令
  */
@@ -8,6 +10,6 @@ export default interface Event {
 
   lazy: number | boolean
 
-  listener: Function
+  listener: (event: EventObject, data: any) => boolean | void
 
 }

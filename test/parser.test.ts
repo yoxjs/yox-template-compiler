@@ -517,7 +517,7 @@ it('文本换行', () => {
 
 })
 
-it('自动 bind', () => {
+it('自动 binding', () => {
 
   let ast = compile(`
     <div id="{{id}}" class="{{a.b.c}}" name="{{a + b}}" title="1"></div>
@@ -527,15 +527,13 @@ it('自动 bind', () => {
   expect(ast[0].attrs.length).toBe(4)
   expect(ast[0].children).toBe(undefined)
 
-  expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
-  expect(ast[0].attrs[0].name).toBe(config.DIRECTIVE_BIND)
-  expect(ast[0].attrs[0].modifier).toBe('id')
-  expect(ast[0].attrs[0].expr.staticKeypath).toBe('id')
+  expect(ast[0].attrs[0].type).toBe(nodeType.PROPERTY)
+  expect(ast[0].attrs[0].name).toBe('id')
+  expect(ast[0].attrs[0].binding).toBe(true)
 
-  expect(ast[0].attrs[1].type).toBe(nodeType.DIRECTIVE)
-  expect(ast[0].attrs[1].name).toBe(config.DIRECTIVE_BIND)
-  expect(ast[0].attrs[1].modifier).toBe('className')
-  expect(ast[0].attrs[1].expr.staticKeypath).toBe('a.b.c')
+  expect(ast[0].attrs[1].type).toBe(nodeType.PROPERTY)
+  expect(ast[0].attrs[1].name).toBe('className')
+  expect(ast[0].attrs[1].binding).toBe(true)
 
   expect(ast[0].attrs[2].type).toBe(nodeType.PROPERTY)
   expect(ast[0].attrs[2].name).toBe('name')

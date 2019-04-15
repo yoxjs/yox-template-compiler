@@ -3,7 +3,7 @@ import Attribute from './Attribute'
 import Directive from './Directive'
 import Event from './Event'
 import Model from './Model'
-import Bind from './Bind'
+import Binding from './Binding'
 
 /**
  * 元素
@@ -28,7 +28,7 @@ export default interface Element {
 
   on: Record<string, Event> | void
 
-  bind: Record<string, Bind> | void
+  binding: Record<string, Binding> | void
 
   directives: Record<string, Directive> | void
 
