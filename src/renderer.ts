@@ -1,6 +1,7 @@
 import * as config from 'yox-config'
 
 import isDef from 'yox-common/function/isDef'
+import execute from 'yox-common/function/execute'
 
 import * as is from 'yox-common/util/is'
 import * as env from 'yox-common/util/env'
@@ -62,6 +63,8 @@ export function render(instance: any, result: Function) {
 
   keypathStack = [keypath, scope],
 
+  eventScope: any,
+
   localPartials = {},
 
   format = function (key: string) {
@@ -118,6 +121,11 @@ export function render(instance: any, result: Function) {
       // 为什么这样设计呢？
       // 因为 {{this}} 的存在，经过上面的格式化，key 会是 ''
       // 而 {{this.length}} 会变成 'length'
+
+      if (eventScope && object.has(eventScope, formated)) {
+        value = scope[formated]
+        return keypath
+      }
 
       // 如果取的是 scope 上直接有的数据，如 keypath
       if (object.has(scope, formated)) {
@@ -177,13 +185,53 @@ export function render(instance: any, result: Function) {
   },
 
   getBindingValue = function (expr: Keypath) {
-    const value = renderValue(expr, env.TRUE)
-    if (!expr.absoluteKeypath) {
+    const value = renderValue(expr, env.TRUE), binding = expr.absoluteKeypath
+    if (!binding) {
       logger.warn(`can't find value by the keypath "${expr.raw}".`)
     }
     return {
       value,
-      binding: expr.absoluteKeypath,
+      binding,
+    }
+  },
+
+  createEventListener = function (type: string) {
+    return function (event: EventObject, data: any) {
+      if (event.type !== type) {
+        event = new EventObject(event)
+        event.type = type
+      }
+      instance.fire(event, data)
+    }
+  },
+
+  createMethodListener = function (method: string, generate: Function | void) {
+    return function (event: EventObject, data: any) {
+
+      let result: any | void
+
+      if (generate) {
+
+        // 给当前 scope 加上 event 和 data
+        eventScope = {
+          $event: event,
+          $data: data,
+        }
+
+        result = execute(instance[method], instance, generate())
+
+        // 阅后即焚
+        eventScope = env.UNDEFINED
+
+      }
+      else {
+        result = execute(method, instance, data ? [event, data] : event)
+      }
+
+      if (result === env.FALSE) {
+        event.prevent().stop()
+      }
+
     }
   }
 
@@ -227,7 +275,7 @@ export function render(instance: any, result: Function) {
                 if (is.string(result.binding)) {
                   binding[name] = {
                     name: name,
-                    isAttr: env.TRUE,
+                    hint: env.UNDEFINED,
                     binding: result.binding as string,
                   }
                 }
@@ -253,7 +301,7 @@ export function render(instance: any, result: Function) {
                 if (is.string(result.binding)) {
                   binding[name] = {
                     name: name,
-                    isAttr: env.FALSE,
+                    hint: attr.hint,
                     binding: result.binding as string,
                   }
                 }
@@ -273,21 +321,8 @@ export function render(instance: any, result: Function) {
                   name: modifier,
                   lazy: env.FALSE,
                   listener: attr.event
-                    ? function (event: EventObject, data: any) {
-                        if (event.type !== attr.event) {
-                          event = new EventObject(event)
-                          event.type = attr.event
-                        }
-                        instance.fire(event, data)
-                      }
-                    : function (event: EventObject, data: any) {
-                        if (attr.args) {
-
-                        }
-                        else {
-
-                        }
-                      }
+                    ? createEventListener(attr.event)
+                    : createMethodListener(attr.method, attr.args)
                 }
               }
               else if (name === config.DIRECTIVE_MODEL) {
