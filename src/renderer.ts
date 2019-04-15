@@ -171,7 +171,7 @@ export function render(instance: any, result: Function) {
 
   },
 
-  get = function (expr: ExpressionNode): any {
+  renderValue = function (expr: ExpressionNode): any {
     return exprExecutor.execute(expr, lookup, instance)
   }
 
@@ -179,7 +179,7 @@ export function render(instance: any, result: Function) {
   return result(
     renderEmpty,
     renderChildren,
-    get,
+    renderValue,
     function (data: Element, attrs: any[]) {
 
       if (attrs.length) {
@@ -194,7 +194,7 @@ export function render(instance: any, result: Function) {
 
         bind: Record<string, Bind> = {},
 
-        lazy: Record<string, Lazy> = {},
+        lazy: Record<string, number | boolean> = {},
 
         directives: Record<string, Directive> = {},
 
@@ -225,7 +225,6 @@ export function render(instance: any, result: Function) {
               const modifier = attr.modifier
               if (name === config.DIRECTIVE_EVENT) {
                 on[modifier] = {
-                  name,
                   event: attr.event,
                   method: attr.method,
                   args: attr.args,
@@ -233,23 +232,19 @@ export function render(instance: any, result: Function) {
               }
               else if (name === config.DIRECTIVE_MODEL) {
                 model = {
-                  name,
-                  value: get(attr.expr),
-                  keypath: attr.absoluteKeypath,
+                  name: env.RAW_VALUE,
+                  value: renderValue(attr.expr),
+                  absoluteKeypath: attr.absoluteKeypath,
                 }
               }
               else if (name === config.DIRECTIVE_BIND) {
                 bind[modifier] = {
-                  name,
-                  value: get(attr.expr),
-                  keypath: attr.absoluteKeypath,
+                  value: renderValue(attr.expr),
+                  absoluteKeypath: attr.absoluteKeypath,
                 }
               }
               else if (name === config.DIRECTIVE_LAZY) {
-                lazy[modifier] = {
-                  name,
-                  value: attr.value,
-                }
+                lazy[modifier] = attr.value
               }
               else {
                 directives[name] = {
@@ -257,11 +252,12 @@ export function render(instance: any, result: Function) {
                   value: attr.value,
                   expr: attr.expr,
                   hooks: instance.directive(name),
+                  keypath,
                 }
               }
             }
             else if (attr.type === nodeType.SPREAD) {
-              const expr = attr.expr, value = get(expr)
+              const expr = attr.expr, value = renderValue(expr)
               // 数组也算一种对象
               if (is.object(value) && !is.array(value)) {
                 object.each(
@@ -319,7 +315,7 @@ export function render(instance: any, result: Function) {
 
       const list = [],
 
-      value = get(expr),
+      value = renderValue(expr),
 
       absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH],
 

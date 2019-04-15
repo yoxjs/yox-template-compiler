@@ -3,9 +3,7 @@
  */
 export default interface Bind {
 
-  name: string
-
-  keypath: string
+  absoluteKeypath: string
 
   value: any | void
 

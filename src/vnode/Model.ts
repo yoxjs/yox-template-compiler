@@ -5,7 +5,7 @@ export default interface Model {
 
   name: string
 
-  keypath: string
+  absoluteKeypath: string
 
   value: any | void
 

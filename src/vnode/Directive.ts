@@ -13,4 +13,6 @@ export default interface Directive {
 
   hooks: Record<string, Function> | void
 
+  keypath: string
+
 }
