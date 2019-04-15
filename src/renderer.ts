@@ -352,17 +352,26 @@ export function render(instance: any, result: Function) {
               }
             }
             else if (attr.type === nodeType.SPREAD) {
-              const expr = attr.expr, value = renderValue(expr)
-              // 数组也算一种对象
+              const expr = attr.expr, value = renderValue(expr, attr.binding)
+              // 数组也算一种对象，要排除掉
               if (is.object(value) && !is.array(value)) {
+
                 object.each(
                   value,
                   function (value: any, key: string) {
                     props[key] = value
                   }
                 )
-                // [TODO] 绑定
-                const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH]
+
+                const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH],
+
+                binding = keypathUtil.join(absoluteKeypath, '*')
+
+                binding[binding] = {
+                  name: env.UNDEFINED,
+                  hint: env.UNDEFINED,
+                  binding,
+                }
 
               }
               else {
@@ -398,9 +407,9 @@ export function render(instance: any, result: Function) {
         data.nativeAttrs = nativeAttrs
         data.nativeProps = nativeProps
         data.directives = directives
-        data.on = on
         data.binding = binding
         data.model = model
+        data.on = on
 
       }
 

@@ -143,10 +143,11 @@ export function createPartial(name: string): Partial {
   }
 }
 
-export function createSpread(expr: ExpressionNode): Spread {
+export function createSpread(expr: ExpressionNode, binding: boolean): Spread {
   return {
     type: nodeType.SPREAD,
     expr,
+    binding,
     isStatic: env.FALSE,
   }
 }

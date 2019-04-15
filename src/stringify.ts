@@ -384,7 +384,8 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
   return stringifyObject({
     type: node.type,
-    expr: toJSON(node.expr)
+    expr: toJSON(node.expr),
+    binding: node.binding,
   })
 }
 

@@ -972,7 +972,12 @@ export function compile(content: string) {
           const expr = exprCompiler.compile(source)
           if (expr) {
             if (currentElement && currentElement.isComponent) {
-              return creator.createSpread(expr)
+              return creator.createSpread(
+                expr,
+                is.string(expr[env.RAW_STATIC_KEYPATH])
+                  ? env.TRUE
+                  : env.FALSE
+              )
             }
             else {
               fatal(`延展属性只能用于组件属性`)

@@ -1,9 +1,9 @@
 import Property from './Property'
 import Attribute from './Attribute'
 import Directive from './Directive'
+import Binding from './Binding'
 import Event from './Event'
 import Model from './Model'
-import Binding from './Binding'
 
 /**
  * 元素
@@ -26,11 +26,11 @@ export default interface Element {
 
   nativeAttrs: Record<string, Attribute> | void
 
-  on: Record<string, Event> | void
+  directives: Record<string, Directive> | void
 
   binding: Record<string, Binding> | void
 
-  directives: Record<string, Directive> | void
+  on: Record<string, Event> | void
 
   model: Model | void
 
