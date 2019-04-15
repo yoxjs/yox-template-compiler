@@ -490,7 +490,9 @@ export function compile(content: string) {
           creator.createDirective(
             config.DIRECTIVE_BIND,
             node.name,
-            env.UNDEFINED,
+            // 因为组件绑定的肯定是 prop
+            // 对于 DOM 元素来说，需要区分是否是 attr
+            node.type,
             node.expr
           )
         )
@@ -730,8 +732,8 @@ export function compile(content: string) {
             // <div on-click="xx" lazy-click
             else if (string.startsWith(name, config.DIRECTIVE_LAZY)) {
               let lazy = slicePrefix(name, config.DIRECTIVE_LAZY)
-              if (lazy && string.startsWith(lazy, SEP_DIRECTIVE)) {
-                lazy = string.slice(lazy, 1)
+              if (string.startsWith(lazy, SEP_DIRECTIVE)) {
+                lazy = slicePrefix(lazy, SEP_DIRECTIVE)
               }
               node = creator.createDirective(
                 config.DIRECTIVE_LAZY,
@@ -739,10 +741,12 @@ export function compile(content: string) {
               )
             }
             else if (string.startsWith(name, config.DIRECTIVE_CUSTOM_PREFIX)) {
+              const custom = slicePrefix(name, config.DIRECTIVE_CUSTOM_PREFIX)
+              if (!custom) {
+                fatal('缺少自定义指令名称')
+              }
               node = creator.createDirective(
-                string.camelCase(
-                  slicePrefix(name, config.DIRECTIVE_CUSTOM_PREFIX)
-                )
+                string.camelCase(custom)
               )
             }
             else {

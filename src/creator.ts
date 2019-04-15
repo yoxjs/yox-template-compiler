@@ -30,7 +30,7 @@ export function createAttribute(name: string, namespace?: string): Attribute {
   }
 }
 
-export function createDirective(name: string, modifier?: string, value?: string, expr?: ExpressionNode, children?: Node[]): Directive {
+export function createDirective(name: string, modifier?: string, value?: string | number, expr?: ExpressionNode, children?: Node[]): Directive {
   return {
     type: nodeType.DIRECTIVE,
     name,

@@ -6,6 +6,7 @@ import toJSON from 'yox-common/function/toJSON'
 import * as env from 'yox-common/util/env'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
+import * as logger from 'yox-common/util/logger'
 
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'
@@ -30,16 +31,19 @@ import Import from './node/Import'
 import Partial from './node/Partial'
 import Spread from './node/Spread'
 
+export const RENDER_ELEMENT = '_c'
 
-import ElementVNode from './vnode/Element'
+export const RENDER_EACH = '_l'
 
-const RENDER_ELEMENT = '_c'
-const RENDER_EACH = '_l'
-const RENDER_EMPTY = '_e'
-const RENDER_EXPRESSION = '_x'
-const RENDER_CHILDREN = '_v'
-const RENDER_PARTIAL = '_p'
-const RENDER_IMPORT = '_i'
+export const RENDER_EMPTY = '_e'
+
+export const RENDER_EXPRESSION = '_x'
+
+export const RENDER_CHILDREN = '_v'
+
+export const RENDER_PARTIAL = '_p'
+
+export const RENDER_IMPORT = '_i'
 
 const SEP_COMMA = ', '
 const SEP_COLON = ': '
@@ -304,55 +308,56 @@ nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
 }
 
 nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
-  let { type, name, expr } = node
+
+  const { type, name, value, expr } = node,
+
+  result: Record<string, any> = {
+    // renderer 遍历 attrs 要用 type
+    type,
+    name: toJSON(name),
+    modifier: toJSON(node.modifier),
+  }
+
   if (name === config.DIRECTIVE_EVENT) {
     if (expr.type === exprNodeType.IDENTIFIER) {
-      return stringifyObject({
-        type,
-        name: toJSON(name),
-        event: toJSON((expr as ExpressionIdentifier).name)
-      })
+      result.event = toJSON((expr as ExpressionIdentifier).name)
     }
     else if (expr.type === exprNodeType.CALL) {
       const { callee, args } = expr as ExpressionCall
       if (callee.type === exprNodeType.IDENTIFIER) {
-        return stringifyObject({
-          type,
-          name: toJSON(name),
-          method: toJSON((callee as ExpressionIdentifier).name),
-          args: args.length > 0
-            // 为了实现运行时动态收集参数，这里序列化成函数
-            ? stringifyFunction(
-                stringifyArray(args.map(stringifyExpression))
-              )
-            : env.UNDEFINED,
-        })
+        result.method = toJSON((callee as ExpressionIdentifier).name)
+        // 为了实现运行时动态收集参数，这里序列化成函数
+        if (args.length) {
+          result.args = stringifyFunction(
+            stringifyArray(args.map(stringifyExpression))
+          )
+        }
       }
+      else {
+        logger.fatal('事件指令格式错误')
+      }
+    }
+    else {
+      logger.fatal('事件指令格式错误')
     }
   }
   // <input model="id"> 和 <div id="{{id}}">
   else if (name === config.DIRECTIVE_MODEL || name === config.DIRECTIVE_BIND) {
-    return stringifyObject({
-      type,
-      name: toJSON(name),
-      expr: toJSON(node.expr),
-    })
+    result.expr = toJSON(expr)
+    // 只有 bind 是 number，不需要 toJSON
+    result.value = value
   }
   // <div lazy="100">
   else if (name === config.DIRECTIVE_LAZY) {
-    return stringifyObject({
-      type,
-      name: toJSON(name),
-      // 只可能是 number 或 boolean，不需要 toJSON
-      value: node.value,
-    })
+    // 只可能是 number 或 boolean，不需要 toJSON
+    result.value = value
   }
-  return stringifyObject({
-    type,
-    name: toJSON(name),
-    modifier: toJSON(node.modifier),
-    value: stringifyDirective(node.value, expr)
-  })
+  else {
+    result.value = stringifyDirective(value as string, expr)
+  }
+
+  return stringifyObject(result)
+
 }
 
 nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
@@ -456,7 +461,7 @@ export function stringify(node: Node): string {
   return nodeStringify[node.type](node)
 }
 
-export function convert(code: string): Function {
+export function parse(code: string): Function {
   return new Function(
     RENDER_EMPTY,
     RENDER_CHILDREN,
