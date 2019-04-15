@@ -53,11 +53,7 @@ function renderChildren(nodes: Node[]) {
   return list
 }
 
-export function render(
-  instance: any,
-  result: Function,
-  createElement: (tag: string, data: Object, children?: string | any[]) => any
-) {
+export function render(instance: any, result: Function) {
 
   let keypath = env.EMPTY_STRING,
 
@@ -257,9 +253,10 @@ export function render(
               }
               else {
                 directives[name] = {
-                  modifier: attr.modifier,
+                  modifier,
                   value: attr.value,
                   expr: attr.expr,
+                  hooks: instance.directive(name),
                 }
               }
             }
@@ -311,7 +308,7 @@ export function render(
           return partial()
         }
       }
-      logger.fatal(`"${name}" partial is not found.`)
+      logger.fatal(`partial "${name}" is not found.`)
     },
     function (expr: ExpressionNode, index: string | Function, callback?: Function) {
 
