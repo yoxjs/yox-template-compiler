@@ -76,7 +76,7 @@ export function createElement(tag: string, isSvg: boolean, isComponent: boolean)
     tag,
     isSvg,
     isComponent,
-    isStatic: !isComponent,
+    isStatic: !isComponent && tag !== env.RAW_SLOT,
     slot: env.UNDEFINED,
     name: env.UNDEFINED,
     ref: env.UNDEFINED,

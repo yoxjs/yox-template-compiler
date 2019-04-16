@@ -205,7 +205,7 @@ const nodeStringify = {}
 
 nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
-  let { tag, isComponent, isSvg, isStatic, slot, name, ref, key, attrs, children } = node,
+  let { tag, isComponent, isSvg, isStatic, name, ref, key, attrs, children } = node,
 
   args: any[] = [],
 
@@ -236,10 +236,6 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   data.tag = toJSON(tag)
 
-  if (isDef(slot)) {
-    data.slot = toJSON(slot)
-  }
-
   if (ref) {
     data.ref = stringifyValue(ref.value, ref.expr, ref.children)
   }
@@ -267,7 +263,6 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     stringifyChildren(
       children,
       function (childs: string[], isSimple: boolean) {
-        // 遵循 virtual dom 行业规则，children 可以是 string 或 array
         if (isSimple) {
           data.text = array.join(childs, SEP_PLUS)
         }
@@ -432,7 +427,10 @@ nodeStringify[nodeType.IF] = function (node: If): string {
     else if (stub) {
       nextValue = stringifyCall(
         RENDER_ELEMENT,
-        `${toJSON(config.TAG_COMMENT)}, ${toJSON(env.EMPTY_STRING)}`
+        toJSON({
+          isComment: env.TRUE,
+          text: env.EMPTY_STRING,
+        })
       )
     }
 

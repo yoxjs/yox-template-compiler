@@ -195,6 +195,17 @@ it('静态子树', () => {
   expect(ast[0].children[0].isStatic).toBe(true)
   expect(ast[0].children[1].isStatic).toBe(false)
 
+  ast = compile(`
+    <div>
+      <slot name="xx"/>
+      <div>{{x}}</div>
+    </div>
+  `)
+
+  expect(ast[0].isStatic).toBe(false)
+  expect(ast[0].children[0].isStatic).toBe(false)
+  expect(ast[0].children[1].isStatic).toBe(false)
+
 })
 
 it('svg', () => {

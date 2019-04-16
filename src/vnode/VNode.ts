@@ -10,19 +10,21 @@ import Model from './Model'
  */
 export default interface VNode {
 
-  el: Node | void
+  node: Node | void
 
-  tag: string
+  tag: string | void
 
-  isComponent: boolean
+  isComponent: boolean | void
 
-  isSvg: boolean
+  isComment: boolean | void
 
-  isStatic: boolean
+  isSvg: boolean | void
+
+  isStatic: boolean | void
 
   props: Record<string, any> | void
 
-  slots: Record<string, string | any[]> | void
+  slots: Record<string, string | VNode[]> | void
 
   nativeProps: Record<string, Property> | void
 
@@ -36,9 +38,7 @@ export default interface VNode {
 
   model: Model | void
 
-  transition: Record<string, (el: HTMLElement, vnode: VNode) => void> | void
-
-  slot: string | void
+  transition: Record<string, (node: HTMLElement, vnode: VNode) => void> | void
 
   ref: string | void
 
@@ -48,7 +48,7 @@ export default interface VNode {
 
   children: any[] | void
 
-  hooks: Record<string, (el: HTMLElement, vnode: VNode, oldVndoe?: VNode) => void> | void
+  hooks: Record<string, (node: HTMLElement, vnode: VNode, oldVndoe?: VNode) => void> | void
 
   instance: any
 
