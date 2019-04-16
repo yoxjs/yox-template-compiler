@@ -339,13 +339,15 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
     type,
     name: toJSON(name),
     modifier: toJSON(node.modifier),
-  }
+  },
 
-  if (name === config.DIRECTIVE_EVENT) {
-    if (expr.type === exprNodeType.IDENTIFIER) {
-      result.event = toJSON((expr as ExpressionIdentifier).name)
-    }
-    else if (expr.type === exprNodeType.CALL) {
+  isEvent = name === config.DIRECTIVE_EVENT
+
+  // 所有指令都要支持调用方法，因为外部可能会有自定义事件的需求
+  if (expr) {
+
+    // 调用方法的指令，统一编译成方法调用
+    if (expr.type === exprNodeType.CALL) {
       const { callee, args } = expr as ExpressionCall
       if (callee.type === exprNodeType.IDENTIFIER) {
         result.method = toJSON((callee as ExpressionIdentifier).name)
@@ -357,15 +359,27 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
         }
       }
       else {
+        logger.fatal('指令格式错误')
+      }
+    }
+
+    // 事件还支持发事件
+    if (isEvent) {
+      if (expr.type === exprNodeType.IDENTIFIER) {
+        result.event = toJSON((expr as ExpressionIdentifier).name)
+      }
+      else if (!result.method) {
         logger.fatal('事件指令格式错误')
       }
     }
     else {
-      logger.fatal('事件指令格式错误')
+      result.expr = toJSON(expr)
     }
+
   }
+
   // <input model="id">
-  else if (name === config.DIRECTIVE_MODEL) {
+  if (name === config.DIRECTIVE_MODEL) {
     result.expr = toJSON(expr)
   }
   // <div lazy="100">

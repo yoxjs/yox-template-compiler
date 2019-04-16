@@ -10,6 +10,6 @@ export default interface Event {
 
   lazy: number | boolean
 
-  listener: (event: EventObject, data: any) => void
+  handler: (event: EventObject, data: any) => void
 
 }

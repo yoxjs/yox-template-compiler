@@ -322,7 +322,7 @@ export function render(instance: any, result: Function) {
                 on[modifier] = {
                   name: modifier,
                   lazy: env.FALSE,
-                  listener: attr.event
+                  handler: attr.event
                     ? createEventListener(attr.event)
                     : createMethodListener(attr.method, attr.args)
                 }
@@ -349,6 +349,9 @@ export function render(instance: any, result: Function) {
                   value: attr.value,
                   expr: attr.expr,
                   hooks: instance.directive(name),
+                  handler: attr.method
+                    ? createMethodListener(attr.method, attr.args)
+                    : env.UNDEFINED,
                   keypath,
                 }
               }

@@ -6,9 +6,9 @@ import Event from './Event'
 import Model from './Model'
 
 /**
- * 元素
+ * 虚拟节点
  */
-export default interface Element {
+export default interface VNode {
 
   el: Node | void
 
