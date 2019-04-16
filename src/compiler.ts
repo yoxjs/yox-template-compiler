@@ -481,7 +481,7 @@ export function compile(content: string): Node[] {
       }
 
       // 这三个属性值要求是字符串
-      const isStringValueRequired = name === env.RAW_NAME || name === env.RAW_SLOT || name === env.RAW_TRANSITION
+      const isStringValueRequired = name === env.RAW_NAME || name === env.RAW_SLOT
 
       // 对于所有特殊属性来说，空字符串是肯定不行的，没有任何意义
       if (value === env.EMPTY_STRING) {
@@ -712,7 +712,7 @@ export function compile(content: string): Node[] {
 
             let node: Attribute | Directive | Property, name = match[1]
 
-            if (name === config.DIRECTIVE_MODEL) {
+            if (name === config.DIRECTIVE_MODEL || name === env.RAW_TRANSITION) {
               node = creator.createDirective(
                 string.camelCase(name)
               )

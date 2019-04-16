@@ -81,7 +81,6 @@ export function createElement(tag: string, isSvg: boolean, isComponent: boolean)
     name: env.UNDEFINED,
     ref: env.UNDEFINED,
     key: env.UNDEFINED,
-    transition: env.UNDEFINED,
     attrs: env.UNDEFINED,
     children: env.UNDEFINED,
   }

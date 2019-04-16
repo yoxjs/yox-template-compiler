@@ -258,6 +258,8 @@ export function render(instance: any, result: Function) {
 
         directives: Record<string, Directive> = {},
 
+        transition: Record<string, (el: HTMLElement, vnode: VNode) => void> | void,
+
         model: Model | void
 
         array.each(
@@ -325,16 +327,19 @@ export function render(instance: any, result: Function) {
                 }
               }
               else if (name === config.DIRECTIVE_MODEL) {
-
                 const result = getBindingValue(attr.expr)
-
                 if (is.string(result.binding)) {
                   model = {
                     value: result.value,
                     binding: result.binding as string,
                   }
                 }
-
+              }
+              else if (name === env.RAW_TRANSITION) {
+                const hooks = instance.transition(attr.value)
+                if (is.object(hooks)) {
+                  transition = hooks
+                }
               }
               else if (name === config.DIRECTIVE_LAZY) {
                 lazy[modifier] = attr.value
@@ -408,6 +413,7 @@ export function render(instance: any, result: Function) {
         data.nativeAttrs = nativeAttrs
         data.nativeProps = nativeProps
         data.directives = directives
+        data.transition = transition
         data.binding = binding
         data.model = model
         data.on = on

@@ -205,7 +205,7 @@ const nodeStringify = {}
 
 nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
-  let { tag, isComponent, isSvg, isStatic, slot, name, ref, key, transition, attrs, children } = node,
+  let { tag, isComponent, isSvg, isStatic, slot, name, ref, key, attrs, children } = node,
 
   args: any[] = [],
 
@@ -238,10 +238,6 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   if (isDef(slot)) {
     data.slot = toJSON(slot)
-  }
-
-  if (isDef(transition)) {
-    data.transition = toJSON(transition)
   }
 
   if (ref) {

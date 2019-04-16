@@ -41,8 +41,7 @@ specialTags[env.RAW_TEMPLATE] =
 
 specialAttrs[env.RAW_KEY] =
 specialAttrs[env.RAW_REF] =
-specialAttrs[env.RAW_SLOT] =
-specialAttrs[env.RAW_TRANSITION] = env.TRUE
+specialAttrs[env.RAW_SLOT] = env.TRUE
 
 name2Type['if'] = nodeType.IF
 name2Type['each'] = nodeType.EACH

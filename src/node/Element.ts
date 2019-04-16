@@ -22,9 +22,6 @@ export default interface Element extends Branch {
   // <slot name="xx">
   name: string | undefined
 
-  // <div transition="xx">
-  transition: string | undefined
-
   // <div ref="xx">
   ref: Attribute | undefined
 

@@ -36,9 +36,9 @@ export default interface VNode {
 
   model: Model | void
 
-  slot: string | void
+  transition: Record<string, (el: HTMLElement, vnode: VNode) => void> | void
 
-  transition: string | void
+  slot: string | void
 
   ref: string | void
 
