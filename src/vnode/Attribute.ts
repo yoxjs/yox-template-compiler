@@ -7,6 +7,4 @@ export default interface Attribute {
 
   value: any
 
-  namespace: string | undefined
-
 }

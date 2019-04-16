@@ -8,8 +8,6 @@ export default interface Attribute extends Branch {
 
   name: string
 
-  namespace: string | undefined
-
   expr: ExpressionNode | undefined
 
   value: any | undefined

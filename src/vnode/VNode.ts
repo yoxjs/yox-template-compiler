@@ -48,7 +48,7 @@ export default interface VNode {
 
   key: string | void
 
-  hooks: Record<string, Function> | void
+  hooks: Record<string, (el: HTMLElement, vnode: VNode, oldVndoe?: VNode) => void> | void
 
   instance: any
 

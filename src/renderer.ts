@@ -276,7 +276,6 @@ export function render(instance: any, result: Function) {
                   binding[name] = {
                     name: name,
                     hint: env.UNDEFINED,
-                    namespace: attr.namespace,
                     binding: result.binding as string,
                   }
                 }
@@ -288,7 +287,6 @@ export function render(instance: any, result: Function) {
               else {
                 nativeAttrs[name] = {
                   name,
-                  namespace: attr.namespace,
                   value,
                 }
               }
@@ -303,7 +301,6 @@ export function render(instance: any, result: Function) {
                   binding[name] = {
                     name: name,
                     hint: attr.hint,
-                    namespace: env.UNDEFINED,
                     binding: result.binding as string,
                   }
                 }
@@ -373,7 +370,6 @@ export function render(instance: any, result: Function) {
                   binding[fuzzyKeypath] = {
                     name: env.UNDEFINED,
                     hint: env.UNDEFINED,
-                    namespace: env.UNDEFINED,
                     binding: fuzzyKeypath,
                   }
                 }

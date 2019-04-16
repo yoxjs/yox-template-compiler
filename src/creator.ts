@@ -18,12 +18,11 @@ import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Text from './node/Text'
 
-export function createAttribute(name: string, namespace?: string): Attribute {
+export function createAttribute(name: string): Attribute {
   return {
     type: nodeType.ATTRIBUTE,
     isStatic: env.TRUE,
     name,
-    namespace,
     value: env.UNDEFINED,
     expr: env.UNDEFINED,
     children: env.UNDEFINED,

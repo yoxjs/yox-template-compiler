@@ -1,6 +1,8 @@
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import EventObject from 'yox-common/util/Event'
 
+import VNode from './VNode'
+
 /**
  * 指令
  */
@@ -12,7 +14,7 @@ export default interface Directive {
 
   expr: ExpressionNode | undefined
 
-  hooks: Record<string, Function>
+  hooks: Record<string, (el: HTMLElement, node: Directive, vnode: VNode, oldVndoe?: VNode) => void>
 
   keypath: string
 

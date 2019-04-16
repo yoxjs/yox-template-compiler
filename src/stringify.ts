@@ -301,7 +301,6 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
   const result: Record<string, any> = {
     type: node.type,
-    namespace: toJSON(node.namespace),
     name: toJSON(node.name),
     binding: node.binding,
   }

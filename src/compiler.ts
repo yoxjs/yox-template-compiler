@@ -357,12 +357,20 @@ export function compile(content: string): Node[] {
 
     processAttributeEmptyChildren = function (element: Element, attr: Attribute) {
 
+      const { name } = attr
+
       if (isSpecialAttr(element, attr)) {
-        fatal(`${attr.name} 忘了写值吧？`)
+        fatal(`${name} 忘了写值吧？`)
       }
-      // 可能存在没收集到的布尔类型的 property
+      // 比如 <Dog isLive>
+      else if (element.isComponent) {
+        attr.value = env.TRUE
+      }
+      // <div data-name checked>
       else {
-        attr.value = element.isComponent ? env.TRUE : attr.name
+        attr.value = string.startsWith(name, 'data-')
+          ? env.EMPTY_STRING
+          : name
       }
 
     },
@@ -746,40 +754,32 @@ export function compile(content: string): Node[] {
                   string.camelCase(name)
                 )
               }
-              // 原生 html 可能带有命名空间
+              // 原生 dom 属性
               else {
-                const parts = name.split(':')
 
-                if (parts.length === 1) {
+                // 把 attr 优化成 prop
+                const lowerName = name.toLowerCase()
 
-                  // 把 attr 优化成 prop
-                  const lowerName = name.toLowerCase()
-
-                  if (array.has(stringProperyNames, lowerName)) {
-                    node = creator.createProperty(
-                      attr2Prop[lowerName] || lowerName,
-                      config.HINT_STRING
-                    )
-                  }
-                  else if (array.has(numberProperyNames, lowerName)) {
-                    node = creator.createProperty(
-                      attr2Prop[lowerName] || lowerName,
-                      config.HINT_NUMBER
-                    )
-                  }
-                  else if (array.has(booleanProperyNames, lowerName)) {
-                    node = creator.createProperty(
-                      attr2Prop[lowerName] || lowerName,
-                      config.HINT_BOOLEAN
-                    )
-                  }
-                  else {
-                    node = creator.createAttribute(name)
-                  }
-
+                if (array.has(stringProperyNames, lowerName)) {
+                  node = creator.createProperty(
+                    attr2Prop[lowerName] || lowerName,
+                    config.HINT_STRING
+                  )
+                }
+                else if (array.has(numberProperyNames, lowerName)) {
+                  node = creator.createProperty(
+                    attr2Prop[lowerName] || lowerName,
+                    config.HINT_NUMBER
+                  )
+                }
+                else if (array.has(booleanProperyNames, lowerName)) {
+                  node = creator.createProperty(
+                    attr2Prop[lowerName] || lowerName,
+                    config.HINT_BOOLEAN
+                  )
                 }
                 else {
-                  node = creator.createAttribute(parts[1], parts[0])
+                  node = creator.createAttribute(name)
                 }
 
               }

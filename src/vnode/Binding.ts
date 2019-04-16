@@ -15,9 +15,4 @@ export default interface Binding {
    */
   hint: number | undefined
 
-  /**
-   * dom attr
-   */
-  namespace: string | undefined
-
 }

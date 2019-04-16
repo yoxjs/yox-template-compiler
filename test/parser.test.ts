@@ -383,13 +383,11 @@ it('attribute', () => {
   checkValue(ast[0].attrs[1], '2')
 
   expect(ast[0].attrs[2].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[2].name).toBe('age')
-  expect(ast[0].attrs[2].namespace).toBe('xml1')
+  expect(ast[0].attrs[2].name).toBe('xml1:age')
   checkValue(ast[0].attrs[2], '3')
 
   expect(ast[0].attrs[3].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[3].name).toBe('number')
-  expect(ast[0].attrs[3].namespace).toBe('xml2')
+  expect(ast[0].attrs[3].name).toBe('xml2:number')
   checkValue(ast[0].attrs[3], '4')
 
   expect(ast[0].attrs[4].name).toBe('textContent')
