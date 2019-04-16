@@ -61,7 +61,7 @@ export function render(instance: any, result: Function) {
 
   scope: any = { keypath },
 
-  keypathStack = [keypath, scope],
+  stack = [keypath, scope],
 
   eventScope: any,
 
@@ -70,8 +70,8 @@ export function render(instance: any, result: Function) {
   format = function (key: string) {
 
     // 初始查找位置
-    // keypathStack 的结构是 keypath, scope 作为一组
-    let index = keypathStack.length - 2, formateds = []
+    // stack 的结构是 keypath, scope 作为一组
+    let index = stack.length - 2, formateds = []
 
     // 格式化 key
     keypathUtil.each(
@@ -108,16 +108,16 @@ export function render(instance: any, result: Function) {
 
     getKeypath = function () {
 
-      let keypath = keypathUtil.join(keypathStack[index], formated),
+      let keypath = keypathUtil.join(stack[index], formated),
 
-      scope = keypathStack[index + 1]
+      scope = stack[index + 1]
 
       if (!absoluteKeypath) {
         absoluteKeypath = keypath
       }
 
       // #each 时，scope 存储是当前循环的数据，如 keypath、index 等
-      // scope 无法直接拿到当前数组项，它存在于 scope[ 'this' ] 上
+      // scope 无法直接拿到当前数组项，它存在于 scope.item 上
       // 为什么这样设计呢？
       // 因为 {{this}} 的存在，经过上面的格式化，key 会是 ''
       // 而 {{this.length}} 会变成 'length'
@@ -419,6 +419,12 @@ export function render(instance: any, result: Function) {
       return data
 
     },
+    function (name: string) {
+      const result = instance.get(config.SLOT_DATA_PREFIX + name)
+      return is.array(result) && result.length === 1
+        ? result[0]
+        : result
+    },
     function (name: string, generate: Function) {
       localPartials[name] = generate
     },
@@ -451,14 +457,14 @@ export function render(instance: any, result: Function) {
 
       eachHandler = function (item: any, key: string | number) {
 
-        let lastScope = scope, lastKeypath = keypath, lastKeypathStack = keypathStack
+        let lastScope = scope, lastKeypath = keypath, lastKeypathStack = stack
 
         scope = {}
         keypath = keypathUtil.join(eachKeypath, key)
-        keypathStack = object.copy(keypathStack)
+        stack = object.copy(stack)
 
-        array.push(keypathStack, keypath)
-        array.push(keypathStack, scope)
+        array.push(stack, keypath)
+        array.push(stack, scope)
 
         // 从下面这几句赋值可以看出
         // scope 至少会有 'keypath' 'item' 'index' 等几个值
@@ -478,7 +484,7 @@ export function render(instance: any, result: Function) {
 
         scope = lastScope
         keypath = lastKeypath
-        keypathStack = lastKeypathStack
+        stack = lastKeypathStack
 
       }
 

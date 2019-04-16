@@ -33,6 +33,8 @@ import Spread from './node/Spread'
 
 export const RENDER_ELEMENT = '_c'
 
+export const RENDER_SLOT = '_s'
+
 export const RENDER_EACH = '_l'
 
 export const RENDER_EMPTY = '_e'
@@ -107,7 +109,7 @@ const simpleStack = []
 
 function stringifyChildren(
   children: Node[] | void,
-  callback: (childs: string[], isSimple: boolean) => string
+  callback: (childs: string[], isSimple: boolean) => string | void
 ): string | void {
   if (children && children.length) {
 
@@ -144,18 +146,6 @@ function stringifyNormalChildren(children: Node[] | void): string | void {
       return isSimple
         ? array.join(childs, SEP_PLUS)
         : stringifyCall(RENDER_CHILDREN, stringifyArray(childs))
-    }
-  )
-}
-
-function stringifyElementChildren(children: Node[] | void): string | void {
-  return stringifyChildren(
-    children,
-    function (childs: string[], isSimple: boolean): string {
-      // 遵循 virtual dom 行业规则，children 可以是 string 或 array
-      return isSimple
-        ? array.join(childs, SEP_PLUS)
-        : stringifyArray(childs)
     }
   )
 }
@@ -223,9 +213,14 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   slots: any,
 
-  childs: any,
-
   attributes: any[] = []
+
+  if (tag === env.RAW_SLOT) {
+    return stringifyCall(
+      RENDER_SLOT,
+      toJSON(name)
+    )
+  }
 
   if (attrs) {
     array.each(
@@ -243,10 +238,6 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   if (isDef(slot)) {
     data.slot = toJSON(slot)
-  }
-
-  if (isDef(name)) {
-    data.name = toJSON(name)
   }
 
   if (isDef(transition)) {
@@ -277,10 +268,18 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     }
   }
   else {
-    childs = stringifyElementChildren(children)
-    if (isDef(childs)) {
-      data.children = childs
-    }
+    stringifyChildren(
+      children,
+      function (childs: string[], isSimple: boolean) {
+        // 遵循 virtual dom 行业规则，children 可以是 string 或 array
+        if (isSimple) {
+          data.text = array.join(childs, SEP_PLUS)
+        }
+        else {
+          data.children = stringifyArray(childs)
+        }
+      }
+    )
   }
 
   array.push(args, stringifyObject(data))
@@ -493,6 +492,7 @@ export function parse(code: string): Function {
     RENDER_CHILDREN,
     RENDER_EXPRESSION,
     RENDER_ELEMENT,
+    RENDER_SLOT,
     RENDER_PARTIAL,
     RENDER_IMPORT,
     RENDER_EACH,

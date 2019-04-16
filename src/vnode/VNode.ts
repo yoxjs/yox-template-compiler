@@ -24,8 +24,6 @@ export default interface VNode {
 
   slots: Record<string, string | any[]> | void
 
-  children: string | any[] | void
-
   nativeProps: Record<string, Property> | void
 
   nativeAttrs: Record<string, Attribute> | void
@@ -40,13 +38,15 @@ export default interface VNode {
 
   slot: string | void
 
-  name: string | void
-
   transition: string | void
 
   ref: string | void
 
   key: string | void
+
+  text: string | void
+
+  children: any[] | void
 
   hooks: Record<string, (el: HTMLElement, vnode: VNode, oldVndoe?: VNode) => void> | void
 

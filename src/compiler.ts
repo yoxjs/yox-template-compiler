@@ -465,6 +465,9 @@ export function compile(content: string): Node[] {
       else if (element.tag === env.RAW_TEMPLATE) {
         fatal(`<template> 不写 slot 属性是几个意思？`)
       }
+      else if (element.tag === env.RAW_SLOT && !element.name) {
+        fatal(`<slot> 不写 name 属性是几个意思？`)
+      }
 
     },
 
@@ -760,7 +763,12 @@ export function compile(content: string): Node[] {
                 // 把 attr 优化成 prop
                 const lowerName = name.toLowerCase()
 
-                if (array.has(stringProperyNames, lowerName)) {
+                // <slot> 或 <template> 中的属性不用识别为 property
+                if (helper.specialTags[currentElement.tag]) {
+                  node = creator.createAttribute(name)
+                }
+                // 尝试识别成 property
+                else if (array.has(stringProperyNames, lowerName)) {
                   node = creator.createProperty(
                     attr2Prop[lowerName] || lowerName,
                     config.HINT_STRING
@@ -778,6 +786,7 @@ export function compile(content: string): Node[] {
                     config.HINT_BOOLEAN
                   )
                 }
+                // 没辙，还是个 attribute
                 else {
                   node = creator.createAttribute(name)
                 }

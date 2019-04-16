@@ -12,6 +12,8 @@ export const elseTypes = {}
 export const leafTypes = {}
 // 简单子节点类型
 export const simpleChildTypes = {}
+// 特殊标签
+export const specialTags = {}
 // 特殊属性
 export const specialAttrs = {}
 // 名称 -> 类型的映射
@@ -33,6 +35,9 @@ simpleChildTypes[nodeType.EXPRESSION] =
 simpleChildTypes[nodeType.IF] =
 simpleChildTypes[nodeType.ELSE_IF] =
 simpleChildTypes[nodeType.ELSE] =
+
+specialTags[env.RAW_SLOT] =
+specialTags[env.RAW_TEMPLATE] =
 
 specialAttrs[env.RAW_KEY] =
 specialAttrs[env.RAW_REF] =
