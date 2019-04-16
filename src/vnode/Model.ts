@@ -3,8 +3,6 @@
  */
 export default interface Model {
 
-  name: string
-
   binding: string
 
   value: any | void

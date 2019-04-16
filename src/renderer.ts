@@ -333,7 +333,6 @@ export function render(instance: any, result: Function) {
 
                 if (is.string(result.binding)) {
                   model = {
-                    name: env.RAW_VALUE,
                     value: result.value,
                     binding: result.binding as string,
                   }
