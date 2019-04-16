@@ -419,6 +419,8 @@ export function render(instance: any, result: Function) {
 
       }
 
+      data.instance = instance
+
       return data
 
     },

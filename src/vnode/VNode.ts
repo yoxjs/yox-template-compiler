@@ -22,6 +22,10 @@ export default interface VNode {
 
   props: Record<string, any> | void
 
+  slots: Record<string, string | any[]> | void
+
+  children: string | any[] | void
+
   nativeProps: Record<string, Property> | void
 
   nativeAttrs: Record<string, Attribute> | void
@@ -45,5 +49,7 @@ export default interface VNode {
   key: string | void
 
   hooks: Record<string, Function> | void
+
+  instance: any
 
 }
