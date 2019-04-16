@@ -8,6 +8,8 @@ import VNode from './VNode'
  */
 export default interface Directive {
 
+  name: string
+
   modifier: string | undefined
 
   value: any

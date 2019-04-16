@@ -346,6 +346,7 @@ export function render(instance: any, result: Function) {
               }
               else {
                 directives[name] = {
+                  name,
                   modifier,
                   value: attr.value,
                   expr: attr.expr,
