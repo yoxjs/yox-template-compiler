@@ -269,10 +269,12 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   array.push(args, stringifyObject(data))
 
   // data 可以透传，但是 attributes 还需要 render 继续分析
-  array.push(
-    args,
-    stringifyArray(attributes)
-  )
+  if (attributes.length) {
+    array.push(
+      args,
+      stringifyArray(attributes)
+    )
+  }
 
   return stringifyCall(
     RENDER_ELEMENT,

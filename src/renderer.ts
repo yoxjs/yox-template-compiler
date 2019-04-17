@@ -29,7 +29,7 @@ import Directive from './vnode/Directive'
  * 这里的数组不是从 `数据` 取来的，而是一个结构性的数组
  * 节点本身也可能是空，即 EMPTY renderer 返回的结果
  */
-function addNodes(list: any[], nodes: Node[]) {
+function addNodes(list: any[], nodes: VNode[]) {
   // [TODO] 连续的 string/number/boolean/null 合并成一个节点
   array.each(
     nodes,
@@ -43,14 +43,16 @@ function addNodes(list: any[], nodes: Node[]) {
 }
 
 function renderEmpty() {
-  return env.UNDEFINED
+  return env.EMPTY_STRING
 }
 
-function renderChildren(nodes: Node[]) {
+function renderChildren(nodes: VNode[]) {
   const list = []
   addNodes(list, nodes)
   return list
 }
+
+let guid = 0
 
 export function render(instance: any, result: Function) {
 
@@ -243,9 +245,12 @@ export function render(instance: any, result: Function) {
     renderEmpty,
     renderChildren,
     renderValue,
-    function (data: VNode, attrs: any[]) {
+    function (data: VNode, attrs: any[] | void) {
 
-      if (attrs.length) {
+      // 每个 vnode 分配一个全局唯一的 id
+      data.id = ++guid
+
+      if (attrs) {
 
         let props: Record<string, any> = {},
 
@@ -480,6 +485,7 @@ export function render(instance: any, result: Function) {
       return data
 
     },
+    // <slot name="xx"/>
     function (name: string) {
       const result = instance.get(config.SLOT_DATA_PREFIX + name)
       return is.array(result) && result.length === 1
