@@ -714,7 +714,7 @@ export function compile(content: string): Node[] {
 
             if (name === config.DIRECTIVE_MODEL || name === env.RAW_TRANSITION) {
               node = creator.createDirective(
-                string.camelCase(name)
+                string.camelize(name)
               )
             }
             // 这里要用 on- 判断前缀，否则 on 太容易重名了
@@ -725,7 +725,7 @@ export function compile(content: string): Node[] {
               }
               node = creator.createDirective(
                 config.DIRECTIVE_EVENT,
-                string.camelCase(event)
+                string.camelize(event)
               )
             }
             // 当一个元素绑定了多个事件时，可分别指定每个事件的 lazy
@@ -738,23 +738,25 @@ export function compile(content: string): Node[] {
               }
               node = creator.createDirective(
                 config.DIRECTIVE_LAZY,
-                lazy ? string.camelCase(lazy) : env.UNDEFINED
+                lazy ? string.camelize(lazy) : env.UNDEFINED
               )
             }
-            else if (string.startsWith(name, config.DIRECTIVE_CUSTOM_PREFIX)) {
-              const custom = slicePrefix(name, config.DIRECTIVE_CUSTOM_PREFIX)
+            // 这里要用 o- 判断前缀，否则 o 太容易重名了
+            else if (string.startsWith(name, config.DIRECTIVE_CUSTOM + SEP_DIRECTIVE)) {
+              const custom = slicePrefix(name, config.DIRECTIVE_CUSTOM + SEP_DIRECTIVE)
               if (!custom) {
                 fatal('缺少自定义指令名称')
               }
               node = creator.createDirective(
-                string.camelCase(custom)
+                config.DIRECTIVE_CUSTOM,
+                string.camelize(custom)
               )
             }
             else {
               // 组件用驼峰格式
               if (currentElement.isComponent) {
                 node = creator.createAttribute(
-                  string.camelCase(name)
+                  string.camelize(name)
                 )
               }
               // 原生 dom 属性

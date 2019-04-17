@@ -1,9 +1,6 @@
 import Property from './Property'
 import Attribute from './Attribute'
 import Directive from './Directive'
-import Binding from './Binding'
-import Event from './Event'
-import Model from './Model'
 
 /**
  * 虚拟节点
@@ -30,15 +27,9 @@ export default interface VNode {
 
   nativeAttrs: Record<string, Attribute> | void
 
-  directives: Record<string, Directive> | void
+  directives: Directive[] | void
 
-  binding: Record<string, Binding> | void
-
-  on: Record<string, Event> | void
-
-  model: Model | void
-
-  transition: Record<string, (node: HTMLElement, vnode: VNode) => void> | void
+  model: any | void
 
   ref: string | void
 

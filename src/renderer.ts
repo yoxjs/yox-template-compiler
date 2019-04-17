@@ -23,9 +23,6 @@ import VNode from './vnode/VNode'
 import Attribute from './vnode/Attribute'
 import Property from './vnode/Property'
 import Directive from './vnode/Directive'
-import Event from './vnode/Event'
-import Model from './vnode/Model'
-import Binding from './vnode/Binding'
 
 /**
  * nodes 是动态计算出来的节点，因此节点本身可能是数组
@@ -196,7 +193,7 @@ export function render(instance: any, result: Function) {
   },
 
   createEventListener = function (type: string) {
-    return function (event: EventObject, data: any) {
+    return function (event: EventObject, data?: Record<string, any>) {
       if (event.type !== type) {
         event = new EventObject(event)
         event.type = type
@@ -206,7 +203,7 @@ export function render(instance: any, result: Function) {
   },
 
   createMethodListener = function (method: string, generate: Function | void) {
-    return function (event: EventObject, data: any) {
+    return function (event: EventObject, data?: Record<string, any>) {
 
       let result: any | void
 
@@ -250,174 +247,204 @@ export function render(instance: any, result: Function) {
 
         nativeAttrs: Record<string, Attribute> = {},
 
-        on: Record<string, Event> = {},
+        directives: Directive[] = [],
 
-        binding: Record<string, Binding> = {},
+        lazy: Record<string, number | boolean> | void,
 
-        lazy: Record<string, number | boolean> = {},
+        model: any | void,
 
-        directives: Record<string, Directive> = {},
+        addBindingIfNeeded = function (expr: Keypath, name: string, hint?: any): any {
 
-        transition: Record<string, (el: HTMLElement, vnode: VNode) => void> | void,
+          const result = getBindingValue(expr)
 
-        model: Model | void
+          if (is.string(result.binding)) {
+            array.push(
+              directives,
+              {
+                name: config.DIRECTIVE_BINDING,
+                modifier: name,
+                binding: result.binding as string,
+                hooks: instance.directive(config.DIRECTIVE_BINDING)
+              }
+            )
+          }
+
+          return result.value
+
+        },
+
+        addDirective = function (attr: Record<string, any>) {
+
+          let { name, modifier, value } = attr,
+
+          binding: string | void,
+
+          hooks: Record<string, (node: HTMLElement, vnode: VNode) => void> | void,
+
+          handler: (event: EventObject, data?: Record<string, any>) => void | void
+
+          switch (name) {
+
+            case config.DIRECTIVE_EVENT:
+              hooks = instance.directive(config.DIRECTIVE_EVENT)
+              handler = attr.event
+                ? createEventListener(attr.event)
+                : createMethodListener(attr.method, attr.args)
+              break
+
+            case env.RAW_TRANSITION:
+              hooks = instance.transition(value)
+              break
+
+            case config.DIRECTIVE_MODEL:
+              hooks = instance.directive(config.DIRECTIVE_MODEL)
+              const result = getBindingValue(attr.expr)
+              if (is.string(result.binding)) {
+                binding = result.binding
+                model = result.value
+              }
+              break
+
+            case config.DIRECTIVE_LAZY:
+              // 惰性初始化，后续的判断可以直接 if (lazy)
+              // 而不必判断 if (!object.empty(lazy))
+              if (!lazy) {
+                lazy = {}
+              }
+              lazy[modifier] = value
+              return
+
+            default:
+              hooks = instance.directive(modifier)
+              if (attr.method) {
+                handler = createMethodListener(attr.method, attr.args)
+              }
+              break
+
+          }
+
+          array.push(
+            directives,
+            {
+              name,
+              modifier,
+              value,
+              expr: attr.expr,
+              hooks: is.object(hooks) ? hooks : env.UNDEFINED,
+              handler,
+              binding,
+            }
+          )
+
+        },
+
+        spreadObject = function (attr: Record<string, any>) {
+
+          let { expr } = attr,
+
+          value = renderValue(expr, attr.binding)
+
+          // 数组也算一种对象，要排除掉
+          if (is.object(value) && !is.array(value)) {
+
+            object.each(
+              value,
+              function (value: any, key: string) {
+                props[key] = value
+              }
+            )
+
+            const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH]
+            if (absoluteKeypath) {
+              const fuzzyKeypath = keypathUtil.join(absoluteKeypath, '*')
+              array.push(
+                directives,
+                {
+                  name: config.DIRECTIVE_BINDING,
+                  binding: fuzzyKeypath,
+                  hooks: instance.directive(config.DIRECTIVE_BINDING)
+                }
+              )
+            }
+
+          }
+          else {
+            logger.warn(`[${expr.raw}] 不是对象，延展个毛啊`)
+          }
+        }
 
         array.each(
           attrs,
           function (attr: any) {
 
-            const name = attr.name
+            let { name, expr, value } = attr
 
-            if (attr.type === nodeType.ATTRIBUTE) {
-              let value = attr.value
-              if (attr.binding) {
-                const result = getBindingValue(attr.expr)
-                value = result.value
+            switch (attr.type) {
 
-                if (is.string(result.binding)) {
-                  binding[name] = {
-                    name: name,
-                    hint: env.UNDEFINED,
-                    binding: result.binding as string,
-                  }
+              case nodeType.ATTRIBUTE:
+
+                if (attr.binding) {
+                  value = addBindingIfNeeded(expr, name)
                 }
-              }
 
-              if (data.isComponent) {
-                props[name] = value
-              }
-              else {
-                nativeAttrs[name] = {
+                if (data.isComponent) {
+                  props[name] = value
+                }
+                else {
+                  nativeAttrs[name] = { name, value }
+                }
+
+                break
+
+              case nodeType.PROPERTY:
+
+                if (attr.binding) {
+                  value = addBindingIfNeeded(expr, name, attr.hint)
+                }
+
+                nativeProps[name] = {
                   name,
                   value,
-                }
-              }
-            }
-            else if (attr.type === nodeType.PROPERTY) {
-              let value = attr.value
-              if (attr.binding) {
-                const result = getBindingValue(attr.expr)
-                value = result.value
-
-                if (is.string(result.binding)) {
-                  binding[name] = {
-                    name: name,
-                    hint: attr.hint,
-                    binding: result.binding as string,
-                  }
-                }
-              }
-              nativeProps[name] = {
-                name,
-                hint: attr.hint,
-                value,
-              }
-            }
-            else if (attr.type === nodeType.DIRECTIVE) {
-
-              const modifier = attr.modifier
-
-              if (name === config.DIRECTIVE_EVENT) {
-                on[modifier] = {
-                  name: modifier,
-                  lazy: env.FALSE,
-                  handler: attr.event
-                    ? createEventListener(attr.event)
-                    : createMethodListener(attr.method, attr.args)
-                }
-              }
-              else if (name === config.DIRECTIVE_MODEL) {
-                const result = getBindingValue(attr.expr)
-                if (is.string(result.binding)) {
-                  model = {
-                    value: result.value,
-                    binding: result.binding as string,
-                  }
-                }
-              }
-              else if (name === env.RAW_TRANSITION) {
-                const hooks = instance.transition(attr.value)
-                if (is.object(hooks)) {
-                  transition = hooks
-                }
-              }
-              else if (name === config.DIRECTIVE_LAZY) {
-                lazy[modifier] = attr.value
-              }
-              else {
-                directives[name] = {
-                  name,
-                  modifier,
-                  value: attr.value,
-                  expr: attr.expr,
-                  hooks: instance.directive(name),
-                  handler: attr.method
-                    ? createMethodListener(attr.method, attr.args)
-                    : env.UNDEFINED,
-                  keypath,
-                }
-              }
-            }
-            else if (attr.type === nodeType.SPREAD) {
-              const expr = attr.expr, value = renderValue(expr, attr.binding)
-              // 数组也算一种对象，要排除掉
-              if (is.object(value) && !is.array(value)) {
-
-                object.each(
-                  value,
-                  function (value: any, key: string) {
-                    props[key] = value
-                  }
-                )
-
-                const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH]
-                if (absoluteKeypath) {
-                  const fuzzyKeypath = keypathUtil.join(absoluteKeypath, '*')
-                  binding[fuzzyKeypath] = {
-                    name: env.UNDEFINED,
-                    hint: env.UNDEFINED,
-                    binding: fuzzyKeypath,
-                  }
+                  hint: attr.hint,
                 }
 
-              }
-              else {
-                logger.warn(`[${expr.raw}] 不是对象，延展个毛啊`)
-              }
+                break
+
+              case nodeType.DIRECTIVE:
+                addDirective(attr)
+                break
+
+              case nodeType.SPREAD:
+                spreadObject(attr)
+                break
+
             }
           }
         )
 
-        // lazy 必须和 on 搭配使用，只有一个 lazy 啥也干不了
-        object.each(
-          lazy,
-          function (value: number | boolean, name: string) {
-            if (name) {
-              if (on[name]) {
-                on[name].lazy = value
+        // lazy 最初的设计是和 on- 指令搭配使用
+        // 开发过程中，发现可以把 `函数调用` 相关的指令都编译成 handler
+        // 于是 lazy 的使用范围就自然放开，只要指令有 handler 就行
+        // 比如：<div o-tap="method()" lazy-tap> 也能完美匹配
+        if (lazy) {
+          // 如果没写 lazy，默认为 false
+          // 如果只写了 lazy，没写应用于谁，比如 <div lazy>，默认应用于全部 handler 指令
+          const defaultLazy = lazy[env.EMPTY_STRING] || env.FALSE
+          array.each(
+            directives,
+            function (directive: Directive) {
+              if (directive.handler) {
+                directive.lazy = lazy[directive.modifier] || defaultLazy
               }
             }
-            else {
-              object.each(
-                on,
-                function (event: Event) {
-                  if (event.lazy === env.FALSE) {
-                    event.lazy = value
-                  }
-                }
-              )
-            }
-          }
-        )
+          )
+        }
 
         data.props = props
         data.nativeAttrs = nativeAttrs
         data.nativeProps = nativeProps
         data.directives = directives
-        data.transition = transition
-        data.binding = binding
         data.model = model
-        data.on = on
 
       }
 
