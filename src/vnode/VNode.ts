@@ -27,7 +27,7 @@ export default interface VNode {
 
   nativeAttrs: Record<string, Attribute> | void
 
-  directives: Directive[] | void
+  directives: Record<string, Directive> | void
 
   model: any | void
 

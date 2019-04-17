@@ -25,7 +25,7 @@ export default interface Directive {
   lazy: number | boolean | void
 
   // 单向绑定的 keypath
-  binding: string
+  binding: string | void
 
   // 单向绑定的 hint，用于区分 attr 和 prop
   hint: number | void

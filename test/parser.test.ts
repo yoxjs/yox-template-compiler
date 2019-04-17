@@ -476,13 +476,133 @@ it('directive', () => {
   expect(hasError).toBe(true)
 
 
-  let ast = compile('<div lazy></div>')
+  hasError = false
+
+  // 函数调用只能用标识符
+  try {
+    compile('<div o-tap="a.b()"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+  hasError = false
+
+  // model 只能用标识符或 memeber
+  try {
+    compile('<div model="11"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // model 只能用标识符或 memeber
+  try {
+    compile('<div model="a()"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+  // model 只能用标识符或 memeber
+  try {
+    compile('<div model="true"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+  hasError = false
+
+  // 事件名只能用标识符
+  try {
+    compile('<div on-tap="123"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+  hasError = false
+
+  // lazy 只能是大于 0 的数字或没值
+  try {
+    compile('<div lazy="a"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // lazy 只能是大于 0 的数字或没值
+  try {
+    compile('<div lazy="0"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // lazy 只能是大于 0 的数字或没值
+  try {
+    compile('<div lazy="-1"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // 指令不能用插值语法
+  try {
+    compile('<div lazy="{{a}}"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+  let ast: any
+
+  ast = compile('<div lazy></div>')
 
   expect(ast.length).toBe(1)
   expect(ast[0].attrs.length).toBe(1)
 
   expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
   expect(ast[0].attrs[0].name).toBe(config.DIRECTIVE_LAZY)
+  expect(ast[0].attrs[0].value).toBe(true)
+
+  ast = compile('<div o-a></div>')
+
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
+  expect(ast[0].attrs[0].name).toBe(config.DIRECTIVE_CUSTOM)
   expect(ast[0].attrs[0].value).toBe(true)
 
 })

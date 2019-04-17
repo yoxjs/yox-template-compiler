@@ -10,6 +10,7 @@ import * as logger from 'yox-common/util/logger'
 
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as exprCompiler from 'yox-expression-compiler/src/compiler'
+import ExpressionCall from 'yox-expression-compiler/src/node/Call'
 
 import * as helper from './helper'
 import * as creator from './creator'
@@ -235,7 +236,7 @@ export function compile(content: string): Node[] {
           // 不支持 on-click="1{{xx}}2" 或是 on-click="1{{#if x}}x{{else}}y{{/if}}2"
           // 1. 很难做性能优化
           // 2. 全局搜索不到事件名，不利于代码维护
-          // 为了统一，所有指令不支持这样写
+          // 3. 不利于编译成静态函数
           if (isDirective) {
             fatal(`指令的值不能用插值或 if 语法`)
           }
@@ -427,20 +428,39 @@ export function compile(content: string): Node[] {
       else {
 
         // 指令的值是纯文本，可以预编译表达式，提升性能
-        const expr = exprCompiler.compile(text)
+        const expr = exprCompiler.compile(text),
+
+        // model="xx" model="this.x" 值只能是标识符或 Member
+        isModel = directive.name === config.DIRECTIVE_MODEL,
+
+        // on-click="xx" on-click="method()" 值只能是标识符或函数调用
+        isEvent = directive.name === config.DIRECTIVE_EVENT
+
         if (expr) {
+          // 如果指令表达式是函数调用，则只能调用方法（难道还有别的好调用的吗？）
+          if (expr.type === exprNodeType.CALL) {
+            const { callee } = expr as ExpressionCall
+            if (callee.type !== exprNodeType.IDENTIFIER) {
+              fatal('指令表达式的类型如果是函数调用，则只能调用方法')
+            }
+          }
+          // 上面检测过方法调用，接下来事件指令只需要判断是否是标识符
+          else if (isEvent && expr.type !== exprNodeType.IDENTIFIER) {
+            fatal('事件指令的表达式只能是 标识符 或 函数调用')
+          }
+
+          if (isModel && !expr[env.RAW_STATIC_KEYPATH]) {
+            fatal(`model 指令的值格式错误: [${expr.raw}]`)
+          }
+
           directive.expr = expr
+
+        }
+        else if (isModel || isEvent) {
+          fatal(`${directive.name} 指令的表达式错误: [${text}]`)
         }
 
-        // model="xx" 值只能是标识符
-        if (directive.name === config.DIRECTIVE_MODEL) {
-          if (!expr || expr.type !== exprNodeType.IDENTIFIER) {
-            fatal(`model 指令的值 [${text}] 格式错误`)
-          }
-        }
-        else {
-          directive.value = text
-        }
+        directive.value = text
 
       }
 
@@ -450,8 +470,7 @@ export function compile(content: string): Node[] {
 
     processDirectiveSingleExpression = function (directive: Directive, child: Expression) {
 
-      directive.expr = child.expr
-      directive.children = env.UNDEFINED
+      fatal(`指令的表达式不能用插值语法`)
 
     },
 

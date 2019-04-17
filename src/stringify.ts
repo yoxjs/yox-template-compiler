@@ -90,13 +90,6 @@ function stringifyEmpty(): string {
   return stringifyCall(RENDER_EMPTY, env.EMPTY_STRING)
 }
 
-function stringifyDirective(value: string | undefined, expr: ExpressionNode | undefined): string {
-  return stringifyObject({
-    value: toJSON(value),
-    expr: toJSON(expr),
-  })
-}
-
 function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[] | void): string | void {
   return isDef(value)
     ? toJSON(value)
@@ -328,41 +321,41 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
     type,
     name: toJSON(name),
     modifier: toJSON(node.modifier),
-  },
+  }
 
-  isEvent = name === config.DIRECTIVE_EVENT
+  // 尽可能把表达式编译成函数，这样对外界最友好
+  //
+  // 众所周知，事件指令会编译成函数，对于自定义指令来说，也要尽可能编译成函数
+  //
+  // 比如 o-tap="method()" 或 o-log="{'id': '11'}"
+  // 前者会编译成 handler（调用方法），后者会编译成 generator（取值）
 
-  // 所有指令都要支持调用方法，因为外部可能会有自定义事件的需求
   if (expr) {
 
-    // 调用方法的指令，统一编译成方法调用
+    // 如果表达式明确是在调用方法，则序列化成 method + args 的形式
     if (expr.type === exprNodeType.CALL) {
       const { callee, args } = expr as ExpressionCall
-      if (callee.type === exprNodeType.IDENTIFIER) {
-        result.method = toJSON((callee as ExpressionIdentifier).name)
-        // 为了实现运行时动态收集参数，这里序列化成函数
-        if (args.length) {
-          result.args = stringifyFunction(
-            stringifyArray(args.map(stringifyExpression))
-          )
-        }
-      }
-      else {
-        logger.fatal('指令格式错误')
+      // compiler 保证了函数调用的 callee 是标识符
+      result.method = toJSON((callee as ExpressionIdentifier).name)
+      // 为了实现运行时动态收集参数，这里序列化成函数
+      if (!array.falsy(args)) {
+        result.args = stringifyFunction(
+          stringifyArray(args.map(stringifyExpression))
+        )
       }
     }
 
     // 事件还支持发事件
-    if (isEvent) {
-      if (expr.type === exprNodeType.IDENTIFIER) {
-        result.event = toJSON((expr as ExpressionIdentifier).name)
-      }
-      else if (!result.method) {
-        logger.fatal('事件指令格式错误')
-      }
+    if (name === config.DIRECTIVE_EVENT) {
+      // compiler 保证了这里只能是标识符
+      result.event = toJSON((expr as ExpressionIdentifier).name)
     }
-    else {
-      result.expr = toJSON(expr)
+    // 自定义指令
+    else if (name === config.DIRECTIVE_CUSTOM) {
+      // 取值函数
+      result.generator = stringifyFunction(
+        stringifyExpression(expr)
+      )
     }
 
   }
@@ -371,13 +364,8 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
   if (name === config.DIRECTIVE_MODEL) {
     result.expr = toJSON(expr)
   }
-  // <div lazy="100">
-  else if (name === config.DIRECTIVE_LAZY) {
-    // 只可能是 number 或 boolean，不需要 toJSON
-    result.value = value
-  }
   else {
-    result.value = stringifyDirective(value as string, expr)
+    result.value = toJSON(value)
   }
 
   return stringifyObject(result)
