@@ -1,4 +1,3 @@
-import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Event from 'yox-common/util/Event'
 
 import VNode from './VNode'
@@ -14,9 +13,10 @@ export default interface Directive {
 
   value: any
 
-  expr: ExpressionNode | undefined
-
   hooks: Record<string, (el: HTMLElement, node: Directive, vnode: VNode, oldVndoe?: VNode) => void>
+
+  // 取值函数
+  getter: () => any | void
 
   // 事件或函数调用式的指令会编译成 handler
   handler: (event: Event, data?: Record<string, any>) => void | void

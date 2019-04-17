@@ -202,31 +202,37 @@ export function render(instance: any, result: Function) {
     }
   },
 
-  createMethodListener = function (method: string, generate: Function | void) {
+  createMethodListener = function (method: string, args: Function | void) {
     return function (event: EventObject, data?: Record<string, any>) {
 
-      let result: any | void
+      const callee = instance[method]
 
-      if (generate) {
+      if (EventObject.is(event)) {
 
-        // 给当前 scope 加上 event 和 data
-        eventScope = {
-          $event: event,
-          $data: data,
+        let result: any | void
+
+        if (args) {
+          // 给当前 scope 加上 event 和 data
+          eventScope = {
+            $event: event,
+            $data: data,
+          }
+          result = execute(callee, instance, args())
+          // 阅后即焚
+          eventScope = env.UNDEFINED
+        }
+        else {
+          result = execute(callee, instance, data ? [event, data] : event)
         }
 
-        result = execute(instance[method], instance, generate())
-
-        // 阅后即焚
-        eventScope = env.UNDEFINED
-
+        if (result === env.FALSE) {
+          event.prevent().stop()
+        }
       }
       else {
-        result = execute(method, instance, data ? [event, data] : event)
-      }
-
-      if (result === env.FALSE) {
-        event.prevent().stop()
+        args
+        ? execute(callee, instance, args())
+        : execute(callee, instance)
       }
 
     }
@@ -247,26 +253,46 @@ export function render(instance: any, result: Function) {
 
         nativeAttrs: Record<string, Attribute> = {},
 
-        directives: Directive[] = [],
+        directives: Record<string, Directive> = {},
 
         lazy: Record<string, number | boolean> | void,
 
         model: any | void,
+
+        addDirective = function (
+          name: string,
+          modifier: string,
+          hooks: Record<string, (node: HTMLElement, vnode: VNode) => void> | void,
+          binding?: string | void,
+          hint?: number | void,
+          value?: any,
+          getter?: () => any | void,
+          handler?: (event: EventObject, data?: Record<string, any>) => void | void
+        ) {
+          directives[keypathUtil.join(name, modifier)] = {
+            name,
+            modifier,
+            value,
+            hooks: is.object(hooks) ? hooks : env.UNDEFINED,
+            handler,
+            getter,
+            hint,
+            binding,
+            lazy: env.UNDEFINED,
+          }
+        },
 
         addBindingIfNeeded = function (attr: Record<string, any>): any {
 
           const result = getBindingValue(attr.expr)
 
           if (is.string(result.binding)) {
-            array.push(
-              directives,
-              {
-                name: config.DIRECTIVE_BINDING,
-                modifier: attr.name,
-                hint: attr.hint,
-                binding: result.binding as string,
-                hooks: instance.directive(config.DIRECTIVE_BINDING)
-              }
+            addDirective(
+              config.DIRECTIVE_BINDING,
+              attr.name,
+              instance.directive(config.DIRECTIVE_BINDING),
+              result.binding as string,
+              attr.hint
             )
           }
 
@@ -274,7 +300,7 @@ export function render(instance: any, result: Function) {
 
         },
 
-        addDirective = function (attr: Record<string, any>) {
+        parseDirective = function (attr: Record<string, any>) {
 
           let { name, modifier, value } = attr,
 
@@ -282,7 +308,9 @@ export function render(instance: any, result: Function) {
 
           hooks: Record<string, (node: HTMLElement, vnode: VNode) => void> | void,
 
-          handler: (event: EventObject, data?: Record<string, any>) => void | void
+          handler: (event: EventObject, data?: Record<string, any>) => void | void,
+
+          getter: () => any | void
 
           switch (name) {
 
@@ -320,21 +348,22 @@ export function render(instance: any, result: Function) {
               if (attr.method) {
                 handler = createMethodListener(attr.method, attr.args)
               }
+              else {
+                getter = attr.getter
+              }
               break
 
           }
 
-          array.push(
-            directives,
-            {
-              name,
-              modifier,
-              value,
-              expr: attr.expr,
-              hooks: is.object(hooks) ? hooks : env.UNDEFINED,
-              handler,
-              binding,
-            }
+          addDirective(
+            name,
+            modifier,
+            hooks,
+            binding,
+            env.UNDEFINED,
+            value,
+            getter,
+            handler
           )
 
         },
@@ -357,14 +386,11 @@ export function render(instance: any, result: Function) {
 
             const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH]
             if (absoluteKeypath) {
-              const fuzzyKeypath = keypathUtil.join(absoluteKeypath, '*')
-              array.push(
-                directives,
-                {
-                  name: config.DIRECTIVE_BINDING,
-                  binding: fuzzyKeypath,
-                  hooks: instance.directive(config.DIRECTIVE_BINDING)
-                }
+              addDirective(
+                config.DIRECTIVE_BINDING,
+                env.UNDEFINED,
+                instance.directive(config.DIRECTIVE_BINDING),
+                keypathUtil.join(absoluteKeypath, '*'),
               )
             }
 
@@ -412,7 +438,7 @@ export function render(instance: any, result: Function) {
                 break
 
               case nodeType.DIRECTIVE:
-                addDirective(attr)
+                parseDirective(attr)
                 break
 
               case nodeType.SPREAD:

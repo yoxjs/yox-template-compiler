@@ -328,7 +328,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
   // 众所周知，事件指令会编译成函数，对于自定义指令来说，也要尽可能编译成函数
   //
   // 比如 o-tap="method()" 或 o-log="{'id': '11'}"
-  // 前者会编译成 handler（调用方法），后者会编译成 generator（取值）
+  // 前者会编译成 handler（调用方法），后者会编译成 getter（取值）
 
   if (expr) {
 
@@ -344,16 +344,13 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
         )
       }
     }
-
-    // 事件还支持发事件
-    if (name === config.DIRECTIVE_EVENT) {
+    else if (name === config.DIRECTIVE_EVENT) {
       // compiler 保证了这里只能是标识符
       result.event = toJSON((expr as ExpressionIdentifier).name)
     }
-    // 自定义指令
     else if (name === config.DIRECTIVE_CUSTOM) {
       // 取值函数
-      result.generator = stringifyFunction(
+      result.getter = stringifyFunction(
         stringifyExpression(expr)
       )
     }
