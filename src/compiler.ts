@@ -1050,7 +1050,18 @@ export function compile(content: string): Node[] {
         // 结束当前 block
         // 正则会去掉 {{ xx }} 里面两侧的空白符，因此如果有 /，一定是第一个字符
         if (string.charAt(content) === '/') {
+
+          /**
+           * 处理可能存在的自闭合元素，如下
+           *
+           * {{#if xx}}
+           *    <input>
+           * {{/if}}
+           */
+          popSelfClosingElementIfNeeded()
+
           const name = string.slice(content, 1)
+
           let type = helper.name2Type[name]
           if (type === nodeType.IF) {
             const node = array.pop(ifStack)
@@ -1061,6 +1072,7 @@ export function compile(content: string): Node[] {
               fatal(`if 还没开始就结束了？`)
             }
           }
+
           popStack(type)
         }
         else {

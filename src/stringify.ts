@@ -198,15 +198,13 @@ const nodeStringify = {}
 
 nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
-  let { tag, isComponent, isSvg, isStatic, name, ref, key, attrs, children } = node,
+  const { tag, isComponent, isSvg, isStatic, name, ref, key, attrs, children } = node,
 
-  args: any[] = [],
+  args: string[] = [],
 
   data: Record<string, any> = { },
 
-  slots: any,
-
-  attributes: any[] = []
+  attributes: string[] = []
 
   if (tag === env.RAW_SLOT) {
     return stringifyCall(
@@ -247,10 +245,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   if (isComponent) {
     data.isComponent = env.TRUE
-    slots = getComponentSlots(children)
-    if (slots) {
-      data.slots = slots
-    }
+    data.slots = getComponentSlots(children)
   }
   else {
     stringifyChildren(
