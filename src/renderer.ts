@@ -10,7 +10,7 @@ import * as object from 'yox-common/util/object'
 import * as logger from 'yox-common/util/logger'
 import * as keypathUtil from 'yox-common/util/keypath'
 
-import EventObject from 'yox-common/util/Event'
+import Event from 'yox-common/util/Event'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Keypath from 'yox-expression-compiler/src/node/Keypath'
@@ -23,6 +23,9 @@ import VNode from './vnode/VNode'
 import Attribute from './vnode/Attribute'
 import Property from './vnode/Property'
 import Directive from './vnode/Directive'
+
+// 每创建一个新的 vnode 就分配一个递增的 id
+let guid = 0
 
 /**
  * nodes 是动态计算出来的节点，因此节点本身可能是数组
@@ -51,8 +54,6 @@ function renderChildren(nodes: VNode[]) {
   addNodes(list, nodes)
   return list
 }
-
-let guid = 0
 
 export function render(instance: any, result: Function) {
 
@@ -195,9 +196,9 @@ export function render(instance: any, result: Function) {
   },
 
   createEventListener = function (type: string) {
-    return function (event: EventObject, data?: Record<string, any>) {
+    return function (event: Event, data?: Record<string, any>) {
       if (event.type !== type) {
-        event = new EventObject(event)
+        event = new Event(event)
         event.type = type
       }
       instance.fire(event, data)
@@ -205,11 +206,11 @@ export function render(instance: any, result: Function) {
   },
 
   createMethodListener = function (method: string, args: Function | void) {
-    return function (event: EventObject, data?: Record<string, any>) {
+    return function (event: Event, data?: Record<string, any>) {
 
       const callee = instance[method]
 
-      if (EventObject.is(event)) {
+      if (Event.is(event)) {
 
         let result: any | void
 
@@ -272,7 +273,7 @@ export function render(instance: any, result: Function) {
           hint?: number | void,
           value?: any,
           getter?: () => any | void,
-          handler?: (event: EventObject, data?: Record<string, any>) => void | void
+          handler?: (event: Event, data?: Record<string, any>) => void | void
         ) {
           directives[keypathUtil.join(name, modifier)] = {
             name,
@@ -313,7 +314,7 @@ export function render(instance: any, result: Function) {
 
           hooks: Record<string, (node: HTMLElement, vnode: VNode) => void> | void,
 
-          handler: (event: EventObject, data?: Record<string, any>) => void | void,
+          handler: (event: Event, data?: Record<string, any>) => void | void,
 
           getter: () => any | void
 
@@ -462,7 +463,7 @@ export function render(instance: any, result: Function) {
           // 如果没写 lazy，默认为 false
           // 如果只写了 lazy，没写应用于谁，比如 <div lazy>，默认应用于全部 handler 指令
           const defaultLazy = lazy[env.EMPTY_STRING] || env.FALSE
-          array.each(
+          object.each(
             directives,
             function (directive: Directive) {
               if (directive.handler) {
