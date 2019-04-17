@@ -253,16 +253,17 @@ export function render(instance: any, result: Function) {
 
         model: any | void,
 
-        addBindingIfNeeded = function (expr: Keypath, name: string, hint?: any): any {
+        addBindingIfNeeded = function (attr: Record<string, any>): any {
 
-          const result = getBindingValue(expr)
+          const result = getBindingValue(attr.expr)
 
           if (is.string(result.binding)) {
             array.push(
               directives,
               {
                 name: config.DIRECTIVE_BINDING,
-                modifier: name,
+                modifier: attr.name,
+                hint: attr.hint,
                 binding: result.binding as string,
                 hooks: instance.directive(config.DIRECTIVE_BINDING)
               }
@@ -377,14 +378,14 @@ export function render(instance: any, result: Function) {
           attrs,
           function (attr: any) {
 
-            let { name, expr, value } = attr
+            let { name, value } = attr
 
             switch (attr.type) {
 
               case nodeType.ATTRIBUTE:
 
                 if (attr.binding) {
-                  value = addBindingIfNeeded(expr, name)
+                  value = addBindingIfNeeded(attr)
                 }
 
                 if (data.isComponent) {
@@ -399,7 +400,7 @@ export function render(instance: any, result: Function) {
               case nodeType.PROPERTY:
 
                 if (attr.binding) {
-                  value = addBindingIfNeeded(expr, name, attr.hint)
+                  value = addBindingIfNeeded(attr)
                 }
 
                 nativeProps[name] = {
