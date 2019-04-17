@@ -6,7 +6,6 @@ import toJSON from 'yox-common/function/toJSON'
 import * as env from 'yox-common/util/env'
 import * as array from 'yox-common/util/array'
 import * as object from 'yox-common/util/object'
-import * as logger from 'yox-common/util/logger'
 
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'
@@ -31,25 +30,45 @@ import Import from './node/Import'
 import Partial from './node/Partial'
 import Spread from './node/Spread'
 
-export const RENDER_ELEMENT = '_c'
+const RENDER_ELEMENT = '_c'
 
-export const RENDER_SLOT = '_s'
+const RENDER_SLOT = '_s'
 
-export const RENDER_EACH = '_l'
+const RENDER_EACH = '_l'
 
-export const RENDER_EMPTY = '_e'
+const RENDER_EMPTY = '_e'
 
-export const RENDER_EXPRESSION = '_x'
+const RENDER_EXPRESSION = '_x'
 
-export const RENDER_CHILDREN = '_v'
+const RENDER_CHILDREN = '_v'
 
-export const RENDER_PARTIAL = '_p'
+const RENDER_PARTIAL = '_p'
 
-export const RENDER_IMPORT = '_i'
+const RENDER_IMPORT = '_i'
 
 const SEP_COMMA = ', '
+
 const SEP_COLON = ': '
+
 const SEP_PLUS = ' + '
+
+let args = [
+  RENDER_EMPTY,
+  RENDER_CHILDREN,
+  RENDER_EXPRESSION,
+  RENDER_ELEMENT,
+  RENDER_SLOT,
+  RENDER_PARTIAL,
+  RENDER_IMPORT,
+  RENDER_EACH
+]
+
+// 外部用这个判断字符串是否是已编译
+export const prefix = `function (${array.join(args, SEP_COMMA)}) { return `
+
+export const suffix = ` }`
+
+args = env.UNDEFINED
 
 function stringifyObject(obj: Object): string {
   const fields = []
@@ -119,7 +138,7 @@ function stringifyChildren(
         ) {
           simpleStack[simpleStack.length - 1] = env.FALSE
         }
-        array.push(childs, stringify(child))
+        array.push(childs, nodeStringify[child.type](child))
       }
     )
 
@@ -219,7 +238,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
       function (attr: Node) {
         array.push(
           attributes,
-          stringify(attr)
+          nodeStringify[attr.type](attr)
         )
       }
     )
@@ -459,19 +478,5 @@ nodeStringify[nodeType.IMPORT] = function (node: Import): string {
 }
 
 export function stringify(node: Node): string {
-  return nodeStringify[node.type](node)
-}
-
-export function parse(code: string): Function {
-  return new Function(
-    RENDER_EMPTY,
-    RENDER_CHILDREN,
-    RENDER_EXPRESSION,
-    RENDER_ELEMENT,
-    RENDER_SLOT,
-    RENDER_PARTIAL,
-    RENDER_IMPORT,
-    RENDER_EACH,
-    `return ${code}`
-  )
+  return prefix + nodeStringify[node.type](node) + suffix
 }

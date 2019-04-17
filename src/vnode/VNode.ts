@@ -23,6 +23,8 @@ export default interface VNode {
 
   isStatic: boolean | void
 
+  isLoading: boolean | void
+
   props: Record<string, any> | void
 
   slots: Record<string, string | VNode[]> | void
