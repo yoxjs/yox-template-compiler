@@ -24,9 +24,6 @@ import Attribute from './vnode/Attribute'
 import Property from './vnode/Property'
 import Directive from './vnode/Directive'
 
-// 每创建一个新的 vnode 就分配一个递增的 id
-let guid = 0
-
 /**
  * nodes 是动态计算出来的节点，因此节点本身可能是数组
  * 这里的数组不是从 `数据` 取来的，而是一个结构性的数组
@@ -247,9 +244,6 @@ export function render(instance: any, result: Function) {
     renderChildren,
     renderValue,
     function (data: VNode, attrs: any[] | void) {
-
-      // 每个 vnode 分配一个全局唯一的 id
-      data.id = ++guid
 
       if (attrs) {
 

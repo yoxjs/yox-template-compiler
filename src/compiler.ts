@@ -255,7 +255,7 @@ export function compile(content: string): Node[] {
         }
 
         if (isElement) {
-          checkSlot(node as Element)
+          checkElement(node as Element)
         }
         else if (currentElement && isAttribute && isSpecialAttr(currentElement, node as Attribute)) {
           bindSpecialAttr(currentElement, node as Attribute)
@@ -474,14 +474,25 @@ export function compile(content: string): Node[] {
 
     },
 
-    checkSlot = function (element: Element) {
+    checkElement = function (element: Element) {
+
+      const isTemplate = element.tag === env.RAW_TEMPLATE
 
       if (element.slot) {
-        if (element.tag !== env.RAW_TEMPLATE) {
+        if (!isTemplate) {
           fatal(`slot 属性只能用于 <template>`)
         }
+        else if (element.key) {
+          fatal(`<template> 不支持 key`)
+        }
+        else if (element.ref) {
+          fatal(`<template> 不支持 ref`)
+        }
+        else if (element.attrs) {
+          fatal(`<template> 不支持属性或指令`)
+        }
       }
-      else if (element.tag === env.RAW_TEMPLATE) {
+      else if (isTemplate) {
         fatal(`<template> 不写 slot 属性是几个意思？`)
       }
       else if (element.tag === env.RAW_SLOT && !element.name) {

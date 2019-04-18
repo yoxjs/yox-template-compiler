@@ -7,9 +7,9 @@ import Directive from './Directive'
  */
 export default interface VNode {
 
-  id: number
+  node: Node
 
-  node: Node | void
+  data: Record<string, any>
 
   tag: string | void
 
@@ -22,8 +22,6 @@ export default interface VNode {
   isSvg: boolean | void
 
   isStatic: boolean | void
-
-  isLoading: boolean | void
 
   props: Record<string, any> | void
 
@@ -44,10 +42,6 @@ export default interface VNode {
   text: string | void
 
   children: VNode[] | void
-
-  // vnode 是个组件，如 <Dog />
-  // 这里会赋上该组件对应的实例
-  component: any
 
   // 组件的 parent
   // <Custom>

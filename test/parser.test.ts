@@ -111,11 +111,9 @@ it('template 和 slot', () => {
   hasError = false
 
   try {
-    let ast = compile('<Dog><template slot="xx" ref="yy"></template></Dog>')
+    let ast = compile('<Dog><template slot="xx"></template></Dog>')
     expect(ast[0].children[0].slot != null).toBe(true)
     expect(ast[0].children[0].slot).toBe('xx')
-    expect(ast[0].children[0].ref != null).toBe(true)
-    expect(ast[0].children[0].ref.value).toBe('yy')
     expect(ast[0].children[0].attrs).toBe(undefined)
   }
   catch (e) {
@@ -529,6 +527,19 @@ it('directive', () => {
   // 事件名只能用标识符
   try {
     compile('<div on-tap="123"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+  hasError = false
+
+  // template 上只能写 slot
+  try {
+    compile('<Dog><template slot="11" key="1"></template></Dog>')
   }
   catch {
     hasError = true
