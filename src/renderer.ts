@@ -17,12 +17,15 @@ import Keypath from 'yox-expression-compiler/src/node/Keypath'
 
 import * as exprExecutor from 'yox-expression-compiler/src/executor'
 
-import * as nodeType from './nodeType'
+import Yox from 'yox-type/src/Yox'
+import VNode from 'yox-type/src/vnode/VNode'
+import Attribute from 'yox-type/src/vnode/Attribute'
+import Property from 'yox-type/src/vnode/Property'
+import Directive from 'yox-type/src/vnode/Directive'
+import DirectiveHook from 'yox-type/src/hook/Directive'
+import TransitionHook from 'yox-type/src/hook/Transition'
 
-import VNode from './vnode/VNode'
-import Attribute from './vnode/Attribute'
-import Property from './vnode/Property'
-import Directive from './vnode/Directive'
+import * as nodeType from './nodeType'
 
 /**
  * nodes 是动态计算出来的节点，因此节点本身可能是数组
@@ -52,7 +55,7 @@ function renderChildren(nodes: VNode[]) {
   return list
 }
 
-export function render(instance: any, result: Function) {
+export function render(instance: Yox, result: Function) {
 
   let keypath = env.EMPTY_STRING,
 
@@ -205,11 +208,11 @@ export function render(instance: any, result: Function) {
   },
 
   createMethodListener = function (method: string, args: Function | void) {
-    return function (event: Event, data?: Record<string, any>) {
+    return function (event: any, data?: Record<string, any>) {
 
       const callee = instance[method]
 
-      if (Event.is(event)) {
+      if (event instanceof Event) {
 
         let result: any | void
 
@@ -245,7 +248,7 @@ export function render(instance: any, result: Function) {
     renderEmpty,
     renderChildren,
     renderValue,
-    function (data: VNode, attrs: any[] | void) {
+    function (vnode: VNode, attrs: any[] | void) {
 
       if (attrs) {
 
@@ -261,31 +264,22 @@ export function render(instance: any, result: Function) {
 
         model: any | void,
 
-        addDirective = function (
-          type: string,
-          name: string,
-          hooks: Record<string, (node: HTMLElement, vnode: VNode) => void> | void,
-          binding?: string | void,
-          hint?: number | void,
-          value?: any,
-          getter?: () => any | void,
-          handler?: (event: Event, data?: Record<string, any>) => void | void
-        ) {
-        },
-
         addBindingIfNeeded = function (attr: Record<string, any>): any {
 
           const result = getBindingValue(attr.expr)
 
           if (is.string(result.binding)) {
-            const key = keypathUtil.join(config.DIRECTIVE_BINDING, attr.name)
-            directives[key] = {
-              type: config.DIRECTIVE_BINDING,
-              name: attr.name,
-              key,
-              hooks: instance.directive(config.DIRECTIVE_BINDING),
-              binding: result.binding,
-              hint: attr.hint,
+            const key = keypathUtil.join(config.DIRECTIVE_BINDING, attr.name),
+            hooks = instance.directive(config.DIRECTIVE_BINDING)
+            if (hooks) {
+              directives[key] = {
+                type: config.DIRECTIVE_BINDING,
+                name: attr.name,
+                key,
+                hooks,
+                binding: result.binding,
+                hint: attr.hint,
+              }
             }
           }
 
@@ -295,9 +289,13 @@ export function render(instance: any, result: Function) {
 
         parseDirective = function (attr: Record<string, any>) {
 
-          const { name, modifier, value } = attr,
+          let { name, modifier, value } = attr,
 
           key = keypathUtil.join(name, modifier),
+
+          hooks: DirectiveHook | void,
+
+          transition: TransitionHook | void,
 
           directive: Directive = {
             type: name,
@@ -309,18 +307,24 @@ export function render(instance: any, result: Function) {
           switch (name) {
 
             case config.DIRECTIVE_EVENT:
-              directive.hooks = instance.directive(config.DIRECTIVE_EVENT)
+              hooks = instance.directive(config.DIRECTIVE_EVENT)
               directive.handler = attr.event
                 ? createEventListener(attr.event)
                 : createMethodListener(attr.method, attr.args)
               break
 
             case env.RAW_TRANSITION:
-              directive.hooks = instance.transition(value)
-              break
+              transition = instance.transition(value)
+              if (transition) {
+                vnode.transition = transition
+              }
+              else {
+                logger.fatal(`transition [${value}] is not found.`)
+              }
+              return
 
             case config.DIRECTIVE_MODEL:
-              directive.hooks = instance.directive(config.DIRECTIVE_MODEL)
+              hooks = instance.directive(config.DIRECTIVE_MODEL)
               const result = getBindingValue(attr.expr)
               if (is.string(result.binding)) {
                 directive.binding = result.binding
@@ -338,7 +342,7 @@ export function render(instance: any, result: Function) {
               return
 
             default:
-              directive.hooks = instance.directive(modifier)
+              hooks = instance.directive(modifier)
               if (attr.method) {
                 directive.handler = createMethodListener(attr.method, attr.args)
               }
@@ -349,7 +353,13 @@ export function render(instance: any, result: Function) {
 
           }
 
-          directives[key] = directive
+          if (hooks) {
+            directive.hooks = hooks
+            directives[key] = directive
+          }
+          else {
+            logger.fatal(`directive [${key}] is not found.`)
+          }
 
         },
 
@@ -371,13 +381,16 @@ export function render(instance: any, result: Function) {
 
             const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH]
             if (absoluteKeypath) {
-              const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath)
-              directives[key] = {
-                type: config.DIRECTIVE_BINDING,
-                name: env.EMPTY_STRING,
-                key,
-                hooks: instance.directive(config.DIRECTIVE_BINDING),
-                binding: keypathUtil.join(absoluteKeypath, '*'),
+              const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath),
+              hooks = instance.directive(config.DIRECTIVE_BINDING)
+              if (hooks) {
+                directives[key] = {
+                  type: config.DIRECTIVE_BINDING,
+                  name: env.EMPTY_STRING,
+                  key,
+                  hooks,
+                  binding: keypathUtil.join(absoluteKeypath, '*'),
+                }
               }
             }
 
@@ -401,7 +414,7 @@ export function render(instance: any, result: Function) {
                   value = addBindingIfNeeded(attr)
                 }
 
-                if (data.isComponent) {
+                if (vnode.isComponent) {
                   props[name] = value
                 }
                 else {
@@ -454,18 +467,18 @@ export function render(instance: any, result: Function) {
           )
         }
 
-        data.props = props
-        data.nativeAttrs = nativeAttrs
-        data.nativeProps = nativeProps
-        data.directives = directives
-        data.model = model
+        vnode.props = props
+        vnode.nativeAttrs = nativeAttrs
+        vnode.nativeProps = nativeProps
+        vnode.directives = directives
+        vnode.model = model
 
       }
 
-      data.instance = instance
-      data.keypath = keypath
+      vnode.instance = instance
+      vnode.keypath = keypath
 
-      return data
+      return vnode
 
     },
     // <slot name="xx"/>
