@@ -18,6 +18,7 @@ import Keypath from 'yox-expression-compiler/src/node/Keypath'
 import * as exprExecutor from 'yox-expression-compiler/src/executor'
 
 import Yox from 'yox-type/src/Yox'
+import * as signature from 'yox-type/src/signature'
 import VNode from 'yox-type/src/vnode/VNode'
 import Attribute from 'yox-type/src/vnode/Attribute'
 import Property from 'yox-type/src/vnode/Property'
@@ -197,7 +198,7 @@ export function render(instance: Yox, result: Function) {
     }
   },
 
-  createEventListener = function (type: string) {
+  createEventListener = function (type: string): signature.eventListener {
     return function (event: Event, data?: Record<string, any>) {
       if (event.type !== type) {
         event = new Event(event)
@@ -207,8 +208,8 @@ export function render(instance: Yox, result: Function) {
     }
   },
 
-  createMethodListener = function (method: string, args: Function | void) {
-    return function (event: any, data?: Record<string, any>) {
+  createMethodListener = function (method: string, args: Function | void): signature.directiveHandler {
+    return function (event?: Event, data?: Record<string, any>) {
 
       const callee = instance[method]
 
