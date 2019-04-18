@@ -7,9 +7,12 @@ import VNode from './VNode'
  */
 export default interface Directive {
 
-  name: string
+  type: string
 
-  modifier: string | undefined
+  name: string | undefined
+
+  // 当前 vnode 所有指令唯一的一个 key
+  key: string
 
   value: any
 

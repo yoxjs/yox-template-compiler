@@ -17,17 +17,17 @@ export default interface Element extends Branch {
   isComponent: boolean
 
   // <template slot="xx">
-  slot: string | undefined
+  slot?: string
 
   // <slot name="xx">
-  name: string | undefined
+  name?: string
 
   // <div ref="xx">
-  ref: Attribute | undefined
+  ref?: Attribute
 
   // <div key="xx">
-  key: Attribute | undefined
+  key?: Attribute
 
-  attrs: (Attribute | Directive | Property | If | Spread)[] | undefined
+  attrs?: (Attribute | Directive | Property | If | Spread)[]
 
 }

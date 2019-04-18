@@ -8,10 +8,10 @@ export default interface Attribute extends Branch {
 
   name: string
 
-  expr: ExpressionNode | undefined
+  expr?: ExpressionNode
 
-  value: any | undefined
+  value?: any
 
-  binding: boolean | undefined
+  binding?: boolean
 
 }

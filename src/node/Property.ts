@@ -10,10 +10,10 @@ export default interface Property extends Branch {
 
   hint: number
 
-  value: any | undefined
+  value?: any
 
-  expr: ExpressionNode | undefined
+  expr?: ExpressionNode
 
-  binding: boolean | undefined
+  binding?: boolean
 
 }

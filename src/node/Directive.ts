@@ -8,11 +8,11 @@ export default interface Directive extends Branch {
 
   name: string
 
-  modifier: string | undefined
+  modifier?: string
 
-  expr: ExpressionNode | undefined
+  expr?: ExpressionNode
 
   // lazy 是 boolean 或 number
-  value: string | number | boolean | undefined
+  value?: string | number | boolean
 
 }

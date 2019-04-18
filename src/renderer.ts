@@ -260,8 +260,8 @@ export function render(instance: any, result: Function) {
         model: any | void,
 
         addDirective = function (
+          type: string,
           name: string,
-          modifier: string,
           hooks: Record<string, (node: HTMLElement, vnode: VNode) => void> | void,
           binding?: string | void,
           hint?: number | void,
@@ -269,9 +269,11 @@ export function render(instance: any, result: Function) {
           getter?: () => any | void,
           handler?: (event: Event, data?: Record<string, any>) => void | void
         ) {
-          directives[keypathUtil.join(name, modifier)] = {
+          const key = keypathUtil.join(type, name)
+          directives[key] = {
+            type,
             name,
-            modifier,
+            key,
             value,
             hooks: is.object(hooks) ? hooks : env.UNDEFINED,
             handler,

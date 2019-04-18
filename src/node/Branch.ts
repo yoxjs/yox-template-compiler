@@ -5,6 +5,6 @@ import Node from './Node'
  */
 export default interface Branch extends Node {
 
-  children: Node[] | undefined
+  children?: Node[]
 
 }
