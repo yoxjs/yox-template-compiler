@@ -9,48 +9,48 @@ export default interface VNode {
 
   data: Record<string, any>
 
-  tag: string | void
+  tag?: string
 
-  isComponent: boolean | void
+  isComponent?: boolean
 
-  isComment: boolean | void
+  isComment?: boolean
 
-  isText: boolean | void
+  isText?: boolean
 
-  isSvg: boolean | void
+  isSvg?: boolean
 
-  isStatic: boolean | void
+  isStatic?: boolean
 
-  props: Record<string, any> | void
+  props?: Record<string, any>
 
-  slots: Record<string, string | VNode[]> | void
+  slots?: Record<string, string | VNode[]>
 
-  nativeProps: Record<string, Property> | void
+  nativeProps?: Record<string, Property>
 
-  nativeAttrs: Record<string, Attribute> | void
+  nativeAttrs?: Record<string, Attribute>
 
-  directives: Record<string, Directive> | void
+  directives?: Record<string, Directive>
 
-  model: any | void
+  model?: any
 
-  ref: string | void
+  ref?: string
 
-  key: string | void
+  key?: string
 
-  text: string | void
+  text?: string
 
-  children: VNode[] | void
+  children?: VNode[]
 
   // 组件的 parent
   // <Custom>
   //  <Dog />
   // </Custom>
   // 这里 Dog 传入了 Custom 内部，parent 指向实际的父级组件，即 Custom，而不是 instance
-  parent: any
+  parent?: any
 
-  instance: any
+  instance?: any
 
   // 渲染节点时的 keypath
-  keypath: string
+  keypath?: string
 
 }

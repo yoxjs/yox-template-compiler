@@ -171,7 +171,9 @@ export function render(instance: any, result: Function) {
       value = instance.filter(formated)
     }
 
-    node.absoluteKeypath = absoluteKeypath
+    if (absoluteKeypath) {
+      node.absoluteKeypath = absoluteKeypath
+    }
 
     return value
 
@@ -269,19 +271,6 @@ export function render(instance: any, result: Function) {
           getter?: () => any | void,
           handler?: (event: Event, data?: Record<string, any>) => void | void
         ) {
-          const key = keypathUtil.join(type, name)
-          directives[key] = {
-            type,
-            name,
-            key,
-            value,
-            hooks: is.object(hooks) ? hooks : env.UNDEFINED,
-            handler,
-            getter,
-            hint,
-            binding,
-            lazy: env.UNDEFINED,
-          }
         },
 
         addBindingIfNeeded = function (attr: Record<string, any>): any {
@@ -289,13 +278,15 @@ export function render(instance: any, result: Function) {
           const result = getBindingValue(attr.expr)
 
           if (is.string(result.binding)) {
-            addDirective(
-              config.DIRECTIVE_BINDING,
-              attr.name,
-              instance.directive(config.DIRECTIVE_BINDING),
-              result.binding as string,
-              attr.hint
-            )
+            const key = keypathUtil.join(config.DIRECTIVE_BINDING, attr.name)
+            directives[key] = {
+              type: config.DIRECTIVE_BINDING,
+              name: attr.name,
+              key,
+              hooks: instance.directive(config.DIRECTIVE_BINDING),
+              binding: result.binding,
+              hint: attr.hint,
+            }
           }
 
           return result.value
@@ -304,34 +295,35 @@ export function render(instance: any, result: Function) {
 
         parseDirective = function (attr: Record<string, any>) {
 
-          let { name, modifier, value } = attr,
+          const { name, modifier, value } = attr,
 
-          binding: string | void,
+          key = keypathUtil.join(name, modifier),
 
-          hooks: Record<string, (node: HTMLElement, vnode: VNode) => void> | void,
-
-          handler: (event: Event, data?: Record<string, any>) => void | void,
-
-          getter: () => any | void
+          directive: Directive = {
+            type: name,
+            name: modifier,
+            key,
+            value,
+          }
 
           switch (name) {
 
             case config.DIRECTIVE_EVENT:
-              hooks = instance.directive(config.DIRECTIVE_EVENT)
-              handler = attr.event
+              directive.hooks = instance.directive(config.DIRECTIVE_EVENT)
+              directive.handler = attr.event
                 ? createEventListener(attr.event)
                 : createMethodListener(attr.method, attr.args)
               break
 
             case env.RAW_TRANSITION:
-              hooks = instance.transition(value)
+              directive.hooks = instance.transition(value)
               break
 
             case config.DIRECTIVE_MODEL:
-              hooks = instance.directive(config.DIRECTIVE_MODEL)
+              directive.hooks = instance.directive(config.DIRECTIVE_MODEL)
               const result = getBindingValue(attr.expr)
               if (is.string(result.binding)) {
-                binding = result.binding
+                directive.binding = result.binding
                 model = result.value
               }
               break
@@ -346,27 +338,18 @@ export function render(instance: any, result: Function) {
               return
 
             default:
-              hooks = instance.directive(modifier)
+              directive.hooks = instance.directive(modifier)
               if (attr.method) {
-                handler = createMethodListener(attr.method, attr.args)
+                directive.handler = createMethodListener(attr.method, attr.args)
               }
               else {
-                getter = attr.getter
+                directive.getter = attr.getter
               }
               break
 
           }
 
-          addDirective(
-            name,
-            modifier,
-            hooks,
-            binding,
-            env.UNDEFINED,
-            value,
-            getter,
-            handler
-          )
+          directives[key] = directive
 
         },
 
@@ -388,12 +371,14 @@ export function render(instance: any, result: Function) {
 
             const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH]
             if (absoluteKeypath) {
-              addDirective(
-                config.DIRECTIVE_BINDING,
-                env.UNDEFINED,
-                instance.directive(config.DIRECTIVE_BINDING),
-                keypathUtil.join(absoluteKeypath, '*'),
-              )
+              const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath)
+              directives[key] = {
+                type: config.DIRECTIVE_BINDING,
+                name: env.EMPTY_STRING,
+                key,
+                hooks: instance.directive(config.DIRECTIVE_BINDING),
+                binding: keypathUtil.join(absoluteKeypath, '*'),
+              }
             }
 
           }
@@ -463,7 +448,7 @@ export function render(instance: any, result: Function) {
             directives,
             function (directive: Directive) {
               if (directive.handler) {
-                directive.lazy = lazy[directive.modifier] || defaultLazy
+                directive.lazy = lazy[directive.name] || defaultLazy
               }
             }
           )

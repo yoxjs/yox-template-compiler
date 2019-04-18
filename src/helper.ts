@@ -1,5 +1,3 @@
-import * as config from 'yox-config'
-
 import * as env from 'yox-common/util/env'
 
 import * as nodeType from './nodeType'

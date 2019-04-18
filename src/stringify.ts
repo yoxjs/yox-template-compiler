@@ -64,7 +64,7 @@ let args = [
 ]
 
 // 外部用这个判断字符串是否是已编译
-export const prefix = `function (${array.join(args, SEP_COMMA)}) { return `
+export const prefix = `;function (${array.join(args, SEP_COMMA)}) { return `
 
 export const suffix = ` }`
 
