@@ -13,7 +13,7 @@ export default interface Directive {
 
   value: any
 
-  hooks: Record<string, (node: Node, directive: Directive, vnode: VNode, oldVndoe?: VNode) => void>
+  hooks: Record<string, (node: Node | any, directive: Directive, vnode: VNode, oldVndoe?: VNode) => void>
 
   // 取值函数
   getter: () => any | void

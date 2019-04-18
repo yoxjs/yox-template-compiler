@@ -7,8 +7,6 @@ import Directive from './Directive'
  */
 export default interface VNode {
 
-  node: Node
-
   data: Record<string, any>
 
   tag: string | void
@@ -51,5 +49,8 @@ export default interface VNode {
   parent: any
 
   instance: any
+
+  // 渲染节点时的 keypath
+  keypath: string
 
 }
