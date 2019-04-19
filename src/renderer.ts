@@ -18,7 +18,7 @@ import Keypath from 'yox-expression-compiler/src/node/Keypath'
 import * as exprExecutor from 'yox-expression-compiler/src/executor'
 
 import Yox from 'yox-type/src/Yox'
-import * as signature from 'yox-type/src/signature'
+import * as signature from 'yox-type/src/type'
 import VNode from 'yox-type/src/vnode/VNode'
 import Attribute from 'yox-type/src/vnode/Attribute'
 import Property from 'yox-type/src/vnode/Property'
@@ -201,8 +201,7 @@ export function render(instance: Yox, result: Function) {
   createEventListener = function (type: string): signature.eventListener {
     return function (event: Event, data?: Record<string, any>) {
       if (event.type !== type) {
-        event = new Event(event)
-        event.type = type
+        event = new Event(type, event)
       }
       instance.fire(event, data)
     }
@@ -249,7 +248,7 @@ export function render(instance: Yox, result: Function) {
     renderEmpty,
     renderChildren,
     renderValue,
-    function (vnode: VNode, attrs: any[] | void) {
+    function (vnode: Record<string, any>, attrs: any[] | void) {
 
       if (attrs) {
 
@@ -294,22 +293,21 @@ export function render(instance: Yox, result: Function) {
 
           key = keypathUtil.join(name, modifier),
 
+          binding: string | void,
+
           hooks: DirectiveHook | void,
 
-          transition: TransitionHook | void,
+          getter: signature.directiveGetter | void,
 
-          directive: Directive = {
-            type: name,
-            name: modifier,
-            key,
-            value,
-          }
+          handler: signature.directiveHandler | void,
+
+          transition: TransitionHook | void
 
           switch (name) {
 
             case config.DIRECTIVE_EVENT:
               hooks = instance.directive(config.DIRECTIVE_EVENT)
-              directive.handler = attr.event
+              handler = attr.event
                 ? createEventListener(attr.event)
                 : createMethodListener(attr.method, attr.args)
               break
@@ -328,7 +326,7 @@ export function render(instance: Yox, result: Function) {
               hooks = instance.directive(config.DIRECTIVE_MODEL)
               const result = getBindingValue(attr.expr)
               if (is.string(result.binding)) {
-                directive.binding = result.binding
+                binding = result.binding
                 model = result.value
               }
               break
@@ -345,18 +343,26 @@ export function render(instance: Yox, result: Function) {
             default:
               hooks = instance.directive(modifier)
               if (attr.method) {
-                directive.handler = createMethodListener(attr.method, attr.args)
+                handler = createMethodListener(attr.method, attr.args)
               }
               else {
-                directive.getter = attr.getter
+                getter = attr.getter
               }
               break
 
           }
 
           if (hooks) {
-            directive.hooks = hooks
-            directives[key] = directive
+            directives[key] = {
+              type: name,
+              name: modifier,
+              key,
+              value,
+              binding,
+              hooks,
+              getter,
+              handler
+            }
           }
           else {
             logger.fatal(`directive [${key}] is not found.`)
