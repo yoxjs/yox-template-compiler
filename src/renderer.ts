@@ -17,14 +17,15 @@ import Keypath from 'yox-expression-compiler/src/node/Keypath'
 
 import * as exprExecutor from 'yox-expression-compiler/src/executor'
 
-import Yox from 'yox-type/src/Yox'
 import * as signature from 'yox-type/src/type'
+
+import Yox from 'yox-type/src/Yox'
 import VNode from 'yox-type/src/vnode/VNode'
 import Attribute from 'yox-type/src/vnode/Attribute'
 import Property from 'yox-type/src/vnode/Property'
 import Directive from 'yox-type/src/vnode/Directive'
-import DirectiveHook from 'yox-type/src/hook/Directive'
-import TransitionHook from 'yox-type/src/hook/Transition'
+import DirectiveHooks from 'yox-type/src/hooks/Directive'
+import TransitionHooks from 'yox-type/src/hooks/Transition'
 
 import * as nodeType from './nodeType'
 
@@ -295,13 +296,13 @@ export function render(instance: Yox, result: Function) {
 
           binding: string | void,
 
-          hooks: DirectiveHook | void,
+          hooks: DirectiveHooks | void,
 
           getter: signature.directiveGetter | void,
 
           handler: signature.directiveHandler | void,
 
-          transition: TransitionHook | void
+          transition: TransitionHooks | void
 
           switch (name) {
 
