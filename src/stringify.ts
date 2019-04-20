@@ -39,13 +39,20 @@ import Spread from './node/Spread'
  *
  * 像 each 或 import 这样的语法，内部其实会产生一个 vnode 数组，这里就出现了两个难点：
  *
- * 1. 如何区分 each 产生的数组和表达式求值的数组
+ * 1. 如何区分 each 或其他语法产生的数组和表达式求值的数组
  * 2. 如何避免频繁的创建数组
  *
+ * 我能想到的解决方案是，根据当前节点类型，如果是元素，则确保 children 的每一项的值序列化后都是函数调用的形式
  *
+ * 这样能确保是从左到右依次执行，也就便于在内部创建一个公共数组，执行一个函数就收集一个值，而不管那个值到底是什么类型
+ *
+ * 我们借助 elementStack 来实现这个方案，原理如下：
+ *
+ * 把 Element 放入
  *
  */
-const simpleStack: boolean[] = [],
+
+const elementStack: boolean[] = [],
 
 nodeStringify = {},
 
@@ -71,7 +78,9 @@ SEP_COLON = ': ',
 
 SEP_PLUS = ' + '
 
-let args: string[] | void = [
+let currentElement: Element | void,
+
+args: string[] | void = [
   RENDER_EMPTY,
   RENDER_CHILDREN,
   RENDER_EXPRESSION,
@@ -235,6 +244,8 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   if (attrs) {
+    // 只有处理 children 需要 currentElement
+    currentElement = env.UNDEFINED
     array.each(
       attrs,
       function (attr: Node) {
@@ -245,6 +256,9 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
       }
     )
   }
+
+  array.push(elementStack, node)
+  currentElement = node
 
   data.tag = toJSON(tag)
 
@@ -270,11 +284,9 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
   else {
     elementChildren = stringifyChildren(children)
-    if (elementChildren) {
-      if (!isComplex) {
-        data.text = array.join(elementChildren, SEP_PLUS)
-        elementChildren = env.UNDEFINED
-      }
+    if (elementChildren && !isComplex) {
+      data.text = array.join(elementChildren, SEP_PLUS)
+      elementChildren = env.UNDEFINED
     }
   }
 
@@ -300,6 +312,9 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
       stringifyArray(elementChildren)
     )
   }
+
+  array.pop(elementStack)
+  currentElement = array.last(elementStack)
 
   return stringifyCall(
     RENDER_ELEMENT,
