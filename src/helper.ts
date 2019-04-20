@@ -8,8 +8,8 @@ export const ifTypes = {}
 export const elseTypes = {}
 // 叶子节点类型
 export const leafTypes = {}
-// 简单子节点类型
-export const simpleChildTypes = {}
+// 复杂子节点类型
+export const complexChildTypes = {}
 // 特殊标签
 export const specialTags = {}
 // 特殊属性
@@ -28,11 +28,9 @@ leafTypes[nodeType.IMPORT] =
 leafTypes[nodeType.SPREAD] =
 leafTypes[nodeType.EXPRESSION] =
 
-simpleChildTypes[nodeType.TEXT] =
-simpleChildTypes[nodeType.EXPRESSION] =
-simpleChildTypes[nodeType.IF] =
-simpleChildTypes[nodeType.ELSE_IF] =
-simpleChildTypes[nodeType.ELSE] =
+complexChildTypes[nodeType.ELEMENT] =
+complexChildTypes[nodeType.IMPORT] =
+complexChildTypes[nodeType.EACH] =
 
 specialTags[env.RAW_SLOT] =
 specialTags[env.RAW_TEMPLATE] =

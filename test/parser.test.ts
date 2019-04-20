@@ -143,6 +143,52 @@ it('支持多个根元素', () => {
   expect(ast[3].text).toBe('text')
 })
 
+it('复杂节点和简单节点', () => {
+
+  let ast: any
+
+  ast = compile('<div></div>')
+
+  expect(!!ast[0].isComplex).toBe(false)
+
+  ast = compile('<span id="xx">{{x}}</span>')
+
+  expect(!!ast[0].isComplex).toBe(false)
+  expect(!!ast[0].attrs[0].isComplex).toBe(false)
+
+  ast = compile('<span id="x{{x}}x"></span>')
+
+  expect(!!ast[0].isComplex).toBe(false)
+  expect(!!ast[0].attrs[0].isComplex).toBe(false)
+
+  ast = compile('<span id="x{{x}}x{{#if x}}1{{else}}2{{/if}}"></span>')
+
+  expect(!!ast[0].isComplex).toBe(false)
+  expect(!!ast[0].attrs[0].isComplex).toBe(false)
+
+  ast = compile('<span>x{{x}}x{{#if x}}1{{else}}2{{/if}}</span>')
+
+  expect(!!ast[0].isComplex).toBe(false)
+
+  ast = compile('<span>x{{x}}x{{#if x}}<input>{{else}}2{{/if}}</span>')
+
+  expect(!!ast[0].isComplex).toBe(true)
+
+  ast = compile('<span>x{{x}}x{{#each a}}123{{/each}}</span>')
+
+  expect(!!ast[0].isComplex).toBe(true)
+
+  // 定义子模板不影响 isComplex
+  ast = compile('<span>x{{x}}x{{#partial a}}123{{/partial}}</span>')
+
+  expect(!!ast[0].isComplex).toBe(false)
+
+  ast = compile('<span>x{{x}}x{{> a}}</span>')
+
+  expect(!!ast[0].isComplex).toBe(true)
+
+})
+
 it('静态子树', () => {
 
   let ast: any

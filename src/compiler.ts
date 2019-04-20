@@ -166,9 +166,20 @@ export function compile(content: string): Node[] {
 
     if (node && node.type === type) {
 
-      const currentNode: Branch = array.last(nodeStack)
-      if (currentNode && currentNode.isStatic && !node.isStatic) {
-        currentNode.isStatic = env.FALSE
+      const currentBranch: Branch = array.last(nodeStack)
+      if (currentBranch) {
+        if (currentBranch.isStatic && !node.isStatic) {
+          currentBranch.isStatic = env.FALSE
+        }
+        // 判断当前出栈节点是否是复杂节点有两种方式：
+        // 1. 它自己已变成复杂节点，比如它包含复杂子节点
+        // 2. 它的 isComplex 还是初始值，但它并不属于简单节点的类型，也就是说它天生是个复杂节点
+        // 这里会有点绕，isComplex 的值最终取决于子节点是否包含复杂节点
+        if (!currentBranch.isComplex
+          && (node.isComplex || helper.complexChildTypes[type])
+        ) {
+          currentBranch.isComplex = env.TRUE
+        }
       }
 
       const { children } = node,
@@ -576,7 +587,7 @@ export function compile(content: string): Node[] {
       popSelfClosingElementIfNeeded()
     }
 
-    const type = node.type, currentNode: Branch = array.last(nodeStack)
+    const type = node.type, currentBranch: Branch = array.last(nodeStack)
 
     // else 系列只是 if 的递进节点，不需要加入 nodeList
     if (helper.elseTypes[type]) {
@@ -601,16 +612,16 @@ export function compile(content: string): Node[] {
     }
     else {
 
-      if (currentNode) {
+      if (currentBranch) {
         array.push(
           // 这里不能写 currentElement && !currentAttribute，举个例子
           //
           // <div id="x" {{#if}} name="xx" alt="xx" {{/if}}
           //
           // 当 name 属性结束后，条件满足，但此时已不是元素属性层级了
-          currentElement && currentNode.type === nodeType.ELEMENT
+          currentElement && currentBranch.type === nodeType.ELEMENT
             ? currentElement.attrs || (currentElement.attrs = [])
-            : currentNode.children || (currentNode.children = []),
+            : currentBranch.children || (currentBranch.children = []),
           node
         )
       }
@@ -630,9 +641,19 @@ export function compile(content: string): Node[] {
 
     }
 
+
+
     if (helper.leafTypes[type]) {
-      if (currentNode && currentNode.isStatic && !node.isStatic) {
-        currentNode.isStatic = env.FALSE
+      // 当前树枝节点如果是静态的，一旦加入了一个非静态子节点，改变当前树枝节点的 isStatic
+      // 这里不处理树枝节点的进栈，因为当树枝节点出栈时，还有一次处理机会，那时它的 isStatic 已确定下来，不会再变
+      if (currentBranch) {
+        if (currentBranch.isStatic && !node.isStatic) {
+          currentBranch.isStatic = env.FALSE
+        }
+        // 当前树枝节点是简单节点，一旦加入了一个复杂子节点，当前树枝节点变为复杂节点
+        if (!currentBranch.isComplex && helper.complexChildTypes[type]) {
+          currentBranch.isComplex = env.TRUE
+        }
       }
     }
     else {
