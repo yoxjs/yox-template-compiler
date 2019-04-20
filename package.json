@@ -1,6 +1,6 @@
 {
   "name": "yox-template-compiler",
-  "version": "0.27.17",
+  "version": "0.27.18",
   "description": "Template compiler for Yox.js",
   "main": "index.js",
   "directories": {
@@ -30,7 +30,7 @@
   "dependencies": {
     "yox-common": "^0.18.8",
     "yox-config": "0.1.5",
-    "yox-expression-compiler": "^0.16.6",
+    "yox-expression-compiler": "0.16.7",
     "yox-type": "^0.0.24"
   }
 }
