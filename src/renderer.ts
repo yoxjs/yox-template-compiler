@@ -261,7 +261,7 @@ export function render(instance: Yox, result: Function) {
 
         directives: Record<string, Directive> = {},
 
-        lazy: Record<string, number | boolean> | void,
+        lazy: Record<string, number | boolean> | undefined,
 
         model: any | void,
 
@@ -511,11 +511,16 @@ export function render(instance: Yox, result: Function) {
       }
       logger.fatal(`partial "${name}" is not found.`)
     },
-    function (expr: ExpressionNode, index: string | Function, callback?: Function) {
+    function (expr: ExpressionNode, index: string | Function | void, callback?: Function) {
+
+      let handler: Function
 
       if (is.func(index)) {
-        callback = index as Function
+        handler = index as Function
         index = env.UNDEFINED
+      }
+      else {
+        handler = callback as Function
       }
 
       const list = [],
@@ -551,7 +556,7 @@ export function render(instance: Yox, result: Function) {
           scope[index as string] = key
         }
 
-        addNodes(list, callback(item, key))
+        addNodes(list, handler(item, key))
 
         scope = lastScope
         keypath = lastKeypath

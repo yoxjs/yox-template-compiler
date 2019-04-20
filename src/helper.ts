@@ -1,4 +1,4 @@
-import * as env from 'yox-common/util/env'
+import * as env from 'yox-common/src/util/env'
 
 import * as nodeType from './nodeType'
 

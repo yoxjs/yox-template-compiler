@@ -4,17 +4,11 @@
   "description": "Template compiler for Yox.js",
   "main": "index.js",
   "directories": {
-    "example": "example",
+    "src": "src",
     "test": "test"
   },
   "scripts": {
     "test": "jest"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.4.3",
-    "@babel/preset-env": "^7.4.3",
-    "@babel/preset-typescript": "^7.3.3",
-    "babel-jest": "^24.7.1"
   },
   "repository": {
     "type": "git",
@@ -30,7 +24,13 @@
   "dependencies": {
     "yox-common": "^0.18.11",
     "yox-config": "^0.1.6",
-    "yox-expression-compiler": "^0.16.9",
+    "yox-expression-compiler": "^0.16.10",
     "yox-type": "^0.0.28"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.4.3",
+    "@babel/preset-env": "^7.4.3",
+    "@babel/preset-typescript": "^7.3.3",
+    "babel-jest": "^24.7.1"
   }
 }

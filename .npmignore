@@ -1,6 +1,5 @@
 test
 node_modules
-.babelrc
 .gitignore
 .npmignore
 dist

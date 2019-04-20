@@ -52,7 +52,7 @@ const SEP_COLON = ': '
 
 const SEP_PLUS = ' + '
 
-let args = [
+let args: string[] | void = [
   RENDER_EMPTY,
   RENDER_CHILDREN,
   RENDER_EXPRESSION,

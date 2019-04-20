@@ -132,7 +132,7 @@ export function compile(content: string): Node[] {
 
   nextIsBlock = env.FALSE,
 
-  match: RegExpMatchArray | void,
+  match: RegExpMatchArray | null,
 
   fatal = function (msg: string) {
     logger.fatal(`Error compiling ${env.RAW_TEMPLATE}:\n${content}\n- ${msg}`)
@@ -845,7 +845,7 @@ export function compile(content: string): Node[] {
     },
     function (content: string): string | void {
 
-      let text: string | void, match: RegExpMatchArray | void
+      let text: string | void, match: RegExpMatchArray | null
 
       // 处理 attribute directive 的 value 部分
       if (currentAttribute && startQuote) {
