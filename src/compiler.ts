@@ -1,12 +1,12 @@
-import * as config from 'yox-config'
+import * as config from 'yox-config/index'
 
-import toNumber from 'yox-common/function/toNumber'
+import toNumber from 'yox-common/src/function/toNumber'
 
-import * as is from 'yox-common/util/is'
-import * as env from 'yox-common/util/env'
-import * as array from 'yox-common/util/array'
-import * as string from 'yox-common/util/string'
-import * as logger from 'yox-common/util/logger'
+import * as is from 'yox-common/src/util/is'
+import * as env from 'yox-common/src/util/env'
+import * as array from 'yox-common/src/util/array'
+import * as string from 'yox-common/src/util/string'
+import * as logger from 'yox-common/src/util/logger'
 
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as exprCompiler from 'yox-expression-compiler/src/compiler'

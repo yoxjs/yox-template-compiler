@@ -1,11 +1,11 @@
-import * as config from 'yox-config'
+import * as config from 'yox-config/index'
 
-import isDef from 'yox-common/function/isDef'
-import toJSON from 'yox-common/function/toJSON'
+import isDef from 'yox-common/src/function/isDef'
+import toJSON from 'yox-common/src/function/toJSON'
 
-import * as env from 'yox-common/util/env'
-import * as array from 'yox-common/util/array'
-import * as object from 'yox-common/util/object'
+import * as env from 'yox-common/src/util/env'
+import * as array from 'yox-common/src/util/array'
+import * as object from 'yox-common/src/util/object'
 
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'

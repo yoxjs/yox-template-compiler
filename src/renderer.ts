@@ -1,23 +1,23 @@
-import * as config from 'yox-config'
+import * as config from 'yox-config/index'
 
-import isDef from 'yox-common/function/isDef'
-import execute from 'yox-common/function/execute'
+import isDef from 'yox-common/src/function/isDef'
+import execute from 'yox-common/src/function/execute'
 
-import * as is from 'yox-common/util/is'
-import * as env from 'yox-common/util/env'
-import * as array from 'yox-common/util/array'
-import * as object from 'yox-common/util/object'
-import * as logger from 'yox-common/util/logger'
-import * as keypathUtil from 'yox-common/util/keypath'
+import * as is from 'yox-common/src/util/is'
+import * as env from 'yox-common/src/util/env'
+import * as array from 'yox-common/src/util/array'
+import * as object from 'yox-common/src/util/object'
+import * as logger from 'yox-common/src/util/logger'
+import * as keypathUtil from 'yox-common/src/util/keypath'
 
-import Event from 'yox-common/util/Event'
+import Event from 'yox-common/src/util/Event'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Keypath from 'yox-expression-compiler/src/node/Keypath'
 
 import * as exprExecutor from 'yox-expression-compiler/src/executor'
 
-import * as signature from 'yox-type/src/type'
+import * as signature from 'yox-type/index'
 
 import Yox from 'yox-type/src/Yox'
 import VNode from 'yox-type/src/vnode/VNode'
@@ -61,7 +61,7 @@ export function render(instance: Yox, result: Function) {
 
   let keypath = env.EMPTY_STRING,
 
-  scope: any = { keypath },
+  scope: any = { $keypath: keypath },
 
   stack = [keypath, scope],
 
@@ -539,7 +539,7 @@ export function render(instance: Yox, result: Function) {
 
         // 从下面这几句赋值可以看出
         // scope 至少会有 'keypath' 'item' 'index' 等几个值
-        scope.keypath = keypath
+        scope.$keypath = keypath
 
         // 类似 {{#each 1 -> 10}} 这样的临时循环，需要在 scope 上加上当前项
         // 因为通过 instance.get() 无法获取数据
