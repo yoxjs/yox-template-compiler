@@ -2,10 +2,6 @@ import * as env from 'yox-common/src/util/env'
 
 import * as nodeType from './nodeType'
 
-// if 带条件的
-export const ifTypes = {}
-// if 分支的
-export const elseTypes = {}
 // 叶子节点类型
 export const leafTypes = {}
 // 复杂子节点类型
@@ -16,12 +12,6 @@ export const specialTags = {}
 export const specialAttrs = {}
 // 名称 -> 类型的映射
 export const name2Type = {}
-
-ifTypes[nodeType.IF] =
-ifTypes[nodeType.ELSE_IF] =
-
-elseTypes[nodeType.ELSE_IF] =
-elseTypes[nodeType.ELSE] =
 
 leafTypes[nodeType.TEXT] =
 leafTypes[nodeType.IMPORT] =

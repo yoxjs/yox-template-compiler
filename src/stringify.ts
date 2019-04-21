@@ -47,15 +47,15 @@ import Spread from './node/Spread'
  *
  */
 
-const nodeStringify = {},
+const joinStack: boolean[] = [],
+
+nodeStringify = {},
 
 RENDER_ELEMENT = 'a',
 
 RENDER_SLOT = 'b',
 
 RENDER_EACH = 'c',
-
-RENDER_EMPTY = 'd',
 
 RENDER_EXPRESSION = 'e',
 
@@ -75,7 +75,6 @@ CODE_RETURN = 'return ',
 
 CODE_PREFIX = `function (${
   array.join([
-    RENDER_EMPTY,
     RENDER_EXPRESSION,
     RENDER_TEXT,
     RENDER_ELEMENT,
@@ -132,10 +131,6 @@ function stringifyExpression(expr: ExpressionNode): string {
   )
 }
 
-function stringifyEmpty(): string {
-  return stringifyCall(RENDER_EMPTY, env.EMPTY_STRING)
-}
-
 function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[] | void): string | void {
   return isDef(value)
     ? toJSON(value)
@@ -148,15 +143,72 @@ function stringifyChildren(children: Node[] | void, isComplex: boolean | void): 
   // 如果是复杂节点的 children，则每个 child 的序列化都是函数调用的形式
   // 因此最后可以拼接为 fn1(), fn2(), fn3() 这样依次调用，而不用再多此一举的使用数组，因为在 renderer 里也用不上这个数组
   if (children && children.length) {
-    return array.join(
+    array.push(
+      joinStack,
+      children.length > 1 && !isComplex
+    )
+    const value = array.join(
       children.map(
         function (child: Node) {
           return nodeStringify[child.type](child)
         }
       ),
-      isComplex ? SEP_COMMA : SEP_PLUS
+      array.last(joinStack) ? SEP_PLUS : SEP_COMMA
+    )
+    array.pop(joinStack)
+    return value
+  }
+}
+
+function stringifyConditionChildren(children: Node[] | void, isComplex: boolean | void): string | void {
+  const result = stringifyChildren(children, isComplex)
+  return children && children.length > 1 && isComplex
+    ? stringifyGroup(result as string)
+    : result
+}
+
+function stringifyIf(node: If | ElseIf, stub: boolean | void) {
+
+  let { children, isComplex, next } = node,
+
+  test = stringifyExpression(node.expr),
+
+  yes = stringifyConditionChildren(children, isComplex),
+
+  no: string | void,
+
+  empty = toJSON(env.EMPTY_STRING),
+
+  result: string
+
+  if (next) {
+    no = next.type === nodeType.ELSE
+      ? stringifyConditionChildren(next.children, next.isComplex)
+      : stringifyIf(next as ElseIf, stub)
+  }
+  // 到达最后一个条件，发现第一个 if 语句带有 stub，需创建一个注释标签占位
+  else if (stub) {
+    no = stringifyCall(
+      RENDER_ELEMENT,
+      toJSON({
+        isComment: env.TRUE,
+        text: env.EMPTY_STRING,
+      })
     )
   }
+
+  if (isDef(yes) || isDef(no)) {
+
+    result = `${test} ? ${isDef(yes) ? yes : empty} : ${isDef(no) ? no : empty}`
+
+    // 如果是连接操作，因为 ?: 优先级最低，因此要加 ()
+    return array.last(joinStack)
+      ? stringifyGroup(result)
+      : result
+  }
+
+  return empty
+
 }
 
 function getComponentSlots(children: Node[] | void): string | void {
@@ -423,61 +475,7 @@ nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
 }
 
 nodeStringify[nodeType.IF] = function (node: If): string {
-
-  const { stub } = node,
-
-  render = function (node: If | ElseIf) {
-
-    let expr = stringifyExpression(node.expr),
-
-    value = stringifyChildren(node.children, node.isComplex),
-
-    nextNode = node.next,
-
-    nextValue: string | void
-
-    if (isDef(value)) {
-      if (node.isComplex) {
-        // 因为复杂节点输出为 fn1(),fn2(),fn3() 的形式
-        // 如果不加括号，在 ?: 中会报错
-        // 不信试试这句 1 ? 2,3,4 : 5,6,7
-        value = stringifyGroup(value as string)
-      }
-    }
-    else {
-      value = stringifyEmpty()
-    }
-
-    if (nextNode) {
-      // 递归到最后一个条件
-      if (nextNode.type === nodeType.ELSE) {
-        nextValue = stringifyChildren(nextNode.children, nextNode.isComplex)
-        if (isDef(nextValue) && nextNode.isComplex) {
-          nextValue = stringifyGroup(nextValue as string)
-        }
-      }
-      else {
-        nextValue = render(nextNode as ElseIf)
-      }
-    }
-    // 到达最后一个条件，发现第一个 if 语句带有 stub，需创建一个注释标签占位
-    else if (stub) {
-      nextValue = stringifyCall(
-        RENDER_ELEMENT,
-        toJSON({
-          isComment: env.TRUE,
-          text: env.EMPTY_STRING,
-        })
-      )
-    }
-
-    // 当用 + 拼接多个值时，因为 ?: 优先级最低，因此要加 ()
-    return stringifyGroup(`${expr} ? ${value} : ${isDef(nextValue) ? nextValue : stringifyEmpty()}`)
-
-  }
-
-  return render(node)
-
+  return stringifyIf(node, node.stub)
 }
 
 nodeStringify[nodeType.EACH] = function (node: Each): string {

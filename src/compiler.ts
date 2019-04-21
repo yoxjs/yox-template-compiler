@@ -11,12 +11,15 @@ import * as logger from 'yox-common/src/util/logger'
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as exprCompiler from 'yox-expression-compiler/src/compiler'
 import ExpressionCall from 'yox-expression-compiler/src/node/Call'
+import ExpressionUnary from 'yox-expression-compiler/src/node/Unary'
 
 import * as helper from './helper'
 import * as creator from './creator'
 import * as nodeType from './nodeType'
 
 import If from './node/If'
+import ElseIf from './node/ElseIf'
+import Else from './node/Else'
 import Node from './node/Node'
 import Branch from './node/Branch'
 import Text from './node/Text'
@@ -272,6 +275,8 @@ export function compile(content: string): Node[] {
         bindSpecialAttr(currentElement, node as Attribute)
       }
 
+      return node
+
     }
     else {
       fatal(`出栈节点类型不匹配`)
@@ -485,6 +490,50 @@ export function compile(content: string): Node[] {
 
   },
 
+  checkCondition = function (condition: If | ElseIf | Else) {
+
+    // 确保 if 至少得有一级有 children，也就是说，不能像下面这样写：
+    // {{#if a}}
+    // {{else if b}}
+    // {{else}}
+    // {{/if}}
+
+    let currentNode: any = condition,
+
+    prevNode: any,
+
+    hasChildren: boolean | undefined,
+
+    hasNext: boolean | undefined
+
+    // 变成一维数组，方便遍历
+    while (env.TRUE) {
+      if (currentNode.children) {
+        if (!hasNext) {
+          if (currentNode.next) {
+            delete currentNode.next
+          }
+        }
+        hasChildren = hasNext = env.TRUE
+      }
+      prevNode = currentNode.prev
+      if (prevNode) {
+        // prev 仅仅用在 checkCondition 函数中
+        // 用完就可以删掉了
+        delete currentNode.prev
+        currentNode = prevNode
+      }
+      else {
+        break
+      }
+    }
+
+    if (!hasChildren) {
+      fatal('写 if 语句总得有内容吧？')
+    }
+
+  },
+
   checkElement = function (element: Element) {
 
     const isTemplate = element.tag === env.RAW_TEMPLATE
@@ -590,16 +639,23 @@ export function compile(content: string): Node[] {
     const type = node.type, currentBranch: Branch = array.last(nodeStack)
 
     // else 系列只是 if 的递进节点，不需要加入 nodeList
-    if (helper.elseTypes[type]) {
+    if (type === nodeType.ELSE || type === nodeType.ELSE_IF) {
 
       const lastNode = array.pop(ifStack)
 
       if (lastNode) {
+
+        // 方便 checkCondition 逆向遍历
+        (node as any).prev = lastNode
+
         // lastNode 只能是 if 或 else if 节点
-        if (helper.ifTypes[lastNode.type]) {
+        if (lastNode.type === nodeType.ELSE_IF || lastNode.type === nodeType.IF) {
           lastNode.next = node
           popStack(lastNode.type)
           array.push(ifStack, node)
+        }
+        else if (type === nodeType.ELSE_IF) {
+          fatal('大哥，else 后面不能跟 else if 啊')
         }
         else {
           fatal('大哥，只能写一个 else 啊！！')
@@ -1094,18 +1150,22 @@ export function compile(content: string): Node[] {
 
         const name = string.slice(content, 1)
 
-        let type = helper.name2Type[name]
+        let type = helper.name2Type[name], isCondition: boolean | void
         if (type === nodeType.IF) {
           const node = array.pop(ifStack)
           if (node) {
             type = node.type
+            isCondition = env.TRUE
           }
           else {
             fatal(`if 还没开始就结束了？`)
           }
         }
 
-        popStack(type)
+        const node: any = popStack(type)
+        if (node && isCondition) {
+          checkCondition(node)
+        }
       }
       else {
         // 开始下一个 block 或表达式

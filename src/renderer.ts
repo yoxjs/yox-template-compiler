@@ -52,10 +52,6 @@ function addNodes(list: any[], nodes: string | VNode[]) {
   }
 }
 
-function renderEmpty() {
-  return env.EMPTY_STRING
-}
-
 function renderChildren(nodes: VNode[]) {
   const list = []
   addNodes(list, nodes)
@@ -526,7 +522,6 @@ export function render(instance: Yox, result: Function) {
       const partial = instance.partial(name)
       if (partial) {
         return partial(
-          renderEmpty,
           renderExpression,
           renderText,
           renderElement,
@@ -608,7 +603,6 @@ export function render(instance: Yox, result: Function) {
   }
 
   return result(
-    renderEmpty,
     renderExpression,
     renderText,
     renderElement,

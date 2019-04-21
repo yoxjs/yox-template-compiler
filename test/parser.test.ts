@@ -895,8 +895,10 @@ it('自闭合标签', () => {
 
 it('if', () => {
 
-  let ast = compile('{{#if x > 1}}a{{else if x < 0}}b{{else}}c{{/if}}')
-  // console.log(JSON.stringify(ast, 4, 4))
+  let ast: any
+
+  ast = compile('{{#if x > 1}}a{{else if x < 0}}b{{else}}c{{/if}}')
+
   expect(ast.length).toBe(1)
   expect(ast[0].type).toBe(nodeType.IF)
   expect(ast[0].children.length).toBe(1)
@@ -912,6 +914,31 @@ it('if', () => {
   expect(ast[0].next.next.children.length).toBe(1)
   expect(ast[0].next.next.children[0].type).toBe(nodeType.TEXT)
   expect(ast[0].next.next.children[0].text).toBe('c')
+
+  ast = compile('{{#if x > 1}}a{{else if x < 0}}{{else}}c{{/if}}')
+  expect(ast[0].next.children).toBe(undefined)
+
+  let hasError = false
+
+  try {
+    compile('{{#if x > 1}}{{else if x < 0}}{{else}}{{/if}}')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  try {
+    compile('{{#if x > 1}}{{/if}}')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
 
 })
 
