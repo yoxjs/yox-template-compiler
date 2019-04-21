@@ -5,6 +5,7 @@ import toJSON from 'yox-common/src/function/toJSON'
 
 import * as env from 'yox-common/src/util/env'
 import * as array from 'yox-common/src/util/array'
+import * as string from 'yox-common/src/util/string'
 import * as object from 'yox-common/src/util/object'
 
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
@@ -46,9 +47,7 @@ import Spread from './node/Spread'
  *
  */
 
-const elementStack: boolean[] = [],
-
-nodeStringify = {},
+const nodeStringify = {},
 
 RENDER_ELEMENT = 'a',
 
@@ -70,27 +69,29 @@ SEP_COMMA = ', ',
 
 SEP_COLON = ': ',
 
-SEP_PLUS = ' + '
+SEP_PLUS = ' + ',
 
-let currentElement: Element | void,
+CODE_RETURN = 'return ',
 
-args: string[] | void = [
-  RENDER_EMPTY,
-  RENDER_EXPRESSION,
-  RENDER_TEXT,
-  RENDER_ELEMENT,
-  RENDER_SLOT,
-  RENDER_PARTIAL,
-  RENDER_IMPORT,
-  RENDER_EACH
-]
+CODE_PREFIX = `function (${
+  array.join([
+    RENDER_EMPTY,
+    RENDER_EXPRESSION,
+    RENDER_TEXT,
+    RENDER_ELEMENT,
+    RENDER_SLOT,
+    RENDER_PARTIAL,
+    RENDER_IMPORT,
+    RENDER_EACH
+  ], SEP_COMMA)
+}) { return `,
 
-// 外部用这个判断字符串是否是已编译
-export const prefix = `function (${array.join(args, SEP_COMMA)}) { return `
+CODE_SUFFIX = ` }`
 
-export const suffix = ` }`
 
-args = env.UNDEFINED
+// 是否正在处理 attrs
+let processAttrs = env.FALSE
+
 
 function stringifyObject(obj: Object): string {
   const fields = []
@@ -116,8 +117,12 @@ function stringifyCall(name: string, arg: string): string {
   return `${name}(${arg})`
 }
 
-function stringifyFunction(result: string | void): string {
-  return `function () { return ${result || env.EMPTY_STRING} }`
+function stringifyFunction(code: string | void): string {
+  return `function () { ${code || env.EMPTY_STRING} }`
+}
+
+function stringifyGroup(code: string): string {
+  return `(${code})`
 }
 
 function stringifyExpression(expr: ExpressionNode): string {
@@ -139,16 +144,18 @@ function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[
       : stringifyChildren(children)
 }
 
-function stringifyChildren(children: Node[] | void, asArray: boolean | void): string | void {
+function stringifyChildren(children: Node[] | void, isComplex: boolean | void): string | void {
+  // 如果是复杂节点的 children，则每个 child 的序列化都是函数调用的形式
+  // 因此最后可以拼接为 fn1(), fn2(), fn3() 这样依次调用，而不用再多此一举的使用数组，因为在 renderer 里也用不上这个数组
   if (children && children.length) {
-    const result = children.map(
-      function (child: Node) {
-        return nodeStringify[child.type](child)
-      }
+    return array.join(
+      children.map(
+        function (child: Node) {
+          return nodeStringify[child.type](child)
+        }
+      ),
+      isComplex ? SEP_COMMA : SEP_PLUS
     )
-    return asArray
-      ? stringifyArray(result)
-      : array.join(result, SEP_PLUS)
   }
 }
 
@@ -160,7 +167,7 @@ function getComponentSlots(children: Node[] | void): string | void {
 
     addSlot = function (name: string, nodes: Node[] | void, isComplex: boolean | void) {
 
-      if (nodes && nodes.length) {
+      if (!array.falsy(nodes)) {
         array.push(
           slots[name] || (slots[name] = []),
           nodes
@@ -195,7 +202,9 @@ function getComponentSlots(children: Node[] | void): string | void {
     object.each(
       slots,
       function (children: any, name: string) {
-        slots[name] = stringifyChildren(children, complexs[name])
+        slots[name] = stringifyFunction(
+          stringifyChildren(children, complexs[name])
+        )
       }
     )
 
@@ -227,7 +236,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   if (attrs) {
     // 只有处理 children 需要 currentElement
-    currentElement = env.UNDEFINED
+    processAttrs = env.TRUE
     array.each(
       attrs,
       function (attr: Node) {
@@ -237,10 +246,8 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
         )
       }
     )
+    processAttrs = env.FALSE
   }
-
-  array.push(elementStack, node)
-  currentElement = node
 
   data.tag = toJSON(tag)
 
@@ -267,7 +274,10 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   else {
     elementChildren = stringifyChildren(children, isComplex)
     if (isDef(elementChildren)) {
-      if (!isComplex) {
+      if (isComplex) {
+        elementChildren = stringifyFunction(elementChildren)
+      }
+      else {
         data.text = elementChildren
         elementChildren = env.UNDEFINED
       }
@@ -291,15 +301,12 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     )
   }
 
-  if (isDef(elementChildren)) {
+  if (elementChildren) {
     array.push(
       args,
       elementChildren
     )
   }
-
-  array.pop(elementStack)
-  currentElement = array.last(elementStack)
 
   return stringifyCall(
     RENDER_ELEMENT,
@@ -367,7 +374,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
       // 为了实现运行时动态收集参数，这里序列化成函数
       if (!array.falsy(args)) {
         result.args = stringifyFunction(
-          stringifyArray(args.map(stringifyExpression))
+          CODE_RETURN + stringifyArray(args.map(stringifyExpression))
         )
       }
     }
@@ -378,7 +385,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
     else if (name === config.DIRECTIVE_CUSTOM) {
       // 取值函数
       result.getter = stringifyFunction(
-        stringifyExpression(expr)
+        CODE_RETURN + stringifyExpression(expr)
       )
     }
 
@@ -406,9 +413,9 @@ nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
 
 nodeStringify[nodeType.TEXT] = function (node: Text): string {
   const result = toJSON(node.text)
-  return currentElement
-    ? stringifyCall(RENDER_TEXT, result)
-    : result
+  return processAttrs
+    ? result
+    : stringifyCall(RENDER_TEXT, result)
 }
 
 nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
@@ -423,16 +430,31 @@ nodeStringify[nodeType.IF] = function (node: If): string {
 
     let expr = stringifyExpression(node.expr),
 
-    children = stringifyChildren(node.children, node.isComplex),
+    value = stringifyChildren(node.children, node.isComplex),
 
     nextNode = node.next,
 
     nextValue: string | void
 
+    if (isDef(value)) {
+      if (node.isComplex) {
+        // 因为复杂节点输出为 fn1(),fn2(),fn3() 的形式
+        // 如果不加括号，在 ?: 中会报错
+        // 不信试试这句 1 ? 2,3,4 : 5,6,7
+        value = stringifyGroup(value as string)
+      }
+    }
+    else {
+      value = stringifyEmpty()
+    }
+
     if (nextNode) {
       // 递归到最后一个条件
       if (nextNode.type === nodeType.ELSE) {
         nextValue = stringifyChildren(nextNode.children, nextNode.isComplex)
+        if (isDef(nextValue) && nextNode.isComplex) {
+          nextValue = stringifyGroup(nextValue as string)
+        }
       }
       else {
         nextValue = render(nextNode as ElseIf)
@@ -450,7 +472,7 @@ nodeStringify[nodeType.IF] = function (node: If): string {
     }
 
     // 当用 + 拼接多个值时，因为 ?: 优先级最低，因此要加 ()
-    return `(${expr} ? ${isDef(children) ? children : stringifyEmpty()} : ${isDef(nextValue) ? nextValue : stringifyEmpty()})`
+    return stringifyGroup(`${expr} ? ${value} : ${isDef(nextValue) ? nextValue : stringifyEmpty()}`)
 
   }
 
@@ -493,5 +515,9 @@ nodeStringify[nodeType.IMPORT] = function (node: Import): string {
 }
 
 export function stringify(node: Node): string {
-  return prefix + nodeStringify[node.type](node) + suffix
+  return CODE_PREFIX + nodeStringify[node.type](node) + CODE_SUFFIX
+}
+
+export function hasStringify(code: string): boolean {
+  return string.startsWith(code, CODE_PREFIX)
 }
