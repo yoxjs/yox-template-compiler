@@ -10,8 +10,6 @@ import * as object from 'yox-common/src/util/object'
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'
 
-import * as helper from './helper'
-
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import ExpressionIdentifier from 'yox-expression-compiler/src/node/Identifier'
 import ExpressionCall from 'yox-expression-compiler/src/node/Call'
@@ -45,10 +43,6 @@ import Spread from './node/Spread'
  * 我能想到的解决方案是，根据当前节点类型，如果是元素，则确保 children 的每一项的值序列化后都是函数调用的形式
  *
  * 这样能确保是从左到右依次执行，也就便于在内部创建一个公共数组，执行一个函数就收集一个值，而不管那个值到底是什么类型
- *
- * 我们借助 elementStack 来实现这个方案，原理如下：
- *
- * 把 Element 放入
  *
  */
 
@@ -145,25 +139,19 @@ function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[
     ? toJSON(value)
     : expr
       ? stringifyExpression(expr)
-      : stringifyNormalChildren(children)
+      : stringifyChildren(children)
 }
 
-function stringifyChildren(children: Node[] | void): string[] | void {
+function stringifyChildren(children: Node[] | void, asArray: boolean | void): string | void {
   if (children && children.length) {
-    return children.map(
+    const result = children.map(
       function (child: Node) {
         return nodeStringify[child.type](child)
       }
     )
-  }
-}
-
-function stringifyNormalChildren(children: Node[] | void, isComplex: boolean | void): string | void {
-  const childs = stringifyChildren(children)
-  if (childs) {
-    return isComplex
-      ? stringifyCall(RENDER_VALUE, stringifyArray(childs))
-      : array.join(childs, SEP_PLUS)
+    return asArray
+      ? stringifyArray(result)
+      : array.join(result, SEP_PLUS)
   }
 }
 
@@ -210,7 +198,7 @@ function getComponentSlots(children: Node[] | void): string | void {
     object.each(
       slots,
       function (children: any, name: string) {
-        slots[name] = stringifyNormalChildren(children, complexs[name])
+        slots[name] = stringifyChildren(children, complexs[name])
       }
     )
 
@@ -231,7 +219,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   elementAttrs: string[] = [],
 
-  elementChildren: string[] | void
+  elementChildren: string | void
 
   if (tag === env.RAW_SLOT) {
     return stringifyCall(
@@ -280,10 +268,12 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     data.slots = getComponentSlots(children)
   }
   else {
-    elementChildren = stringifyChildren(children)
-    if (elementChildren && !isComplex) {
-      data.text = array.join(elementChildren, SEP_PLUS)
-      elementChildren = env.UNDEFINED
+    elementChildren = stringifyChildren(children, isComplex)
+    if (isDef(elementChildren)) {
+      if (!isComplex) {
+        data.text = elementChildren
+        elementChildren = env.UNDEFINED
+      }
     }
   }
 
@@ -303,10 +293,10 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     )
   }
 
-  if (elementChildren) {
+  if (isDef(elementChildren)) {
     array.push(
       args,
-      stringifyArray(elementChildren)
+      elementChildren
     )
   }
 
@@ -438,7 +428,7 @@ nodeStringify[nodeType.IF] = function (node: If): string {
 
     let expr = stringifyExpression(node.expr),
 
-    children = stringifyNormalChildren(node.children, node.isComplex),
+    children = stringifyChildren(node.children, node.isComplex),
 
     nextNode = node.next,
 
@@ -447,7 +437,7 @@ nodeStringify[nodeType.IF] = function (node: If): string {
     if (nextNode) {
       // 递归到最后一个条件
       if (nextNode.type === nodeType.ELSE) {
-        nextValue = stringifyNormalChildren(nextNode.children, nextNode.isComplex)
+        nextValue = stringifyChildren(nextNode.children, nextNode.isComplex)
       }
       else {
         nextValue = render(nextNode as ElseIf)
