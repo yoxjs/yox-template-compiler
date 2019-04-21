@@ -50,23 +50,21 @@ const elementStack: boolean[] = [],
 
 nodeStringify = {},
 
-RENDER_ELEMENT = '_c',
+RENDER_ELEMENT = 'a',
 
-RENDER_SLOT = '_s',
+RENDER_SLOT = 'b',
 
-RENDER_EACH = '_l',
+RENDER_EACH = 'c',
 
-RENDER_EMPTY = '_e',
+RENDER_EMPTY = 'd',
 
-RENDER_EXPRESSION = '_x',
+RENDER_EXPRESSION = 'e',
 
-RENDER_VALUE = '_v',
+RENDER_TEXT = 'f',
 
-RENDER_CHILDREN = '_x',
+RENDER_PARTIAL = 'g',
 
-RENDER_PARTIAL = '_p',
-
-RENDER_IMPORT = '_i',
+RENDER_IMPORT = 'h',
 
 SEP_COMMA = ', ',
 
@@ -78,9 +76,8 @@ let currentElement: Element | void,
 
 args: string[] | void = [
   RENDER_EMPTY,
-  RENDER_VALUE,
   RENDER_EXPRESSION,
-  RENDER_CHILDREN,
+  RENDER_TEXT,
   RENDER_ELEMENT,
   RENDER_SLOT,
   RENDER_PARTIAL,
@@ -287,9 +284,10 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     )
   }
   else if (elementChildren) {
+    // renderer 里是直接 if (attrs) 判断，所以写 0 就行了，还能省点字符
     array.push(
       args,
-      env.RAW_NULL
+      0
     )
   }
 
@@ -409,15 +407,12 @@ nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
 nodeStringify[nodeType.TEXT] = function (node: Text): string {
   const result = toJSON(node.text)
   return currentElement
-    ? stringifyCall(RENDER_CHILDREN, result)
+    ? stringifyCall(RENDER_TEXT, result)
     : result
 }
 
 nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
-  const result = stringifyExpression(node.expr)
-  return currentElement
-    ? stringifyCall(RENDER_CHILDREN, result)
-    : result
+  return stringifyExpression(node.expr)
 }
 
 nodeStringify[nodeType.IF] = function (node: If): string {
@@ -454,7 +449,8 @@ nodeStringify[nodeType.IF] = function (node: If): string {
       )
     }
 
-    return `${expr} ? ${isDef(children) ? children : stringifyEmpty()} : ${isDef(nextValue) ? nextValue : stringifyEmpty()}`
+    // 当用 + 拼接多个值时，因为 ?: 优先级最低，因此要加 ()
+    return `(${expr} ? ${isDef(children) ? children : stringifyEmpty()} : ${isDef(nextValue) ? nextValue : stringifyEmpty()})`
 
   }
 
@@ -469,7 +465,7 @@ nodeStringify[nodeType.EACH] = function (node: Each): string {
   index = node.index ? `, ${toJSON(node.index)}` : env.EMPTY_STRING,
 
   children = stringifyFunction(
-    stringifyNormalChildren(node.children, node.isComplex)
+    stringifyChildren(node.children, node.isComplex)
   )
 
   return stringifyCall(RENDER_EACH, `${expr}${index}, ${children}`)
@@ -481,7 +477,7 @@ nodeStringify[nodeType.PARTIAL] = function (node: Partial): string {
   const name = toJSON(node.name),
 
   children = stringifyFunction(
-    stringifyNormalChildren(node.children, node.isComplex)
+    stringifyChildren(node.children, node.isComplex)
   )
 
   return stringifyCall(RENDER_PARTIAL, `${name}, ${children}`)
