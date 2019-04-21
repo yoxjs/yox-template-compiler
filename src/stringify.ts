@@ -66,7 +66,9 @@ RENDER_EMPTY = '_e',
 
 RENDER_EXPRESSION = '_x',
 
-RENDER_CHILDREN = '_v',
+RENDER_VALUE = '_v',
+
+RENDER_CHILDREN = '_x',
 
 RENDER_PARTIAL = '_p',
 
@@ -82,8 +84,9 @@ let currentElement: Element | void,
 
 args: string[] | void = [
   RENDER_EMPTY,
-  RENDER_CHILDREN,
+  RENDER_VALUE,
   RENDER_EXPRESSION,
+  RENDER_CHILDREN,
   RENDER_ELEMENT,
   RENDER_SLOT,
   RENDER_PARTIAL,
@@ -147,17 +150,11 @@ function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[
 
 function stringifyChildren(children: Node[] | void): string[] | void {
   if (children && children.length) {
-
-    const childs: string[] = []
-
-    array.each(
-      children,
+    return children.map(
       function (child: Node) {
-        array.push(childs, nodeStringify[child.type](child))
+        return nodeStringify[child.type](child)
       }
     )
-
-    return childs
   }
 }
 
@@ -165,7 +162,7 @@ function stringifyNormalChildren(children: Node[] | void, isComplex: boolean | v
   const childs = stringifyChildren(children)
   if (childs) {
     return isComplex
-      ? stringifyCall(RENDER_CHILDREN, stringifyArray(childs))
+      ? stringifyCall(RENDER_VALUE, stringifyArray(childs))
       : array.join(childs, SEP_PLUS)
   }
 }
@@ -420,11 +417,17 @@ nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
 }
 
 nodeStringify[nodeType.TEXT] = function (node: Text): string {
-  return toJSON(node.text)
+  const result = toJSON(node.text)
+  return currentElement
+    ? stringifyCall(RENDER_CHILDREN, result)
+    : result
 }
 
 nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
-  return stringifyExpression(node.expr)
+  const result = stringifyExpression(node.expr)
+  return currentElement
+    ? stringifyCall(RENDER_CHILDREN, result)
+    : result
 }
 
 nodeStringify[nodeType.IF] = function (node: If): string {
