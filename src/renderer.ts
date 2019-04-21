@@ -2,6 +2,7 @@ import * as config from 'yox-config/index'
 
 import isDef from 'yox-common/src/function/isDef'
 import execute from 'yox-common/src/function/execute'
+import toString from 'yox-common/src/function/toString'
 
 import * as is from 'yox-common/src/util/is'
 import * as env from 'yox-common/src/util/env'
@@ -52,12 +53,6 @@ function addNodes(list: any[], nodes: string | VNode[]) {
   }
 }
 
-function renderChildren(nodes: VNode[]) {
-  const list = []
-  addNodes(list, nodes)
-  return list
-}
-
 export function render(instance: Yox, result: Function) {
 
   let keypath = env.EMPTY_STRING,
@@ -67,6 +62,8 @@ export function render(instance: Yox, result: Function) {
   stack = [keypath, scope],
 
   eventScope: any,
+
+  vnodeStack: VNode[][] = [],
 
   localPartials = {},
 
@@ -249,11 +246,29 @@ export function render(instance: Yox, result: Function) {
     return renderValue(expr)
   },
 
-  renderText = function (text: string) {
-    return text
+  renderExpressionText = function (expr: ExpressionNode): any {
+    renderPureText(
+      toString(renderValue(expr))
+    )
   },
 
-  renderElement = function (vnode: Record<string, any>, attrs: any[] | void, children: any[] | void) {
+  renderPureText = function (text: string) {
+    const vnodeList = array.last(vnodeStack), lastVnode = array.last(vnodeList)
+    if (lastVnode && lastVnode.isText) {
+      lastVnode.text += text
+    }
+    else {
+      array.push(
+        vnodeList,
+        {
+          isText: env.TRUE,
+          text,
+        }
+      )
+    }
+  },
+
+  renderElement = function (vnode: Record<string, any>, attrs: any[] | void, children: Function | void) {
 
     if (attrs) {
 
@@ -488,11 +503,18 @@ export function render(instance: Yox, result: Function) {
     }
 
     if (children) {
-      vnode.children = children
+      vnodeStack.push([])
+      children()
+      vnode.children = array.pop(vnodeStack)
     }
 
     vnode.instance = instance
     vnode.keypath = keypath
+
+    const vnodeList = array.last(vnodeStack)
+    if (vnodeList) {
+      array.push(vnodeList, vnode)
+    }
 
     return vnode
 
@@ -516,20 +538,23 @@ export function render(instance: Yox, result: Function) {
   // {{> name}}
   renderImport = function (name: string) {
     if (localPartials[name]) {
-      return localPartials[name]()
+      localPartials[name]()
+      return
     }
     else {
       const partial = instance.partial(name)
       if (partial) {
-        return partial(
+        partial(
           renderExpression,
-          renderText,
+          renderExpressionText,
+          renderPureText,
           renderElement,
           renderSlot,
           renderPartial,
           renderImport,
           renderEach
         )
+        return
       }
     }
     logger.fatal(`partial "${name}" is not found.`)
@@ -547,9 +572,7 @@ export function render(instance: Yox, result: Function) {
       handler = callback as Function
     }
 
-    const list = [],
-
-    value = renderValue(expr),
+    const value = renderValue(expr),
 
     absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH],
 
@@ -580,7 +603,7 @@ export function render(instance: Yox, result: Function) {
         scope[index as string] = key
       }
 
-      addNodes(list, handler(item, key))
+      handler(item, key)
 
       scope = lastScope
       keypath = lastKeypath
@@ -598,13 +621,12 @@ export function render(instance: Yox, result: Function) {
       value(eachHandler)
     }
 
-    return list
-
   }
 
   return result(
     renderExpression,
-    renderText,
+    renderExpressionText,
+    renderPureText,
     renderElement,
     renderSlot,
     renderPartial,

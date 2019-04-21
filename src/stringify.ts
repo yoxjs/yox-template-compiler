@@ -59,11 +59,13 @@ RENDER_EACH = 'c',
 
 RENDER_EXPRESSION = 'e',
 
-RENDER_TEXT = 'f',
+RENDER_EXPRESSION_TEXT = 'f',
 
-RENDER_PARTIAL = 'g',
+RENDER_PURE_TEXT = 'g',
 
-RENDER_IMPORT = 'h',
+RENDER_PARTIAL = 'h',
+
+RENDER_IMPORT = 'i',
 
 SEP_COMMA = ', ',
 
@@ -76,7 +78,8 @@ CODE_RETURN = 'return ',
 CODE_PREFIX = `function (${
   array.join([
     RENDER_EXPRESSION,
-    RENDER_TEXT,
+    RENDER_EXPRESSION_TEXT,
+    RENDER_PURE_TEXT,
     RENDER_ELEMENT,
     RENDER_SLOT,
     RENDER_PARTIAL,
@@ -124,9 +127,9 @@ function stringifyGroup(code: string): string {
   return `(${code})`
 }
 
-function stringifyExpression(expr: ExpressionNode): string {
+function stringifyExpression(expr: ExpressionNode, name?: string): string {
   return stringifyCall(
-    RENDER_EXPRESSION,
+    name || RENDER_EXPRESSION,
     toJSON(expr)
   )
 }
@@ -471,11 +474,16 @@ nodeStringify[nodeType.TEXT] = function (node: Text): string {
   const result = toJSON(node.text)
   return processAttrs || array.last(joinStack)
     ? result
-    : stringifyCall(RENDER_TEXT, result)
+    : stringifyCall(RENDER_PURE_TEXT, result)
 }
 
 nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
-  return stringifyExpression(node.expr)
+  return stringifyExpression(
+    node.expr,
+    processAttrs || array.last(joinStack)
+    ? RENDER_EXPRESSION
+    : RENDER_EXPRESSION_TEXT
+  )
 }
 
 nodeStringify[nodeType.IF] = function (node: If): string {
