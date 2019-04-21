@@ -1,3 +1,4 @@
+import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Branch from './Branch'
 import Attribute from './Attribute'
 import Directive from './Directive'
@@ -27,6 +28,9 @@ export default interface Element extends Branch {
 
   // <div key="xx">
   key?: Attribute
+
+  // <div>{{{xx}}}</div>
+  html?: ExpressionNode
 
   attrs?: (Attribute | Directive | Property | If | Spread)[]
 

@@ -269,7 +269,7 @@ function getComponentSlots(children: Node[] | void): string | void {
 
 nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
-  let { tag, isComponent, isSvg, isStatic, isComplex, name, ref, key, attrs, children } = node,
+  let { tag, isComponent, isSvg, isStatic, isComplex, name, ref, key, html, attrs, children } = node,
 
   args: string[] = [],
 
@@ -317,6 +317,10 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   if (key) {
     data.key = stringifyValue(key.value, key.expr, key.children)
+  }
+
+  if (html) {
+    data.html = stringifyValue(env.UNDEFINED, html)
   }
 
   if (isComponent) {
@@ -465,7 +469,7 @@ nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
 
 nodeStringify[nodeType.TEXT] = function (node: Text): string {
   const result = toJSON(node.text)
-  return processAttrs
+  return processAttrs || array.last(joinStack)
     ? result
     : stringifyCall(RENDER_TEXT, result)
 }

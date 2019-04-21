@@ -285,43 +285,18 @@ export function compile(content: string): Node[] {
 
   processElementSingleText = function (element: Element, child: Text) {
 
-    // children 是否可以转换成 props 需满足以下条件
-    // 1. 当前元素不是组件，因为组件的子节点要作为 slot 节点
-    // 2. 当前元素不是插槽，因为后续要收集插槽的子节点
-    if (!element.isComponent && !element.slot) {
-
-      array.push(
-        element.attrs || (element.attrs = []),
-        creator.createProperty(
-          'textContent',
-          config.HINT_STRING,
-          child.text
-        )
-      )
-      element.children = env.UNDEFINED
-
-    }
+    // processElementSingleText 和 processElementSingleExpression
+    // 不把元素子节点智能转换为 textContent property
+    // 因为子节点还有 <div>1{{a}}{{b}}</div> 这样的情况
+    // 还是在序列化的时候统一处理比较好
 
   },
 
   processElementSingleExpression = function (element: Element, child: Expression) {
 
-    // children 是否可以转换成 props 需满足以下条件
-    // 1. 当前元素不是组件，因为组件的子节点要作为 slot 节点
-    // 2. 当前元素不是插槽，因为后续要收集插槽的子节点
-    if (!element.isComponent && !element.slot) {
-
-      array.push(
-        element.attrs || (element.attrs = []),
-        creator.createProperty(
-          child.safe ? 'textContent' : 'innerHTML',
-          config.HINT_STRING,
-          env.UNDEFINED,
-          child.expr
-        )
-      )
+    if (!element.isComponent && !element.slot && !child.safe) {
+      element.html = child.expr
       element.children = env.UNDEFINED
-
     }
 
   },
