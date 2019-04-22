@@ -292,7 +292,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   args: string[] = [],
 
-  data: Record<string, any> = { },
+  data: Record<string, any> = {},
 
   elementAttrs: string[] = [],
 
@@ -338,7 +338,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   if (html) {
-    data.html = stringifyValue(env.UNDEFINED, html)
+    data.html = stringifyExpression(html, env.TRUE)
   }
 
   if (isComponent) {
