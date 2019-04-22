@@ -22,9 +22,6 @@ import * as signature from 'yox-type/index'
 
 import Yox from 'yox-type/src/Yox'
 import VNode from 'yox-type/src/vnode/VNode'
-import Attribute from 'yox-type/src/vnode/Attribute'
-import Property from 'yox-type/src/vnode/Property'
-import Directive from 'yox-type/src/vnode/Directive'
 import DirectiveHooks from 'yox-type/src/hooks/Directive'
 import TransitionHooks from 'yox-type/src/hooks/Transition'
 
@@ -186,7 +183,7 @@ export function render(context: Yox, result: Function) {
     }
   },
 
-  parseDirective = function (vnode: any, lazy: Record<string, number | boolean>, attr: Record<string, any>) {
+  parseDirective = function (vnode: any, attr: Record<string, any>) {
 
     let { name, modifier, value } = attr,
 
@@ -231,7 +228,7 @@ export function render(context: Yox, result: Function) {
         break
 
       case config.DIRECTIVE_LAZY:
-        lazy[modifier] = value
+        vnode.lazy[modifier] = value
         return
 
       default:
@@ -360,8 +357,7 @@ export function render(context: Yox, result: Function) {
       vnode.nativeAttrs = {}
       vnode.nativeProps = {}
       vnode.directives = {}
-
-      let lazy: Record<string, number | boolean> = {}
+      vnode.lazy = {}
 
       array.each(
         attributes,
@@ -401,7 +397,7 @@ export function render(context: Yox, result: Function) {
               break
 
             case nodeType.DIRECTIVE:
-              parseDirective(vnode, lazy, attr)
+              parseDirective(vnode, attr)
               break
 
             case nodeType.SPREAD:
@@ -411,24 +407,6 @@ export function render(context: Yox, result: Function) {
           }
         }
       )
-
-      // lazy 最初的设计是和 on- 指令搭配使用
-      // 开发过程中，发现可以把 `函数调用` 相关的指令都编译成 handler
-      // 于是 lazy 的使用范围就自然放开，只要指令有 handler 就行
-      // 比如：<div o-tap="method()" lazy-tap> 也能完美匹配
-      if (!object.empty(lazy)) {
-        // 如果没写 lazy，默认为 false
-        // 如果只写了 lazy，没写应用于谁，比如 <div lazy>，默认应用于全部 handler 指令
-        const defaultLazy = lazy[env.EMPTY_STRING] || env.FALSE
-        object.each(
-          vnode.directives,
-          function (directive: Directive) {
-            if (directive.handler) {
-              directive.lazy = lazy[directive.name] || defaultLazy
-            }
-          }
-        )
-      }
 
     }
 
