@@ -34,7 +34,7 @@ import Spread from './node/Spread'
  *
  * ['1', _x(expr), _l(expr, index, generate), _x(expr) ? ['1', _x(expr), _l(expr, index, generate)] : y]
  *
- * children 用数组表示，其中表达式求出的值可能是任意类型，比如数组或对象，我们无法控制表达式的值
+ * children 用数组表示，其中表达式求出的值可能是任意类型，比如数组或对象，我们无法控制表达式的值最终会是什么类型
  *
  * 像 each 或 import 这样的语法，内部其实会产生一个 vnode 数组，这里就出现了两个难点：
  *
@@ -47,6 +47,7 @@ import Spread from './node/Spread'
  *
  */
 
+// 是否要执行 join 操作
 const joinStack: boolean[] = [],
 
 // 是否正在收集子节点
@@ -95,9 +96,7 @@ CODE_PREFIX = `function (${
 
 CODE_SUFFIX = ` }`
 
-
-
-// 表达式求值是否要求返回字符串
+// 表达式求值是否要求返回字符串类型
 let isStringRequired: boolean | void
 
 function stringifyObject(obj: Object): string {
@@ -132,13 +131,13 @@ function stringifyGroup(code: string): string {
   return `(${code})`
 }
 
-function stringifyExpression(expr: ExpressionNode, stringRequired: boolean | void, name?: string): string {
+function stringifyExpression(expr: ExpressionNode, stringRequired: boolean | void, renderName: string | void): string {
   const args = [toJSON(expr)]
   if (stringRequired) {
     array.push(args, env.TRUE)
   }
   return stringifyCall(
-    name || RENDER_EXPRESSION,
+    renderName || RENDER_EXPRESSION,
     array.join(args, SEP_COMMA)
   )
 }
@@ -225,6 +224,7 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
     return array.last(joinStack)
       ? stringifyGroup(result)
       : result
+
   }
 
   return STRING_EMPTY
@@ -350,7 +350,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
   else if (children) {
     isStringRequired = env.TRUE
-    collectStack[collectStack.length - 1] = !!isComplex
+    collectStack[collectStack.length - 1] = isComplex
     elementChildren = stringifyChildren(children, isComplex)
     if (isComplex) {
       elementChildren = stringifyFunction(elementChildren)
@@ -364,7 +364,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   array.push(args, stringifyObject(data))
 
   // data 可以透传，但是 attrs 还需要 render 继续分析
-  if (elementAttrs.length) {
+  if (!array.falsy(elementAttrs)) {
     array.push(
       args,
       stringifyArray(elementAttrs)
@@ -498,7 +498,7 @@ nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
 
 nodeStringify[nodeType.TEXT] = function (node: Text): string {
   const result = toJSON(node.text)
-  return array.last(collectStack) !== env.FALSE && !array.last(joinStack)
+  return array.last(collectStack) && !array.last(joinStack)
     ? stringifyCall(RENDER_PURE_TEXT, result)
     : result
 }
@@ -507,7 +507,7 @@ nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
   return stringifyExpression(
     node.expr,
     isStringRequired,
-    array.last(collectStack) !== env.FALSE && !array.last(joinStack)
+    array.last(collectStack) && !array.last(joinStack)
       ? RENDER_EXPRESSION_TEXT
       : RENDER_EXPRESSION
   )
