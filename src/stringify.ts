@@ -63,13 +63,17 @@ RENDER_EACH = 'c',
 
 RENDER_EXPRESSION = 'e',
 
-RENDER_EXPRESSION_TEXT = 'f',
+RENDER_EXPRESSION_ARG = 'f',
 
-RENDER_PURE_TEXT = 'g',
+RENDER_EXPRESSION_TEXT = 'g',
 
-RENDER_PARTIAL = 'h',
+RENDER_PURE_TEXT = 'h',
 
-RENDER_IMPORT = 'i',
+RENDER_PARTIAL = 'i',
+
+RENDER_IMPORT = 'j',
+
+ARG_STACK = 'k',
 
 SEP_COMMA = ', ',
 
@@ -84,6 +88,7 @@ CODE_RETURN = 'return ',
 CODE_PREFIX = `function (${
   array.join([
     RENDER_EXPRESSION,
+    RENDER_EXPRESSION_ARG,
     RENDER_EXPRESSION_TEXT,
     RENDER_PURE_TEXT,
     RENDER_ELEMENT,
@@ -123,8 +128,8 @@ function stringifyCall(name: string, arg: string): string {
   return `${name}(${arg})`
 }
 
-function stringifyFunction(code: string | void): string {
-  return `function () { ${code || env.EMPTY_STRING} }`
+function stringifyFunction(result: string | void, arg?: string): string {
+  return `function (${arg || env.EMPTY_STRING}) { ${result || env.EMPTY_STRING} }`
 }
 
 function stringifyGroup(code: string): string {
@@ -138,6 +143,14 @@ function stringifyExpression(expr: ExpressionNode, stringRequired: boolean | voi
   }
   return stringifyCall(
     renderName || RENDER_EXPRESSION,
+    array.join(args, SEP_COMMA)
+  )
+}
+
+function stringifyExpressionArg(expr: ExpressionNode): string {
+  const args = [toJSON(expr), ARG_STACK]
+  return stringifyCall(
+    RENDER_EXPRESSION_ARG,
     array.join(args, SEP_COMMA)
   )
 }
@@ -444,14 +457,10 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
       result.method = toJSON((callee as ExpressionIdentifier).name)
       // 为了实现运行时动态收集参数，这里序列化成函数
       if (!array.falsy(args)) {
+        // args 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
         result.args = stringifyFunction(
-          CODE_RETURN + stringifyArray(
-            args.map(
-              function (expr: ExpressionNode) {
-                return stringifyExpression(expr)
-              }
-            )
-          )
+          CODE_RETURN + stringifyArray(args.map(stringifyExpressionArg)),
+          ARG_STACK
         )
       }
     }

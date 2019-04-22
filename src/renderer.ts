@@ -43,11 +43,11 @@ export function render(context: Yox, result: Function) {
 
   localPartials = {},
 
-  getKeypath = function (key: string, index: number, lookup: boolean, callback: (keypath: string, value?: any) => any, defaultKeypath?: string) {
+  getKeypath = function (stack: any[], index: number, key: string, lookup: boolean, callback: (keypath: string, value?: any) => any, defaultKeypath?: string) {
 
-    let keypath = keypathUtil.join($stack[index], key),
+    let keypath = keypathUtil.join(stack[index], key),
 
-    scope = $stack[index + 1]
+    scope = stack[index + 1]
 
     // 如果最后还是取不到值，用回最初的 keypath
     if (!isDef(defaultKeypath)) {
@@ -62,8 +62,9 @@ export function render(context: Yox, result: Function) {
     if (object.has(scope, key)) {
       return callback(keypath, scope[key])
     }
+
     // 如果取的是数组项，则要更进一步
-    else if (object.has(scope, '$item')) {
+    if (object.has(scope, '$item')) {
       scope = scope.$item
 
       // 到这里 scope 可能为空
@@ -74,7 +75,7 @@ export function render(context: Yox, result: Function) {
         return callback(keypath, scope)
       }
       // 取 this.xx
-      else if (scope && object.has(scope, key)) {
+      if (scope && object.has(scope, key)) {
         return callback(keypath, scope[key])
       }
     }
@@ -84,7 +85,7 @@ export function render(context: Yox, result: Function) {
     if (value === getKeypath) {
       if (lookup && index > 0) {
         index--
-        return getKeypath(key, index, lookup, callback, defaultKeypath)
+        return getKeypath(stack, index, key, lookup, callback, defaultKeypath)
       }
       if (defaultKeypath) {
         return callback(defaultKeypath, context.filter(key))
@@ -96,20 +97,24 @@ export function render(context: Yox, result: Function) {
 
   },
 
-  lookup = function (key: string, node: Keypath): any {
-    return getKeypath(
-      key,
-      $stack.length - 2 * (node.offset + 1),
-      node.lookup,
-      function (keypath: string, value: any) {
-        node.absoluteKeypath = keypath
-        return value
-      }
+  renderValue = function (expr: ExpressionNode, simple?: boolean, stack?: any[]): any {
+    const dataStack = stack || $stack
+    return exprExecutor.execute(
+      expr,
+      function (key: string, node: Keypath): any {
+        return getKeypath(
+          dataStack,
+          dataStack.length - 2 * (node.offset + 1),
+          key,
+          node.lookup,
+          function (keypath: string, value: any) {
+            node.absoluteKeypath = keypath
+            return value
+          }
+        )
+      },
+      context
     )
-  },
-
-  renderValue = function (expr: ExpressionNode, simple?: boolean): any {
-    return exprExecutor.execute(expr, lookup, context)
   },
 
   getBindingValue = function (expr: Keypath) {
@@ -270,7 +275,7 @@ export function render(context: Yox, result: Function) {
     }
   },
 
-  createMethodListener = function (method: string, args: Function | void, callStack: any[]): signature.directiveHandler {
+  createMethodListener = function (method: string, args: Function | void, stack: any[]): signature.directiveHandler {
     return function (event?: Event, data?: Record<string, any>) {
 
       const callee = context[method]
@@ -280,13 +285,12 @@ export function render(context: Yox, result: Function) {
         let result: any | void
 
         if (args) {
-          $stack = callStack
           // 给当前 scope 加上 event 和 data
           eventScope = {
             $event: event,
             $data: data,
           }
-          result = execute(callee, context, args())
+          result = execute(callee, context, args(stack))
           // 阅后即焚
           eventScope = env.UNDEFINED
         }
@@ -300,8 +304,8 @@ export function render(context: Yox, result: Function) {
       }
       else {
         args
-        ? execute(callee, context, args())
-        : execute(callee, context)
+          ? execute(callee, context, args(stack))
+          : execute(callee, context)
       }
 
     }
@@ -312,6 +316,10 @@ export function render(context: Yox, result: Function) {
     return stringRequired
       ? toString(value)
       : value
+  },
+
+  renderExpressionArg = function (expr: ExpressionNode, stack: any[]): any {
+    return renderValue(expr, env.UNDEFINED, stack)
   },
 
   renderExpressionText = function (expr: ExpressionNode, stringRequired: boolean | void) {
@@ -459,6 +467,7 @@ export function render(context: Yox, result: Function) {
       if (partial) {
         partial(
           renderExpression,
+          renderExpressionArg,
           renderExpressionText,
           renderPureText,
           renderElement,
@@ -539,6 +548,7 @@ export function render(context: Yox, result: Function) {
 
   return result(
     renderExpression,
+    renderExpressionArg,
     renderExpressionText,
     renderPureText,
     renderElement,
