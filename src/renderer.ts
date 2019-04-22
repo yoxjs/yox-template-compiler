@@ -46,86 +46,69 @@ export function render(context: Yox, result: Function) {
 
   localPartials = {},
 
-  lookup = function (key: string, node: Keypath): any {
+  getKeypath = function (key: string, index: number, lookup: boolean, callback: (keypath: string, value?: any) => any, defaultKeypath?: string) {
 
-    let value: any,
+    let keypath = keypathUtil.join($stack[index], key),
 
-    // 最终找到值的 keypath
-    absoluteKeypath: string | void,
+    scope = $stack[index + 1]
 
-    // 是否向上查找
-    lookup = node.lookup,
+    // 如果最后还是取不到值，用回最初的 keypath
+    if (!isDef(defaultKeypath)) {
+      defaultKeypath = keypath
+    }
 
-    index = $stack.length - 2 * (node.offset + 1),
+    if (eventScope && object.has(eventScope, key)) {
+      return callback(keypath, scope[key])
+    }
 
-    getKeypath = function () {
+    // 如果取的是 scope 上直接有的数据，如 keypath
+    if (object.has(scope, key)) {
+      return callback(keypath, scope[key])
+    }
+    // 如果取的是数组项，则要更进一步
+    else if (object.has(scope, '$item')) {
+      scope = scope.$item
 
-      let keypath = keypathUtil.join($stack[index], key),
+      // 到这里 scope 可能为空
+      // 比如 new Array(10) 然后遍历这个数组，每一项肯定是空
 
-      scope = $stack[index + 1]
-
-      if (!absoluteKeypath) {
-        absoluteKeypath = keypath
+      // 取 this
+      if (key === env.EMPTY_STRING) {
+        return callback(keypath, scope)
       }
-
-      if (eventScope && object.has(eventScope, key)) {
-        value = scope[key]
-        return keypath
+      // 取 this.xx
+      else if (scope && object.has(scope, key)) {
+        return callback(keypath, scope[key])
       }
+    }
 
-      // 如果取的是 scope 上直接有的数据，如 keypath
-      if (object.has(scope, key)) {
-        value = scope[key]
-        return keypath
+    // 正常取数据
+    const value = context.get(keypath, getKeypath)
+    if (value === getKeypath) {
+      if (lookup && index > 0) {
+        index--
+        return getKeypath(key, index, lookup, callback, defaultKeypath)
       }
-      // 如果取的是数组项，则要更进一步
-      else if (object.has(scope, 'item')) {
-        scope = scope.item
-
-        // 到这里 scope 可能为空
-        // 比如 new Array(10) 然后遍历这个数组，每一项肯定是空
-
-        // 取 this
-        if (key === env.EMPTY_STRING) {
-          value = scope
-          return keypath
-        }
-        // 取 this.xx
-        else if (scope && object.has(scope, key)) {
-          value = scope[key]
-          return keypath
-        }
+      if (defaultKeypath) {
+        return callback(defaultKeypath, context.filter(key))
       }
-
-      // 正常取数据
-      value = context.get(keypath, getKeypath)
-      if (value === getKeypath) {
-        if (lookup && index > 0) {
-          index--
-          return getKeypath()
-        }
-      }
-      else {
-        return keypath
-      }
-
-    },
-
-    keypath = getKeypath()
-
-    if (isDef(keypath)) {
-      absoluteKeypath = keypath
     }
     else {
-      value = context.filter(key)
+      return callback(keypath, value)
     }
 
-    if (absoluteKeypath) {
-      node.absoluteKeypath = absoluteKeypath
-    }
+  },
 
-    return value
-
+  lookup = function (key: string, node: Keypath): any {
+    return getKeypath(
+      key,
+      $stack.length - 2 * (node.offset + 1),
+      node.lookup,
+      function (keypath: string, value: any) {
+        node.absoluteKeypath = keypath
+        return value
+      }
+    )
   },
 
   renderValue = function (expr: ExpressionNode, simple?: boolean): any {
@@ -141,6 +124,144 @@ export function render(context: Yox, result: Function) {
       value,
       binding,
     }
+  },
+
+  addBindingIfNeeded = function (vnode: any, attr: Record<string, any>): any {
+
+    const result = getBindingValue(attr.expr)
+
+    if (is.string(result.binding)) {
+      const key = keypathUtil.join(config.DIRECTIVE_BINDING, attr.name),
+      hooks = context.directive(config.DIRECTIVE_BINDING)
+      if (hooks) {
+        vnode.directives[key] = {
+          type: config.DIRECTIVE_BINDING,
+          name: attr.name,
+          key,
+          hooks,
+          binding: result.binding,
+          hint: attr.hint,
+        }
+      }
+    }
+
+    return result.value
+
+  },
+
+  spreadObject = function (vnode: any, attr: Record<string, any>) {
+
+    let { expr } = attr,
+
+    value = renderValue(expr, attr.binding)
+
+    // 数组也算一种对象，要排除掉
+    if (is.object(value) && !is.array(value)) {
+
+      object.each(
+        value,
+        function (value: any, key: string) {
+          vnode.props[key] = value
+        }
+      )
+
+      const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH]
+      if (absoluteKeypath) {
+        const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath),
+        hooks = context.directive(config.DIRECTIVE_BINDING)
+        if (hooks) {
+          vnode.directives[key] = {
+            type: config.DIRECTIVE_BINDING,
+            name: env.EMPTY_STRING,
+            key,
+            hooks,
+            binding: keypathUtil.join(absoluteKeypath, '*'),
+          }
+        }
+      }
+
+    }
+    else {
+      logger.warn(`[${expr.raw}] 不是对象，延展个毛啊`)
+    }
+  },
+
+  parseDirective = function (vnode: any, lazy: Record<string, number | boolean>, attr: Record<string, any>) {
+
+    let { name, modifier, value } = attr,
+
+    key = keypathUtil.join(name, modifier),
+
+    binding: string | void,
+
+    hooks: DirectiveHooks | void,
+
+    getter: signature.directiveGetter | void,
+
+    handler: signature.directiveHandler | signature.eventListener | void,
+
+    transition: TransitionHooks | void
+
+    switch (name) {
+
+      case config.DIRECTIVE_EVENT:
+        hooks = context.directive(config.DIRECTIVE_EVENT)
+        handler = attr.event
+          ? createEventListener(attr.event)
+          : createMethodListener(attr.method, attr.args, $stack)
+        break
+
+      case env.RAW_TRANSITION:
+        transition = context.transition(value)
+        if (transition) {
+          vnode.transition = transition
+        }
+        else {
+          logger.fatal(`transition [${value}] is not found.`)
+        }
+        return
+
+      case config.DIRECTIVE_MODEL:
+        hooks = context.directive(config.DIRECTIVE_MODEL)
+        const result = getBindingValue(attr.expr)
+        if (is.string(result.binding)) {
+          binding = result.binding
+          vnode.model = result.value
+        }
+        break
+
+      case config.DIRECTIVE_LAZY:
+        lazy[modifier] = value
+        return
+
+      default:
+        hooks = context.directive(modifier)
+        if (attr.method) {
+          handler = createMethodListener(attr.method, attr.args, $stack)
+        }
+        else {
+          getter = attr.getter
+        }
+        break
+
+    }
+
+    if (hooks) {
+      vnode.directives[key] = {
+        type: name,
+        name: modifier,
+        key,
+        value,
+        binding,
+        hooks,
+        getter,
+        handler
+      }
+    }
+    else {
+      logger.fatal(`directive [${key}] is not found.`)
+    }
+
   },
 
   createEventListener = function (type: string): signature.eventListener {
@@ -235,160 +356,12 @@ export function render(context: Yox, result: Function) {
 
     if (attributes) {
 
-      let props: Record<string, any> = {},
+      vnode.props = {}
+      vnode.nativeAttrs = {}
+      vnode.nativeProps = {}
+      vnode.directives = {}
 
-      nativeProps: Record<string, Property> = {},
-
-      nativeAttrs: Record<string, Attribute> = {},
-
-      directives: Record<string, Directive> = {},
-
-      lazy: Record<string, number | boolean> | undefined,
-
-      model: any | void,
-
-      addBindingIfNeeded = function (attr: Record<string, any>): any {
-
-        const result = getBindingValue(attr.expr)
-
-        if (is.string(result.binding)) {
-          const key = keypathUtil.join(config.DIRECTIVE_BINDING, attr.name),
-          hooks = context.directive(config.DIRECTIVE_BINDING)
-          if (hooks) {
-            directives[key] = {
-              type: config.DIRECTIVE_BINDING,
-              name: attr.name,
-              key,
-              hooks,
-              binding: result.binding,
-              hint: attr.hint,
-            }
-          }
-        }
-
-        return result.value
-
-      },
-
-      parseDirective = function (attr: Record<string, any>) {
-
-        let { name, modifier, value } = attr,
-
-        key = keypathUtil.join(name, modifier),
-
-        binding: string | void,
-
-        hooks: DirectiveHooks | void,
-
-        getter: signature.directiveGetter | void,
-
-        handler: signature.directiveHandler | signature.eventListener | void,
-
-        transition: TransitionHooks | void
-
-        switch (name) {
-
-          case config.DIRECTIVE_EVENT:
-            hooks = context.directive(config.DIRECTIVE_EVENT)
-            handler = attr.event
-              ? createEventListener(attr.event)
-              : createMethodListener(attr.method, attr.args, $stack)
-            break
-
-          case env.RAW_TRANSITION:
-            transition = context.transition(value)
-            if (transition) {
-              vnode.transition = transition
-            }
-            else {
-              logger.fatal(`transition [${value}] is not found.`)
-            }
-            return
-
-          case config.DIRECTIVE_MODEL:
-            hooks = context.directive(config.DIRECTIVE_MODEL)
-            const result = getBindingValue(attr.expr)
-            if (is.string(result.binding)) {
-              binding = result.binding
-              model = result.value
-            }
-            break
-
-          case config.DIRECTIVE_LAZY:
-            // 惰性初始化，后续的判断可以直接 if (lazy)
-            // 而不必判断 if (!object.empty(lazy))
-            if (!lazy) {
-              lazy = {}
-            }
-            lazy[modifier] = value
-            return
-
-          default:
-            hooks = context.directive(modifier)
-            if (attr.method) {
-              handler = createMethodListener(attr.method, attr.args, $stack)
-            }
-            else {
-              getter = attr.getter
-            }
-            break
-
-        }
-
-        if (hooks) {
-          directives[key] = {
-            type: name,
-            name: modifier,
-            key,
-            value,
-            binding,
-            hooks,
-            getter,
-            handler
-          }
-        }
-        else {
-          logger.fatal(`directive [${key}] is not found.`)
-        }
-
-      },
-
-      spreadObject = function (attr: Record<string, any>) {
-
-        let { expr } = attr,
-
-        value = renderValue(expr, attr.binding)
-
-        // 数组也算一种对象，要排除掉
-        if (is.object(value) && !is.array(value)) {
-
-          object.each(
-            value,
-            function (value: any, key: string) {
-              props[key] = value
-            }
-          )
-
-          const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH]
-          if (absoluteKeypath) {
-            const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath),
-            hooks = context.directive(config.DIRECTIVE_BINDING)
-            if (hooks) {
-              directives[key] = {
-                type: config.DIRECTIVE_BINDING,
-                name: env.EMPTY_STRING,
-                key,
-                hooks,
-                binding: keypathUtil.join(absoluteKeypath, '*'),
-              }
-            }
-          }
-
-        }
-        else {
-          logger.warn(`[${expr.raw}] 不是对象，延展个毛啊`)
-        }
-      }
+      let lazy: Record<string, number | boolean> = {}
 
       array.each(
         attributes,
@@ -401,14 +374,14 @@ export function render(context: Yox, result: Function) {
             case nodeType.ATTRIBUTE:
 
               if (attr.binding) {
-                value = addBindingIfNeeded(attr)
+                value = addBindingIfNeeded(vnode, attr)
               }
 
               if (vnode.isComponent) {
-                props[name] = value
+                vnode.props[name] = value
               }
               else {
-                nativeAttrs[name] = { name, value }
+                vnode.nativeAttrs[name] = { name, value }
               }
 
               break
@@ -416,10 +389,10 @@ export function render(context: Yox, result: Function) {
             case nodeType.PROPERTY:
 
               if (attr.binding) {
-                value = addBindingIfNeeded(attr)
+                value = addBindingIfNeeded(vnode, attr)
               }
 
-              nativeProps[name] = {
+              vnode.nativeProps[name] = {
                 name,
                 value,
                 hint: attr.hint,
@@ -428,11 +401,11 @@ export function render(context: Yox, result: Function) {
               break
 
             case nodeType.DIRECTIVE:
-              parseDirective(attr)
+              parseDirective(vnode, lazy, attr)
               break
 
             case nodeType.SPREAD:
-              spreadObject(attr)
+              spreadObject(vnode, attr)
               break
 
           }
@@ -443,12 +416,12 @@ export function render(context: Yox, result: Function) {
       // 开发过程中，发现可以把 `函数调用` 相关的指令都编译成 handler
       // 于是 lazy 的使用范围就自然放开，只要指令有 handler 就行
       // 比如：<div o-tap="method()" lazy-tap> 也能完美匹配
-      if (lazy) {
+      if (!object.empty(lazy)) {
         // 如果没写 lazy，默认为 false
         // 如果只写了 lazy，没写应用于谁，比如 <div lazy>，默认应用于全部 handler 指令
         const defaultLazy = lazy[env.EMPTY_STRING] || env.FALSE
         object.each(
-          directives,
+          vnode.directives,
           function (directive: Directive) {
             if (directive.handler) {
               directive.lazy = lazy[directive.name] || defaultLazy
@@ -456,12 +429,6 @@ export function render(context: Yox, result: Function) {
           }
         )
       }
-
-      vnode.props = props
-      vnode.nativeAttrs = nativeAttrs
-      vnode.nativeProps = nativeProps
-      vnode.directives = directives
-      vnode.model = model
 
     }
 
@@ -565,7 +532,7 @@ export function render(context: Yox, result: Function) {
       // 类似 {{#each 1 -> 10}} 这样的临时循环，需要在 scope 上加上当前项
       // 因为通过 context.get() 无法获取数据
       if (!absoluteKeypath) {
-        $scope.item = item
+        $scope.$item = item
       }
 
       if (eachIndex) {
