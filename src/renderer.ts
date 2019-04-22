@@ -38,39 +38,13 @@ export function render(context: Yox, result: Function) {
 
   $stack = [$keypath, $scope],
 
-  eventScope: any,
+  eventScope: Record<string, any> | void,
 
   vnodeStack: VNode[][] = [],
 
   vnodeList: VNode[] | void,
 
   localPartials = {},
-
-  format = function (key: string) {
-
-    // 初始查找位置
-    // stack 的结构是 keypath, scope 作为一组
-    let index = $stack.length - 2, formateds = []
-
-    // 格式化 key
-    keypathUtil.each(
-      key,
-      function (item: string | number) {
-        if (item === env.KEYPATH_PRIVATE_PARENT) {
-          index -= 2
-        }
-        else if (item !== env.KEYPATH_PRIVATE_CURRENT) {
-          array.push(formateds, item)
-        }
-      }
-    )
-
-    return {
-      formated: array.join(formateds, env.KEYPATH_SEPARATOR),
-      index
-    }
-
-  },
 
   lookup = function (key: string, node: Keypath): any {
 
@@ -82,12 +56,11 @@ export function render(context: Yox, result: Function) {
     // 是否向上查找
     lookup = node.lookup,
 
-    // 格式化数据
-    { formated, index } = format(key),
+    index = $stack.length - 2 * (node.offset + 1),
 
     getKeypath = function () {
 
-      let keypath = keypathUtil.join($stack[index], formated),
+      let keypath = keypathUtil.join($stack[index], key),
 
       scope = $stack[index + 1]
 
@@ -95,20 +68,14 @@ export function render(context: Yox, result: Function) {
         absoluteKeypath = keypath
       }
 
-      // #each 时，scope 存储是当前循环的数据，如 keypath、index 等
-      // scope 无法直接拿到当前数组项，它存在于 scope.item 上
-      // 为什么这样设计呢？
-      // 因为 {{this}} 的存在，经过上面的格式化，key 会是 ''
-      // 而 {{this.length}} 会变成 'length'
-
-      if (eventScope && object.has(eventScope, formated)) {
-        value = scope[formated]
+      if (eventScope && object.has(eventScope, key)) {
+        value = scope[key]
         return keypath
       }
 
       // 如果取的是 scope 上直接有的数据，如 keypath
-      if (object.has(scope, formated)) {
-        value = scope[formated]
+      if (object.has(scope, key)) {
+        value = scope[key]
         return keypath
       }
       // 如果取的是数组项，则要更进一步
@@ -119,13 +86,13 @@ export function render(context: Yox, result: Function) {
         // 比如 new Array(10) 然后遍历这个数组，每一项肯定是空
 
         // 取 this
-        if (formated === env.EMPTY_STRING) {
+        if (key === env.EMPTY_STRING) {
           value = scope
           return keypath
         }
         // 取 this.xx
-        else if (scope && object.has(scope, formated)) {
-          value = scope[formated]
+        else if (scope && object.has(scope, key)) {
+          value = scope[key]
           return keypath
         }
       }
@@ -150,7 +117,7 @@ export function render(context: Yox, result: Function) {
       absoluteKeypath = keypath
     }
     else {
-      value = context.filter(formated)
+      value = context.filter(key)
     }
 
     if (absoluteKeypath) {
