@@ -30,29 +30,6 @@ import TransitionHooks from 'yox-type/src/hooks/Transition'
 
 import * as nodeType from './nodeType'
 
-/**
- * nodes 是动态计算出来的节点，因此节点本身可能是数组
- * 这里的数组不是从 `数据` 取来的，而是一个结构性的数组
- * 节点本身也可能是空，即 EMPTY renderer 返回的结果
- */
-function addNodes(list: any[], nodes: string | VNode[]) {
-  // [TODO] 连续的 string/number/boolean/null 合并成一个节点
-  if (is.array(nodes)) {
-    array.each(
-      nodes as VNode[],
-      function (node) {
-        // 某些节点计算得到空值，需要过滤
-        if (isDef(node)) {
-          array.push(list, node)
-        }
-      }
-    )
-  }
-  else {
-    array.push(list, nodes as string)
-  }
-}
-
 export function render(instance: Yox, result: Function) {
 
   let keypath = env.EMPTY_STRING,
@@ -64,6 +41,8 @@ export function render(instance: Yox, result: Function) {
   eventScope: any,
 
   vnodeStack: VNode[][] = [],
+
+  vnodeList: VNode[] | void,
 
   localPartials = {},
 
@@ -242,29 +221,34 @@ export function render(instance: Yox, result: Function) {
     }
   },
 
-  renderExpression = function (expr: ExpressionNode): any {
-    return renderValue(expr)
+  renderExpression = function (expr: ExpressionNode, stringRequired: boolean | void): any {
+    const value = renderValue(expr)
+    return stringRequired
+      ? toString(value)
+      : value
   },
 
-  renderExpressionText = function (expr: ExpressionNode): any {
+  renderExpressionText = function (expr: ExpressionNode, stringRequired: boolean | void) {
     renderPureText(
-      toString(renderValue(expr))
+      renderExpression(expr, stringRequired)
     )
   },
 
   renderPureText = function (text: string) {
-    const vnodeList = array.last(vnodeStack), lastVnode = array.last(vnodeList)
-    if (lastVnode && lastVnode.isText) {
-      lastVnode.text += text
-    }
-    else {
-      array.push(
-        vnodeList,
-        {
-          isText: env.TRUE,
-          text,
-        }
-      )
+    if (vnodeList) {
+      const lastVnode = array.last(vnodeList)
+      if (lastVnode && lastVnode.isText) {
+        lastVnode.text += text
+      }
+      else {
+        array.push(
+          vnodeList,
+          {
+            isText: env.TRUE,
+            text,
+          }
+        )
+      }
     }
   },
 
@@ -503,15 +487,20 @@ export function render(instance: Yox, result: Function) {
     }
 
     if (children) {
-      vnodeStack.push([])
+      vnodeList = vnode.children = []
+      vnodeStack.push(vnodeList)
       children()
-      vnode.children = array.pop(vnodeStack)
+      array.pop(vnodeStack)
+      vnodeList = array.last(vnodeStack)
     }
 
     vnode.instance = instance
     vnode.keypath = keypath
 
-    const vnodeList = array.last(vnodeStack)
+    if (vnode.isComponent) {
+      vnode.parent = instance
+    }
+
     if (vnodeList) {
       array.push(vnodeList, vnode)
     }
@@ -522,10 +511,10 @@ export function render(instance: Yox, result: Function) {
 
   // <slot name="xx"/>
   renderSlot = function (name: string) {
-    const result = instance.get(config.SLOT_DATA_PREFIX + name)
-    return is.array(result) && result.length === 1
-      ? result[0]
-      : result
+    const render = instance.get(config.SLOT_DATA_PREFIX + name)
+    if (render) {
+      render()
+    }
   },
 
   // {{#partial name}}
@@ -560,16 +549,17 @@ export function render(instance: Yox, result: Function) {
     logger.fatal(`partial "${name}" is not found.`)
   },
 
-  renderEach = function (expr: ExpressionNode, index: string | Function | void, callback?: Function) {
+  renderEach = function (expr: ExpressionNode, index: string | Function | void, handler?: Function) {
 
-    let handler: Function
+    let eachIndex: string | void, eachHandler: Function
 
     if (is.func(index)) {
-      handler = index as Function
-      index = env.UNDEFINED
+      eachHandler = index as Function
+      eachIndex = env.UNDEFINED
     }
     else {
-      handler = callback as Function
+      eachHandler = handler as Function
+      eachIndex = index as string
     }
 
     const value = renderValue(expr),
@@ -578,7 +568,7 @@ export function render(instance: Yox, result: Function) {
 
     eachKeypath = absoluteKeypath || keypathUtil.join(keypath, expr.raw),
 
-    eachHandler = function (item: any, key: string | number) {
+    callback = function (item: any, key: string | number) {
 
       let lastScope = scope, lastKeypath = keypath, lastKeypathStack = stack
 
@@ -590,7 +580,7 @@ export function render(instance: Yox, result: Function) {
       array.push(stack, scope)
 
       // 从下面这几句赋值可以看出
-      // scope 至少会有 'keypath' 'item' 'index' 等几个值
+      // scope 至少会有 '$keypath' 'item' eachIndex 等几个值
       scope.$keypath = keypath
 
       // 类似 {{#each 1 -> 10}} 这样的临时循环，需要在 scope 上加上当前项
@@ -599,11 +589,11 @@ export function render(instance: Yox, result: Function) {
         scope.item = item
       }
 
-      if (index) {
-        scope[index as string] = key
+      if (eachIndex) {
+        scope[eachIndex] = key
       }
 
-      handler(item, key)
+      eachHandler(item, key)
 
       scope = lastScope
       keypath = lastKeypath
@@ -612,13 +602,13 @@ export function render(instance: Yox, result: Function) {
     }
 
     if (is.array(value)) {
-      array.each(value, eachHandler)
+      array.each(value, callback)
     }
     else if (is.object(value)) {
-      object.each(value, eachHandler)
+      object.each(value, callback)
     }
     else if (is.func(value)) {
-      value(eachHandler)
+      value(callback)
     }
 
   }

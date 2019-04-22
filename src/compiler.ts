@@ -11,7 +11,6 @@ import * as logger from 'yox-common/src/util/logger'
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as exprCompiler from 'yox-expression-compiler/src/compiler'
 import ExpressionCall from 'yox-expression-compiler/src/node/Call'
-import ExpressionUnary from 'yox-expression-compiler/src/node/Unary'
 
 import * as helper from './helper'
 import * as creator from './creator'
@@ -23,6 +22,8 @@ import Else from './node/Else'
 import Node from './node/Node'
 import Branch from './node/Branch'
 import Text from './node/Text'
+import Each from './node/Each'
+import Partial from './node/Partial'
 import Element from './node/Element'
 import Attribute from './node/Attribute'
 import Directive from './node/Directive'
@@ -179,7 +180,7 @@ export function compile(content: string): Node[] {
         // 2. 它的 isComplex 还是初始值，但它并不属于简单节点的类型，也就是说它天生是个复杂节点
         // 这里会有点绕，isComplex 的值最终取决于子节点是否包含复杂节点
         if (!currentBranch.isComplex
-          && (node.isComplex || helper.complexChildTypes[type])
+          && (node.isComplex || helper.complexTypes[type])
         ) {
           currentBranch.isComplex = env.TRUE
         }
@@ -268,7 +269,13 @@ export function compile(content: string): Node[] {
         }
       }
 
-      if (isElement) {
+      if (type === nodeType.EACH) {
+        checkEach(node as Each)
+      }
+      else if (type === nodeType.PARTIAL) {
+        checkPartial(node as Partial)
+      }
+      else if (isElement) {
         checkElement(node as Element)
       }
       else if (currentElement && isAttribute && isSpecialAttr(currentElement, node as Attribute)) {
@@ -467,12 +474,6 @@ export function compile(content: string): Node[] {
 
   checkCondition = function (condition: If | ElseIf | Else) {
 
-    // 确保 if 至少得有一级有 children，也就是说，不能像下面这样写：
-    // {{#if a}}
-    // {{else if b}}
-    // {{else}}
-    // {{/if}}
-
     let currentNode: any = condition,
 
     prevNode: any,
@@ -503,10 +504,25 @@ export function compile(content: string): Node[] {
       }
     }
 
+    // 每个条件都是空内容，则删掉整个 if
     if (!hasChildren) {
-      fatal('写 if 语句总得有内容吧？')
+      replaceChild(currentNode)
     }
 
+  },
+
+  checkEach = function (each: Each) {
+    // 没内容就干掉
+    if (!each.children) {
+      replaceChild(each)
+    }
+  },
+
+  checkPartial = function (partial: Partial) {
+    // 没内容就干掉
+    if (!partial.children) {
+      replaceChild(partial)
+    }
   },
 
   checkElement = function (element: Element) {
@@ -682,7 +698,7 @@ export function compile(content: string): Node[] {
           currentBranch.isStatic = env.FALSE
         }
         // 当前树枝节点是简单节点，一旦加入了一个复杂子节点，当前树枝节点变为复杂节点
-        if (!currentBranch.isComplex && helper.complexChildTypes[type]) {
+        if (!currentBranch.isComplex && helper.complexTypes[type]) {
           currentBranch.isComplex = env.TRUE
         }
       }

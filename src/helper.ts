@@ -5,7 +5,7 @@ import * as nodeType from './nodeType'
 // 叶子节点类型
 export const leafTypes = {}
 // 复杂子节点类型
-export const complexChildTypes = {}
+export const complexTypes = {}
 // 特殊标签
 export const specialTags = {}
 // 特殊属性
@@ -18,9 +18,10 @@ leafTypes[nodeType.IMPORT] =
 leafTypes[nodeType.SPREAD] =
 leafTypes[nodeType.EXPRESSION] =
 
-complexChildTypes[nodeType.ELEMENT] =
-complexChildTypes[nodeType.IMPORT] =
-complexChildTypes[nodeType.EACH] =
+complexTypes[nodeType.ELEMENT] =
+complexTypes[nodeType.PARTIAL] =
+complexTypes[nodeType.IMPORT] =
+complexTypes[nodeType.EACH] =
 
 specialTags[env.RAW_SLOT] =
 specialTags[env.RAW_TEMPLATE] =

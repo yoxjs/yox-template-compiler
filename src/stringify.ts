@@ -49,6 +49,9 @@ import Spread from './node/Spread'
 
 const joinStack: boolean[] = [],
 
+// 是否正在收集子节点
+collectStack: (boolean | void)[] = [],
+
 nodeStringify = {},
 
 RENDER_ELEMENT = 'a',
@@ -73,6 +76,8 @@ SEP_COLON = ': ',
 
 SEP_PLUS = ' + ',
 
+STRING_EMPTY = toJSON(env.EMPTY_STRING),
+
 CODE_RETURN = 'return ',
 
 CODE_PREFIX = `function (${
@@ -91,9 +96,9 @@ CODE_PREFIX = `function (${
 CODE_SUFFIX = ` }`
 
 
-// 是否正在处理 attrs
-let processAttrs = env.FALSE
 
+// 表达式求值是否要求返回字符串
+let isStringRequired: boolean | void
 
 function stringifyObject(obj: Object): string {
   const fields = []
@@ -127,47 +132,61 @@ function stringifyGroup(code: string): string {
   return `(${code})`
 }
 
-function stringifyExpression(expr: ExpressionNode, name?: string): string {
+function stringifyExpression(expr: ExpressionNode, stringRequired: boolean | void, name?: string): string {
+  const args = [toJSON(expr)]
+  if (stringRequired) {
+    array.push(args, env.TRUE)
+  }
   return stringifyCall(
     name || RENDER_EXPRESSION,
-    toJSON(expr)
+    array.join(args, SEP_COMMA)
   )
 }
 
 function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[] | void): string | void {
-  return isDef(value)
-    ? toJSON(value)
-    : expr
-      ? stringifyExpression(expr)
-      : stringifyChildren(children)
-}
-
-function stringifyChildren(children: Node[] | void, isComplex: boolean | void): string | void {
-  // 如果是复杂节点的 children，则每个 child 的序列化都是函数调用的形式
-  // 因此最后可以拼接为 fn1(), fn2(), fn3() 这样依次调用，而不用再多此一举的使用数组，因为在 renderer 里也用不上这个数组
-  if (children && children.length) {
-    array.push(
-      joinStack,
-      children.length > 1 && !isComplex
-    )
-    const value = array.join(
-      children.map(
-        function (child: Node) {
-          return nodeStringify[child.type](child)
-        }
-      ),
-      array.last(joinStack) ? SEP_PLUS : SEP_COMMA
-    )
-    array.pop(joinStack)
-    return value
+  if (isDef(value)) {
+    return toJSON(value)
+  }
+  // 只有一个表达式时，保持原始类型
+  if (expr) {
+    return stringifyExpression(expr)
+  }
+  // 多个值拼接时，要求是字符串
+  if (children) {
+    isStringRequired = children.length > 1
+    return stringifyChildren(children)
   }
 }
 
+function stringifyChildren(children: Node[], isComplex: boolean | void): string {
+  // 如果是复杂节点的 children，则每个 child 的序列化都是函数调用的形式
+  // 因此最后可以拼接为 fn1(), fn2(), fn3() 这样依次调用，而不用再多此一举的使用数组，因为在 renderer 里也用不上这个数组
+
+  // children 大于一个时，才有 join 的可能，单个值 jion 啥啊...
+  const isJoin = children.length > 1 && !isComplex
+
+  array.push(joinStack, isJoin)
+  const value = array.join(
+    children.map(
+      function (child: Node) {
+        return nodeStringify[child.type](child)
+      }
+    ),
+    isJoin ? SEP_PLUS : SEP_COMMA
+  )
+  array.pop(joinStack)
+
+  return value
+
+}
+
 function stringifyConditionChildren(children: Node[] | void, isComplex: boolean | void): string | void {
-  const result = stringifyChildren(children, isComplex)
-  return children && children.length > 1 && isComplex
-    ? stringifyGroup(result as string)
-    : result
+  if (children) {
+    const result = stringifyChildren(children, isComplex)
+    return children.length > 1 && isComplex
+      ? stringifyGroup(result)
+      : result
+  }
 }
 
 function stringifyIf(node: If | ElseIf, stub: boolean | void) {
@@ -179,8 +198,6 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
   yes = stringifyConditionChildren(children, isComplex),
 
   no: string | void,
-
-  empty = toJSON(env.EMPTY_STRING),
 
   result: string
 
@@ -202,7 +219,7 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
 
   if (isDef(yes) || isDef(no)) {
 
-    result = `${test} ? ${isDef(yes) ? yes : empty} : ${isDef(no) ? no : empty}`
+    result = `${test} ? ${isDef(yes) ? yes : STRING_EMPTY} : ${isDef(no) ? no : STRING_EMPTY}`
 
     // 如果是连接操作，因为 ?: 优先级最低，因此要加 ()
     return array.last(joinStack)
@@ -210,64 +227,63 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
       : result
   }
 
-  return empty
+  return STRING_EMPTY
 
 }
 
-function getComponentSlots(children: Node[] | void): string | void {
-  // 这里不用判断数组长度，因为下面会判断有效的 slot
-  if (children) {
+function getComponentSlots(children: Node[]): string | void {
 
-    const slots = {}, complexs = {},
+  const slots = {}, complexs = {},
 
-    addSlot = function (name: string, nodes: Node[] | void, isComplex: boolean | void) {
+  addSlot = function (name: string, nodes: Node[] | void, isComplex: boolean | void) {
 
-      if (!array.falsy(nodes)) {
-        array.push(
-          slots[name] || (slots[name] = []),
-          nodes
-        )
-        if (isComplex) {
-          complexs[name] = isComplex
-        }
+    if (!array.falsy(nodes)) {
+      array.push(
+        slots[name] || (slots[name] = []),
+        nodes
+      )
+      if (isComplex) {
+        complexs[name] = isComplex
       }
-
-    }
-
-    array.each(
-      children,
-      function (child: Node) {
-
-        // 找到具名 slot
-        if (child.type === nodeType.ELEMENT) {
-          const element = child as Element
-          if (element.slot) {
-            addSlot(element.slot, element.children, element.isComplex)
-            return
-          }
-        }
-
-        // 匿名 slot，名称统一为 children
-        addSlot(env.RAW_CHILDREN, [child], child.isComplex)
-
-      }
-    )
-
-    // 全部收集完成之后，再序列化
-    object.each(
-      slots,
-      function (children: any, name: string) {
-        slots[name] = stringifyFunction(
-          stringifyChildren(children, complexs[name])
-        )
-      }
-    )
-
-    if (!object.empty(slots)) {
-      return stringifyObject(slots)
     }
 
   }
+
+  array.each(
+    children,
+    function (child: Node) {
+
+      // 找到具名 slot
+      if (child.type === nodeType.ELEMENT) {
+        const element = child as Element
+        if (element.slot) {
+          addSlot(element.slot, element.children, element.isComplex)
+          return
+        }
+      }
+
+      // 匿名 slot，名称统一为 children
+      addSlot(env.RAW_CHILDREN, [child], child.isComplex)
+
+    }
+  )
+
+
+
+  // 全部收集完成之后，再序列化
+  object.each(
+    slots,
+    function (children: any, name: string) {
+      slots[name] = stringifyFunction(
+        stringifyChildren(children, complexs[name])
+      )
+    }
+  )
+
+  if (!object.empty(slots)) {
+    return stringifyObject(slots)
+  }
+
 }
 
 nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
@@ -289,9 +305,9 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     )
   }
 
+  array.push(collectStack, env.FALSE)
+
   if (attrs) {
-    // 只有处理 children 需要 currentElement
-    processAttrs = env.TRUE
     array.each(
       attrs,
       function (attr: Node) {
@@ -301,7 +317,6 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
         )
       }
     )
-    processAttrs = env.FALSE
   }
 
   data.tag = toJSON(tag)
@@ -328,18 +343,21 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   if (isComponent) {
     data.isComponent = env.TRUE
-    data.slots = getComponentSlots(children)
+    if (children) {
+      collectStack[collectStack.length - 1] = env.TRUE
+      data.slots = getComponentSlots(children)
+    }
   }
-  else {
+  else if (children) {
+    isStringRequired = env.TRUE
+    collectStack[collectStack.length - 1] = !!isComplex
     elementChildren = stringifyChildren(children, isComplex)
-    if (isDef(elementChildren)) {
-      if (isComplex) {
-        elementChildren = stringifyFunction(elementChildren)
-      }
-      else {
-        data.text = elementChildren
-        elementChildren = env.UNDEFINED
-      }
+    if (isComplex) {
+      elementChildren = stringifyFunction(elementChildren)
+    }
+    else {
+      data.text = elementChildren
+      elementChildren = env.UNDEFINED
     }
   }
 
@@ -366,6 +384,8 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
       elementChildren
     )
   }
+
+  array.pop(collectStack)
 
   return stringifyCall(
     RENDER_ELEMENT,
@@ -433,7 +453,13 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
       // 为了实现运行时动态收集参数，这里序列化成函数
       if (!array.falsy(args)) {
         result.args = stringifyFunction(
-          CODE_RETURN + stringifyArray(args.map(stringifyExpression))
+          CODE_RETURN + stringifyArray(
+            args.map(
+              function (expr: ExpressionNode) {
+                return stringifyExpression(expr)
+              }
+            )
+          )
         )
       }
     }
@@ -472,17 +498,18 @@ nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
 
 nodeStringify[nodeType.TEXT] = function (node: Text): string {
   const result = toJSON(node.text)
-  return processAttrs || array.last(joinStack)
-    ? result
-    : stringifyCall(RENDER_PURE_TEXT, result)
+  return array.last(collectStack) !== env.FALSE && !array.last(joinStack)
+    ? stringifyCall(RENDER_PURE_TEXT, result)
+    : result
 }
 
 nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
   return stringifyExpression(
     node.expr,
-    processAttrs || array.last(joinStack)
-    ? RENDER_EXPRESSION
-    : RENDER_EXPRESSION_TEXT
+    isStringRequired,
+    array.last(collectStack) !== env.FALSE && !array.last(joinStack)
+      ? RENDER_EXPRESSION_TEXT
+      : RENDER_EXPRESSION
   )
 }
 
@@ -496,8 +523,9 @@ nodeStringify[nodeType.EACH] = function (node: Each): string {
 
   index = node.index ? `, ${toJSON(node.index)}` : env.EMPTY_STRING,
 
+  // compiler 保证了 children 一定有值
   children = stringifyFunction(
-    stringifyChildren(node.children, node.isComplex)
+    stringifyChildren(node.children as Node[], node.isComplex)
   )
 
   return stringifyCall(RENDER_EACH, `${expr}${index}, ${children}`)
@@ -508,8 +536,9 @@ nodeStringify[nodeType.PARTIAL] = function (node: Partial): string {
 
   const name = toJSON(node.name),
 
+  // compiler 保证了 children 一定有值
   children = stringifyFunction(
-    stringifyChildren(node.children, node.isComplex)
+    stringifyChildren(node.children as Node[], node.isComplex)
   )
 
   return stringifyCall(RENDER_PARTIAL, `${name}, ${children}`)
