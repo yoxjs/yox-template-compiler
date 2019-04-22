@@ -55,7 +55,7 @@ export function render(context: Yox, result: Function) {
     }
 
     if (eventScope && object.has(eventScope, key)) {
-      return callback(keypath, scope[key])
+      return callback(keypath, eventScope[key])
     }
 
     // 如果取的是 scope 上直接有的数据，如 keypath

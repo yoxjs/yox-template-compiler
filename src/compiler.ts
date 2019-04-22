@@ -845,7 +845,7 @@ export function compile(content: string): Node[] {
             }
             node = creator.createDirective(
               config.DIRECTIVE_LAZY,
-              lazy ? string.camelize(lazy) : env.UNDEFINED
+              lazy ? string.camelize(lazy) : env.EMPTY_STRING
             )
           }
           // 这里要用 o- 判断前缀，否则 o 太容易重名了
