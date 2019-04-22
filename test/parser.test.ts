@@ -178,10 +178,9 @@ it('复杂节点和简单节点', () => {
 
   expect(!!ast[0].isComplex).toBe(true)
 
-  // 定义子模板不影响 isComplex
   ast = compile('<span>x{{x}}x{{#partial a}}123{{/partial}}</span>')
 
-  expect(!!ast[0].isComplex).toBe(false)
+  expect(!!ast[0].isComplex).toBe(true)
 
   ast = compile('<span>x{{x}}x{{> a}}</span>')
 
@@ -912,24 +911,66 @@ it('if', () => {
   let hasError = false
 
   try {
-    compile('{{#if x > 1}}{{else if x < 0}}{{else}}{{/if}}')
+    ast = compile('{{#if x > 1}}{{else if x < 0}}{{else}}{{/if}}')
+    expect(ast.length).toBe(0)
   }
   catch {
     hasError = true
   }
 
-  expect(hasError).toBe(true)
+  expect(hasError).toBe(false)
 
   hasError = false
 
   try {
-    compile('{{#if x > 1}}{{/if}}')
+    ast = compile('{{#if x > 1}}{{/if}}')
+    expect(ast.length).toBe(0)
+  }
+  catch (e) {
+    hasError = true
+  }
+
+  expect(hasError).toBe(false)
+
+})
+
+it('each', () => {
+
+  let ast: any, hasError = false
+
+  try {
+    ast = compile(`
+      <div>
+        {{#each x}}{{/each}}
+      </div>
+    `)
+    expect(ast[0].children).toBe(undefined)
   }
   catch {
     hasError = true
   }
 
-  expect(hasError).toBe(true)
+  expect(hasError).toBe(false)
+
+})
+
+it('partial', () => {
+
+  let ast: any, hasError = false
+
+  try {
+    ast = compile(`
+      <div>
+        {{#partial x}}{{/partial}}
+      </div>
+    `)
+    expect(ast[0].children).toBe(undefined)
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(false)
 
 })
 

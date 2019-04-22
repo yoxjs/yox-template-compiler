@@ -584,26 +584,39 @@ export function compile(content: string): Node[] {
 
   replaceChild = function (oldNode: Node, newNode?: Node) {
 
-    const currentNode = array.last(nodeStack),
+    let currentBranch: Branch | void = array.last(nodeStack),
 
-    isAttr = currentElement && currentNode.type === nodeType.ELEMENT,
+    isAttr: boolean | void,
 
-    nodeList = isAttr ? currentNode.attrs : currentNode.children,
+    list: Node[] | void,
 
-    index = array.indexOf(nodeList, oldNode)
+    index: number
 
-    if (index >= 0) {
-      if (newNode) {
-        nodeList[index] = newNode
-      }
-      else {
-        nodeList.splice(index, 1)
-        if (!nodeList.length) {
-          if (isAttr) {
-            currentNode.attrs = env.UNDEFINED
-          }
-          else {
-            currentNode.children = env.UNDEFINED
+    if (currentBranch) {
+      isAttr = currentElement && currentElement === currentBranch
+      list = isAttr
+        ? (currentBranch as Element).attrs
+        : currentBranch.children
+    }
+    else {
+      list = nodeList
+    }
+
+    if (list) {
+      index = array.indexOf(list, oldNode)
+      if (index >= 0) {
+        if (newNode) {
+          list[index] = newNode
+        }
+        else {
+          list.splice(index, 1)
+          if (currentBranch && !list.length) {
+            if (isAttr) {
+              delete (currentBranch as Element).attrs
+            }
+            else {
+              currentBranch.children = env.UNDEFINED
+            }
           }
         }
       }
