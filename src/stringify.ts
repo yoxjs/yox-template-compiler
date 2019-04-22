@@ -363,7 +363,6 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   array.push(args, stringifyObject(data))
 
-  // data 可以透传，但是 attrs 还需要 render 继续分析
   if (!array.falsy(elementAttrs)) {
     array.push(
       args,
