@@ -370,13 +370,6 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
       stringifyArray(elementAttrs)
     )
   }
-  else if (elementChildren) {
-    // renderer 里是直接 if (attrs) 判断，所以写 0 就行了，还能省点字符
-    array.push(
-      args,
-      0
-    )
-  }
 
   if (elementChildren) {
     array.push(

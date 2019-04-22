@@ -255,9 +255,18 @@ export function render(context: Yox, result: Function) {
     }
   },
 
-  renderElement = function (vnode: Record<string, any>, attrs: any[] | void, children: Function | void) {
+  renderElement = function (vnode: Record<string, any>, attrs: any[] | Function | void, childs: Function | void) {
 
-    if (attrs) {
+    let attributes: any[] | void, children = childs
+
+    if (is.array(attrs)) {
+      attributes = attrs as any[]
+    }
+    else if (is.func(attrs)) {
+      children = attrs as Function
+    }
+
+    if (attributes) {
 
       let props: Record<string, any> = {},
 
@@ -415,7 +424,7 @@ export function render(context: Yox, result: Function) {
       }
 
       array.each(
-        attrs,
+        attributes,
         function (attr: any) {
 
           let { name, value } = attr
