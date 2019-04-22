@@ -32,11 +32,11 @@ import * as nodeType from './nodeType'
 
 export function render(context: Yox, result: Function) {
 
-  let keypath = env.EMPTY_STRING,
+  let $keypath = env.EMPTY_STRING,
 
-  scope: any = { $keypath: keypath },
+  $scope: any = { $keypath },
 
-  stack = [keypath, scope],
+  $stack = [$keypath, $scope],
 
   eventScope: any,
 
@@ -50,7 +50,7 @@ export function render(context: Yox, result: Function) {
 
     // 初始查找位置
     // stack 的结构是 keypath, scope 作为一组
-    let index = stack.length - 2, formateds = []
+    let index = $stack.length - 2, formateds = []
 
     // 格式化 key
     keypathUtil.each(
@@ -87,9 +87,9 @@ export function render(context: Yox, result: Function) {
 
     getKeypath = function () {
 
-      let keypath = keypathUtil.join(stack[index], formated),
+      let keypath = keypathUtil.join($stack[index], formated),
 
-      scope = stack[index + 1]
+      scope = $stack[index + 1]
 
       if (!absoluteKeypath) {
         absoluteKeypath = keypath
@@ -195,7 +195,7 @@ export function render(context: Yox, result: Function) {
         let result: any | void
 
         if (args) {
-          stack = callStack
+          $stack = callStack
           // 给当前 scope 加上 event 和 data
           eventScope = {
             $event: event,
@@ -248,7 +248,7 @@ export function render(context: Yox, result: Function) {
             isText: env.TRUE,
             text,
             context,
-            keypath,
+            keypath: $keypath,
           }
         )
       }
@@ -325,7 +325,7 @@ export function render(context: Yox, result: Function) {
             hooks = context.directive(config.DIRECTIVE_EVENT)
             handler = attr.event
               ? createEventListener(attr.event)
-              : createMethodListener(attr.method, attr.args, stack)
+              : createMethodListener(attr.method, attr.args, $stack)
             break
 
           case env.RAW_TRANSITION:
@@ -359,7 +359,7 @@ export function render(context: Yox, result: Function) {
           default:
             hooks = context.directive(modifier)
             if (attr.method) {
-              handler = createMethodListener(attr.method, attr.args, stack)
+              handler = createMethodListener(attr.method, attr.args, $stack)
             }
             else {
               getter = attr.getter
@@ -405,7 +405,7 @@ export function render(context: Yox, result: Function) {
           const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH]
           if (absoluteKeypath) {
             const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath),
-              hooks = context.directive(config.DIRECTIVE_BINDING)
+            hooks = context.directive(config.DIRECTIVE_BINDING)
             if (hooks) {
               directives[key] = {
                 type: config.DIRECTIVE_BINDING,
@@ -507,7 +507,7 @@ export function render(context: Yox, result: Function) {
     }
 
     vnode.context = context
-    vnode.keypath = keypath
+    vnode.keypath = $keypath
 
     if (vnode.isComponent) {
       vnode.parent = context
@@ -578,38 +578,38 @@ export function render(context: Yox, result: Function) {
 
     absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH],
 
-    eachKeypath = absoluteKeypath || keypathUtil.join(keypath, expr.raw),
+    eachKeypath = absoluteKeypath || keypathUtil.join($keypath, expr.raw),
 
     callback = function (item: any, key: string | number) {
 
-      let lastScope = scope, lastKeypath = keypath, lastKeypathStack = stack
+      let lastKeypath = $keypath, lastScope = $scope, lastKeypathStack = $stack
 
-      scope = {}
-      keypath = keypathUtil.join(eachKeypath, key)
-      stack = object.copy(stack)
+      $keypath = keypathUtil.join(eachKeypath, key)
+      $scope = {}
+      $stack = object.copy($stack)
 
-      array.push(stack, keypath)
-      array.push(stack, scope)
+      array.push($stack, $keypath)
+      array.push($stack, $scope)
 
       // 从下面这几句赋值可以看出
       // scope 至少会有 '$keypath' 'item' eachIndex 等几个值
-      scope.$keypath = keypath
+      $scope.$keypath = $keypath
 
       // 类似 {{#each 1 -> 10}} 这样的临时循环，需要在 scope 上加上当前项
       // 因为通过 context.get() 无法获取数据
       if (!absoluteKeypath) {
-        scope.item = item
+        $scope.item = item
       }
 
       if (eachIndex) {
-        scope[eachIndex] = key
+        $scope[eachIndex] = key
       }
 
       eachHandler(item, key)
 
-      scope = lastScope
-      keypath = lastKeypath
-      stack = lastKeypathStack
+      $keypath = lastKeypath
+      $scope = lastScope
+      $stack = lastKeypathStack
 
     }
 
