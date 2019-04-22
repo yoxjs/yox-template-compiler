@@ -170,22 +170,6 @@ export function compile(content: string): Node[] {
 
     if (node && node.type === type) {
 
-      const currentBranch: Branch = array.last(nodeStack)
-      if (currentBranch) {
-        if (currentBranch.isStatic && !node.isStatic) {
-          currentBranch.isStatic = env.FALSE
-        }
-        // 判断当前出栈节点是否是复杂节点有两种方式：
-        // 1. 它自己已变成复杂节点，比如它包含复杂子节点
-        // 2. 它的 isComplex 还是初始值，但它并不属于简单节点的类型，也就是说它天生是个复杂节点
-        // 这里会有点绕，isComplex 的值最终取决于子节点是否包含复杂节点
-        if (!currentBranch.isComplex
-          && (node.isComplex || helper.complexTypes[type])
-        ) {
-          currentBranch.isComplex = env.TRUE
-        }
-      }
-
       const { children } = node,
 
       // 优化单个子节点
@@ -198,6 +182,18 @@ export function compile(content: string): Node[] {
       isProperty = type === nodeType.PROPERTY,
 
       isDirective = type === nodeType.DIRECTIVE
+
+      const currentBranch: Branch = array.last(nodeStack)
+      if (currentBranch) {
+        if (currentBranch.isStatic && !node.isStatic) {
+          currentBranch.isStatic = env.FALSE
+        }
+        if (!currentBranch.isComplex
+          && (node.isComplex || isElement)
+        ) {
+          currentBranch.isComplex = env.TRUE
+        }
+      }
 
       if (isElement) {
         const element = node as Element
@@ -711,7 +707,7 @@ export function compile(content: string): Node[] {
           currentBranch.isStatic = env.FALSE
         }
         // 当前树枝节点是简单节点，一旦加入了一个复杂子节点，当前树枝节点变为复杂节点
-        if (!currentBranch.isComplex && helper.complexTypes[type]) {
+        if (!currentBranch.isComplex && node.isComplex) {
           currentBranch.isComplex = env.TRUE
         }
       }

@@ -54,6 +54,7 @@ export function createEach(expr: ExpressionNode, index: string): Each {
     type: nodeType.EACH,
     expr,
     index,
+    isComplex: env.TRUE,
   }
 }
 
@@ -104,6 +105,7 @@ export function createImport(name: string): Import {
   return {
     type: nodeType.IMPORT,
     name,
+    isComplex: env.TRUE,
   }
 }
 
@@ -111,6 +113,7 @@ export function createPartial(name: string): Partial {
   return {
     type: nodeType.PARTIAL,
     name,
+    isComplex: env.TRUE,
   }
 }
 

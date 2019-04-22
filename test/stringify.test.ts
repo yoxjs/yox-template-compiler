@@ -1,18 +1,13 @@
 import { compile } from '../src/compiler'
 import { render } from '../src/renderer'
-import { stringify, parse } from '../src/stringify'
+import { stringify } from '../src/stringify'
 
 it('html 元素', () => {
 
   let ast = compile(`
-    <div id="1{{#if a}}1{{else}}2{{/if}}">
-      1
-      {{#each a}}
-        2
-        <input>
-      {{/each}}
-      3
-    </div>
+  {{#if xx}}
+    <div></div>
+  {{/if}}
   `)
 
   console.log(JSON.stringify(ast, 4, 4))

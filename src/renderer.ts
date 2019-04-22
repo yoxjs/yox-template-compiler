@@ -185,7 +185,7 @@ export function render(context: Yox, result: Function) {
     }
   },
 
-  createMethodListener = function (method: string, args: Function | void): signature.directiveHandler {
+  createMethodListener = function (method: string, args: Function | void, callStack: any[]): signature.directiveHandler {
     return function (event?: Event, data?: Record<string, any>) {
 
       const callee = context[method]
@@ -195,6 +195,7 @@ export function render(context: Yox, result: Function) {
         let result: any | void
 
         if (args) {
+          stack = callStack
           // 给当前 scope 加上 event 和 data
           eventScope = {
             $event: event,
@@ -315,7 +316,7 @@ export function render(context: Yox, result: Function) {
             hooks = context.directive(config.DIRECTIVE_EVENT)
             handler = attr.event
               ? createEventListener(attr.event)
-              : createMethodListener(attr.method, attr.args)
+              : createMethodListener(attr.method, attr.args, stack)
             break
 
           case env.RAW_TRANSITION:
@@ -349,7 +350,7 @@ export function render(context: Yox, result: Function) {
           default:
             hooks = context.directive(modifier)
             if (attr.method) {
-              handler = createMethodListener(attr.method, attr.args)
+              handler = createMethodListener(attr.method, attr.args, stack)
             }
             else {
               getter = attr.getter

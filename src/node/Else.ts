@@ -7,6 +7,6 @@ import If from './If'
  */
 export default interface Else extends Branch {
 
-  prev: If | ElseIf | void
+  prev?: If | ElseIf
 
 }

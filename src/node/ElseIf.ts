@@ -10,7 +10,7 @@ export default interface ElseIf extends Branch {
 
   expr: ExpressionNode
 
-  prev: If | ElseIf | void
+  prev?: If | ElseIf
 
   next?: ElseIf | Else
 
