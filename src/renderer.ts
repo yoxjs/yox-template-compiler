@@ -30,7 +30,7 @@ import TransitionHooks from 'yox-type/src/hooks/Transition'
 
 import * as nodeType from './nodeType'
 
-export function render(instance: Yox, result: Function) {
+export function render(context: Yox, result: Function) {
 
   let keypath = env.EMPTY_STRING,
 
@@ -131,7 +131,7 @@ export function render(instance: Yox, result: Function) {
       }
 
       // 正常取数据
-      value = instance.get(keypath, getKeypath)
+      value = context.get(keypath, getKeypath)
       if (value === getKeypath) {
         if (lookup && index > 0) {
           index--
@@ -150,7 +150,7 @@ export function render(instance: Yox, result: Function) {
       absoluteKeypath = keypath
     }
     else {
-      value = instance.filter(formated)
+      value = context.filter(formated)
     }
 
     if (absoluteKeypath) {
@@ -162,7 +162,7 @@ export function render(instance: Yox, result: Function) {
   },
 
   renderValue = function (expr: ExpressionNode, simple?: boolean): any {
-    return exprExecutor.execute(expr, lookup, instance)
+    return exprExecutor.execute(expr, lookup, context)
   },
 
   getBindingValue = function (expr: Keypath) {
@@ -181,14 +181,14 @@ export function render(instance: Yox, result: Function) {
       if (event.type !== type) {
         event = new Event(type, event)
       }
-      instance.fire(event, data)
+      context.fire(event, data)
     }
   },
 
   createMethodListener = function (method: string, args: Function | void): signature.directiveHandler {
     return function (event?: Event, data?: Record<string, any>) {
 
-      const callee = instance[method]
+      const callee = context[method]
 
       if (event instanceof Event) {
 
@@ -200,12 +200,12 @@ export function render(instance: Yox, result: Function) {
             $event: event,
             $data: data,
           }
-          result = execute(callee, instance, args())
+          result = execute(callee, context, args())
           // 阅后即焚
           eventScope = env.UNDEFINED
         }
         else {
-          result = execute(callee, instance, data ? [event, data] : event)
+          result = execute(callee, context, data ? [event, data] : event)
         }
 
         if (result === env.FALSE) {
@@ -214,8 +214,8 @@ export function render(instance: Yox, result: Function) {
       }
       else {
         args
-        ? execute(callee, instance, args())
-        : execute(callee, instance)
+        ? execute(callee, context, args())
+        : execute(callee, context)
       }
 
     }
@@ -246,6 +246,8 @@ export function render(instance: Yox, result: Function) {
           {
             isText: env.TRUE,
             text,
+            context,
+            keypath,
           }
         )
       }
@@ -274,7 +276,7 @@ export function render(instance: Yox, result: Function) {
 
         if (is.string(result.binding)) {
           const key = keypathUtil.join(config.DIRECTIVE_BINDING, attr.name),
-          hooks = instance.directive(config.DIRECTIVE_BINDING)
+          hooks = context.directive(config.DIRECTIVE_BINDING)
           if (hooks) {
             directives[key] = {
               type: config.DIRECTIVE_BINDING,
@@ -303,21 +305,21 @@ export function render(instance: Yox, result: Function) {
 
         getter: signature.directiveGetter | void,
 
-        handler: signature.directiveHandler | void,
+        handler: signature.directiveHandler | signature.eventListener | void,
 
         transition: TransitionHooks | void
 
         switch (name) {
 
           case config.DIRECTIVE_EVENT:
-            hooks = instance.directive(config.DIRECTIVE_EVENT)
+            hooks = context.directive(config.DIRECTIVE_EVENT)
             handler = attr.event
               ? createEventListener(attr.event)
               : createMethodListener(attr.method, attr.args)
             break
 
           case env.RAW_TRANSITION:
-            transition = instance.transition(value)
+            transition = context.transition(value)
             if (transition) {
               vnode.transition = transition
             }
@@ -327,7 +329,7 @@ export function render(instance: Yox, result: Function) {
             return
 
           case config.DIRECTIVE_MODEL:
-            hooks = instance.directive(config.DIRECTIVE_MODEL)
+            hooks = context.directive(config.DIRECTIVE_MODEL)
             const result = getBindingValue(attr.expr)
             if (is.string(result.binding)) {
               binding = result.binding
@@ -345,7 +347,7 @@ export function render(instance: Yox, result: Function) {
             return
 
           default:
-            hooks = instance.directive(modifier)
+            hooks = context.directive(modifier)
             if (attr.method) {
               handler = createMethodListener(attr.method, attr.args)
             }
@@ -393,7 +395,7 @@ export function render(instance: Yox, result: Function) {
           const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH]
           if (absoluteKeypath) {
             const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath),
-              hooks = instance.directive(config.DIRECTIVE_BINDING)
+              hooks = context.directive(config.DIRECTIVE_BINDING)
             if (hooks) {
               directives[key] = {
                 type: config.DIRECTIVE_BINDING,
@@ -494,11 +496,11 @@ export function render(instance: Yox, result: Function) {
       vnodeList = array.last(vnodeStack)
     }
 
-    vnode.instance = instance
+    vnode.context = context
     vnode.keypath = keypath
 
     if (vnode.isComponent) {
-      vnode.parent = instance
+      vnode.parent = context
     }
 
     if (vnodeList) {
@@ -511,7 +513,7 @@ export function render(instance: Yox, result: Function) {
 
   // <slot name="xx"/>
   renderSlot = function (name: string) {
-    const render = instance.get(config.SLOT_DATA_PREFIX + name)
+    const render = context.get(config.SLOT_DATA_PREFIX + name)
     if (render) {
       render()
     }
@@ -531,7 +533,7 @@ export function render(instance: Yox, result: Function) {
       return
     }
     else {
-      const partial = instance.partial(name)
+      const partial = context.partial(name)
       if (partial) {
         partial(
           renderExpression,
@@ -584,7 +586,7 @@ export function render(instance: Yox, result: Function) {
       scope.$keypath = keypath
 
       // 类似 {{#each 1 -> 10}} 这样的临时循环，需要在 scope 上加上当前项
-      // 因为通过 instance.get() 无法获取数据
+      // 因为通过 context.get() 无法获取数据
       if (!absoluteKeypath) {
         scope.item = item
       }
