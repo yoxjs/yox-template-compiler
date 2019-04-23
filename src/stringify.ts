@@ -470,8 +470,10 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
     }
     else if (name === config.DIRECTIVE_CUSTOM) {
       // 取值函数
+      // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
       result.getter = stringifyFunction(
-        CODE_RETURN + stringifyExpression(expr)
+        CODE_RETURN + stringifyExpressionArg(expr),
+        ARG_STACK
       )
     }
 

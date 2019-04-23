@@ -43,11 +43,13 @@ export function render(context: Yox, result: Function) {
 
   localPartials = {},
 
-  getKeypath = function (stack: any[], index: number, key: string, lookup: boolean, callback: (keypath: string, value?: any) => any, defaultKeypath?: string) {
+  lookup = function (stack: any[], index: number, key: string, node: Keypath, defaultKeypath?: string) {
 
     let keypath = keypathUtil.join(stack[index], key),
 
     scope = stack[index + 1]
+
+    node.absoluteKeypath = keypath
 
     // 如果最后还是取不到值，用回最初的 keypath
     if (!isDef(defaultKeypath)) {
@@ -55,12 +57,12 @@ export function render(context: Yox, result: Function) {
     }
 
     if (eventScope && object.has(eventScope, key)) {
-      return callback(keypath, eventScope[key])
+      return eventScope[key]
     }
 
     // 如果取的是 scope 上直接有的数据，如 keypath
     if (object.has(scope, key)) {
-      return callback(keypath, scope[key])
+      return scope[key]
     }
 
     // 如果取的是数组项，则要更进一步
@@ -72,82 +74,74 @@ export function render(context: Yox, result: Function) {
 
       // 取 this
       if (key === env.EMPTY_STRING) {
-        return callback(keypath, scope)
+        return scope
       }
       // 取 this.xx
       if (scope && object.has(scope, key)) {
-        return callback(keypath, scope[key])
+        return scope[key]
       }
     }
 
     // 正常取数据
-    const value = context.get(keypath, getKeypath)
-    if (value === getKeypath) {
-      if (lookup && index > 0) {
-        index--
-        return getKeypath(stack, index, key, lookup, callback, defaultKeypath)
+    let value = context.get(keypath, lookup)
+    if (value === lookup) {
+      if (node.lookup && index > 1) {
+        index -= 2
+        return lookup(stack, index, key, node, defaultKeypath)
       }
       if (defaultKeypath) {
-        return callback(defaultKeypath, context.filter(key))
+        value = context.filter(key)
+        if (!value) {
+          logger.warn(`data [${node.raw}] is not found.`)
+        }
+        node.absoluteKeypath = defaultKeypath
+        return value
       }
     }
     else {
-      return callback(keypath, value)
+      return value
     }
 
   },
 
-  renderValue = function (expr: ExpressionNode, simple?: boolean, stack?: any[]): any {
+  renderValue = function (expr: ExpressionNode, binding?: boolean, stack?: any[]): any {
     const dataStack = stack || $stack
     return exprExecutor.execute(
       expr,
-      function (key: string, node: Keypath): any {
-        return getKeypath(
+      function (keypath: string, node: Keypath): any {
+        return lookup(
           dataStack,
           dataStack.length - 2 * (node.offset + 1),
-          key,
-          node.lookup,
-          function (keypath: string, value: any) {
-            node.absoluteKeypath = keypath
-            return value
-          }
+          keypath,
+          node
         )
       },
       context
     )
   },
 
-  getBindingValue = function (expr: Keypath) {
-    const value = renderValue(expr, env.TRUE), binding = expr.absoluteKeypath
-    if (!binding) {
-      logger.warn(`can't find value by the keypath "${expr.raw}".`)
-    }
-    return {
-      value,
-      binding,
-    }
-  },
+  addBinding = function (vnode: any, attr: Record<string, any>): any {
 
-  addBindingIfNeeded = function (vnode: any, attr: Record<string, any>): any {
+    const { expr } = attr,
 
-    const result = getBindingValue(attr.expr)
+    value = renderValue(expr, env.TRUE),
 
-    if (is.string(result.binding)) {
-      const key = keypathUtil.join(config.DIRECTIVE_BINDING, attr.name),
-      hooks = context.directive(config.DIRECTIVE_BINDING)
-      if (hooks) {
-        vnode.directives[key] = {
-          type: config.DIRECTIVE_BINDING,
-          name: attr.name,
-          key,
-          hooks,
-          binding: result.binding,
-          hint: attr.hint,
-        }
+    key = keypathUtil.join(config.DIRECTIVE_BINDING, attr.name),
+
+    hooks = context.directive(config.DIRECTIVE_BINDING)
+
+    if (hooks) {
+      vnode.directives[key] = {
+        type: config.DIRECTIVE_BINDING,
+        name: attr.name,
+        key,
+        hooks,
+        binding: expr.absoluteKeypath,
+        hint: attr.hint,
       }
     }
 
-    return result.value
+    return value
 
   },
 
@@ -188,7 +182,7 @@ export function render(context: Yox, result: Function) {
     }
   },
 
-  parseDirective = function (vnode: any, attr: Record<string, any>) {
+  addDirective = function (vnode: any, attr: Record<string, any>) {
 
     let { name, modifier, value } = attr,
 
@@ -225,11 +219,8 @@ export function render(context: Yox, result: Function) {
 
       case config.DIRECTIVE_MODEL:
         hooks = context.directive(config.DIRECTIVE_MODEL)
-        const result = getBindingValue(attr.expr)
-        if (is.string(result.binding)) {
-          binding = result.binding
-          vnode.model = result.value
-        }
+        vnode.model = renderValue(attr.expr, env.TRUE)
+        binding = attr.expr.absoluteKeypath
         break
 
       case config.DIRECTIVE_LAZY:
@@ -242,7 +233,7 @@ export function render(context: Yox, result: Function) {
           handler = createMethodListener(attr.method, attr.args, $stack)
         }
         else {
-          getter = attr.getter
+          getter = createGetter(attr.getter, $stack)
         }
         break
 
@@ -308,6 +299,12 @@ export function render(context: Yox, result: Function) {
           : execute(callee, context)
       }
 
+    }
+  },
+
+  createGetter = function (getter: Function, stack: any[]): signature.directiveGetter {
+    return function () {
+      return getter(stack)
     }
   },
 
@@ -378,7 +375,7 @@ export function render(context: Yox, result: Function) {
             case nodeType.ATTRIBUTE:
 
               if (attr.binding) {
-                value = addBindingIfNeeded(vnode, attr)
+                value = addBinding(vnode, attr)
               }
 
               if (vnode.isComponent) {
@@ -391,21 +388,15 @@ export function render(context: Yox, result: Function) {
               break
 
             case nodeType.PROPERTY:
-
-              if (attr.binding) {
-                value = addBindingIfNeeded(vnode, attr)
-              }
-
               vnode.nativeProps[name] = {
                 name,
-                value,
+                value: attr.binding ? addBinding(vnode, attr) : value,
                 hint: attr.hint,
               }
-
               break
 
             case nodeType.DIRECTIVE:
-              parseDirective(vnode, attr)
+              addDirective(vnode, attr)
               break
 
             case nodeType.SPREAD:
