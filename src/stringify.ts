@@ -293,7 +293,7 @@ function getComponentSlots(children: Node[]): string | void {
     }
   )
 
-  if (!object.empty(slots)) {
+  if (!object.falsy(slots)) {
     return stringifyObject(slots)
   }
 
