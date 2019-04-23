@@ -497,9 +497,9 @@ export function render(context: Yox, result: Function) {
 
     const value = renderValue(expr),
 
-    absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH],
+    exprKeypath = expr[env.RAW_ABSOLUTE_KEYPATH],
 
-    eachKeypath = absoluteKeypath || keypathUtil.join($keypath, expr.raw),
+    eachKeypath = exprKeypath || keypathUtil.join($keypath, expr.raw),
 
     callback = function (item: any, key: string | number) {
 
@@ -513,12 +513,12 @@ export function render(context: Yox, result: Function) {
       array.push($stack, $scope)
 
       // 从下面这几句赋值可以看出
-      // scope 至少会有 '$keypath' 'item' eachIndex 等几个值
+      // scope 至少会有 '$keypath' '$item' eachIndex 等几个值
       $scope.$keypath = $keypath
 
       // 类似 {{#each 1 -> 10}} 这样的临时循环，需要在 scope 上加上当前项
       // 因为通过 context.get() 无法获取数据
-      if (!absoluteKeypath) {
+      if (!exprKeypath) {
         $scope.$item = item
       }
 
