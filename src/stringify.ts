@@ -276,7 +276,7 @@ function getComponentSlots(children: Node[]): string | void {
       }
 
       // 匿名 slot，名称统一为 children
-      addSlot(env.RAW_CHILDREN, [child], child.isComplex)
+      addSlot('children', [child], child.isComplex)
 
     }
   )

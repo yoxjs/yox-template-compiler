@@ -27,7 +27,14 @@ import TransitionHooks from 'yox-type/src/hooks/Transition'
 
 import * as nodeType from './nodeType'
 
-export function render(context: Yox, result: Function) {
+export function render(
+  context: Yox,
+  filters: Record<string, Function>,
+  partials: Record<string, Function | void>,
+  directives: Record<string, DirectiveHooks | void>,
+  transitions: Record<string, TransitionHooks | void>,
+  template: Function
+) {
 
   let $keypath = env.EMPTY_STRING,
 
@@ -83,23 +90,24 @@ export function render(context: Yox, result: Function) {
     }
 
     // 正常取数据
-    let value = context.get(keypath, lookup)
-    if (value === lookup) {
+    let result = context.get(keypath, lookup)
+    if (result === lookup) {
       if (node.lookup && index > 1) {
         index -= 2
         return lookup(stack, index, key, node, defaultKeypath)
       }
       if (defaultKeypath) {
-        value = context.filter(key)
-        if (!value) {
+        result = object.get(filters, key)
+        if (!result) {
+          node.absoluteKeypath = defaultKeypath
           logger.warn(`data [${node.raw}] is not found.`)
+          return
         }
-        node.absoluteKeypath = defaultKeypath
-        return value
+        return result.value
       }
     }
     else {
-      return value
+      return result
     }
 
   },
@@ -128,7 +136,7 @@ export function render(context: Yox, result: Function) {
 
     key = keypathUtil.join(config.DIRECTIVE_BINDING, attr.name),
 
-    hooks = context.directive(config.DIRECTIVE_BINDING)
+    hooks = directives[config.DIRECTIVE_BINDING]
 
     if (hooks) {
       vnode.directives[key] = {
@@ -164,7 +172,7 @@ export function render(context: Yox, result: Function) {
       const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH]
       if (absoluteKeypath) {
         const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath),
-        hooks = context.directive(config.DIRECTIVE_BINDING)
+        hooks = directives[config.DIRECTIVE_BINDING]
         if (hooks) {
           vnode.directives[key] = {
             type: config.DIRECTIVE_BINDING,
@@ -201,14 +209,14 @@ export function render(context: Yox, result: Function) {
     switch (name) {
 
       case config.DIRECTIVE_EVENT:
-        hooks = context.directive(config.DIRECTIVE_EVENT)
+        hooks = directives[config.DIRECTIVE_EVENT]
         handler = attr.event
           ? createEventListener(attr.event)
           : createMethodListener(attr.method, attr.args, $stack)
         break
 
       case env.RAW_TRANSITION:
-        transition = context.transition(value)
+        transition = transitions[value]
         if (transition) {
           vnode.transition = transition
         }
@@ -218,7 +226,7 @@ export function render(context: Yox, result: Function) {
         return
 
       case config.DIRECTIVE_MODEL:
-        hooks = context.directive(config.DIRECTIVE_MODEL)
+        hooks = directives[config.DIRECTIVE_MODEL]
         vnode.model = renderValue(attr.expr, env.TRUE)
         binding = attr.expr.absoluteKeypath
         break
@@ -228,7 +236,7 @@ export function render(context: Yox, result: Function) {
         return
 
       default:
-        hooks = context.directive(modifier)
+        hooks = directives[modifier]
         if (attr.method) {
           handler = createMethodListener(attr.method, attr.args, $stack)
         }
@@ -454,7 +462,7 @@ export function render(context: Yox, result: Function) {
       return
     }
     else {
-      const partial = context.partial(name)
+      const partial = partials[name]
       if (partial) {
         partial(
           renderExpression,
@@ -537,7 +545,7 @@ export function render(context: Yox, result: Function) {
 
   }
 
-  return result(
+  return template(
     renderExpression,
     renderExpressionArg,
     renderExpressionText,
@@ -548,4 +556,5 @@ export function render(context: Yox, result: Function) {
     renderImport,
     renderEach
   )
+
 }
