@@ -37,7 +37,7 @@ const compileCache = {},
 patternCache = {},
 
 // 指令分隔符，如 on-click 和  lazy-click
-SEP_DIRECTIVE = '-',
+directiveSeparator = '-',
 
 // 分割符，即 {{ xx }} 和 {{{ xx }}}
 blockPattern = /(\{?\{\{)\s*([^\}]+?)\s*(\}\}\}?)/,
@@ -825,8 +825,8 @@ export function compile(content: string): Node[] {
             )
           }
           // 这里要用 on- 判断前缀，否则 on 太容易重名了
-          else if (string.startsWith(name, config.DIRECTIVE_ON + SEP_DIRECTIVE)) {
-            const event = slicePrefix(name, config.DIRECTIVE_ON + SEP_DIRECTIVE)
+          else if (string.startsWith(name, config.DIRECTIVE_ON + directiveSeparator)) {
+            const event = slicePrefix(name, config.DIRECTIVE_ON + directiveSeparator)
             if (!event) {
               fatal('缺少事件名称')
             }
@@ -840,8 +840,8 @@ export function compile(content: string): Node[] {
           // <div on-click="xx" lazy-click
           else if (string.startsWith(name, config.DIRECTIVE_LAZY)) {
             let lazy = slicePrefix(name, config.DIRECTIVE_LAZY)
-            if (string.startsWith(lazy, SEP_DIRECTIVE)) {
-              lazy = slicePrefix(lazy, SEP_DIRECTIVE)
+            if (string.startsWith(lazy, directiveSeparator)) {
+              lazy = slicePrefix(lazy, directiveSeparator)
             }
             node = creator.createDirective(
               config.DIRECTIVE_LAZY,
@@ -849,8 +849,8 @@ export function compile(content: string): Node[] {
             )
           }
           // 这里要用 o- 判断前缀，否则 o 太容易重名了
-          else if (string.startsWith(name, config.DIRECTIVE_CUSTOM + SEP_DIRECTIVE)) {
-            const custom = slicePrefix(name, config.DIRECTIVE_CUSTOM + SEP_DIRECTIVE)
+          else if (string.startsWith(name, config.DIRECTIVE_CUSTOM + directiveSeparator)) {
+            const custom = slicePrefix(name, config.DIRECTIVE_CUSTOM + directiveSeparator)
             if (!custom) {
               fatal('缺少自定义指令名称')
             }
@@ -968,7 +968,7 @@ export function compile(content: string): Node[] {
         // 获取 <tag 前面的字符
         match = content.match(tagPattern)
 
-        text = match && match.index > 0
+        text = match && match.index as number > 0
           ? string.slice(content, 0, match.index)
           : content
 
@@ -1192,7 +1192,7 @@ export function compile(content: string): Node[] {
       nextIsBlock = env.TRUE
 
       // 裁剪开头到 {{ 之间的模板内容
-      if (match.index > 0) {
+      if (match.index as number > 0) {
         parseHtml(
           string.slice(str, 0, match.index)
         )
