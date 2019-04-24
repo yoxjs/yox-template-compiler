@@ -27,6 +27,11 @@ import TransitionHooks from 'yox-type/src/hooks/Transition'
 
 import * as nodeType from './nodeType'
 
+function setPair(target: any, name: string, key: string, value: any) {
+  const map = target[name] || (target[name] = {})
+  map[key] = value
+}
+
 export function render(
   context: Yox,
   filters: Record<string, Function>,
@@ -92,7 +97,8 @@ export function render(
     // 正常取数据
     let result = context.get(keypath, lookup)
     if (result === lookup) {
-      if (node.lookup && index > 1) {
+      // undefined 或 true 都表示需要向上寻找
+      if (node.lookup !== env.FALSE && index > 1) {
         index -= 2
         return lookup(stack, index, key, node, defaultKeypath)
       }
@@ -119,7 +125,7 @@ export function render(
       function (keypath: string, node: Keypath): any {
         return lookup(
           dataStack,
-          dataStack.length - 2 * (node.offset + 1),
+          dataStack.length - 2 * ((node.offset || 0) + 1),
           keypath,
           node
         )
@@ -139,14 +145,19 @@ export function render(
     hooks = directives[config.DIRECTIVE_BINDING]
 
     if (hooks) {
-      vnode.directives[key] = {
-        type: config.DIRECTIVE_BINDING,
-        name: attr.name,
+      setPair(
+        vnode,
+        'directives',
         key,
-        hooks,
-        binding: expr.absoluteKeypath,
-        hint: attr.hint,
-      }
+        {
+          type: config.DIRECTIVE_BINDING,
+          name: attr.name,
+          key,
+          hooks,
+          binding: expr.absoluteKeypath,
+          hint: attr.hint,
+        }
+      )
     }
 
     return value
@@ -165,7 +176,7 @@ export function render(
       object.each(
         value,
         function (value: any, key: string) {
-          vnode.props[key] = value
+          setPair(vnode, 'props', key, value)
         }
       )
 
@@ -174,13 +185,18 @@ export function render(
         const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath),
         hooks = directives[config.DIRECTIVE_BINDING]
         if (hooks) {
-          vnode.directives[key] = {
-            type: config.DIRECTIVE_BINDING,
-            name: env.EMPTY_STRING,
+          setPair(
+            vnode,
+            'directives',
             key,
-            hooks,
-            binding: keypathUtil.join(absoluteKeypath, '*'),
-          }
+            {
+              type: config.DIRECTIVE_BINDING,
+              name: env.EMPTY_STRING,
+              key,
+              hooks,
+              binding: keypathUtil.join(absoluteKeypath, '*'),
+            }
+          )
         }
       }
 
@@ -232,7 +248,7 @@ export function render(
         break
 
       case config.DIRECTIVE_LAZY:
-        vnode.lazy[modifier] = value
+        setPair(vnode, 'lazy', modifier, value)
         return
 
       default:
@@ -248,16 +264,21 @@ export function render(
     }
 
     if (hooks) {
-      vnode.directives[key] = {
-        type: name,
-        name: modifier,
+      setPair(
+        vnode,
+        'directives',
         key,
-        value,
-        binding,
-        hooks,
-        getter,
-        handler
-      }
+        {
+          type: name,
+          name: modifier,
+          key,
+          value,
+          binding,
+          hooks,
+          getter,
+          handler
+        }
+      )
     }
     else {
       logger.fatal(`directive [${key}] is not found.`)
@@ -343,6 +364,7 @@ export function render(
         array.push(
           vnodeList,
           {
+            isStatic: env.TRUE,
             isText: env.TRUE,
             text,
             context,
@@ -365,13 +387,6 @@ export function render(
     }
 
     if (attributes) {
-
-      vnode.props = {}
-      vnode.nativeAttrs = {}
-      vnode.nativeProps = {}
-      vnode.directives = {}
-      vnode.lazy = {}
-
       array.each(
         attributes,
         function (attr: any) {
@@ -387,20 +402,25 @@ export function render(
               }
 
               if (vnode.isComponent) {
-                vnode.props[name] = value
+                setPair(vnode, 'props', name, value)
               }
               else {
-                vnode.nativeAttrs[name] = { name, value }
+                setPair(vnode, 'nativeAttrs', name, { name, value })
               }
 
               break
 
             case nodeType.PROPERTY:
-              vnode.nativeProps[name] = {
+              setPair(
+                vnode,
+                'nativeProps',
                 name,
-                value: attr.binding ? addBinding(vnode, attr) : value,
-                hint: attr.hint,
-              }
+                {
+                  name,
+                  value: attr.binding ? addBinding(vnode, attr) : value,
+                  hint: attr.hint,
+                }
+              )
               break
 
             case nodeType.DIRECTIVE:
@@ -414,7 +434,10 @@ export function render(
           }
         }
       )
-
+      // 确保有 directives 就必然有 lazy
+      if (vnode.directives && !vnode.lazy) {
+        vnode.lazy = env.EMPTY_OBJECT
+      }
     }
 
     if (children) {

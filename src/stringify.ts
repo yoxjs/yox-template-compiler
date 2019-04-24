@@ -81,6 +81,8 @@ SEP_COLON = ': ',
 
 SEP_PLUS = ' + ',
 
+STRING_TRUE = '!0',
+
 STRING_EMPTY = toJSON(env.EMPTY_STRING),
 
 CODE_RETURN = 'return ',
@@ -139,7 +141,7 @@ function stringifyGroup(code: string): string {
 function stringifyExpression(expr: ExpressionNode, stringRequired: boolean | void, renderName: string | void): string {
   const args = [toJSON(expr)]
   if (stringRequired) {
-    array.push(args, env.TRUE)
+    array.push(args, STRING_TRUE)
   }
   return stringifyCall(
     renderName || RENDER_EXPRESSION,
@@ -222,9 +224,10 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
   else if (stub) {
     no = stringifyCall(
       RENDER_ELEMENT,
-      toJSON({
-        isComment: env.TRUE,
-        text: env.EMPTY_STRING,
+      stringifyObject({
+        isStatic: STRING_TRUE,
+        isComment: STRING_TRUE,
+        text: STRING_EMPTY,
       })
     )
   }
@@ -335,11 +338,11 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   data.tag = toJSON(tag)
 
   if (isSvg) {
-    data.isSvg = env.TRUE
+    data.isSvg = STRING_TRUE
   }
 
   if (isStatic) {
-    data.isStatic = env.TRUE
+    data.isStatic = STRING_TRUE
   }
 
   if (ref) {
@@ -355,7 +358,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   if (isComponent) {
-    data.isComponent = env.TRUE
+    data.isComponent = STRING_TRUE
     if (children) {
       collectStack[collectStack.length - 1] = env.TRUE
       data.slots = getComponentSlots(children)

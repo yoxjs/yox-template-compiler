@@ -120,7 +120,7 @@ export function compile(content: string): Node[] {
 
   currentElement: Element | void,
 
-  currentAttribute: Attribute | Directive | Property | void,
+  currentAttribute: Attribute | Property | Directive | void,
 
   // 干掉 html 注释
   str = content.replace(

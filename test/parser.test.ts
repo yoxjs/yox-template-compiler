@@ -734,7 +734,7 @@ it('lazy 指令自动转型', () => {
 
   expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
   expect(ast[0].attrs[0].name).toBe(config.DIRECTIVE_LAZY)
-  expect(ast[0].attrs[0].modifier).toBe(undefined)
+  expect(ast[0].attrs[0].modifier).toBe('')
   expect(ast[0].attrs[0].expr).toBe(undefined)
   expect(ast[0].attrs[0].value).toBe(true)
 
@@ -745,7 +745,7 @@ it('lazy 指令自动转型', () => {
 
   expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
   expect(ast[0].attrs[0].name).toBe(config.DIRECTIVE_LAZY)
-  expect(ast[0].attrs[0].modifier).toBe(undefined)
+  expect(ast[0].attrs[0].modifier).toBe('')
   expect(ast[0].attrs[0].expr).toBe(undefined)
   expect(ast[0].attrs[0].value).toBe(100)
 
