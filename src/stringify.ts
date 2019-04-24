@@ -83,6 +83,8 @@ SEP_PLUS = ' + ',
 
 STRING_TRUE = '!0',
 
+STRING_FALSE = '!1',
+
 STRING_EMPTY = toJSON(env.EMPTY_STRING),
 
 CODE_RETURN = 'return ',
@@ -104,7 +106,12 @@ CODE_PREFIX = `function (${
 CODE_SUFFIX = ` }`
 
 // 表达式求值是否要求返回字符串类型
-let isStringRequired: boolean | void
+let isStringRequired: boolean | void,
+
+// 是否正在生成 slot 函数
+// 如果为 true 要求 RENDER_EXPRESSION_TEXT, RENDER_PURE_TEXT, RENDER_ELEMENT 这三个函数的序列化加上 stack 参数
+// 这个 stack 用于收集渲染出来的子节点，也就是上面提到的“难点”的解决方案
+isSloting: boolean | void
 
 function stringifyObject(obj: Object): string {
   const fields = []
@@ -138,22 +145,22 @@ function stringifyGroup(code: string): string {
   return `(${code})`
 }
 
-function stringifyExpression(expr: ExpressionNode, stringRequired: boolean | void, renderName: string | void): string {
+function stringifyExpression(renderName: string, expr: ExpressionNode, extra: string[] | void): string {
   const args = [toJSON(expr)]
-  if (stringRequired) {
-    array.push(args, STRING_TRUE)
+  if (extra) {
+    array.push(args, extra)
   }
   return stringifyCall(
-    renderName || RENDER_EXPRESSION,
+    renderName,
     array.join(args, SEP_COMMA)
   )
 }
 
 function stringifyExpressionArg(expr: ExpressionNode): string {
-  const args = [toJSON(expr), ARG_STACK]
-  return stringifyCall(
+  return stringifyExpression(
     RENDER_EXPRESSION_ARG,
-    array.join(args, SEP_COMMA)
+    expr,
+    [ARG_STACK]
   )
 }
 
@@ -163,7 +170,7 @@ function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[
   }
   // 只有一个表达式时，保持原始类型
   if (expr) {
-    return stringifyExpression(expr)
+    return stringifyExpression(RENDER_EXPRESSION, expr)
   }
   // 多个值拼接时，要求是字符串
   if (children) {
@@ -207,7 +214,7 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
 
   let { children, isComplex, next } = node,
 
-  test = stringifyExpression(node.expr),
+  test = stringifyExpression(RENDER_EXPRESSION, node.expr),
 
   yes = stringifyConditionChildren(children, isComplex),
 
@@ -222,8 +229,7 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
   }
   // 到达最后一个条件，发现第一个 if 语句带有 stub，需创建一个注释标签占位
   else if (stub) {
-    no = stringifyCall(
-      RENDER_ELEMENT,
+    no = renderElement(
       stringifyObject({
         isComment: STRING_TRUE,
         text: STRING_EMPTY,
@@ -246,6 +252,33 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
 
 }
 
+/**
+ * 目的是 保证 RENDER_ELEMENT 参数顺序稳定，减少运行时判断
+ */
+function renderElement(data: string, attrs: string | void, children: string | void): string {
+
+  let args: string[] = [], removable = env.TRUE
+
+  array.each(
+    [data, attrs, children, isSloting ? ARG_STACK : env.UNDEFINED],
+    function (arg: string | void) {
+      if (isDef(arg)) {
+        removable = env.FALSE
+        array.unshift(args, arg)
+      }
+      else if (!removable) {
+        array.unshift(args, STRING_FALSE)
+      }
+    },
+    env.TRUE
+  )
+
+  return stringifyCall(
+    RENDER_ELEMENT,
+    array.join(args, SEP_COMMA)
+  )
+}
+
 function getComponentSlots(children: Node[]): string | void {
 
   const slots = {}, complexs = {},
@@ -253,6 +286,7 @@ function getComponentSlots(children: Node[]): string | void {
   addSlot = function (name: string, nodes: Node[] | void, isComplex: boolean | void) {
 
     if (!array.falsy(nodes)) {
+      name = config.SLOT_DATA_PREFIX + name
       array.push(
         slots[name] || (slots[name] = []),
         nodes
@@ -284,16 +318,20 @@ function getComponentSlots(children: Node[]): string | void {
   )
 
 
+  isSloting = env.TRUE
 
   // 全部收集完成之后，再序列化
   object.each(
     slots,
     function (children: any, name: string) {
       slots[name] = stringifyFunction(
-        stringifyChildren(children, complexs[name])
+        stringifyChildren(children, complexs[name]),
+        ARG_STACK
       )
     }
   )
+
+  isSloting = env.FALSE
 
   if (!object.falsy(slots)) {
     return stringifyObject(slots)
@@ -305,8 +343,6 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   let { tag, isComponent, isSvg, isStatic, isComplex, name, ref, key, html, attrs, children } = node,
 
-  args: string[] = [],
-
   data: Record<string, any> = {},
 
   elementAttrs: string[] = [],
@@ -316,7 +352,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   if (tag === env.RAW_SLOT) {
     return stringifyCall(
       RENDER_SLOT,
-      toJSON(name)
+      toJSON(config.SLOT_DATA_PREFIX + name)
     )
   }
 
@@ -353,7 +389,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   if (html) {
-    data.html = stringifyExpression(html, env.TRUE)
+    data.html = stringifyExpression(RENDER_EXPRESSION, html, [STRING_TRUE])
   }
 
   if (isComponent) {
@@ -376,27 +412,16 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     }
   }
 
-  array.push(args, stringifyObject(data))
-
-  if (!array.falsy(elementAttrs)) {
-    array.push(
-      args,
-      stringifyArray(elementAttrs)
-    )
-  }
-
-  if (elementChildren) {
-    array.push(
-      args,
-      elementChildren
-    )
-  }
-
   array.pop(collectStack)
 
-  return stringifyCall(
-    RENDER_ELEMENT,
-    array.join(args, SEP_COMMA)
+  return renderElement(
+    stringifyObject(data),
+    array.falsy(elementAttrs)
+      ? env.UNDEFINED
+      : stringifyArray(elementAttrs),
+    elementChildren
+      ? elementChildren
+      : env.UNDEFINED
   )
 
 }
@@ -502,19 +527,44 @@ nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
 }
 
 nodeStringify[nodeType.TEXT] = function (node: Text): string {
+
   const result = toJSON(node.text)
-  return array.last(collectStack) && !array.last(joinStack)
-    ? stringifyCall(RENDER_PURE_TEXT, result)
-    : result
+
+  if (array.last(collectStack) && !array.last(joinStack)) {
+
+    const args = [result]
+    if (isSloting) {
+      array.push(args, ARG_STACK)
+    }
+
+    return stringifyCall(
+      RENDER_PURE_TEXT,
+      array.join(args, SEP_COMMA)
+    )
+  }
+
+  return result
 }
 
 nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
+
+  // 强制保留 isStringRequired 参数，减少运行时判断参数是否存在
+  // 因为还有 stack 参数呢，各种判断真的很累
+  let renderName = RENDER_EXPRESSION,
+
+  args = [isStringRequired ? STRING_TRUE : STRING_FALSE]
+
+  if (array.last(collectStack) && !array.last(joinStack)) {
+    renderName = RENDER_EXPRESSION_TEXT
+    if (isSloting) {
+      array.push(args, ARG_STACK)
+    }
+  }
+
   return stringifyExpression(
+    renderName,
     node.expr,
-    isStringRequired,
-    array.last(collectStack) && !array.last(joinStack)
-      ? RENDER_EXPRESSION_TEXT
-      : RENDER_EXPRESSION
+    args,
   )
 }
 

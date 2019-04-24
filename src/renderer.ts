@@ -51,8 +51,6 @@ export function render(
 
   vnodeStack: VNode[][] = [],
 
-  vnodeList: VNode[] | void,
-
   localPartials = {},
 
   lookup = function (stack: any[], index: number, key: string, node: Keypath, defaultKeypath?: string) {
@@ -350,13 +348,15 @@ export function render(
     return renderValue(expr, env.UNDEFINED, stack)
   },
 
-  renderExpressionText = function (expr: ExpressionNode, stringRequired: boolean | void) {
+  renderExpressionText = function (expr: ExpressionNode, stringRequired: boolean, stack?: VNode[][]) {
     renderPureText(
-      renderExpression(expr, stringRequired)
+      renderExpression(expr, stringRequired),
+      stack
     )
   },
 
-  renderPureText = function (text: string) {
+  renderPureText = function (text: string, stack?: VNode[][]) {
+    const vnodeList = array.last(stack || vnodeStack)
     if (vnodeList) {
       const lastVnode = array.last(vnodeList)
       if (lastVnode && lastVnode.isText) {
@@ -376,20 +376,13 @@ export function render(
     }
   },
 
-  renderElement = function (vnode: Record<string, any>, attrs: any[] | Function | void, childs: Function | void) {
+  renderElement = function (vnode: Record<string, any>, attrs: any[] | void, children: Function | void, stack: VNode[][] | void) {
 
-    let attributes: any[] | void, children = childs
+    const outputStack = stack || vnodeStack
 
-    if (is.array(attrs)) {
-      attributes = attrs as any[]
-    }
-    else if (is.func(attrs)) {
-      children = attrs as Function
-    }
-
-    if (attributes) {
+    if (attrs) {
       array.each(
-        attributes,
+        attrs,
         function (attr: any) {
 
           let { name, value } = attr
@@ -442,11 +435,9 @@ export function render(
     }
 
     if (children) {
-      vnodeList = vnode.children = []
-      vnodeStack.push(vnodeList)
+      outputStack.push(vnode.children = [])
       children()
-      array.pop(vnodeStack)
-      vnodeList = array.last(vnodeStack)
+      array.pop(outputStack)
     }
 
     vnode.context = context
@@ -456,6 +447,7 @@ export function render(
       vnode.parent = context
     }
 
+    const vnodeList = array.last(outputStack)
     if (vnodeList) {
       array.push(vnodeList, vnode)
     }
@@ -466,9 +458,9 @@ export function render(
 
   // <slot name="xx"/>
   renderSlot = function (name: string) {
-    const render = context.get(config.SLOT_DATA_PREFIX + name)
+    const render = context.get(name)
     if (render) {
-      render()
+      render(vnodeStack)
     }
   },
 
