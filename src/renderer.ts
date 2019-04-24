@@ -49,8 +49,6 @@ export function render(
 
   eventScope: Record<string, any> | void,
 
-  vnodeStack: VNode[][] = [],
-
   localPartials = {},
 
   lookup = function (stack: any[], index: number, key: string, node: Keypath, defaultKeypath?: string) {
@@ -348,15 +346,15 @@ export function render(
     return renderValue(expr, env.UNDEFINED, stack)
   },
 
-  renderExpressionText = function (expr: ExpressionNode, stringRequired: boolean, stack?: VNode[][]) {
+  renderExpressionText = function (expr: ExpressionNode, stringRequired: boolean, ctx?: any) {
     renderPureText(
       renderExpression(expr, stringRequired),
-      stack
+      ctx
     )
   },
 
-  renderPureText = function (text: string, stack?: VNode[][]) {
-    const vnodeList = array.last(stack || vnodeStack)
+  renderPureText = function (text: string, ctx?: any) {
+    const vnodeList = array.last((ctx || context).renderStack)
     if (vnodeList) {
       const lastVnode = array.last(vnodeList)
       if (lastVnode && lastVnode.isText) {
@@ -376,9 +374,9 @@ export function render(
     }
   },
 
-  renderElement = function (vnode: Record<string, any>, attrs: any[] | void, children: Function | void, stack: VNode[][] | void) {
+  renderElement = function (vnode: Record<string, any>, attrs: any[] | void, children: Function | void, ctx: any) {
 
-    const outputStack = stack || vnodeStack
+    const renderContext = ctx || context, renderStack = renderContext.renderStack
 
     if (attrs) {
       array.each(
@@ -435,19 +433,19 @@ export function render(
     }
 
     if (children) {
-      outputStack.push(vnode.children = [])
+      renderStack.push(vnode.children = [])
       children()
-      array.pop(outputStack)
+      array.pop(renderStack)
     }
 
     vnode.context = context
     vnode.keypath = $keypath
 
     if (vnode.isComponent) {
-      vnode.parent = context
+      vnode.parent = renderContext
     }
 
-    const vnodeList = array.last(outputStack)
+    const vnodeList = array.last(renderStack)
     if (vnodeList) {
       array.push(vnodeList, vnode)
     }
@@ -460,7 +458,7 @@ export function render(
   renderSlot = function (name: string) {
     const render = context.get(name)
     if (render) {
-      render(vnodeStack)
+      render(context)
     }
   },
 
@@ -561,7 +559,9 @@ export function render(
 
   }
 
-  return template(
+  context['renderStack'] = []
+
+  const result = template(
     renderExpression,
     renderExpressionArg,
     renderExpressionText,
@@ -572,5 +572,9 @@ export function render(
     renderImport,
     renderEach
   )
+
+  context['renderStack'] = env.UNDEFINED
+
+  return result
 
 }

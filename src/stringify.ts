@@ -73,7 +73,7 @@ RENDER_PARTIAL = 'i',
 
 RENDER_IMPORT = 'j',
 
-ARG_STACK = 'k',
+ARG_CONTEXT = 'k',
 
 SEP_COMMA = ', ',
 
@@ -160,7 +160,7 @@ function stringifyExpressionArg(expr: ExpressionNode): string {
   return stringifyExpression(
     RENDER_EXPRESSION_ARG,
     expr,
-    [ARG_STACK]
+    [ARG_CONTEXT]
   )
 }
 
@@ -253,14 +253,14 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
 }
 
 /**
- * 目的是 保证 RENDER_ELEMENT 参数顺序稳定，减少运行时判断
+ * 目的是 保证调用参数顺序稳定，减少运行时判断
  */
-function renderElement(data: string, attrs: string | void, children: string | void): string {
+function trimArgs(list: (string | void)[]) {
 
   let args: string[] = [], removable = env.TRUE
 
   array.each(
-    [data, attrs, children, isSloting ? ARG_STACK : env.UNDEFINED],
+    list,
     function (arg: string | void) {
       if (isDef(arg)) {
         removable = env.FALSE
@@ -273,17 +273,25 @@ function renderElement(data: string, attrs: string | void, children: string | vo
     env.TRUE
   )
 
+  return args
+
+}
+
+function renderElement(data: string, attrs: string | void, children: string | void): string {
   return stringifyCall(
     RENDER_ELEMENT,
-    array.join(args, SEP_COMMA)
+    array.join(
+      trimArgs([data, attrs, children, isSloting ? ARG_CONTEXT : env.UNDEFINED]),
+      SEP_COMMA
+    )
   )
 }
 
 function getComponentSlots(children: Node[]): string | void {
 
-  const slots = {}, complexs = {},
+  const slots = {},
 
-  addSlot = function (name: string, nodes: Node[] | void, isComplex: boolean | void) {
+  addSlot = function (name: string, nodes: Node[] | void) {
 
     if (!array.falsy(nodes)) {
       name = config.SLOT_DATA_PREFIX + name
@@ -291,9 +299,6 @@ function getComponentSlots(children: Node[]): string | void {
         slots[name] || (slots[name] = []),
         nodes
       )
-      if (isComplex) {
-        complexs[name] = isComplex
-      }
     }
 
   }
@@ -306,13 +311,13 @@ function getComponentSlots(children: Node[]): string | void {
       if (child.type === nodeType.ELEMENT) {
         const element = child as Element
         if (element.slot) {
-          addSlot(element.slot, element.children, element.isComplex)
+          addSlot(element.slot, element.children)
           return
         }
       }
 
       // 匿名 slot，名称统一为 children
-      addSlot('children', [child], child.isComplex)
+      addSlot('children', [child])
 
     }
   )
@@ -324,9 +329,10 @@ function getComponentSlots(children: Node[]): string | void {
   object.each(
     slots,
     function (children: any, name: string) {
+      // 强制为复杂节点，因为 slot 的子节点不能用字符串拼接的方式来渲染
       slots[name] = stringifyFunction(
-        stringifyChildren(children, complexs[name]),
-        ARG_STACK
+        stringifyChildren(children, env.TRUE),
+        ARG_CONTEXT
       )
     }
   )
@@ -487,7 +493,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
         // args 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
         result.args = stringifyFunction(
           CODE_RETURN + stringifyArray(args.map(stringifyExpressionArg)),
-          ARG_STACK
+          ARG_CONTEXT
         )
       }
     }
@@ -500,7 +506,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
       // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
       result.getter = stringifyFunction(
         CODE_RETURN + stringifyExpressionArg(expr),
-        ARG_STACK
+        ARG_CONTEXT
       )
     }
 
@@ -534,7 +540,7 @@ nodeStringify[nodeType.TEXT] = function (node: Text): string {
 
     const args = [result]
     if (isSloting) {
-      array.push(args, ARG_STACK)
+      array.push(args, ARG_CONTEXT)
     }
 
     return stringifyCall(
@@ -552,19 +558,19 @@ nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
   // 因为还有 stack 参数呢，各种判断真的很累
   let renderName = RENDER_EXPRESSION,
 
-  args = [isStringRequired ? STRING_TRUE : STRING_FALSE]
+  args = [isStringRequired ? STRING_TRUE : env.UNDEFINED]
 
   if (array.last(collectStack) && !array.last(joinStack)) {
     renderName = RENDER_EXPRESSION_TEXT
     if (isSloting) {
-      array.push(args, ARG_STACK)
+      array.push(args, ARG_CONTEXT)
     }
   }
 
   return stringifyExpression(
     renderName,
     node.expr,
-    args,
+    trimArgs(args),
   )
 }
 
