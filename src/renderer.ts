@@ -395,7 +395,7 @@ export function render(
     }
   },
 
-  renderElement = function (
+  renderElementVnode = function (
     vnode: Record<string, any>,
     attrs: any[] | void,
     childs: Function | void,
@@ -525,7 +525,7 @@ export function render(
           renderExpressionArg,
           renderExpressionVnode,
           renderTextVnode,
-          renderElement,
+          renderElementVnode,
           renderSlot,
           renderPartial,
           renderImport,
@@ -606,7 +606,7 @@ export function render(
     renderExpressionArg,
     renderExpressionVnode,
     renderTextVnode,
-    renderElement,
+    renderElementVnode,
     renderSlot,
     renderPartial,
     renderImport,

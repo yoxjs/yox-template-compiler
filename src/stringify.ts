@@ -55,19 +55,19 @@ collectStack: (boolean | void)[] = [],
 
 nodeStringify = {},
 
-RENDER_ELEMENT = 'a',
+RENDER_SLOT = 'a',
 
-RENDER_SLOT = 'b',
+RENDER_EACH = 'b',
 
-RENDER_EACH = 'c',
+RENDER_EXPRESSION = 'c',
 
-RENDER_EXPRESSION = 'd',
+RENDER_EXPRESSION_ARG = 'd',
 
-RENDER_EXPRESSION_ARG = 'e',
+RENDER_EXPRESSION_VNODE = 'e',
 
-RENDER_EXPRESSION_VNODE = 'f',
+RENDER_TEXT_VNODE = 'f',
 
-RENDER_TEXT_VNODE = 'g',
+RENDER_ELEMENT_VNODE = 'g',
 
 RENDER_PARTIAL = 'h',
 
@@ -95,7 +95,7 @@ CODE_PREFIX = `function(${
     RENDER_EXPRESSION_ARG,
     RENDER_EXPRESSION_VNODE,
     RENDER_TEXT_VNODE,
-    RENDER_ELEMENT,
+    RENDER_ELEMENT_VNODE,
     RENDER_SLOT,
     RENDER_PARTIAL,
     RENDER_IMPORT,
@@ -274,7 +274,7 @@ function trimArgs(list: (string | void)[]) {
 
 function renderElement(data: string, attrs: string | void, childs: string | void, slots: string | void): string {
   return stringifyCall(
-    RENDER_ELEMENT,
+    RENDER_ELEMENT_VNODE,
     array.join(
       trimArgs([data, attrs, childs, slots]),
       SEP_COMMA
