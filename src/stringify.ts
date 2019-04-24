@@ -61,25 +61,25 @@ RENDER_SLOT = 'b',
 
 RENDER_EACH = 'c',
 
-RENDER_EXPRESSION = 'e',
+RENDER_EXPRESSION = 'd',
 
-RENDER_EXPRESSION_ARG = 'f',
+RENDER_EXPRESSION_ARG = 'e',
 
-RENDER_EXPRESSION_TEXT = 'g',
+RENDER_EXPRESSION_VNODE = 'f',
 
-RENDER_PURE_TEXT = 'h',
+RENDER_TEXT_VNODE = 'g',
 
-RENDER_PARTIAL = 'i',
+RENDER_PARTIAL = 'h',
 
-RENDER_IMPORT = 'j',
+RENDER_IMPORT = 'i',
 
-ARG_CONTEXT = 'k',
+ARG_CONTEXT = 'j',
 
-SEP_COMMA = ', ',
+SEP_COMMA = ',',
 
-SEP_COLON = ': ',
+SEP_COLON = ':',
 
-SEP_PLUS = ' + ',
+SEP_PLUS = '+',
 
 STRING_TRUE = '!0',
 
@@ -89,29 +89,24 @@ STRING_EMPTY = toJSON(env.EMPTY_STRING),
 
 CODE_RETURN = 'return ',
 
-CODE_PREFIX = `function (${
+CODE_PREFIX = `function(${
   array.join([
     RENDER_EXPRESSION,
     RENDER_EXPRESSION_ARG,
-    RENDER_EXPRESSION_TEXT,
-    RENDER_PURE_TEXT,
+    RENDER_EXPRESSION_VNODE,
+    RENDER_TEXT_VNODE,
     RENDER_ELEMENT,
     RENDER_SLOT,
     RENDER_PARTIAL,
     RENDER_IMPORT,
     RENDER_EACH
   ], SEP_COMMA)
-}) { return `,
+}){return `,
 
-CODE_SUFFIX = ` }`
+CODE_SUFFIX = `}`
 
 // 表达式求值是否要求返回字符串类型
-let isStringRequired: boolean | void,
-
-// 是否正在生成 slot 函数
-// 如果为 true 要求 RENDER_EXPRESSION_TEXT, RENDER_PURE_TEXT, RENDER_ELEMENT 这三个函数的序列化加上 stack 参数
-// 这个 stack 用于收集渲染出来的子节点，也就是上面提到的“难点”的解决方案
-isSloting: boolean | void
+let isStringRequired: boolean | void
 
 function stringifyObject(obj: Object): string {
   const fields = []
@@ -126,11 +121,11 @@ function stringifyObject(obj: Object): string {
       }
     }
   )
-  return `{ ${array.join(fields, SEP_COMMA)} }`
+  return `{${array.join(fields, SEP_COMMA)}}`
 }
 
 function stringifyArray(arr: any[]): string {
-  return `[ ${array.join(arr, SEP_COMMA)} ]`
+  return `[${array.join(arr, SEP_COMMA)}]`
 }
 
 function stringifyCall(name: string, arg: string): string {
@@ -138,7 +133,7 @@ function stringifyCall(name: string, arg: string): string {
 }
 
 function stringifyFunction(result: string | void, arg?: string): string {
-  return `function (${arg || env.EMPTY_STRING}) { ${result || env.EMPTY_STRING} }`
+  return `function(${arg || env.EMPTY_STRING}){${result || env.EMPTY_STRING}}`
 }
 
 function stringifyGroup(code: string): string {
@@ -277,11 +272,11 @@ function trimArgs(list: (string | void)[]) {
 
 }
 
-function renderElement(data: string, attrs: string | void, children: string | void): string {
+function renderElement(data: string, attrs: string | void, childs: string | void, slots: string | void): string {
   return stringifyCall(
     RENDER_ELEMENT,
     array.join(
-      trimArgs([data, attrs, children, isSloting ? ARG_CONTEXT : env.UNDEFINED]),
+      trimArgs([data, attrs, childs, slots]),
       SEP_COMMA
     )
   )
@@ -322,22 +317,15 @@ function getComponentSlots(children: Node[]): string | void {
     }
   )
 
-
-  isSloting = env.TRUE
-
-  // 全部收集完成之后，再序列化
   object.each(
     slots,
     function (children: any, name: string) {
       // 强制为复杂节点，因为 slot 的子节点不能用字符串拼接的方式来渲染
       slots[name] = stringifyFunction(
-        stringifyChildren(children, env.TRUE),
-        ARG_CONTEXT
+        stringifyChildren(children, env.TRUE)
       )
     }
   )
-
-  isSloting = env.FALSE
 
   if (!object.falsy(slots)) {
     return stringifyObject(slots)
@@ -353,7 +341,9 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   elementAttrs: string[] = [],
 
-  elementChildren: string | void
+  elementChilds: string | void,
+
+  elementSlots: string | void
 
   if (tag === env.RAW_SLOT) {
     return stringifyCall(
@@ -402,19 +392,19 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     data.isComponent = STRING_TRUE
     if (children) {
       collectStack[collectStack.length - 1] = env.TRUE
-      data.slots = getComponentSlots(children)
+      elementSlots = getComponentSlots(children)
     }
   }
   else if (children) {
     isStringRequired = env.TRUE
     collectStack[collectStack.length - 1] = isComplex
-    elementChildren = stringifyChildren(children, isComplex)
+    elementChilds = stringifyChildren(children, isComplex)
     if (isComplex) {
-      elementChildren = stringifyFunction(elementChildren)
+      elementChilds = stringifyFunction(elementChilds)
     }
     else {
-      data.text = elementChildren
-      elementChildren = env.UNDEFINED
+      data.text = elementChilds
+      elementChilds = env.UNDEFINED
     }
   }
 
@@ -425,9 +415,10 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     array.falsy(elementAttrs)
       ? env.UNDEFINED
       : stringifyArray(elementAttrs),
-    elementChildren
-      ? elementChildren
-      : env.UNDEFINED
+    elementChilds
+      ? elementChilds
+      : env.UNDEFINED,
+    elementSlots
   )
 
 }
@@ -537,15 +528,9 @@ nodeStringify[nodeType.TEXT] = function (node: Text): string {
   const result = toJSON(node.text)
 
   if (array.last(collectStack) && !array.last(joinStack)) {
-
-    const args = [result]
-    if (isSloting) {
-      array.push(args, ARG_CONTEXT)
-    }
-
     return stringifyCall(
-      RENDER_PURE_TEXT,
-      array.join(args, SEP_COMMA)
+      RENDER_TEXT_VNODE,
+      result
     )
   }
 
@@ -561,10 +546,7 @@ nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
   args = [isStringRequired ? STRING_TRUE : env.UNDEFINED]
 
   if (array.last(collectStack) && !array.last(joinStack)) {
-    renderName = RENDER_EXPRESSION_TEXT
-    if (isSloting) {
-      array.push(args, ARG_CONTEXT)
-    }
+    renderName = RENDER_EXPRESSION_VNODE
   }
 
   return stringifyExpression(

@@ -49,6 +49,8 @@ export function render(
 
   eventScope: Record<string, any> | void,
 
+  vnodeStack: VNode[][] = [],
+
   localPartials = {},
 
   lookup = function (stack: any[], index: number, key: string, node: Keypath, defaultKeypath?: string) {
@@ -115,13 +117,13 @@ export function render(
   },
 
   renderValue = function (expr: ExpressionNode, binding?: boolean, stack?: any[]): any {
-    const dataStack = stack || $stack
+    const renderStack = stack || $stack
     return exprExecutor.execute(
       expr,
       function (keypath: string, node: Keypath): any {
         return lookup(
-          dataStack,
-          dataStack.length - 2 * ((node.offset || 0) + 1),
+          renderStack,
+          renderStack.length - 2 * ((node.offset || 0) + 1),
           keypath,
           node
         )
@@ -291,7 +293,11 @@ export function render(
     }
   },
 
-  createMethodListener = function (method: string, args: Function | void, stack: any[]): signature.directiveHandler {
+  createMethodListener = function (
+    method: string,
+    args: Function | void,
+    stack: any[]
+  ): signature.directiveHandler {
     return function (event?: Event, data?: Record<string, any>) {
 
       const callee = context[method]
@@ -346,15 +352,14 @@ export function render(
     return renderValue(expr, env.UNDEFINED, stack)
   },
 
-  renderExpressionText = function (expr: ExpressionNode, stringRequired: boolean, ctx?: any) {
-    renderPureText(
-      renderExpression(expr, stringRequired),
-      ctx
+  renderExpressionVnode = function (expr: ExpressionNode, stringRequired: boolean) {
+    renderTextVnode(
+      renderExpression(expr, stringRequired)
     )
   },
 
-  renderPureText = function (text: string, ctx?: any) {
-    const vnodeList = array.last((ctx || context).renderStack)
+  renderTextVnode = function (text: string) {
+    const vnodeList = array.last(vnodeStack)
     if (vnodeList) {
       const lastVnode = array.last(vnodeList)
       if (lastVnode && lastVnode.isText) {
@@ -374,9 +379,12 @@ export function render(
     }
   },
 
-  renderElement = function (vnode: Record<string, any>, attrs: any[] | void, children: Function | void, ctx: any) {
-
-    const renderContext = ctx || context, renderStack = renderContext.renderStack
+  renderElement = function (
+    vnode: Record<string, any>,
+    attrs: any[] | void,
+    childs: Function | void,
+    slots: Record<string, Function> | void
+  ) {
 
     if (attrs) {
       array.each(
@@ -432,20 +440,29 @@ export function render(
       }
     }
 
-    if (children) {
-      renderStack.push(vnode.children = [])
-      children()
-      array.pop(renderStack)
+    // childs 和 slots 不可能同时存在
+    if (childs) {
+      vnodeStack.push(vnode.children = [])
+      childs()
+      array.pop(vnodeStack)
+    }
+    else if (slots) {
+      const renderSlots = {}
+      object.each(
+        slots,
+        function (slot: Function, name: string) {
+          vnodeStack.push([])
+          slot()
+          renderSlots[name] = array.pop(vnodeStack)
+        }
+      )
+      vnode.slots = renderSlots
     }
 
     vnode.context = context
     vnode.keypath = $keypath
 
-    if (vnode.isComponent) {
-      vnode.parent = renderContext
-    }
-
-    const vnodeList = array.last(renderStack)
+    const vnodeList = array.last(vnodeStack)
     if (vnodeList) {
       array.push(vnodeList, vnode)
     }
@@ -456,10 +473,19 @@ export function render(
 
   // <slot name="xx"/>
   renderSlot = function (name: string) {
-    const render = context.get(name)
-    if (render) {
-      render(context)
-    }
+
+    const vnodeList = array.last(vnodeStack)
+
+    array.each(
+      context.get(name),
+      function (vnode: any) {
+        array.push(vnodeList, vnode)
+        if (vnode.isComponent) {
+          vnode.parent = context
+        }
+      }
+    )
+
   },
 
   // {{#partial name}}
@@ -481,8 +507,8 @@ export function render(
         partial(
           renderExpression,
           renderExpressionArg,
-          renderExpressionText,
-          renderPureText,
+          renderExpressionVnode,
+          renderTextVnode,
           renderElement,
           renderSlot,
           renderPartial,
@@ -559,22 +585,16 @@ export function render(
 
   }
 
-  context['renderStack'] = []
-
-  const result = template(
+  return template(
     renderExpression,
     renderExpressionArg,
-    renderExpressionText,
-    renderPureText,
+    renderExpressionVnode,
+    renderTextVnode,
     renderElement,
     renderSlot,
     renderPartial,
     renderImport,
     renderEach
   )
-
-  context['renderStack'] = env.UNDEFINED
-
-  return result
 
 }
