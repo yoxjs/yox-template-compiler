@@ -43,7 +43,7 @@ export function render(
 
   let $keypath = env.EMPTY_STRING,
 
-  $scope: any = { $keypath },
+  $scope: Record<string, any> = { $keypath },
 
   $stack = [$keypath, $scope],
 
@@ -323,9 +323,11 @@ export function render(
         }
       }
       else {
-        args
-          ? execute(callee, context, args(stack))
-          : execute(callee, context)
+        execute(
+          callee,
+          context,
+          args ? args(stack) : env.UNDEFINED
+        )
       }
 
     }
@@ -364,7 +366,6 @@ export function render(
         array.push(
           vnodeList,
           {
-            isStatic: env.TRUE,
             isText: env.TRUE,
             text,
             context,

@@ -225,7 +225,6 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
     no = stringifyCall(
       RENDER_ELEMENT,
       stringifyObject({
-        isStatic: STRING_TRUE,
         isComment: STRING_TRUE,
         text: STRING_EMPTY,
       })
