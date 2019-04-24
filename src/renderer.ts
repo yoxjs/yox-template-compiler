@@ -18,6 +18,8 @@ import Keypath from 'yox-expression-compiler/src/node/Keypath'
 
 import * as exprExecutor from 'yox-expression-compiler/src/executor'
 
+import Computed from 'yox-observer/src/Computed'
+
 import * as signature from 'yox-type/index'
 
 import Yox from 'yox-type/src/Yox'
@@ -51,7 +53,7 @@ export function render(
 
   vnodeStack: VNode[][] = [],
 
-  localPartials = {},
+  localPartials: Record<string, Function> = {},
 
   lookup = function (stack: any[], index: number, key: string, node: Keypath, defaultKeypath?: string) {
 
@@ -100,43 +102,57 @@ export function render(
         index -= 2
         return lookup(stack, index, key, node, defaultKeypath)
       }
-      if (defaultKeypath) {
-        result = object.get(filters, key)
-        if (!result) {
-          node.absoluteKeypath = defaultKeypath
-          logger.warn(`data [${node.raw}] is not found.`)
-          return
-        }
-        return result.value
+      result = object.get(filters, key)
+      if (!result) {
+        node.absoluteKeypath = defaultKeypath
+        logger.warn(`data [${node.raw}] is not found.`)
+        return
       }
+      result = result.value
     }
-    else {
-      return result
-    }
+
+    return result
 
   },
 
-  renderValue = function (expr: ExpressionNode, binding?: boolean, stack?: any[]): any {
-    const renderStack = stack || $stack
-    return exprExecutor.execute(
+  getValue = function (expr: ExpressionNode, binding: boolean | void, stack: any[] | void): any {
+
+    const renderStack = stack || $stack,
+
+    { length } = renderStack,
+
+    lastComputed = Computed.current
+
+    if (binding) {
+      Computed.current = env.UNDEFINED
+    }
+
+    const value = exprExecutor.execute(
       expr,
       function (keypath: string, node: Keypath): any {
         return lookup(
           renderStack,
-          renderStack.length - 2 * ((node.offset || 0) + 1),
+          length - 2 * ((node.offset || 0) + 1),
           keypath,
           node
         )
       },
       context
     )
+
+    if (binding) {
+      Computed.current = lastComputed
+    }
+
+    return value
+
   },
 
   addBinding = function (vnode: any, attr: Record<string, any>): any {
 
     const { expr } = attr,
 
-    value = renderValue(expr, env.TRUE),
+    value = getValue(expr, env.TRUE),
 
     key = keypathUtil.join(config.DIRECTIVE_BINDING, attr.name),
 
@@ -166,7 +182,7 @@ export function render(
 
     let { expr } = attr,
 
-    value = renderValue(expr, attr.binding)
+    value = getValue(expr, attr.binding)
 
     // 数组也算一种对象，要排除掉
     if (is.object(value) && !is.array(value)) {
@@ -241,7 +257,7 @@ export function render(
 
       case config.DIRECTIVE_MODEL:
         hooks = directives[config.DIRECTIVE_MODEL]
-        vnode.model = renderValue(attr.expr, env.TRUE)
+        vnode.model = getValue(attr.expr, env.TRUE)
         binding = attr.expr.absoluteKeypath
         break
 
@@ -342,14 +358,14 @@ export function render(
   },
 
   renderExpression = function (expr: ExpressionNode, stringRequired: boolean | void): any {
-    const value = renderValue(expr)
+    const value = getValue(expr)
     return stringRequired
       ? toString(value)
       : value
   },
 
   renderExpressionArg = function (expr: ExpressionNode, stack: any[]): any {
-    return renderValue(expr, env.UNDEFINED, stack)
+    return getValue(expr, env.FALSE, stack)
   },
 
   renderExpressionVnode = function (expr: ExpressionNode, stringRequired: boolean) {
@@ -534,7 +550,7 @@ export function render(
       eachIndex = index as string
     }
 
-    const value = renderValue(expr),
+    const value = getValue(expr),
 
     exprKeypath = expr[env.RAW_ABSOLUTE_KEYPATH],
 
