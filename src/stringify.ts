@@ -234,7 +234,7 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
 
   if (isDef(yes) || isDef(no)) {
 
-    result = `${test} ? ${isDef(yes) ? yes : STRING_EMPTY} : ${isDef(no) ? no : STRING_EMPTY}`
+    result = `${test}?${isDef(yes) ? yes : STRING_EMPTY}:${isDef(no) ? no : STRING_EMPTY}`
 
     // 如果是连接操作，因为 ?: 优先级最低，因此要加 ()
     return array.last(joinStack)
@@ -571,7 +571,7 @@ nodeStringify[nodeType.EACH] = function (node: Each): string {
     stringifyChildren(node.children as Node[], node.isComplex)
   )
 
-  return stringifyCall(RENDER_EACH, `${expr}${index}, ${children}`)
+  return stringifyCall(RENDER_EACH, `${expr}${index},${children}`)
 
 }
 
@@ -584,7 +584,7 @@ nodeStringify[nodeType.PARTIAL] = function (node: Partial): string {
     stringifyChildren(node.children as Node[], node.isComplex)
   )
 
-  return stringifyCall(RENDER_PARTIAL, `${name}, ${children}`)
+  return stringifyCall(RENDER_PARTIAL, `${name},${children}`)
 
 }
 

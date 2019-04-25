@@ -18,8 +18,6 @@ import Keypath from 'yox-expression-compiler/src/node/Keypath'
 
 import * as exprExecutor from 'yox-expression-compiler/src/executor'
 
-import Computed from 'yox-observer/src/Computed'
-
 import * as signature from 'yox-type/index'
 
 import Yox from 'yox-type/src/Yox'
@@ -55,7 +53,7 @@ export function render(
 
   localPartials: Record<string, Function> = {},
 
-  lookup = function (stack: any[], index: number, key: string, node: Keypath, defaultKeypath?: string) {
+  lookup = function (stack: any[], index: number, key: string, node: Keypath, depIgnore: boolean | void, defaultKeypath?: string) {
 
     let keypath = keypathUtil.join(stack[index], key),
 
@@ -95,12 +93,12 @@ export function render(
     }
 
     // 正常取数据
-    let result = context.get(keypath, lookup)
+    let result = context.get(keypath, lookup, depIgnore)
     if (result === lookup) {
       // undefined 或 true 都表示需要向上寻找
       if (node.lookup !== env.FALSE && index > 1) {
         index -= 2
-        return lookup(stack, index, key, node, defaultKeypath)
+        return lookup(stack, index, key, node, depIgnore, defaultKeypath)
       }
       result = object.get(filters, key)
       if (!result) {
@@ -115,36 +113,25 @@ export function render(
 
   },
 
-  getValue = function (expr: ExpressionNode, binding: boolean | void, stack: any[] | void): any {
+  getValue = function (expr: ExpressionNode, depIgnore: boolean | void, stack: any[] | void): any {
 
     const renderStack = stack || $stack,
 
-    { length } = renderStack,
+    { length } = renderStack
 
-    lastComputed = Computed.current
-
-    if (binding) {
-      Computed.current = env.UNDEFINED
-    }
-
-    const value = exprExecutor.execute(
+    return exprExecutor.execute(
       expr,
       function (keypath: string, node: Keypath): any {
         return lookup(
           renderStack,
           length - 2 * ((node.offset || 0) + 1),
           keypath,
-          node
+          node,
+          depIgnore
         )
       },
       context
     )
-
-    if (binding) {
-      Computed.current = lastComputed
-    }
-
-    return value
 
   },
 

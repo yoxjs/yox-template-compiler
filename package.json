@@ -25,7 +25,6 @@
     "yox-common": "^0.18.21",
     "yox-config": "^0.1.6",
     "yox-expression-compiler": "^0.16.20",
-    "yox-observer": "^0.17.22",
     "yox-type": "^0.0.36"
   },
   "devDependencies": {
