@@ -517,7 +517,9 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
       // 如果表达式是字面量，直接取值
       // 比如 o-log="1" 取出来就是数字 1
       if (expr.type === exprNodeType.LITERAL) {
-        result.value = (expr as ExpressionLiteral).value
+        result.value = toJSON(
+          (expr as ExpressionLiteral).value
+        )
       }
       // 取值函数
       // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
