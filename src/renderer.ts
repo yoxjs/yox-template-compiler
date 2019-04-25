@@ -239,7 +239,9 @@ export function render(
           vnode.transition = transition
         }
         else {
-          logger.fatal(`transition [${value}] is not found.`)
+          if (process.env.NODE_ENV === 'dev') {
+            logger.fatal(`transition [${value}] is not found.`)
+          }
         }
         return
 
@@ -283,7 +285,9 @@ export function render(
       )
     }
     else {
-      logger.fatal(`directive [${key}] is not found.`)
+      if (process.env.NODE_ENV === 'dev') {
+        logger.fatal(`directive [${key}] is not found.`)
+      }
     }
 
   },
@@ -527,7 +531,9 @@ export function render(
         return
       }
     }
-    logger.fatal(`partial "${name}" is not found.`)
+    if (process.env.NODE_ENV === 'dev') {
+      logger.fatal(`partial [${name}] is not found.`)
+    }
   },
 
   renderEach = function (expr: ExpressionNode, index: string | Function | void, handler?: Function) {
