@@ -343,12 +343,23 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   elementChilds: string | void,
 
-  elementSlots: string | void
+  elementSlots: string | void,
+
+  args: string[]
 
   if (tag === env.RAW_SLOT) {
+    args = [toJSON(config.SLOT_DATA_PREFIX + name)]
+    if (children) {
+      array.push(
+        args,
+        stringifyFunction(
+          stringifyChildren(children, env.TRUE)
+        )
+      )
+    }
     return stringifyCall(
       RENDER_SLOT,
-      toJSON(config.SLOT_DATA_PREFIX + name)
+      array.join(args, SEP_COMMA)
     )
   }
 

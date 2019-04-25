@@ -55,7 +55,7 @@ componentNamePattern = /^[$A-Z]|-/,
 selfClosingTagPattern = /^\s*(\/)?>/,
 
 // 常见的自闭合标签
-selfClosingTagNames = 'area,base,embed,track,source,param,input,slot,col,img,br,hr'.split(','),
+selfClosingTagNames = 'area,base,embed,track,source,param,input,col,img,br,hr'.split(','),
 
 // 常见的 svg 标签
 svgTagNames = 'svg,g,defs,desc,metadata,symbol,use,image,path,rect,circle,line,ellipse,polyline,polygon,text,tspan,tref,textpath,marker,pattern,clippath,mask,filter,cursor,view,animate,font,font-face,glyph,missing-glyph,foreignObject'.split(','),

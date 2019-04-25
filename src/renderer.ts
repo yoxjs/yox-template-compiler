@@ -475,19 +475,24 @@ export function render(
   },
 
   // <slot name="xx"/>
-  renderSlot = function (name: string) {
+  renderSlot = function (name: string, defaultRender?: Function) {
 
-    const vnodeList = array.last(vnodeStack)
+    const vnodeList = array.last(vnodeStack), vnodes = context.get(name)
 
-    array.each(
-      context.get(name),
-      function (vnode: any) {
-        array.push(vnodeList, vnode)
-        if (vnode.isComponent) {
-          vnode.parent = context
+    if (vnodes) {
+      array.each(
+        vnodes,
+        function (vnode: any) {
+          array.push(vnodeList, vnode)
+          if (vnode.isComponent) {
+            vnode.parent = context
+          }
         }
-      }
-    )
+      )
+    }
+    else if (defaultRender) {
+      defaultRender()
+    }
 
   },
 
