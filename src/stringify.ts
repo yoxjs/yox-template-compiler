@@ -1,6 +1,7 @@
 import * as config from 'yox-config/index'
 
 import isDef from 'yox-common/src/function/isDef'
+import isUndef from 'yox-common/src/function/isUndef'
 import toJSON from 'yox-common/src/function/toJSON'
 
 import * as env from 'yox-common/src/util/env'
@@ -12,6 +13,7 @@ import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
+import ExpressionLiteral from 'yox-expression-compiler/src/node/Literal'
 import ExpressionIdentifier from 'yox-expression-compiler/src/node/Identifier'
 import ExpressionCall from 'yox-expression-compiler/src/node/Call'
 
@@ -472,8 +474,11 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
   result: Record<string, any> = {
     // renderer 遍历 attrs 要用 type
     type,
-    name: toJSON(name),
-    modifier: toJSON(node.modifier),
+    // 换种说法
+    // name 变成命名空间
+    ns: toJSON(name),
+    // modifier 变成命名空间下的名称
+    name: toJSON(node.modifier),
   }
 
   // 尽可能把表达式编译成函数，这样对外界最友好
@@ -503,22 +508,33 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
       // compiler 保证了这里只能是标识符
       result.event = toJSON((expr as ExpressionIdentifier).name)
     }
+    // <input model="id">
+    else if (name === config.DIRECTIVE_MODEL) {
+      result.expr = toJSON(expr)
+    }
     else if (name === config.DIRECTIVE_CUSTOM) {
+
+      // 如果表达式是字面量，直接取值
+      // 比如 o-log="1" 取出来就是数字 1
+      if (expr.type === exprNodeType.LITERAL) {
+        result.value = (expr as ExpressionLiteral).value
+      }
       // 取值函数
       // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
-      result.getter = stringifyFunction(
-        CODE_RETURN + stringifyExpressionArg(expr),
-        ARG_CONTEXT
-      )
+      else {
+        result.getter = stringifyFunction(
+          CODE_RETURN + stringifyExpressionArg(expr),
+          ARG_CONTEXT
+        )
+      }
+
     }
 
   }
 
-  // <input model="id">
-  if (name === config.DIRECTIVE_MODEL) {
-    result.expr = toJSON(expr)
-  }
-  else {
+  // 比如写了一个 o-x="x"
+  // 外部可能是想从数据读取 x 的值，也可能只是想直接取字面量 x
+  if (isUndef(result.value) && isDef(value)) {
     result.value = toJSON(value)
   }
 

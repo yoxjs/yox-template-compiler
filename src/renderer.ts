@@ -152,7 +152,7 @@ export function render(
         'directives',
         key,
         {
-          type: config.DIRECTIVE_BINDING,
+          ns: config.DIRECTIVE_BINDING,
           name: attr.name,
           key,
           hooks,
@@ -192,7 +192,7 @@ export function render(
             'directives',
             key,
             {
-              type: config.DIRECTIVE_BINDING,
+              ns: config.DIRECTIVE_BINDING,
               name: env.EMPTY_STRING,
               key,
               hooks,
@@ -210,9 +210,9 @@ export function render(
 
   addDirective = function (vnode: any, attr: Record<string, any>) {
 
-    let { name, modifier, value } = attr,
+    let { ns, name, value } = attr,
 
-    key = keypathUtil.join(name, modifier),
+    key = keypathUtil.join(ns, name),
 
     binding: string | void,
 
@@ -224,7 +224,7 @@ export function render(
 
     transition: TransitionHooks | void
 
-    switch (name) {
+    switch (ns) {
 
       case config.DIRECTIVE_EVENT:
         hooks = directives[config.DIRECTIVE_EVENT]
@@ -250,15 +250,15 @@ export function render(
         break
 
       case config.DIRECTIVE_LAZY:
-        setPair(vnode, 'lazy', modifier, value)
+        setPair(vnode, 'lazy', name, value)
         return
 
       default:
-        hooks = directives[modifier]
+        hooks = directives[name]
         if (attr.method) {
           handler = createMethodListener(attr.method, attr.args, $stack)
         }
-        else {
+        else if (attr.getter) {
           getter = createGetter(attr.getter, $stack)
         }
         break
@@ -271,8 +271,8 @@ export function render(
         'directives',
         key,
         {
-          type: name,
-          name: modifier,
+          ns,
+          name,
           key,
           value,
           binding,
