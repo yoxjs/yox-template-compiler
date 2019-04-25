@@ -16,4 +16,7 @@ export default interface Node {
   // 因为所有节点，初始化时都是简单节点，我们就不傻傻的为每一种节点加上 isSimple: true 了
   isComplex?: boolean
 
+  // 是否是叶子节点
+  isLeaf?: boolean
+
 }

@@ -699,7 +699,7 @@ export function compile(content: string): Node[] {
 
 
 
-    if (helper.leafTypes[type]) {
+    if (node.isLeaf) {
       // 当前树枝节点如果是静态的，一旦加入了一个非静态子节点，改变当前树枝节点的 isStatic
       // 这里不处理树枝节点的进栈，因为当树枝节点出栈时，还有一次处理机会，那时它的 isStatic 已确定下来，不会再变
       if (currentBranch) {

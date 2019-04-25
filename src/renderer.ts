@@ -1,6 +1,7 @@
 import * as config from 'yox-config/index'
 
 import isDef from 'yox-common/src/function/isDef'
+import isUndef from 'yox-common/src/function/isUndef'
 import execute from 'yox-common/src/function/execute'
 import toString from 'yox-common/src/function/toString'
 
@@ -53,7 +54,7 @@ export function render(
 
   localPartials: Record<string, Function> = {},
 
-  lookup = function (stack: any[], index: number, key: string, node: Keypath, depIgnore: boolean | void, defaultKeypath?: string) {
+  lookup = function (stack: any[], index: number, key: string, node: Keypath, depIgnore?: boolean, defaultKeypath?: string) {
 
     let keypath = keypathUtil.join(stack[index], key),
 
@@ -62,7 +63,7 @@ export function render(
     node.absoluteKeypath = keypath
 
     // 如果最后还是取不到值，用回最初的 keypath
-    if (!isDef(defaultKeypath)) {
+    if (isUndef(defaultKeypath)) {
       defaultKeypath = keypath
     }
 
@@ -113,7 +114,7 @@ export function render(
 
   },
 
-  getValue = function (expr: ExpressionNode, depIgnore: boolean | void, stack: any[] | void): any {
+  getValue = function (expr: ExpressionNode, depIgnore?: boolean, stack?: any[]): any {
 
     const renderStack = stack || $stack,
 
@@ -352,7 +353,7 @@ export function render(
   },
 
   renderExpressionArg = function (expr: ExpressionNode, stack: any[]): any {
-    return getValue(expr, env.FALSE, stack)
+    return getValue(expr, env.UNDEFINED, stack)
   },
 
   renderExpressionVnode = function (expr: ExpressionNode, stringRequired: boolean) {

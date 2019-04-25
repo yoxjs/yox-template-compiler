@@ -91,6 +91,7 @@ export function createExpression(expr: ExpressionNode, safe: boolean): Expressio
     type: nodeType.EXPRESSION,
     expr,
     safe,
+    isLeaf: env.TRUE,
   }
 }
 
@@ -106,6 +107,7 @@ export function createImport(name: string): Import {
     type: nodeType.IMPORT,
     name,
     isComplex: env.TRUE,
+    isLeaf: env.TRUE,
   }
 }
 
@@ -122,6 +124,7 @@ export function createSpread(expr: ExpressionNode, binding: boolean): Spread {
     type: nodeType.SPREAD,
     expr,
     binding,
+    isLeaf: env.TRUE,
   }
 }
 
@@ -130,5 +133,6 @@ export function createText(text: string): Text {
     type: nodeType.TEXT,
     text,
     isStatic: env.TRUE,
+    isLeaf: env.TRUE,
   }
 }
