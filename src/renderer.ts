@@ -489,9 +489,7 @@ export function render(
         vnodes,
         function (vnode: any) {
           array.push(vnodeList, vnode)
-          if (vnode.isComponent) {
-            vnode.parent = context
-          }
+          vnode.parent = context
         }
       )
     }
