@@ -571,6 +571,16 @@ export function compile(content: string): Node[] {
       }
     }
 
+    // style 如果啥都没写，就默认加一个 type="text/css"
+    // 因为低版本 IE 没这个属性，没法正常渲染样式
+    // 如果 style 写了 attribute 那就自己保证吧
+    // 因为 attrs 具有动态性，compiler 无法保证最终一定会输出 type 属性
+    if (element.isStyle && array.falsy(element.attrs)) {
+      element.attrs = [
+        creator.createProperty('type', config.HINT_STRING, 'text/css')
+      ]
+    }
+
   },
 
   bindSpecialAttr = function (element: Element, attr: Attribute) {
