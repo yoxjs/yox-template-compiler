@@ -293,6 +293,21 @@ it('svg', () => {
 
 })
 
+it('style', () => {
+
+  let ast: any
+
+  ast = compile('<style></style>')
+
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+  expect(ast[0].tag).toBe('style')
+  expect(ast[0].isStyle).toBe(true)
+  expect(ast[0].isComponent).toBe(false)
+
+})
+
 it('匹配开始结束标签', () => {
 
   let hasError = false

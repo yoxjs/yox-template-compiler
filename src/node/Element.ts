@@ -15,6 +15,8 @@ export default interface Element extends Branch {
 
   isSvg: boolean
 
+  isStyle: boolean
+
   isComponent: boolean
 
   // <template slot="xx">

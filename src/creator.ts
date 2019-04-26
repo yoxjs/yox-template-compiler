@@ -68,6 +68,7 @@ export function createElement(tag: string, isSvg: boolean, isComponent: boolean)
     type: nodeType.ELEMENT,
     tag,
     isSvg,
+    isStyle: tag === 'style',
     isComponent,
     isStatic: !isComponent && tag !== env.RAW_SLOT,
   }
