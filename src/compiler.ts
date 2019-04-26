@@ -577,7 +577,7 @@ export function compile(content: string): Node[] {
     // 因为 attrs 具有动态性，compiler 无法保证最终一定会输出 type 属性
     if (element.isStyle && array.falsy(element.attrs)) {
       element.attrs = [
-        creator.createProperty('type', config.HINT_STRING, 'text/css')
+        creator.createProperty(env.RAW_TYPE, config.HINT_STRING, 'text/css')
       ]
     }
 
