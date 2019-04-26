@@ -36,7 +36,7 @@ const compileCache = {},
 // 缓存编译正则
 patternCache = {},
 
-// 指令分隔符，如 on-click 和  lazy-click
+// 指令分隔符，如 on-click 和 lazy-click
 directiveSeparator = '-',
 
 // 分割符，即 {{ xx }} 和 {{{ xx }}}

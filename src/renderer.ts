@@ -1,6 +1,5 @@
 import * as config from 'yox-config/index'
 
-import isDef from 'yox-common/src/function/isDef'
 import isUndef from 'yox-common/src/function/isUndef'
 import execute from 'yox-common/src/function/execute'
 import toString from 'yox-common/src/function/toString'
@@ -557,7 +556,7 @@ export function render(
 
       let lastKeypath = $keypath, lastScope = $scope, lastKeypathStack = $stack
 
-      $keypath = keypathUtil.join(eachKeypath, key)
+      $keypath = keypathUtil.join(eachKeypath, toString(key))
       $scope = {}
       $stack = object.copy($stack)
 
