@@ -457,8 +457,7 @@ export function compile(content: string): Node[] {
         if (process.env.NODE_ENV === 'dev') {
           // 如果指令表达式是函数调用，则只能调用方法（难道还有别的好调用的吗？）
           if (expr.type === exprNodeType.CALL) {
-            const { callee } = expr as ExpressionCall
-            if (callee.type !== exprNodeType.IDENTIFIER) {
+            if ((expr as ExpressionCall).name.type !== exprNodeType.IDENTIFIER) {
               fatal('指令表达式的类型如果是函数调用，则只能调用方法')
             }
           }

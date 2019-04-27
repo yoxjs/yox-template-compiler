@@ -494,14 +494,13 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 
     // 如果表达式明确是在调用方法，则序列化成 method + args 的形式
     if (expr.type === exprNodeType.CALL) {
-      const { callee, args } = expr as ExpressionCall
-      // compiler 保证了函数调用的 callee 是标识符
-      result.method = toJSON((callee as ExpressionIdentifier).name)
+      // compiler 保证了函数调用的 name 是标识符
+      result.method = toJSON(((expr as ExpressionCall).name as ExpressionIdentifier).name)
       // 为了实现运行时动态收集参数，这里序列化成函数
-      if (!array.falsy(args)) {
+      if (!array.falsy((expr as ExpressionCall).args)) {
         // args 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
         result.args = stringifyFunction(
-          CODE_RETURN + stringifyArray(args.map(stringifyExpressionArg)),
+          CODE_RETURN + stringifyArray((expr as ExpressionCall).args.map(stringifyExpressionArg)),
           ARG_CONTEXT
         )
       }
