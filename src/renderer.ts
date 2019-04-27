@@ -27,6 +27,7 @@ import TransitionHooks from 'yox-type/src/hooks/Transition'
 
 import * as nodeType from './nodeType'
 
+
 function setPair(target: any, name: string, key: string, value: any) {
   const map = target[name] || (target[name] = {})
   map[key] = value
@@ -59,7 +60,7 @@ export function render(
 
     scope = stack[index + 1]
 
-    node.absoluteKeypath = keypath
+    node.ak = keypath
 
     // 如果最后还是取不到值，用回最初的 keypath
     if (isUndef(defaultKeypath)) {
@@ -102,7 +103,7 @@ export function render(
       }
       result = object.get(filters, key)
       if (!result) {
-        node.absoluteKeypath = defaultKeypath
+        node.ak = defaultKeypath
         logger.warn(`data [${node.raw}] is not found.`)
         return
       }
@@ -155,7 +156,7 @@ export function render(
           name: attr.name,
           key,
           hooks,
-          binding: expr.absoluteKeypath,
+          binding: expr.ak,
           hint: attr.hint,
         }
       )
@@ -181,7 +182,7 @@ export function render(
         }
       )
 
-      const absoluteKeypath = expr[env.RAW_ABSOLUTE_KEYPATH]
+      const absoluteKeypath = expr.ak
       if (absoluteKeypath) {
         const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath),
         hooks = directives[config.DIRECTIVE_BINDING]
@@ -245,7 +246,7 @@ export function render(
       case config.DIRECTIVE_MODEL:
         hooks = directives[config.DIRECTIVE_MODEL]
         vnode.model = getValue(attr.expr, env.TRUE)
-        binding = attr.expr.absoluteKeypath
+        binding = attr.expr.ak
         break
 
       case config.DIRECTIVE_LAZY:
@@ -544,7 +545,7 @@ export function render(
 
     const value = getValue(expr),
 
-    exprKeypath = expr[env.RAW_ABSOLUTE_KEYPATH],
+    exprKeypath = expr['ak'],
 
     eachKeypath = exprKeypath || keypathUtil.join($keypath, expr.raw),
 
