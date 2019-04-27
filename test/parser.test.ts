@@ -3,6 +3,8 @@ import { compile } from '../src/compiler'
 import * as config from 'yox-config'
 import * as nodeType from '../src/nodeType'
 
+import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
+
 function checkValue(node: any, text: string) {
   if (node.children) {
     expect(node.children.length).toBe(1)
@@ -989,9 +991,53 @@ it('partial', () => {
 
 })
 
-// it('瞎测', () => {
 
-//   let ast = compile('<div key="ah{{a}}b" ref="haha" lazy="100" model="name{{name}}">text</div>')
+it('结构完整', () => {
 
-// })
+  let ast: any, hasError = false
 
+  try {
+    ast = compile(`
+      <div>
+        {{#if a}}
+          1
+        {{else}}
+          2
+    `)
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+})
+
+it('对象字面量', () => {
+
+  let ast = compile(`
+    <div>
+      {{ { name: 'yox' } }}
+    </div>
+  `)
+
+  expect(ast[0].children.length).toBe(1)
+  expect(ast[0].children[0].type).toBe(nodeType.EXPRESSION)
+  expect(ast[0].children[0].safe).toBe(true)
+  expect(ast[0].children[0].expr.type).toBe(exprNodeType.OBJECT)
+})
+
+it('html 注释', () => {
+
+  let ast = compile(`
+    <div id="<!-- xxx -->">
+      <!-- xxx -->
+    </div>
+  `)
+
+  expect(ast[0].children).toBe(undefined)
+  expect(ast[0].attrs.length).toBe(1)
+  expect(ast[0].attrs[0].type).toBe(nodeType.PROPERTY)
+  expect(ast[0].attrs[0].value).toBe('<!-- xxx -->')
+
+})

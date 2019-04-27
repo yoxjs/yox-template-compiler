@@ -30,8 +30,17 @@ import Directive from './node/Directive'
 import Property from './node/Property'
 import Expression from './node/Expression'
 
+// 当前不位于 block 之间
+const BLOCK_MODE_NONE = 1,
+
+// {{ x }}
+BLOCK_MODE_SAFE = 2,
+
+// {{{ x }}}
+BLOCK_MODE_UNSAFE = 3,
+
 // 缓存编译模板
-const compileCache = {},
+compileCache = {},
 
 // 缓存编译正则
 patternCache = {},
@@ -39,17 +48,11 @@ patternCache = {},
 // 指令分隔符，如 on-click 和 lazy-click
 directiveSeparator = '-',
 
-// 分割符，即 {{ xx }} 和 {{{ xx }}}
-blockPattern = /(\{?\{\{)\s*([^\}]+?)\s*(\}\}\}?)/,
-
-// 开始定界符，可以是 {{ 或 {{{
-openBlockPattern = /\{\{\{?/,
-
-// 结束定界符，可以是 }} 或 }}}
-closeBlockPattern = /\}\}\}?/,
-
 // 标签
 tagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i,
+
+// 注释
+commentPattern = /<!--[\s\S]*?-->/,
 
 // 属性的 name
 attributePattern = /^\s*([-:\w]+)(['"])?(?:=(['"]))?/,
@@ -128,21 +131,26 @@ export function compile(content: string): Node[] {
 
   currentAttribute: Attribute | Property | Directive | void,
 
-  // 干掉 html 注释
-  str = content.replace(
-    /<!--[\s\S]*?-->/g,
-    env.EMPTY_STRING
-  ),
+  length = content.length,
+
+  // 当前处理的位置
+  index = 0,
+
+  // 下一段开始的位置
+  nextIndex = 0,
+
+  // 开始定界符的位置，表示的是 {{ 的右侧位置
+  openBlockIndex = 0,
+
+  // 结束定界符的位置，表示的是 }} 的左侧位置
+  closeBlockIndex = 0,
+
+  // 当前正在处理或即将处理的 block 类型
+  blockMode = BLOCK_MODE_NONE,
+
+  code: string,
 
   startQuote: string | void,
-
-  length: number | void,
-
-  isSafeBlock = env.FALSE,
-
-  nextIsBlock = env.FALSE,
-
-  match: RegExpMatchArray | null,
 
   fatal = function (msg: string) {
     if (process.env.NODE_ENV === 'dev') {
@@ -995,7 +1003,7 @@ export function compile(content: string): Node[] {
         }
         // 没有结束引号，整段匹配
         // 如 id="1{{x}}2" 中的 1
-        else if (nextIsBlock) {
+        else if (blockMode !== BLOCK_MODE_NONE) {
           text = content
           addTextChild(text)
         }
@@ -1012,11 +1020,18 @@ export function compile(content: string): Node[] {
         // 获取 <tag 前面的字符
         match = content.match(tagPattern)
 
-        text = match && match.index as number > 0
-          ? string.slice(content, 0, match.index)
-          : content
-
-        addTextChild(text)
+        if (match) {
+          text = string.slice(content, 0, match.index)
+          if (text) {
+            addTextChild(
+              text.replace(commentPattern, env.EMPTY_STRING)
+            )
+          }
+        }
+        else {
+          text = content
+          addTextChild(text)
+        }
 
       }
       else {
@@ -1169,7 +1184,7 @@ export function compile(content: string): Node[] {
         source = string.trim(source)
         const expr = exprCompiler.compile(source)
         if (expr) {
-          return creator.createExpression(expr, isSafeBlock)
+          return creator.createExpression(expr, blockMode === BLOCK_MODE_SAFE)
         }
         if (process.env.NODE_ENV === 'dev') {
           fatal(`无效的 expression`)
@@ -1178,104 +1193,153 @@ export function compile(content: string): Node[] {
     },
   ],
 
-  parseHtml = function (content: string) {
-    let tpl = content
-    while (tpl) {
+  parseHtml = function (code: string) {
+    while (code) {
       array.each(
         htmlParsers,
         function (parse) {
-          const match = parse(tpl)
+          const match = parse(code)
           if (match) {
-            tpl = string.slice(tpl, match.length)
+            code = string.slice(code, match.length)
             return env.FALSE
           }
         }
       )
     }
-    str = string.slice(str, content.length)
   },
 
-  parseBlock = function (content: string, all: string) {
-    if (content) {
-      // 结束当前 block
-      // 正则会去掉 {{ xx }} 里面两侧的空白符，因此如果有 /，一定是第一个字符
-      if (string.charAt(content) === '/') {
+  parseBlock = function (code: string) {
+    if (string.charAt(code) === '/') {
 
-        /**
-         * 处理可能存在的自闭合元素，如下
-         *
-         * {{#if xx}}
-         *    <input>
-         * {{/if}}
-         */
-        popSelfClosingElementIfNeeded()
+      /**
+       * 处理可能存在的自闭合元素，如下
+       *
+       * {{#if xx}}
+       *    <input>
+       * {{/if}}
+       */
+      popSelfClosingElementIfNeeded()
 
-        const name = string.slice(content, 1)
+      const name = string.slice(code, 1)
 
-        let type = helper.name2Type[name], isCondition: boolean | void
-        if (type === nodeType.IF) {
-          const node = array.pop(ifStack)
-          if (node) {
-            type = node.type
-            isCondition = env.TRUE
-          }
-          else if (process.env.NODE_ENV === 'dev') {
-            fatal(`if 还没开始就结束了？`)
-          }
+      let type = helper.name2Type[name], isCondition: boolean | void
+      if (type === nodeType.IF) {
+        const node = array.pop(ifStack)
+        if (node) {
+          type = node.type
+          isCondition = env.TRUE
         }
-
-        const node: any = popStack(type)
-        if (node && isCondition) {
-          checkCondition(node)
+        else if (process.env.NODE_ENV === 'dev') {
+          fatal(`if 还没开始就结束了？`)
         }
       }
-      else {
-        // 开始下一个 block 或表达式
-        array.each(
-          blockParsers,
-          function (parse) {
-            const node = parse(content)
-            if (node) {
-              addChild(node)
-              return env.FALSE
-            }
-          }
-        )
+
+      const node: any = popStack(type)
+      if (node && isCondition) {
+        checkCondition(node)
       }
     }
-    str = string.slice(str, all.length)
+    else {
+      // 开始下一个 block 或表达式
+      array.each(
+        blockParsers,
+        function (parse) {
+          const node = parse(code)
+          if (node) {
+            addChild(node)
+            return env.FALSE
+          }
+        }
+      )
+    }
   }
 
-  while (str) {
-    // 匹配 {{ }}
-    match = str.match(blockPattern)
-    if (match) {
+  while (env.TRUE) {
+    openBlockIndex = string.indexOf(content, '{{', nextIndex)
+    if (openBlockIndex >= nextIndex) {
 
-      nextIsBlock = env.TRUE
+      blockMode = BLOCK_MODE_SAFE
 
-      // 裁剪开头到 {{ 之间的模板内容
-      if (match.index as number > 0) {
-        parseHtml(
-          string.slice(str, 0, match.index)
-        )
-      }
+      parseHtml(
+        string.slice(content, nextIndex, openBlockIndex)
+      )
 
-      // 获取开始分隔符的长度，用于判断是否是安全输出
-      length = match[1].length
+      // 跳过 {{
+      openBlockIndex += 2
 
-      // 避免手误写成 {{{ name }} 或 {{ name }}}
-      if (length === match[3].length) {
-        isSafeBlock = length === 2
-        parseBlock(match[2], match[0])
+      // {{ 后面总得有内容吧
+      if (openBlockIndex < length) {
+        if (string.charAt(content, openBlockIndex) === '{') {
+          blockMode = BLOCK_MODE_UNSAFE
+          openBlockIndex++
+        }
+        if (openBlockIndex < length) {
+          closeBlockIndex = string.indexOf(content, '}}', openBlockIndex)
+          if (closeBlockIndex >= openBlockIndex) {
+            // 确定开始和结束定界符能否配对成功，即 {{ 对 }}，{{{ 对 }}}
+            // 这里不能动 openBlockIndex 和 closeBlockIndex，因为等下要用他俩 slice
+            index = closeBlockIndex + 2
+
+            // 这里要用 <=，因为很可能到头了
+            if (index <= length) {
+
+              if (index < length && string.charAt(content, index) === '}') {
+                if (blockMode === BLOCK_MODE_UNSAFE) {
+                  nextIndex = index + 1
+                }
+                else {
+                  fatal(`{{ 和 }}} 无法配对`)
+                }
+              }
+              else {
+                if (blockMode === BLOCK_MODE_SAFE) {
+                  nextIndex = index
+                }
+                else {
+                  fatal(`{{{ 和 }} 无法配对`)
+                }
+              }
+
+              code = string.trim(
+                string.slice(content, openBlockIndex, closeBlockIndex)
+              )
+
+              // 不用处理 {{ }} 和 {{{ }}} 这种空 block
+              if (code) {
+                parseBlock(code)
+              }
+
+            }
+            else {
+              // 到头了
+              break
+            }
+          }
+          else if (process.env.NODE_ENV === 'dev') {
+            fatal('找不到结束定界符')
+          }
+        }
+        else if (process.env.NODE_ENV === 'dev') {
+          fatal('{{{ 后面没字符串了？')
+        }
       }
       else if (process.env.NODE_ENV === 'dev') {
-        fatal(`${match[1]} and ${match[3]} is not a pair.`)
+        fatal('{{ 后面没字符串了？')
       }
 
     }
     else {
-      nextIsBlock = env.FALSE
-      parseHtml(str)
+      blockMode = BLOCK_MODE_NONE
+      parseHtml(
+        string.slice(content, nextIndex)
+      )
+      break
+    }
+  }
+
+  if (process.env.NODE_ENV === 'dev') {
+    if (nodeStack.length) {
+      fatal('还有节点未出栈')
     }
   }
 

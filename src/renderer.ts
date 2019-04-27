@@ -237,10 +237,8 @@ export function render(
         if (transition) {
           vnode.transition = transition
         }
-        else {
-          if (process.env.NODE_ENV === 'dev') {
-            logger.fatal(`transition [${value}] is not found.`)
-          }
+        else if (process.env.NODE_ENV === 'dev') {
+          logger.fatal(`transition [${value}] is not found.`)
         }
         return
 
@@ -283,10 +281,8 @@ export function render(
         }
       )
     }
-    else {
-      if (process.env.NODE_ENV === 'dev') {
-        logger.fatal(`directive [${key}] is not found.`)
-      }
+    else if (process.env.NODE_ENV === 'dev') {
+      logger.fatal(`directive [${key}] is not found.`)
     }
 
   },
