@@ -1031,7 +1031,8 @@ it('html 注释', () => {
 
   let ast = compile(`
     <div id="<!-- xxx -->">
-      <!-- xxx -->
+      <!-- 1 -->
+      <!-- 2 -->
     </div>
   `)
 

@@ -52,7 +52,7 @@ directiveSeparator = '-',
 tagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i,
 
 // 注释
-commentPattern = /<!--[\s\S]*?-->/,
+commentPattern = /<!--[\s\S]*?-->/g,
 
 // 属性的 name
 attributePattern = /^\s*([-:\w]+)(['"])?(?:=(['"]))?/,
