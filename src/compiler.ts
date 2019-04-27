@@ -42,6 +42,12 @@ directiveSeparator = '-',
 // 分割符，即 {{ xx }} 和 {{{ xx }}}
 blockPattern = /(\{?\{\{)\s*([^\}]+?)\s*(\}\}\}?)/,
 
+// 开始定界符，可以是 {{ 或 {{{
+openBlockPattern = /\{\{\{?/,
+
+// 结束定界符，可以是 }} 或 }}}
+closeBlockPattern = /\}\}\}?/,
+
 // 标签
 tagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i,
 
@@ -287,10 +293,8 @@ export function compile(content: string): Node[] {
       return node
 
     }
-    else {
-      if (process.env.NODE_ENV === 'dev') {
-        fatal(`出栈节点类型不匹配`)
-      }
+    else if (process.env.NODE_ENV === 'dev') {
+      fatal(`出栈节点类型不匹配`)
     }
   },
 
@@ -421,16 +425,12 @@ export function compile(content: string): Node[] {
         if (value > 0) {
           directive.value = value
         }
-        else {
-          if (process.env.NODE_ENV === 'dev') {
-            fatal(`lazy 指令的值 [${text}] 必须大于 0`)
-          }
+        else if (process.env.NODE_ENV === 'dev') {
+          fatal(`lazy 指令的值 [${text}] 必须大于 0`)
         }
       }
-      else {
-        if (process.env.NODE_ENV === 'dev') {
-          fatal(`lazy 指令的值 [${text}] 必须是数字`)
-        }
+      else if (process.env.NODE_ENV === 'dev') {
+        fatal(`lazy 指令的值 [${text}] 必须是数字`)
       }
     }
     else {
@@ -467,11 +467,9 @@ export function compile(content: string): Node[] {
         directive.expr = expr
 
       }
-      else {
-        if (process.env.NODE_ENV === 'dev') {
-          if (isModel || isEvent) {
-            fatal(`${directive.name} 指令的表达式错误: [${text}]`)
-          }
+      else if (process.env.NODE_ENV === 'dev') {
+        if (isModel || isEvent) {
+          fatal(`${directive.name} 指令的表达式错误: [${text}]`)
         }
       }
 
@@ -695,16 +693,12 @@ export function compile(content: string): Node[] {
             fatal('大哥，else 后面不能跟 else if 啊')
           }
         }
-        else {
-          if (process.env.NODE_ENV === 'dev') {
-            fatal('大哥，只能写一个 else 啊！！')
-          }
+        else if (process.env.NODE_ENV === 'dev') {
+          fatal('大哥，只能写一个 else 啊！！')
         }
       }
-      else {
-        if (process.env.NODE_ENV === 'dev') {
-          fatal('不写 if 是几个意思？？')
-        }
+      else if (process.env.NODE_ENV === 'dev') {
+        fatal('不写 if 是几个意思？？')
       }
 
     }
@@ -1005,10 +999,8 @@ export function compile(content: string): Node[] {
           text = content
           addTextChild(text)
         }
-        else {
-          if (process.env.NODE_ENV === 'dev') {
-            fatal(`${currentAttribute.name} 没有找到结束引号`)
-          }
+        else if (process.env.NODE_ENV === 'dev') {
+          fatal(`${currentAttribute.name} 没有找到结束引号`)
         }
 
       }
@@ -1054,14 +1046,12 @@ export function compile(content: string): Node[] {
                 string.trim(terms[1])
               )
             }
-            else {
-              if (process.env.NODE_ENV === 'dev') {
-                fatal(
-                  currentAttribute
-                    ? `each 不能写在属性的值里`
-                    : `each 不能写在属性层级`
-                )
-              }
+            else if (process.env.NODE_ENV === 'dev') {
+              fatal(
+                currentAttribute
+                  ? `each 不能写在属性的值里`
+                  : `each 不能写在属性层级`
+              )
             }
           }
         }
@@ -1078,14 +1068,12 @@ export function compile(content: string): Node[] {
           if (!currentElement) {
             return creator.createImport(source)
           }
-          else {
-            if (process.env.NODE_ENV === 'dev') {
-              fatal(
-                currentAttribute
-                  ? `import 不能写在属性的值里`
-                  : `import 不能写在属性层级`
-              )
-            }
+          else if (process.env.NODE_ENV === 'dev') {
+            fatal(
+              currentAttribute
+                ? `import 不能写在属性的值里`
+                : `import 不能写在属性层级`
+            )
           }
         }
         if (process.env.NODE_ENV === 'dev') {
@@ -1101,14 +1089,12 @@ export function compile(content: string): Node[] {
           if (!currentElement) {
             return creator.createPartial(source)
           }
-          else {
-            if (process.env.NODE_ENV === 'dev') {
-              fatal(
-                currentAttribute
-                  ? `partial 不能写在属性的值里`
-                  : `partial 不能写在属性层级`
-              )
-            }
+          else if (process.env.NODE_ENV === 'dev') {
+            fatal(
+              currentAttribute
+                ? `partial 不能写在属性的值里`
+                : `partial 不能写在属性层级`
+            )
           }
         }
         if (process.env.NODE_ENV === 'dev') {
@@ -1168,10 +1154,8 @@ export function compile(content: string): Node[] {
                 : env.FALSE
             )
           }
-          else {
-            if (process.env.NODE_ENV === 'dev') {
-              fatal(`延展属性只能用于组件属性`)
-            }
+          else if (process.env.NODE_ENV === 'dev') {
+            fatal(`延展属性只能用于组件属性`)
           }
         }
         if (process.env.NODE_ENV === 'dev') {
@@ -1235,10 +1219,8 @@ export function compile(content: string): Node[] {
             type = node.type
             isCondition = env.TRUE
           }
-          else {
-            if (process.env.NODE_ENV === 'dev') {
-              fatal(`if 还没开始就结束了？`)
-            }
+          else if (process.env.NODE_ENV === 'dev') {
+            fatal(`if 还没开始就结束了？`)
           }
         }
 
@@ -1286,10 +1268,8 @@ export function compile(content: string): Node[] {
         isSafeBlock = length === 2
         parseBlock(match[2], match[0])
       }
-      else {
-        if (process.env.NODE_ENV === 'dev') {
-          fatal(`${match[1]} and ${match[3]} is not a pair.`)
-        }
+      else if (process.env.NODE_ENV === 'dev') {
+        fatal(`${match[1]} and ${match[3]} is not a pair.`)
       }
 
     }
