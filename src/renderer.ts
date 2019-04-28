@@ -292,8 +292,8 @@ export function render(
     return function (event: Event, data?: Record<string, any>) {
       if (event.type !== type) {
         event = new Event(type, event)
+        context.fire(event, data)
       }
-      context.fire(event, data)
     }
   },
 
