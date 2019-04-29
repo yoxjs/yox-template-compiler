@@ -934,7 +934,7 @@ export function compile(content: string): Node[] {
               const lowerName = name.toLowerCase()
 
               // <slot> 、<template> 或 svg 中的属性不用识别为 property
-              if (helper.specialTags[currentElement.tag] && currentElement.isSvg) {
+              if (helper.specialTags[currentElement.tag] || currentElement.isSvg) {
                 node = creator.createAttribute(name)
               }
               // 尝试识别成 property
