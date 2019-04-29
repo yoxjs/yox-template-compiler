@@ -933,8 +933,8 @@ export function compile(content: string): Node[] {
               // 把 attr 优化成 prop
               const lowerName = name.toLowerCase()
 
-              // <slot> 或 <template> 中的属性不用识别为 property
-              if (helper.specialTags[currentElement.tag]) {
+              // <slot> 、<template> 或 svg 中的属性不用识别为 property
+              if (helper.specialTags[currentElement.tag] && currentElement.isSvg) {
                 node = creator.createAttribute(name)
               }
               // 尝试识别成 property
