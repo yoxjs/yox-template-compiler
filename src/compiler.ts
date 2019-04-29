@@ -11,6 +11,7 @@ import * as logger from 'yox-common/src/util/logger'
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as exprCompiler from 'yox-expression-compiler/src/compiler'
 import ExpressionCall from 'yox-expression-compiler/src/node/Call'
+import ExpressionIdentifier from 'yox-expression-compiler/src/node/Identifier'
 
 import * as helper from './helper'
 import * as creator from './creator'
@@ -453,6 +454,7 @@ export function compile(content: string): Node[] {
       isModel = directive.name === config.DIRECTIVE_MODEL,
 
       // on-click="xx" on-click="method()" 值只能是标识符或函数调用
+      // on-click="click" 事件转换名称不能相同
       isEvent = directive.name === config.DIRECTIVE_EVENT
 
       if (expr) {
@@ -465,8 +467,13 @@ export function compile(content: string): Node[] {
             }
           }
           // 上面检测过方法调用，接下来事件指令只需要判断是否是标识符
-          else if (isEvent && expr.type !== exprNodeType.IDENTIFIER) {
-            fatal('事件指令的表达式只能是 标识符 或 函数调用')
+          else if (isEvent) {
+            if (expr.type !== exprNodeType.IDENTIFIER) {
+              fatal('事件指令的表达式只能是 标识符 或 函数调用')
+            }
+            else if (directive.modifier === (expr as ExpressionIdentifier).name) {
+              fatal('事件转换的名称不能相同')
+            }
           }
 
           if (isModel && !expr[STATIC_KEYPATH]) {
