@@ -5,7 +5,7 @@ import { stringify } from '../src/stringify'
 it('html 元素', () => {
 
   let ast = compile(`
-    <div o-x="1" o-x="true" o-z="x"></div>
+    <div width="1"></div>
   `)
 
   console.log(JSON.stringify(ast, 4, 4))

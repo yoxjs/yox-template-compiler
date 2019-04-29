@@ -1,5 +1,6 @@
 import * as config from 'yox-config/index'
 
+import isDef from 'yox-common/src/function/isDef'
 import isUndef from 'yox-common/src/function/isUndef'
 import execute from 'yox-common/src/function/execute'
 import toString from 'yox-common/src/function/toString'
@@ -67,17 +68,19 @@ export function render(
       defaultKeypath = keypath
     }
 
-    if (eventScope && object.has(eventScope, key)) {
+    // eventScore 只有 event 和 data 两种值
+    if (eventScope && eventScope[key]) {
       return eventScope[key]
     }
 
     // 如果取的是 scope 上直接有的数据，如 keypath
-    if (object.has(scope, key)) {
+    if (scope[key]) {
       return scope[key]
     }
 
     // 如果取的是数组项，则要更进一步
-    if (object.has(scope, '$item')) {
+    // scope['$item'] 可能是 0，不能直接 if (scope['$item'])
+    if (isDef(scope['$item'])) {
       scope = scope.$item
 
       // 到这里 scope 可能为空
@@ -88,7 +91,7 @@ export function render(
         return scope
       }
       // 取 this.xx
-      if (scope && object.has(scope, key)) {
+      if (scope && isDef(scope[key])) {
         return scope[key]
       }
     }
@@ -99,12 +102,14 @@ export function render(
       // undefined 或 true 都表示需要向上寻找
       if (node.lookup !== env.FALSE && index > 1) {
         index -= 2
+        if (process.env.NODE_ENV === 'dev') {
+          logger.warn(`[${keypath}] 找不到数据，开始向上查找.`)
+        }
         return lookup(stack, index, key, node, depIgnore, defaultKeypath)
       }
       result = object.get(filters, key)
       if (!result) {
         node.ak = defaultKeypath
-        logger.warn(`data [${node.raw}] is not found.`)
         return
       }
       result = result.value
