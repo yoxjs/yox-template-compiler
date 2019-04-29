@@ -431,7 +431,7 @@ export function compile(content: string): Node[] {
 
     // lazy 不需要编译表达式
     // 因为 lazy 的值必须是大于 0 的数字
-    if (directive.name === config.DIRECTIVE_LAZY) {
+    if (directive.ns === config.DIRECTIVE_LAZY) {
       if (is.numeric(text)) {
         const value = toNumber(text)
         if (value > 0) {
@@ -451,11 +451,11 @@ export function compile(content: string): Node[] {
       const expr = exprCompiler.compile(text),
 
       // model="xx" model="this.x" 值只能是标识符或 Member
-      isModel = directive.name === config.DIRECTIVE_MODEL,
+      isModel = directive.ns === config.DIRECTIVE_MODEL,
 
       // on-click="xx" on-click="method()" 值只能是标识符或函数调用
       // on-click="click" 事件转换名称不能相同
-      isEvent = directive.name === config.DIRECTIVE_EVENT
+      isEvent = directive.ns === config.DIRECTIVE_EVENT
 
       if (expr) {
 
@@ -471,7 +471,7 @@ export function compile(content: string): Node[] {
             if (expr.type !== exprNodeType.IDENTIFIER) {
               fatal('事件指令的表达式只能是 标识符 或 函数调用')
             }
-            else if (directive.modifier === (expr as ExpressionIdentifier).name) {
+            else if (directive.name === (expr as ExpressionIdentifier).name) {
               fatal('事件转换的名称不能相同')
             }
           }
@@ -486,7 +486,7 @@ export function compile(content: string): Node[] {
       }
       else if (process.env.NODE_ENV === 'dev') {
         if (isModel || isEvent) {
-          fatal(`${directive.name} 指令的表达式错误: [${text}]`)
+          fatal(`${directive.ns} 指令的表达式错误: [${text}]`)
         }
       }
 

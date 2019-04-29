@@ -1,6 +1,6 @@
 {
   "name": "yox-template-compiler",
-  "version": "0.27.48",
+  "version": "0.27.49",
   "description": "Template compiler for Yox.js",
   "main": "index.js",
   "directories": {

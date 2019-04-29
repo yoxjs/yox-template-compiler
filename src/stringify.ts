@@ -471,16 +471,13 @@ nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
 
 nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 
-  const { type, name, value, expr } = node,
+  const { type, ns, value, expr } = node,
 
   result: Record<string, any> = {
     // renderer 遍历 attrs 要用 type
     type,
-    // 换种说法
-    // name 变成命名空间
-    ns: toJSON(name),
-    // modifier 变成命名空间下的名称
-    name: toJSON(node.modifier),
+    ns: toJSON(ns),
+    name: toJSON(node.name),
   }
 
   // 尽可能把表达式编译成函数，这样对外界最友好
@@ -505,15 +502,15 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
         )
       }
     }
-    else if (name === config.DIRECTIVE_EVENT) {
+    else if (ns === config.DIRECTIVE_EVENT) {
       // compiler 保证了这里只能是标识符
       result.event = toJSON((expr as ExpressionIdentifier).name)
     }
     // <input model="id">
-    else if (name === config.DIRECTIVE_MODEL) {
+    else if (ns === config.DIRECTIVE_MODEL) {
       result.expr = toJSON(expr)
     }
-    else if (name === config.DIRECTIVE_CUSTOM) {
+    else if (ns === config.DIRECTIVE_CUSTOM) {
 
       // 如果表达式是字面量，直接取值
       // 比如 o-log="1" 取出来就是数字 1

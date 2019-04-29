@@ -26,11 +26,11 @@ export function createAttribute(name: string): Attribute {
   }
 }
 
-export function createDirective(name: string, modifier?: string, value?: string | number, expr?: ExpressionNode, children?: Node[]): Directive {
+export function createDirective(ns: string, name?: string, value?: string | number, expr?: ExpressionNode, children?: Node[]): Directive {
   return {
     type: nodeType.DIRECTIVE,
+    ns,
     name,
-    modifier,
     value,
     expr,
     children,

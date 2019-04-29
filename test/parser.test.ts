@@ -663,7 +663,7 @@ it('directive', () => {
   expect(ast[0].attrs.length).toBe(1)
 
   expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
-  expect(ast[0].attrs[0].name).toBe(config.DIRECTIVE_LAZY)
+  expect(ast[0].attrs[0].ns).toBe(config.DIRECTIVE_LAZY)
   expect(ast[0].attrs[0].value).toBe(true)
 
   ast = compile('<div o-a></div>')
@@ -671,8 +671,34 @@ it('directive', () => {
   expect(ast.length).toBe(1)
 
   expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
-  expect(ast[0].attrs[0].name).toBe(config.DIRECTIVE_CUSTOM)
+  expect(ast[0].attrs[0].ns).toBe(config.DIRECTIVE_CUSTOM)
   expect(ast[0].attrs[0].value).toBe(true)
+
+
+
+  hasError = false
+
+  // 转换事件只能用标识符
+  try {
+    compile('<div on-click="123"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // 转换事件名称不能相同
+  try {
+    compile('<div on-click="click"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
 
 })
 
@@ -750,8 +776,8 @@ it('lazy 指令自动转型', () => {
   `)
 
   expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
-  expect(ast[0].attrs[0].name).toBe(config.DIRECTIVE_LAZY)
-  expect(ast[0].attrs[0].modifier).toBe('')
+  expect(ast[0].attrs[0].ns).toBe(config.DIRECTIVE_LAZY)
+  expect(ast[0].attrs[0].name).toBe('')
   expect(ast[0].attrs[0].expr).toBe(undefined)
   expect(ast[0].attrs[0].value).toBe(true)
 
@@ -761,8 +787,8 @@ it('lazy 指令自动转型', () => {
   `)
 
   expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
-  expect(ast[0].attrs[0].name).toBe(config.DIRECTIVE_LAZY)
-  expect(ast[0].attrs[0].modifier).toBe('')
+  expect(ast[0].attrs[0].ns).toBe(config.DIRECTIVE_LAZY)
+  expect(ast[0].attrs[0].name).toBe('')
   expect(ast[0].attrs[0].expr).toBe(undefined)
   expect(ast[0].attrs[0].value).toBe(100)
 

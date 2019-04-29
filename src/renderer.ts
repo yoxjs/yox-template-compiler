@@ -290,13 +290,10 @@ export function render(
 
   createEventListener = function (type: string): signature.eventListener {
     return function (event: CustomEvent, data?: Record<string, any>) {
-      if (process.env.NODE_ENV === 'dev') {
-        if (event.type === type) {
-          logger.warn(`转换事件发现相同事件名 ${type}，转换失败`)
-        }
-      }
-      event = new CustomEvent(type, event)
-      context.fire(event, data)
+      context.fire(
+        new CustomEvent(type, event),
+        data
+      )
     }
   },
 

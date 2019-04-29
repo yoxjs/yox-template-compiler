@@ -6,9 +6,9 @@ import Branch from './Branch'
  */
 export default interface Directive extends Branch {
 
-  name: string
+  ns: string
 
-  modifier?: string
+  name?: string
 
   expr?: ExpressionNode
 
