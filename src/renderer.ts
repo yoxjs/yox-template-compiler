@@ -11,7 +11,7 @@ import * as object from 'yox-common/src/util/object'
 import * as logger from 'yox-common/src/util/logger'
 import * as keypathUtil from 'yox-common/src/util/keypath'
 
-import Event from 'yox-common/src/util/Event'
+import CustomEvent from 'yox-common/src/util/CustomEvent'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Keypath from 'yox-expression-compiler/src/node/Keypath'
@@ -289,10 +289,13 @@ export function render(
   },
 
   createEventListener = function (type: string): signature.eventListener {
-    return function (event: Event, data?: Record<string, any>) {
+    return function (event: CustomEvent, data?: Record<string, any>) {
       if (event.type !== type) {
-        event = new Event(type, event)
+        event = new CustomEvent(type, event)
         context.fire(event, data)
+      }
+      else if (process.env.NODE_ENV === 'dev') {
+        logger.warn(`转换事件发现相同事件名 ${type}，转换失败`)
       }
     }
   },
@@ -302,11 +305,11 @@ export function render(
     args: Function | void,
     stack: any[]
   ): signature.directiveHandler {
-    return function (event?: Event, data?: Record<string, any>) {
+    return function (event?: CustomEvent, data?: Record<string, any>) {
 
       const callee = context[method]
 
-      if (event instanceof Event) {
+      if (event instanceof CustomEvent) {
 
         let result: any | void
 
