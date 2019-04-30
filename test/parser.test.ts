@@ -690,9 +690,9 @@ it('directive', () => {
 
   hasError = false
 
-  // 转换事件名称不能相同
+  // 转换组件事件名称不能相同
   try {
-    compile('<div on-click="click"></div>')
+    compile('<Dog on-click="click"/>')
   }
   catch {
     hasError = true

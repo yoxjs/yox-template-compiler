@@ -454,7 +454,6 @@ export function compile(content: string): Node[] {
       isModel = directive.ns === config.DIRECTIVE_MODEL,
 
       // on-click="xx" on-click="method()" 值只能是标识符或函数调用
-      // on-click="click" 事件转换名称不能相同
       isEvent = directive.ns === config.DIRECTIVE_EVENT
 
       if (expr) {
@@ -471,13 +470,16 @@ export function compile(content: string): Node[] {
             if (expr.type !== exprNodeType.IDENTIFIER) {
               fatal('事件指令的表达式只能是 标识符 或 函数调用')
             }
-            else if (directive.name === (expr as ExpressionIdentifier).name) {
-              fatal('事件转换的名称不能相同')
+            else if (currentElement
+              && currentElement.isComponent
+              && directive.name === (expr as ExpressionIdentifier).name
+            ) {
+              fatal('转换组件事件的名称不能相同')
             }
           }
 
           if (isModel && !expr[STATIC_KEYPATH]) {
-            fatal(`model 指令的值格式错误: [${expr.raw}]`)
+            fatal(`${directive.ns} 指令的值格式错误: [${expr.raw}]`)
           }
         }
 

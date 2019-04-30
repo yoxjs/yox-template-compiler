@@ -295,10 +295,12 @@ export function render(
 
   createEventListener = function (type: string): signature.eventListener {
     return function (event: CustomEvent, data?: Record<string, any>) {
-      context.fire(
-        new CustomEvent(type, event),
-        data
-      )
+      // 事件名称相同的情况，只可能是监听 DOM 事件，比如写一个 Button 组件
+      // <button on-click="click"> 纯粹的封装了一个原生 click 事件
+      if (type !== event.type) {
+        event = new CustomEvent(type, event)
+      }
+      context.fire(event, data)
     }
   },
 
