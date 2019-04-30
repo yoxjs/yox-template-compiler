@@ -74,12 +74,11 @@ export function render(
     }
 
     // 如果取的是 scope 上直接有的数据，如 keypath
-    if (scope[key]) {
+    if (isDef(scope[key])) {
       return scope[key]
     }
 
     // 如果取的是数组项，则要更进一步
-    // scope['$item'] 可能是 0，不能直接 if (scope['$item'])
     if (isDef(scope['$item'])) {
       scope = scope.$item
 
