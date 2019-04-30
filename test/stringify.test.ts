@@ -5,7 +5,10 @@ import { stringify } from '../src/stringify'
 it('html 元素', () => {
 
   let ast = compile(`
-    <div width="1"></div>
+    <div>
+  <!-- 反转字符串 -->
+  {{title.split('').reverse().join('')}}
+</div>
   `)
 
   console.log(JSON.stringify(ast, 4, 4))

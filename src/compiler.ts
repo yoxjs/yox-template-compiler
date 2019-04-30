@@ -1031,6 +1031,7 @@ export function compile(content: string): Node[] {
         // 获取 <tag 前面的字符
         match = content.match(tagPattern)
 
+        // 元素层级的注释都要删掉
         if (match) {
           text = string.slice(content, 0, match.index)
           if (text) {
@@ -1041,7 +1042,9 @@ export function compile(content: string): Node[] {
         }
         else {
           text = content
-          addTextChild(text)
+          addTextChild(
+            text.replace(commentPattern, env.EMPTY_STRING)
+          )
         }
 
       }
