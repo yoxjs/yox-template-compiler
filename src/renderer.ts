@@ -79,7 +79,7 @@ export function render(
     }
 
     // 如果取的是数组项，则要更进一步
-    if (isDef(scope['$item'])) {
+    if (isDef(scope.$item)) {
       scope = scope.$item
 
       // 到这里 scope 可能为空
@@ -555,7 +555,7 @@ export function render(
 
     eachKeypath = exprKeypath || keypathUtil.join($keypath, expr.raw),
 
-    callback = function (item: any, key: string | number) {
+    callback = function (item: any, key: string | number, length?: number) {
 
       let lastKeypath = $keypath, lastScope = $scope, lastKeypathStack = $stack
 
@@ -567,8 +567,11 @@ export function render(
       array.push($stack, $scope)
 
       // 从下面这几句赋值可以看出
-      // scope 至少会有 '$keypath' '$item' eachIndex 等几个值
+      // scope 至少会有 '$keypath' '$length' '$item' eachIndex 等几个值
       $scope.$keypath = $keypath
+
+      // 避免模板里频繁读取 list.length
+      $scope.$length = length
 
       // 类似 {{#each 1 -> 10}} 这样的临时循环，需要在 scope 上加上当前项
       // 因为通过 context.get() 无法获取数据
