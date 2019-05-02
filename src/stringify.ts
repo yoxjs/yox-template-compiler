@@ -502,9 +502,9 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
         )
       }
     }
+    // 不是调用方法，就是事件转换
     else if (ns === config.DIRECTIVE_EVENT) {
-      // compiler 保证了这里只能是标识符
-      result.event = toJSON((expr as ExpressionIdentifier).name)
+      result.event = toJSON(expr.raw)
     }
     // <input model="id">
     else if (ns === config.DIRECTIVE_MODEL) {

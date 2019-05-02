@@ -119,7 +119,6 @@ it('template 和 slot', () => {
     expect(ast[0].children[0].attrs).toBe(undefined)
   }
   catch (e) {
-    console.log(e)
     hasError = true
   }
   expect(hasError).toBe(false)
@@ -518,7 +517,7 @@ it('property', () => {
 
 })
 
-it('directive', () => {
+it('event', () => {
 
   let hasError = false
 
@@ -532,11 +531,40 @@ it('directive', () => {
   expect(hasError).toBe(true)
 
 
+
   hasError = false
 
-  // 函数调用只能用标识符
+  // 只能调用 methods 定义的方法
   try {
-    compile('<div o-tap="a.b()"></div>')
+    compile('<div on-click="a.b()"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+
+  hasError = false
+
+  // 事件名只能用标识符和命名空间的标识符
+  try {
+    compile('<div on-tap="123"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+
+  hasError = false
+
+  // 事件名只能用标识符和命名空间的标识符
+  try {
+    compile('<div on-tap="[]"></div>')
   }
   catch {
     hasError = true
@@ -546,6 +574,151 @@ it('directive', () => {
 
 
   hasError = false
+
+  // 只能是 name.namespace
+  try {
+    compile('<div on-tap="a.b.c"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+
+
+  hasError = false
+
+  // 事件名只能用标识符和命名空间的标识符
+  try {
+    compile('<div on-tap="list.0"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+
+
+
+  hasError = false
+
+  // 可以是一个字母
+  try {
+    compile('<div on-click="x"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(false)
+
+  hasError = false
+
+  // 可以是单词
+  try {
+    compile('<div on-click="submit"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(false)
+
+  hasError = false
+
+  // 可以是一个字母
+  try {
+    compile('<div on-click="x.y"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(false)
+
+
+  hasError = false
+
+  // 可以是单词
+  try {
+    compile('<div on-click="name.namespace"></div>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(false)
+
+
+  hasError = false
+
+  // dom 可以转换相同的事件
+  try {
+    compile('<div on-click="click"></div>')
+  }
+  catch (e) {
+    hasError = true
+  }
+
+  expect(hasError).toBe(false)
+
+
+
+  hasError = false
+
+  // 组件不能转换相同的事件
+  try {
+    compile('<Component on-click="click"></Component>')
+  }
+  catch {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+  hasError = false
+
+  // 转换后的名称不是连字符
+  try {
+    compile('<Component on-click="test-case"></Component>')
+  }
+  catch (e) {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+  // 事件名转成驼峰
+  let ast = compile('<Component on-get-out="click"></Component>')
+
+  expect(ast[0].attrs.length).toBe(1)
+  expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
+  expect(ast[0].attrs[0].name).toBe('getOut')
+
+  // 命名空间
+  ast = compile('<Button on-submit.button="click"></Button>')
+
+  expect(ast[0].attrs.length).toBe(1)
+  expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
+  expect(ast[0].attrs[0].name).toBe('submit.button')
+
+  // 转驼峰
+  ast = compile('<Button on-submit-test.button-test="click"></Button>')
+
+  expect(ast[0].attrs.length).toBe(1)
+  expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
+  expect(ast[0].attrs[0].name).toBe('submitTest.buttonTest')
+
+})
+
+it('directive', () => {
+
+  let hasError = false
 
   // model 只能用标识符或 memeber
   try {
@@ -582,16 +755,15 @@ it('directive', () => {
 
   hasError = false
 
-  // 事件名只能用标识符
+  // 函数调用只能用标识符
   try {
-    compile('<div on-tap="123"></div>')
+    compile('<div o-tap="a.b()"></div>')
   }
   catch {
     hasError = true
   }
 
   expect(hasError).toBe(true)
-
 
   hasError = false
 

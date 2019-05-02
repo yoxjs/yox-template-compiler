@@ -5,9 +5,8 @@ import { stringify } from '../src/stringify'
 it('html 元素', () => {
 
   let ast = compile(`
-    <div>
-  <!-- 反转字符串 -->
-  {{title.split('').reverse().join('')}}
+    <div on-click-name="test.case">
+
 </div>
   `)
 

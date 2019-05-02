@@ -11,7 +11,6 @@ import * as logger from 'yox-common/src/util/logger'
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as exprCompiler from 'yox-expression-compiler/src/compiler'
 import ExpressionCall from 'yox-expression-compiler/src/node/Call'
-import ExpressionIdentifier from 'yox-expression-compiler/src/node/Identifier'
 
 import * as helper from './helper'
 import * as creator from './creator'
@@ -52,6 +51,12 @@ patternCache = {},
 // 指令分隔符，如 on-click 和 lazy-click
 directiveSeparator = '-',
 
+// 没有命名空间的事件
+eventPattern = /^[_$a-z]([\w]+)?$/i,
+
+// 有命名空间的事件
+eventNamespacePattern = /^[_$a-z]([\w]+)?\.[_$a-z]([\w]+)?$/i,
+
 // 标签
 tagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i,
 
@@ -59,7 +64,8 @@ tagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i,
 commentPattern = /<!--[\s\S]*?-->/g,
 
 // 属性的 name
-attributePattern = /^\s*([-:\w]+)(['"])?(?:=(['"]))?/,
+// 支持 on-click.namespace="" 或 on-get-out="" 或 xml:xx=""
+attributePattern = /^\s*([-.:\w]+)(['"])?(?:=(['"]))?/,
 
 // 首字母大写，或中间包含 -
 componentNamePattern = /^[$A-Z]|-/,
@@ -453,7 +459,6 @@ export function compile(content: string): Node[] {
       // model="xx" model="this.x" 值只能是标识符或 Member
       isModel = directive.ns === config.DIRECTIVE_MODEL,
 
-      // on-click="xx" on-click="method()" 值只能是标识符或函数调用
       isEvent = directive.ns === config.DIRECTIVE_EVENT
 
       if (expr) {
@@ -465,14 +470,16 @@ export function compile(content: string): Node[] {
               fatal('指令表达式的类型如果是函数调用，则只能调用方法')
             }
           }
-          // 上面检测过方法调用，接下来事件指令只需要判断是否是标识符
+          // 上面检测过方法调用，接下来事件指令只需要判断是否以下两种格式：
+          // on-click="name" 或 on-click="name.namespace"
           else if (isEvent) {
-            if (expr.type !== exprNodeType.IDENTIFIER) {
-              fatal('事件指令的表达式只能是 标识符 或 函数调用')
+            const { raw } = expr
+            if (!eventPattern.test(raw) && !eventNamespacePattern.test(raw)) {
+              fatal('事件转换名称只能是 [name] 或 [name.namespace] 格式')
             }
             else if (currentElement
               && currentElement.isComponent
-              && directive.name === (expr as ExpressionIdentifier).name
+              && directive.name === expr.raw
             ) {
               fatal('转换组件事件的名称不能相同')
             }
