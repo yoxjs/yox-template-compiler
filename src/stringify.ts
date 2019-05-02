@@ -111,7 +111,7 @@ CODE_SUFFIX = `}`
 let isStringRequired: boolean | void
 
 function stringifyObject(obj: Object): string {
-  const fields = []
+  const fields: string[] = []
   object.each(
     obj,
     function (value: any, key: string) {
@@ -261,7 +261,7 @@ function trimArgs(list: (string | void)[]) {
     function (arg: string | void) {
       if (isDef(arg)) {
         removable = env.FALSE
-        array.unshift(args, arg)
+        array.unshift(args, arg as string)
       }
       else if (!removable) {
         array.unshift(args, STRING_FALSE)
@@ -286,7 +286,9 @@ function renderElement(data: string, attrs: string | void, childs: string | void
 
 function getComponentSlots(children: Node[]): string | void {
 
-  const slots = {},
+  const result: Record<string, string> = {},
+
+  slots: Record<string, Node[]> = {},
 
   addSlot = function (name: string, nodes: Node[] | void) {
 
@@ -294,7 +296,7 @@ function getComponentSlots(children: Node[]): string | void {
       name = config.SLOT_DATA_PREFIX + name
       array.push(
         slots[name] || (slots[name] = []),
-        nodes
+        nodes as Node[]
       )
     }
 
@@ -323,14 +325,14 @@ function getComponentSlots(children: Node[]): string | void {
     slots,
     function (children: any, name: string) {
       // 强制为复杂节点，因为 slot 的子节点不能用字符串拼接的方式来渲染
-      slots[name] = stringifyFunction(
+      result[name] = stringifyFunction(
         stringifyChildren(children, env.TRUE)
       )
     }
   )
 
-  if (!object.falsy(slots)) {
-    return stringifyObject(slots)
+  if (!object.falsy(result)) {
+    return stringifyObject(result)
   }
 
 }

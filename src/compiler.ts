@@ -123,16 +123,16 @@ function trimBreakline(content: string): string {
   )
 }
 
-export function compile(content: string): Node[] {
+export function compile(content: string): Branch[] {
 
-  let nodeList: Node[] = compileCache[content]
+  let nodeList: Branch[] = compileCache[content]
   if (nodeList) {
     return nodeList
   }
 
   nodeList = []
 
-  let nodeStack: Node[] = [],
+  let nodeStack: Branch[] = [],
 
   // 持有 if/elseif/else 节点
   ifStack: Node[] = [],
@@ -181,18 +181,19 @@ export function compile(content: string): Node[] {
    */
   popSelfClosingElementIfNeeded = function (popingTagName?: string) {
     const lastNode = array.last(nodeStack)
-    if (lastNode
-      && lastNode.type === nodeType.ELEMENT
-      && lastNode.tag !== popingTagName
-      && array.has(selfClosingTagNames, lastNode.tag)
-    ) {
-      popStack(lastNode.type, lastNode.tag)
+    if (lastNode && lastNode.type === nodeType.ELEMENT) {
+      const element = lastNode as Element
+      if (element.tag !== popingTagName
+        && array.has(selfClosingTagNames, element.tag)
+      ) {
+        popStack(element.type, element.tag)
+      }
     }
   },
 
   popStack = function (type: number, tagName?: string) {
 
-    const node: Branch = array.pop(nodeStack)
+    const node = array.pop(nodeStack)
 
     if (node && node.type === type) {
 
@@ -209,7 +210,8 @@ export function compile(content: string): Node[] {
 
       isDirective = type === nodeType.DIRECTIVE
 
-      const currentBranch: Branch = array.last(nodeStack)
+      const currentBranch = array.last(nodeStack)
+
       if (currentBranch) {
         if (currentBranch.isStatic && !node.isStatic) {
           currentBranch.isStatic = env.FALSE
@@ -640,7 +642,7 @@ export function compile(content: string): Node[] {
 
   replaceChild = function (oldNode: Node, newNode?: Node) {
 
-    let currentBranch: Branch | void = array.last(nodeStack),
+    let currentBranch = array.last(nodeStack),
 
     isAttr: boolean | void,
 
@@ -696,12 +698,12 @@ export function compile(content: string): Node[] {
       popSelfClosingElementIfNeeded()
     }
 
-    const type = node.type, currentBranch: Branch = array.last(nodeStack)
+    const type = node.type, currentBranch = array.last(nodeStack)
 
     // else 系列只是 if 的递进节点，不需要加入 nodeList
     if (type === nodeType.ELSE || type === nodeType.ELSE_IF) {
 
-      const lastNode = array.pop(ifStack)
+      const lastNode: any = array.pop(ifStack)
 
       if (lastNode) {
 
@@ -830,7 +832,7 @@ export function compile(content: string): Node[] {
             if (process.env.NODE_ENV === 'dev') {
               if (tag === env.RAW_TEMPLATE) {
                 const lastNode = array.last(nodeStack)
-                if (!lastNode || !lastNode.isComponent) {
+                if (!lastNode || !(lastNode as Element).isComponent) {
                   fatal('<template> 只能写在组件标签内')
                 }
               }

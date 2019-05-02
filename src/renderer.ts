@@ -373,18 +373,16 @@ export function render(
     if (vnodeList) {
       const lastVnode = array.last(vnodeList)
       if (lastVnode && lastVnode.isText) {
-        lastVnode.text += text
+        (lastVnode.text as string) += text
       }
       else {
-        array.push(
-          vnodeList,
-          {
-            isText: env.TRUE,
-            text,
-            context,
-            keypath: $keypath,
-          }
-        )
+        const textVnode: any = {
+          isText: env.TRUE,
+          text,
+          context,
+          keypath: $keypath,
+        }
+        array.push(vnodeList, textVnode)
       }
     }
   },
@@ -486,17 +484,19 @@ export function render(
 
     const vnodeList = array.last(vnodeStack), vnodes = context.get(name)
 
-    if (vnodes) {
-      array.each(
-        vnodes,
-        function (vnode: any) {
-          array.push(vnodeList, vnode)
-          vnode.parent = context
-        }
-      )
-    }
-    else if (defaultRender) {
-      defaultRender()
+    if (vnodeList) {
+      if (vnodes) {
+        array.each(
+          vnodes,
+          function (vnode: any) {
+            array.push(vnodeList, vnode)
+            vnode.parent = context
+          }
+        )
+      }
+      else if (defaultRender) {
+        defaultRender()
+      }
     }
 
   },
