@@ -1,4 +1,5 @@
 import * as config from 'yox-config/index'
+import * as signature from 'yox-type/index'
 
 import isDef from 'yox-common/src/function/isDef'
 import isUndef from 'yox-common/src/function/isUndef'
@@ -341,7 +342,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   let { tag, isComponent, isSvg, isStyle, isStatic, isComplex, name, ref, key, html, attrs, children } = node,
 
-  data: Record<string, any> = {},
+  data: signature.data = {},
 
   elementAttrs: string[] = [],
 
@@ -441,7 +442,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 }
 
 nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
-  const result: Record<string, any> = {
+  const result: signature.data = {
     type: node.type,
     name: toJSON(node.name),
     binding: node.binding,
@@ -456,7 +457,7 @@ nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
 }
 
 nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
-  const result: Record<string, any> = {
+  const result: signature.data = {
     type: node.type,
     name: toJSON(node.name),
     hint: node.hint,
@@ -475,7 +476,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 
   const { type, ns, value, expr } = node,
 
-  result: Record<string, any> = {
+  result: signature.data = {
     // renderer 遍历 attrs 要用 type
     type,
     ns: toJSON(ns),

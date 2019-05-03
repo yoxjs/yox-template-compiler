@@ -45,11 +45,11 @@ export function render(
 
   let $keypath = env.EMPTY_STRING,
 
-  $scope: Record<string, any> = { $keypath },
+  $scope: signature.data = { $keypath },
 
   $stack = [$keypath, $scope],
 
-  eventScope: Record<string, any> | void,
+  eventScope: signature.data | void,
 
   vnodeStack: VNode[][] = [],
 
@@ -68,12 +68,12 @@ export function render(
       defaultKeypath = keypath
     }
 
-    // eventScore 只有 event 和 data 两种值
+    // eventScore 只有 $event 和 $data 两种值
     if (eventScope && eventScope[key]) {
       return eventScope[key]
     }
 
-    // 如果取的是 scope 上直接有的数据，如 keypath
+    // 如果取的是 scope 上直接有的数据，如 $keypath
     if (isDef(scope[key])) {
       return scope[key]
     }
@@ -90,7 +90,7 @@ export function render(
         return scope
       }
       // 取 this.xx
-      if (scope && isDef(scope[key])) {
+      if (scope != env.NULL && isDef(scope[key])) {
         return scope[key]
       }
     }
@@ -140,7 +140,7 @@ export function render(
 
   },
 
-  addBinding = function (vnode: any, attr: Record<string, any>): any {
+  addBinding = function (vnode: any, attr: signature.data): any {
 
     const { expr } = attr,
 
@@ -170,7 +170,7 @@ export function render(
 
   },
 
-  spreadObject = function (vnode: any, attr: Record<string, any>) {
+  spreadObject = function (vnode: any, attr: signature.data) {
 
     let { expr } = attr,
 
@@ -212,7 +212,7 @@ export function render(
     }
   },
 
-  addDirective = function (vnode: any, attr: Record<string, any>) {
+  addDirective = function (vnode: any, attr: signature.data) {
 
     let { ns, name, value } = attr,
 
@@ -224,7 +224,7 @@ export function render(
 
     getter: signature.directiveGetter | void,
 
-    handler: signature.directiveHandler | signature.eventListener | void,
+    handler: signature.directiveHandler | signature.listener | void,
 
     transition: TransitionHooks | void
 
@@ -292,8 +292,8 @@ export function render(
 
   },
 
-  createEventListener = function (type: string): signature.eventListener {
-    return function (event: CustomEvent, data?: Record<string, any>) {
+  createEventListener = function (type: string): signature.listener {
+    return function (event: CustomEvent, data?: signature.data) {
       // 事件名称相同的情况，只可能是监听 DOM 事件，比如写一个 Button 组件
       // <button on-click="click"> 纯粹的封装了一个原生 click 事件
       if (type !== event.type) {
@@ -304,13 +304,13 @@ export function render(
   },
 
   createMethodListener = function (
-    method: string,
+    name: string,
     args: Function | void,
     stack: any[]
   ): signature.directiveHandler {
-    return function (event?: CustomEvent, data?: Record<string, any>) {
+    return function (event?: CustomEvent, data?: signature.data) {
 
-      const callee = context[method]
+      const method = context[name]
 
       if (event instanceof CustomEvent) {
 
@@ -322,12 +322,12 @@ export function render(
             $event: event,
             $data: data,
           }
-          result = execute(callee, context, args(stack))
+          result = execute(method, context, args(stack))
           // 阅后即焚
           eventScope = env.UNDEFINED
         }
         else {
-          result = execute(callee, context, data ? [event, data] : event)
+          result = execute(method, context, data ? [event, data] : event)
         }
 
         if (result === env.FALSE) {
@@ -336,7 +336,7 @@ export function render(
       }
       else {
         execute(
-          callee,
+          method,
           context,
           args ? args(stack) : env.UNDEFINED
         )
@@ -388,7 +388,7 @@ export function render(
   },
 
   renderElementVnode = function (
-    vnode: Record<string, any>,
+    vnode: signature.data,
     attrs: any[] | void,
     childs: Function | void,
     slots: Record<string, Function> | void
