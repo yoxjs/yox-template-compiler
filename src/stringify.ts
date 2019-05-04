@@ -594,14 +594,14 @@ nodeStringify[nodeType.EACH] = function (node: Each): string {
 
   const expr = toJSON(node.expr),
 
-  index = node.index ? `, ${toJSON(node.index)}` : env.EMPTY_STRING,
+  index = node.index ? `${SEP_COMMA}${toJSON(node.index)}` : env.EMPTY_STRING,
 
   // compiler 保证了 children 一定有值
   children = stringifyFunction(
     stringifyChildren(node.children as Node[], node.isComplex)
   )
 
-  return stringifyCall(RENDER_EACH, `${expr}${index},${children}`)
+  return stringifyCall(RENDER_EACH, `${expr}${index}${SEP_COMMA}${children}`)
 
 }
 
@@ -614,7 +614,7 @@ nodeStringify[nodeType.PARTIAL] = function (node: Partial): string {
     stringifyChildren(node.children as Node[], node.isComplex)
   )
 
-  return stringifyCall(RENDER_PARTIAL, `${name},${children}`)
+  return stringifyCall(RENDER_PARTIAL, `${name}${SEP_COMMA}${children}`)
 
 }
 
