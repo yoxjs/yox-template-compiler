@@ -19,7 +19,7 @@ import Keypath from 'yox-expression-compiler/src/node/Keypath'
 
 import * as exprExecutor from 'yox-expression-compiler/src/executor'
 
-import * as signature from 'yox-type/src/type'
+import * as type from 'yox-type/src/type'
 
 import Yox from 'yox-type/src/interface/Yox'
 import VNode from 'yox-type/src/vnode/VNode'
@@ -45,11 +45,11 @@ export function render(
 
   let $keypath = env.EMPTY_STRING,
 
-  $scope: signature.data = { $keypath },
+  $scope: type.data = { $keypath },
 
   $stack = [$keypath, $scope],
 
-  eventScope: signature.data | void,
+  eventScope: type.data | void,
 
   vnodeStack: VNode[][] = [],
 
@@ -140,7 +140,7 @@ export function render(
 
   },
 
-  addBinding = function (vnode: any, attr: signature.data): any {
+  addBinding = function (vnode: any, attr: type.data): any {
 
     const { expr } = attr,
 
@@ -170,7 +170,7 @@ export function render(
 
   },
 
-  spreadObject = function (vnode: any, attr: signature.data) {
+  spreadObject = function (vnode: any, attr: type.data) {
 
     let { expr } = attr,
 
@@ -212,7 +212,7 @@ export function render(
     }
   },
 
-  addDirective = function (vnode: any, attr: signature.data) {
+  addDirective = function (vnode: any, attr: type.data) {
 
     let { ns, name, value } = attr,
 
@@ -222,9 +222,9 @@ export function render(
 
     hooks: DirectiveHooks | void,
 
-    getter: signature.directiveGetter | void,
+    getter: type.directiveGetter | void,
 
-    handler: signature.directiveHandler | signature.listener | void,
+    handler: type.directiveHandler | type.listener | void,
 
     transition: TransitionHooks | void
 
@@ -292,8 +292,8 @@ export function render(
 
   },
 
-  createEventListener = function (type: string): signature.listener {
-    return function (event: CustomEvent, data?: signature.data) {
+  createEventListener = function (type: string): type.listener {
+    return function (event: CustomEvent, data?: type.data) {
       // 事件名称相同的情况，只可能是监听 DOM 事件，比如写一个 Button 组件
       // <button on-click="click"> 纯粹的封装了一个原生 click 事件
       if (type !== event.type) {
@@ -307,8 +307,8 @@ export function render(
     name: string,
     args: Function | void,
     stack: any[]
-  ): signature.directiveHandler {
-    return function (event?: CustomEvent, data?: signature.data) {
+  ): type.directiveHandler {
+    return function (event?: CustomEvent, data?: type.data) {
 
       const method = context[name]
 
@@ -345,7 +345,7 @@ export function render(
     }
   },
 
-  createGetter = function (getter: Function, stack: any[]): signature.directiveGetter {
+  createGetter = function (getter: Function, stack: any[]): type.directiveGetter {
     return function () {
       return getter(stack)
     }
@@ -388,7 +388,7 @@ export function render(
   },
 
   renderElementVnode = function (
-    vnode: signature.data,
+    vnode: type.data,
     attrs: any[] | void,
     childs: Function | void,
     slots: Record<string, Function> | void
@@ -488,7 +488,7 @@ export function render(
       if (vnodes) {
         array.each(
           vnodes,
-          function (vnode: any) {
+          function (vnode: VNode) {
             array.push(vnodeList, vnode)
             vnode.parent = context
           }
