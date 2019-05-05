@@ -1,4 +1,4 @@
-import * as config from 'yox-config/index'
+import * as config from 'yox-config/src/config'
 
 import isDef from 'yox-common/src/function/isDef'
 import isUndef from 'yox-common/src/function/isUndef'
@@ -19,9 +19,9 @@ import Keypath from 'yox-expression-compiler/src/node/Keypath'
 
 import * as exprExecutor from 'yox-expression-compiler/src/executor'
 
-import * as signature from 'yox-type/index'
+import * as signature from 'yox-type/src/type'
 
-import Yox from 'yox-type/src/Yox'
+import Yox from 'yox-type/src/interface/Yox'
 import VNode from 'yox-type/src/vnode/VNode'
 import DirectiveHooks from 'yox-type/src/hooks/Directive'
 import TransitionHooks from 'yox-type/src/hooks/Transition'

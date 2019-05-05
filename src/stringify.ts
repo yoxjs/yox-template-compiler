@@ -1,5 +1,5 @@
-import * as config from 'yox-config/index'
-import * as signature from 'yox-type/index'
+import * as config from 'yox-config/src/config'
+import * as signature from 'yox-type/src/type'
 
 import isDef from 'yox-common/src/function/isDef'
 import isUndef from 'yox-common/src/function/isUndef'
