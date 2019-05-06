@@ -21,10 +21,10 @@
   },
   "homepage": "https://github.com/yoxjs/yox-template-compiler#readme",
   "dependencies": {
-    "yox-common": "^0.18.45",
+    "yox-common": "^0.18.46",
     "yox-config": "^0.1.7",
-    "yox-expression-compiler": "^0.16.39",
-    "yox-type": "^0.0.62"
+    "yox-expression-compiler": "^0.16.40",
+    "yox-type": "^0.0.63"
   },
   "devDependencies": {
     "@types/node": "^11.13.7"

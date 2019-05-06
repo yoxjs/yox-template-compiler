@@ -55,7 +55,7 @@ export function render(
 
   localPartials: Record<string, Function> = {},
 
-  lookup = function (stack: any[], index: number, key: string, node: Keypath, depIgnore?: boolean, defaultKeypath?: string) {
+  lookup = function (stack: any[], index: number, key: string, node: Keypath, depIgnore?: true, defaultKeypath?: string) {
 
     let keypath = keypathUtil.join(stack[index], key),
 
@@ -118,7 +118,7 @@ export function render(
 
   },
 
-  getValue = function (expr: ExpressionNode, depIgnore?: boolean, stack?: any[]): any {
+  getValue = function (expr: ExpressionNode, depIgnore?: true, stack?: any[]): any {
 
     const renderStack = stack || $stack,
 
