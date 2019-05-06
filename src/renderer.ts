@@ -224,7 +224,7 @@ export function render(
 
     getter: type.directiveGetter | void,
 
-    handler: type.directiveHandler | type.listener | void,
+    handler: type.listener | void,
 
     transition: TransitionHooks | void
 
@@ -307,8 +307,8 @@ export function render(
     name: string,
     args: Function | void,
     stack: any[]
-  ): type.directiveHandler {
-    return function (event?: CustomEvent, data?: type.data) {
+  ): type.listener {
+    return function (event: CustomEvent, data?: type.data) {
 
       const method = context[name]
 
