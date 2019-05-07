@@ -581,16 +581,18 @@ nodeStringify[nodeType.IF] = function (node: If): string {
 
 nodeStringify[nodeType.EACH] = function (node: Each): string {
 
-  const expr = toJSON(node.expr),
-
-  index = node.index ? `${SEP_COMMA}${toJSON(node.index)}` : env.EMPTY_STRING,
-
   // compiler 保证了 children 一定有值
-  children = stringifyFunction(
+  const generate = stringifyFunction(
     stringifyChildren(node.children as Node[], node.isComplex)
   )
 
-  return stringifyCall(RENDER_EACH, `${expr}${index}${SEP_COMMA}${children}`)
+  return stringifyCall(
+    RENDER_EACH,
+    array.join(
+      trimArgs([generate, toJSON(node.expr), node.index ? toJSON(node.index) : env.UNDEFINED]),
+      SEP_COMMA
+    )
+  )
 
 }
 

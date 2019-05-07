@@ -30,7 +30,6 @@ import Attribute from './node/Attribute'
 import Directive from './node/Directive'
 import Property from './node/Property'
 import Expression from './node/Expression'
-import isUndef from '../../dist/yox-common/src/function/isUndef';
 
 // 当前不位于 block 之间
 const BLOCK_MODE_NONE = 1,
@@ -439,80 +438,74 @@ export function compile(content: string): Branch[] {
 
     const { text } = child
 
-    // lazy 不需要编译表达式
-    // 因为 lazy 的值必须是大于 0 的数字
-    if (directive.ns === config.DIRECTIVE_LAZY) {
-      if (is.numeric(text)) {
-        const value = toNumber(text)
-        if (value > 0) {
-          directive.value = value
+    // 指令的值是纯文本，可以预编译表达式，提升性能
+    const expr = exprCompiler.compile(text),
+
+    // model="xx" model="this.x" 值只能是标识符或 Member
+    isModel = directive.ns === config.DIRECTIVE_MODEL,
+
+    // lazy 的值必须是大于 0 的数字
+    isLazy = directive.ns === config.DIRECTIVE_LAZY,
+
+    // 校验事件名称
+    isEvent = directive.ns === config.DIRECTIVE_EVENT
+
+    if (expr) {
+
+      if (process.env.NODE_ENV === 'dev') {
+
+        const { raw } = expr
+
+        if (isLazy) {
+          if (expr.type !== exprNodeType.LITERAL
+            || !is.number((expr as ExpressionLiteral).value)
+            || (expr as ExpressionLiteral).value <= 0
+          ) {
+            fatal(`lazy 指令的值 [${raw}] 必须是大于 0 的数字`)
+          }
         }
-        else if (process.env.NODE_ENV === 'dev') {
-          fatal(`lazy 指令的值 [${text}] 必须大于 0`)
+
+        // 如果指令表达式是函数调用，则只能调用方法（难道还有别的可以调用的吗？）
+        else if (expr.type === exprNodeType.CALL) {
+          if ((expr as ExpressionCall).name.type !== exprNodeType.IDENTIFIER) {
+            fatal('指令表达式的类型如果是函数调用，则只能调用方法')
+          }
         }
+
+        // 上面检测过方法调用，接下来事件指令只需要判断是否以下两种格式：
+        // on-click="name" 或 on-click="name.namespace"
+        else if (isEvent) {
+          if (!eventPattern.test(raw) && !eventNamespacePattern.test(raw)) {
+            fatal('事件转换名称只能是 [name] 或 [name.namespace] 格式')
+          }
+          else if (currentElement
+            && currentElement.isComponent
+            && directive.name === raw
+          ) {
+            fatal('转换组件事件的名称不能相同')
+          }
+        }
+
+        if (isModel && !expr[STATIC_KEYPATH]) {
+          fatal(`${directive.ns} 指令的值格式错误: [${raw}]`)
+        }
+
       }
-      else if (process.env.NODE_ENV === 'dev') {
-        fatal(`lazy 指令的值 [${text}] 必须是数字`)
-      }
+
+      directive.expr = expr
+
+      directive.value = expr.type === exprNodeType.LITERAL
+        ? (expr as ExpressionLiteral).value
+        : text
+
     }
     else {
-
-      // 指令的值是纯文本，可以预编译表达式，提升性能
-      const expr = exprCompiler.compile(text),
-
-      // model="xx" model="this.x" 值只能是标识符或 Member
-      isModel = directive.ns === config.DIRECTIVE_MODEL,
-
-      isEvent = directive.ns === config.DIRECTIVE_EVENT
-
-      if (expr) {
-
-        if (process.env.NODE_ENV === 'dev') {
-          // 如果指令表达式是函数调用，则只能调用方法（难道还有别的好调用的吗？）
-          if (expr.type === exprNodeType.CALL) {
-            if ((expr as ExpressionCall).name.type !== exprNodeType.IDENTIFIER) {
-              fatal('指令表达式的类型如果是函数调用，则只能调用方法')
-            }
-          }
-          // 上面检测过方法调用，接下来事件指令只需要判断是否以下两种格式：
-          // on-click="name" 或 on-click="name.namespace"
-          else if (isEvent) {
-            const { raw } = expr
-            if (!eventPattern.test(raw) && !eventNamespacePattern.test(raw)) {
-              fatal('事件转换名称只能是 [name] 或 [name.namespace] 格式')
-            }
-            else if (currentElement
-              && currentElement.isComponent
-              && directive.name === expr.raw
-            ) {
-              fatal('转换组件事件的名称不能相同')
-            }
-          }
-
-          if (isModel && !expr[STATIC_KEYPATH]) {
-            fatal(`${directive.ns} 指令的值格式错误: [${expr.raw}]`)
-          }
+      if (process.env.NODE_ENV === 'dev') {
+        if (isModel || isEvent) {
+          fatal(`${directive.ns} 指令的表达式错误: [${text}]`)
         }
-
-        directive.expr = expr
-
-        if (expr.type === exprNodeType.LITERAL) {
-          directive.value = (expr as ExpressionLiteral).value
-        }
-        else {
-          directive.value = text
-        }
-
       }
-      else {
-        if (process.env.NODE_ENV === 'dev') {
-          if (isModel || isEvent) {
-            fatal(`${directive.ns} 指令的表达式错误: [${text}]`)
-          }
-        }
-        directive.value = text
-      }
-
+      directive.value = text
     }
 
     directive.children = env.UNDEFINED

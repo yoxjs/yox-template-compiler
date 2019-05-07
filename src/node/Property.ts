@@ -12,7 +12,7 @@ export default interface Property extends Branch {
 
   hint: type.hint
 
-  value?: any
+  value?: string | number | boolean
 
   expr?: ExpressionNode
 

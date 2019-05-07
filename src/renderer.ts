@@ -49,8 +49,6 @@ export function render(
 
   $stack = [$keypath, $scope],
 
-  eventScope: type.data | void,
-
   vnodeStack: VNode[][] = [],
 
   localPartials: Record<string, Function> = {},
@@ -66,11 +64,6 @@ export function render(
     // 如果最后还是取不到值，用回最初的 keypath
     if (isUndef(defaultKeypath)) {
       defaultKeypath = keypath
-    }
-
-    // eventScore 只有 $event 和 $data 两种值
-    if (eventScope && eventScope[key]) {
-      return eventScope[key]
     }
 
     // 如果取的是 scope 上直接有的数据，如 $keypath
@@ -305,14 +298,14 @@ export function render(
         let result: any | void
 
         if (args) {
-          // 给当前 scope 加上 event 和 data
-          eventScope = {
-            $event: event,
-            $data: data,
+          const scope = array.last(stack)
+          if (scope) {
+            scope.$event = event
+            scope.$data = data
+            result = execute(method, context, args(stack))
+            scope.$event =
+            scope.$data = env.UNDEFINED
           }
-          result = execute(method, context, args(stack))
-          // 阅后即焚
-          eventScope = env.UNDEFINED
         }
         else {
           result = execute(method, context, data ? [event, data] : event)
@@ -469,7 +462,9 @@ export function render(
   // <slot name="xx"/>
   renderSlot = function (name: string, defaultRender?: Function) {
 
-    const vnodeList = array.last(vnodeStack), vnodes = context.get(name)
+    const vnodeList = array.last(vnodeStack),
+
+    vnodes = context.get(name)
 
     if (vnodeList) {
       if (vnodes) {
@@ -499,7 +494,6 @@ export function render(
   renderImport = function (name: string) {
     if (localPartials[name]) {
       localPartials[name]()
-      return
     }
     else {
       const partial = partials[name]
@@ -515,26 +509,14 @@ export function render(
           renderImport,
           renderEach
         )
-        return
       }
-    }
-    if (process.env.NODE_ENV === 'dev') {
-      logger.fatal(`partial [${name}] is not found.`)
+      else if (process.env.NODE_ENV === 'dev') {
+        logger.fatal(`partial [${name}] is not found.`)
+      }
     }
   },
 
-  renderEach = function (expr: ExpressionNode, index: string | Function | void, handler?: Function) {
-
-    let eachIndex: string | void, eachHandler: Function
-
-    if (is.func(index)) {
-      eachHandler = index as Function
-      eachIndex = env.UNDEFINED
-    }
-    else {
-      eachHandler = handler as Function
-      eachIndex = index as string
-    }
+  renderEach = function (handler: Function, expr: ExpressionNode, index: string | void) {
 
     const value = getValue(expr),
 
@@ -554,7 +536,7 @@ export function render(
       array.push($stack, $scope)
 
       // 从下面这几句赋值可以看出
-      // scope 至少会有 '$keypath' '$length' '$item' eachIndex 等几个值
+      // scope 至少会有 '$keypath' '$length' '$item' index 等几个值
       $scope.$keypath = $keypath
 
       // 避免模板里频繁读取 list.length
@@ -566,11 +548,11 @@ export function render(
         $scope.$item = item
       }
 
-      if (eachIndex) {
-        $scope[eachIndex] = key
+      if (index) {
+        $scope[index] = key
       }
 
-      eachHandler(item, key)
+      handler()
 
       $keypath = lastKeypath
       $scope = lastScope
