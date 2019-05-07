@@ -1,4 +1,4 @@
-import ExpressionNode from '../../../yox-expression-compiler/src/node/Node'
+import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Branch from './Branch'
 import ElseIf from './ElseIf'
 import Else from './Else'
