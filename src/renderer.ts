@@ -37,9 +37,9 @@ function setPair(target: any, name: string, key: string, value: any) {
 export function render(
   context: Yox,
   filters: Record<string, Function>,
-  partials: Record<string, Function | void>,
-  directives: Record<string, DirectiveHooks | void>,
-  transitions: Record<string, TransitionHooks | void>,
+  partials: Record<string, Function>,
+  directives: Record<string, DirectiveHooks>,
+  transitions: Record<string, TransitionHooks>,
   template: Function
 ) {
 
@@ -146,25 +146,21 @@ export function render(
 
     value = getValue(expr, env.TRUE),
 
-    key = keypathUtil.join(config.DIRECTIVE_BINDING, attr.name),
+    key = keypathUtil.join(config.DIRECTIVE_BINDING, attr.name)
 
-    hooks = directives[config.DIRECTIVE_BINDING]
-
-    if (hooks) {
-      setPair(
-        vnode,
-        'directives',
+    setPair(
+      vnode,
+      'directives',
+      key,
+      {
+        ns: config.DIRECTIVE_BINDING,
+        name: attr.name,
         key,
-        {
-          ns: config.DIRECTIVE_BINDING,
-          name: attr.name,
-          key,
-          hooks,
-          binding: expr.ak,
-          hint: attr.hint,
-        }
-      )
-    }
+        hooks: directives[config.DIRECTIVE_BINDING],
+        binding: expr.ak,
+        hint: attr.hint,
+      }
+    )
 
     return value
 
@@ -188,22 +184,19 @@ export function render(
 
       const absoluteKeypath = expr.ak
       if (absoluteKeypath) {
-        const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath),
-        hooks = directives[config.DIRECTIVE_BINDING]
-        if (hooks) {
-          setPair(
-            vnode,
-            'directives',
+        const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath)
+        setPair(
+          vnode,
+          'directives',
+          key,
+          {
+            ns: config.DIRECTIVE_BINDING,
+            name: env.EMPTY_STRING,
             key,
-            {
-              ns: config.DIRECTIVE_BINDING,
-              name: env.EMPTY_STRING,
-              key,
-              hooks,
-              binding: keypathUtil.join(absoluteKeypath, '*'),
-            }
-          )
-        }
+            hooks: directives[config.DIRECTIVE_BINDING],
+            binding: keypathUtil.join(absoluteKeypath, '*'),
+          }
+        )
       }
 
     }
@@ -214,19 +207,15 @@ export function render(
 
   addDirective = function (vnode: any, attr: type.data) {
 
-    let { ns, name, value } = attr,
-
-    key = keypathUtil.join(ns, name),
+    let { ns, name, key, value } = attr,
 
     binding: string | void,
 
     hooks: DirectiveHooks | void,
 
-    getter: type.directiveGetter | void,
+    getter: type.getter | void,
 
-    handler: type.listener | void,
-
-    transition: TransitionHooks | void
+    handler: type.listener | void
 
     switch (ns) {
 
@@ -238,12 +227,11 @@ export function render(
         break
 
       case env.RAW_TRANSITION:
-        transition = transitions[value]
-        if (transition) {
-          vnode.transition = transition
-        }
-        else if (process.env.NODE_ENV === 'dev') {
-          logger.fatal(`transition [${value}] is not found.`)
+        vnode.transition = transitions[value]
+        if (process.env.NODE_ENV === 'dev') {
+          if (!vnode.transition) {
+            logger.fatal(`transition [${value}] is not found.`)
+          }
         }
         return
 
@@ -287,7 +275,7 @@ export function render(
       )
     }
     else if (process.env.NODE_ENV === 'dev') {
-      logger.fatal(`directive [${key}] is not found.`)
+      logger.fatal(`directive [${name}] is not found.`)
     }
 
   },
@@ -330,9 +318,8 @@ export function render(
           result = execute(method, context, data ? [event, data] : event)
         }
 
-        if (result === env.FALSE) {
-          event.prevent().stop()
-        }
+        return result
+
       }
       else {
         execute(
@@ -345,7 +332,7 @@ export function render(
     }
   },
 
-  createGetter = function (getter: Function, stack: any[]): type.directiveGetter {
+  createGetter = function (getter: Function, stack: any[]): type.getter {
     return function () {
       return getter(stack)
     }

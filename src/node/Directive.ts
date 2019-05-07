@@ -8,7 +8,9 @@ export default interface Directive extends Branch {
 
   ns: string
 
-  name?: string
+  name: string
+
+  key: string
 
   expr?: ExpressionNode
 

@@ -11,6 +11,7 @@ import * as logger from '../../yox-common/src/util/logger'
 import * as exprNodeType from '../../yox-expression-compiler/src/nodeType'
 import * as exprCompiler from '../../yox-expression-compiler/src/compiler'
 import ExpressionCall from '../../yox-expression-compiler/src/node/Call'
+import ExpressionLiteral from '../../yox-expression-compiler/src/node/Literal'
 
 import * as helper from './helper'
 import * as creator from './creator'
@@ -29,6 +30,7 @@ import Attribute from './node/Attribute'
 import Directive from './node/Directive'
 import Property from './node/Property'
 import Expression from './node/Expression'
+import isUndef from '../../dist/yox-common/src/function/isUndef';
 
 // 当前不位于 block 之间
 const BLOCK_MODE_NONE = 1,
@@ -494,14 +496,22 @@ export function compile(content: string): Branch[] {
 
         directive.expr = expr
 
-      }
-      else if (process.env.NODE_ENV === 'dev') {
-        if (isModel || isEvent) {
-          fatal(`${directive.ns} 指令的表达式错误: [${text}]`)
+        if (expr.type === exprNodeType.LITERAL) {
+          directive.value = (expr as ExpressionLiteral).value
         }
-      }
+        else {
+          directive.value = text
+        }
 
-      directive.value = text
+      }
+      else {
+        if (process.env.NODE_ENV === 'dev') {
+          if (isModel || isEvent) {
+            fatal(`${directive.ns} 指令的表达式错误: [${text}]`)
+          }
+        }
+        directive.value = text
+      }
 
     }
 
@@ -889,7 +899,8 @@ export function compile(content: string): Branch[] {
 
           if (name === config.DIRECTIVE_MODEL || name === env.RAW_TRANSITION) {
             node = creator.createDirective(
-              string.camelize(name)
+              string.camelize(name),
+              env.EMPTY_STRING
             )
           }
           // 这里要用 on- 判断前缀，否则 on 太容易重名了

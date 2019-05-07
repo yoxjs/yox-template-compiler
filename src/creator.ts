@@ -1,4 +1,8 @@
+import * as type from '../../yox-type/src/type'
+
 import * as env from '../../yox-common/src/util/env'
+import * as keypathUtil from '../../yox-common/src/util/keypath'
+
 import ExpressionNode from '../../yox-expression-compiler/src/node/Node'
 
 import * as nodeType from './nodeType'
@@ -26,18 +30,19 @@ export function createAttribute(name: string): Attribute {
   }
 }
 
-export function createDirective(ns: string, name?: string, value?: string | number, expr?: ExpressionNode, children?: Node[]): Directive {
+export function createDirective(ns: string, name: string, value?: string | number | boolean, expr?: ExpressionNode, children?: Node[]): Directive {
   return {
     type: nodeType.DIRECTIVE,
     ns,
     name,
+    key: keypathUtil.join(ns, name),
     value,
     expr,
     children,
   }
 }
 
-export function createProperty(name: string, hint: number, value?: string | number | boolean, expr?: ExpressionNode, children?: Node[]): Property {
+export function createProperty(name: string, hint: type.hint, value?: string | number | boolean, expr?: ExpressionNode, children?: Node[]): Property {
   return {
     type: nodeType.PROPERTY,
     isStatic: env.TRUE,

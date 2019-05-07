@@ -317,7 +317,7 @@ function getComponentSlots(children: Node[]): string | void {
       }
 
       // 匿名 slot，名称统一为 children
-      addSlot('children', [child])
+      addSlot(config.SLOT_NAME_DEFAULT, [child])
 
     }
   )
@@ -344,11 +344,11 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   data: type.data = {},
 
-  elementAttrs: string[] = [],
+  outputAttrs: string[] = [],
 
-  elementChilds: string | void,
+  outputChilds: string | void,
 
-  elementSlots: string | void,
+  outputSlots: string | void,
 
   args: string[]
 
@@ -375,7 +375,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
       attrs,
       function (attr: Node) {
         array.push(
-          elementAttrs,
+          outputAttrs,
           nodeStringify[attr.type](attr)
         )
       }
@@ -412,19 +412,19 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     data.isComponent = STRING_TRUE
     if (children) {
       collectStack[collectStack.length - 1] = env.TRUE
-      elementSlots = getComponentSlots(children)
+      outputSlots = getComponentSlots(children)
     }
   }
   else if (children) {
     isStringRequired = env.TRUE
     collectStack[collectStack.length - 1] = isComplex
-    elementChilds = stringifyChildren(children, isComplex)
+    outputChilds = stringifyChildren(children, isComplex)
     if (isComplex) {
-      elementChilds = stringifyFunction(elementChilds)
+      outputChilds = stringifyFunction(outputChilds)
     }
     else {
-      data.text = elementChilds
-      elementChilds = env.UNDEFINED
+      data.text = outputChilds
+      outputChilds = env.UNDEFINED
     }
   }
 
@@ -432,11 +432,11 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   return renderElement(
     stringifyObject(data),
-    array.falsy(elementAttrs)
+    array.falsy(outputAttrs)
       ? env.UNDEFINED
-      : stringifyArray(elementAttrs),
-    elementChilds || env.UNDEFINED,
-    elementSlots
+      : stringifyArray(outputAttrs),
+    outputChilds,
+    outputSlots
   )
 
 }
@@ -474,13 +474,15 @@ nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
 
 nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 
-  const { type, ns, value, expr } = node,
+  const { type, ns, expr } = node,
 
   result: type.data = {
     // renderer 遍历 attrs 要用 type
     type,
     ns: toJSON(ns),
     name: toJSON(node.name),
+    key: toJSON(node.key),
+    value: toJSON(node.value),
   }
 
   // 尽可能把表达式编译成函数，这样对外界最友好
@@ -515,16 +517,9 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
     }
     else if (ns === config.DIRECTIVE_CUSTOM) {
 
-      // 如果表达式是字面量，直接取值
-      // 比如 o-log="1" 取出来就是数字 1
-      if (expr.type === exprNodeType.LITERAL) {
-        result.value = toJSON(
-          (expr as ExpressionLiteral).value
-        )
-      }
       // 取值函数
       // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
-      else {
+      if (expr.type !== exprNodeType.LITERAL) {
         result.getter = stringifyFunction(
           CODE_RETURN + stringifyExpressionArg(expr),
           ARG_CONTEXT
@@ -533,12 +528,6 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 
     }
 
-  }
-
-  // 比如写了一个 o-x="x"
-  // 外部可能是想从数据读取 x 的值，也可能只是想直接取字面量 x
-  if (isUndef(result.value) && isDef(value)) {
-    result.value = toJSON(value)
   }
 
   return stringifyObject(result)
