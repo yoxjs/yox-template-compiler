@@ -946,7 +946,7 @@ export function compile(content: string): Branch[] {
             else {
 
               // 把 attr 优化成 prop
-              const lowerName = name.toLowerCase()
+              const lowerName = string.lower(name)
 
               // <slot> 、<template> 或 svg 中的属性不用识别为 property
               if (helper.specialTags[currentElement.tag] || currentElement.isSvg) {

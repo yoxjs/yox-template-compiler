@@ -28,19 +28,18 @@ import TransitionHooks from '../../yox-type/src/hooks/Transition'
 
 import * as nodeType from './nodeType'
 
-
 function setPair(target: any, name: string, key: string, value: any) {
-  const map = target[name] || (target[name] = {})
-  map[key] = value
+  const data = target[name] || (target[name] = {})
+  data[key] = value
 }
 
 export function render(
   context: Yox,
+  template: Function,
   filters: Record<string, Function>,
   partials: Record<string, Function>,
   directives: Record<string, DirectiveHooks>,
-  transitions: Record<string, TransitionHooks>,
-  template: Function
+  transitions: Record<string, TransitionHooks>
 ) {
 
   let $keypath = env.EMPTY_STRING,
@@ -53,7 +52,7 @@ export function render(
 
   localPartials: Record<string, Function> = {},
 
-  lookup = function (stack: any[], index: number, key: string, node: Keypath, depIgnore?: true, defaultKeypath?: string) {
+  lookup = function (stack: any[], index: number, key: string, node: Keypath, depIgnore?: boolean, defaultKeypath?: string) {
 
     let keypath = keypathUtil.join(stack[index], key),
 
@@ -89,29 +88,27 @@ export function render(
     }
 
     // 正常取数据
-    let result = context.get(keypath, lookup, depIgnore)
+    const result = context.get(keypath, lookup, depIgnore)
     if (result === lookup) {
       // undefined 或 true 都表示需要向上寻找
       if (node.lookup !== env.FALSE && index > 1) {
         index -= 2
         if (process.env.NODE_ENV === 'dev') {
-          logger.warn(`[${keypath}] 找不到数据，开始向上查找.`)
+          logger.warn(`Can't find [${keypath}], start looking up.`)
         }
         return lookup(stack, index, key, node, depIgnore, defaultKeypath)
       }
-      result = object.get(filters, key)
-      if (!result) {
-        node.ak = defaultKeypath
-        return
-      }
-      result = result.value
+      const holder = object.get(filters, key)
+      return holder
+        ? holder.value
+        : (node.ak = defaultKeypath, env.UNDEFINED)
     }
 
     return result
 
   },
 
-  getValue = function (expr: ExpressionNode, depIgnore?: true, stack?: any[]): any {
+  getValue = function (expr: ExpressionNode, depIgnore?: boolean, stack?: any[]): any {
 
     const renderStack = stack || $stack,
 
