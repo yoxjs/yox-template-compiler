@@ -2,7 +2,6 @@ import * as config from '../../yox-config/src/config'
 import * as type from '../../yox-type/src/type'
 
 import isDef from '../../yox-common/src/function/isDef'
-import isUndef from '../../yox-common/src/function/isUndef'
 import toJSON from '../../yox-common/src/function/toJSON'
 
 import * as env from '../../yox-common/src/util/env'
@@ -14,7 +13,6 @@ import * as exprNodeType from '../../yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'
 
 import ExpressionNode from '../../yox-expression-compiler/src/node/Node'
-import ExpressionLiteral from '../../yox-expression-compiler/src/node/Literal'
 import ExpressionIdentifier from '../../yox-expression-compiler/src/node/Identifier'
 import ExpressionCall from '../../yox-expression-compiler/src/node/Call'
 

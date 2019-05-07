@@ -187,7 +187,7 @@ export function render(
             name: env.EMPTY_STRING,
             key,
             hooks: directives[config.DIRECTIVE_BINDING],
-            binding: keypathUtil.join(absoluteKeypath, '*'),
+            binding: keypathUtil.join(absoluteKeypath, env.RAW_WILDCARD),
           }
         )
       }
