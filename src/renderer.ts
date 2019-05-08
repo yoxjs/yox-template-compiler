@@ -418,10 +418,6 @@ export function render(
           }
         }
       )
-      // 确保有 directives 就必然有 lazy
-      if (vnode.directives && !vnode.lazy) {
-        vnode.lazy = env.EMPTY_OBJECT
-      }
     }
 
     // childs 和 slots 不可能同时存在
