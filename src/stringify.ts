@@ -544,6 +544,17 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
     )
   }
 
+  // <input model="id">
+  if (ns === config.DIRECTIVE_MODEL) {
+    return stringifyCall(
+      RENDER_MODEL_VNODE,
+      array.join(
+        trimArgs([toJSON(expr)]),
+        SEP_COMMA
+      )
+    )
+  }
+
   let renderName = RENDER_DIRECTIVE_VNODE,
 
   args: (string | undefined)[] = [
@@ -590,14 +601,6 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
       array.push(
         args,
         toJSON(expr.raw)
-      )
-    }
-    // <input model="id">
-    else if (ns === config.DIRECTIVE_MODEL) {
-      renderName = RENDER_MODEL_VNODE
-      array.push(
-        args,
-        toJSON(expr)
       )
     }
     else if (ns === config.DIRECTIVE_CUSTOM) {

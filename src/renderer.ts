@@ -281,22 +281,18 @@ export function render(
     }
   },
 
-  renderModelVnode = function (
-    ns: string, name: string, key: string, value: string,
-    expr: Keypath
-  ) {
+  renderModelVnode = function (expr: Keypath) {
 
     $vnode.model = getValue(expr, env.TRUE)
 
     setPair(
       $vnode,
       'directives',
-      key,
+      config.DIRECTIVE_MODEL,
       {
-        ns,
-        name,
-        key,
-        value,
+        ns: config.DIRECTIVE_MODEL,
+        name: env.EMPTY_STRING,
+        key: config.DIRECTIVE_MODEL,
         binding: expr.ak,
         hooks: directives[config.DIRECTIVE_MODEL]
       }
