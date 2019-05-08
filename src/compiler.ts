@@ -217,10 +217,17 @@ export function compile(content: string): Branch[] {
         if (currentBranch.isStatic && !node.isStatic) {
           currentBranch.isStatic = env.FALSE
         }
-        if (!currentBranch.isComplex
-          && (node.isComplex || isElement)
-        ) {
-          currentBranch.isComplex = env.TRUE
+        if (!currentBranch.isComplex) {
+          if (node.isComplex || isElement) {
+            currentBranch.isComplex = env.TRUE
+          }
+          // <div {{#if xx}} xx{{/if}}>
+          else if (currentElement
+            && currentElement !== currentBranch
+            && (isAttribute || isProperty || isDirective)
+          ) {
+            currentBranch.isComplex = env.TRUE
+          }
         }
       }
 
@@ -314,7 +321,8 @@ export function compile(content: string): Branch[] {
       return node
 
     }
-    else if (process.env.NODE_ENV === 'dev') {
+
+    if (process.env.NODE_ENV === 'dev') {
       fatal(`出栈节点类型不匹配`)
     }
   },

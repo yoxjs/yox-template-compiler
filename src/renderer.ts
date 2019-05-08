@@ -47,6 +47,8 @@ export function render(
 
   $stack = [$keypath, $scope],
 
+  $vnode: any,
+
   vnodeStack: VNode[][] = [],
 
   localPartials: Record<string, Function> = {},
@@ -129,13 +131,11 @@ export function render(
 
   },
 
-  addBinding = function (vnode: any, attr: type.data): any {
+  addBinding = function (vnode: type.data, name: string, expr: Keypath, hint?: type.hint): any {
 
-    const { expr } = attr,
+    const value = getValue(expr, env.TRUE),
 
-    value = getValue(expr, env.TRUE),
-
-    key = keypathUtil.join(config.DIRECTIVE_BINDING, attr.name)
+    key = keypathUtil.join(config.DIRECTIVE_BINDING, name)
 
     setPair(
       vnode,
@@ -143,129 +143,15 @@ export function render(
       key,
       {
         ns: config.DIRECTIVE_BINDING,
-        name: attr.name,
+        name,
         key,
         hooks: directives[config.DIRECTIVE_BINDING],
         binding: expr.ak,
-        hint: attr.hint,
+        hint,
       }
     )
 
     return value
-
-  },
-
-  spreadObject = function (vnode: any, attr: type.data) {
-
-    let { expr } = attr,
-
-    value = getValue(expr, attr.binding)
-
-    // 数组也算一种对象，要排除掉
-    if (is.object(value) && !is.array(value)) {
-
-      object.each(
-        value,
-        function (value: any, key: string) {
-          setPair(vnode, 'props', key, value)
-        }
-      )
-
-      const absoluteKeypath = expr.ak
-      if (absoluteKeypath) {
-        const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath)
-        setPair(
-          vnode,
-          'directives',
-          key,
-          {
-            ns: config.DIRECTIVE_BINDING,
-            name: env.EMPTY_STRING,
-            key,
-            hooks: directives[config.DIRECTIVE_BINDING],
-            binding: keypathUtil.join(absoluteKeypath, env.RAW_WILDCARD),
-          }
-        )
-      }
-
-    }
-    else {
-      logger.warn(`[${expr.raw}] 不是对象，延展个毛啊`)
-    }
-  },
-
-  addDirective = function (vnode: any, attr: type.data) {
-
-    let { ns, name, key, value } = attr,
-
-    binding: string | void,
-
-    hooks: DirectiveHooks | void,
-
-    getter: type.getter | void,
-
-    handler: type.listener | void
-
-    switch (ns) {
-
-      case config.DIRECTIVE_EVENT:
-        hooks = directives[config.DIRECTIVE_EVENT]
-        handler = attr.event
-          ? createEventListener(attr.event)
-          : createMethodListener(attr.method, attr.args, $stack)
-        break
-
-      case env.RAW_TRANSITION:
-        vnode.transition = transitions[value]
-        if (process.env.NODE_ENV === 'dev') {
-          if (!vnode.transition) {
-            logger.fatal(`transition [${value}] is not found.`)
-          }
-        }
-        return
-
-      case config.DIRECTIVE_MODEL:
-        hooks = directives[config.DIRECTIVE_MODEL]
-        vnode.model = getValue(attr.expr, env.TRUE)
-        binding = attr.expr.ak
-        break
-
-      case config.DIRECTIVE_LAZY:
-        setPair(vnode, 'lazy', name, value)
-        return
-
-      default:
-        hooks = directives[name]
-        if (attr.method) {
-          handler = createMethodListener(attr.method, attr.args, $stack)
-        }
-        else if (attr.getter) {
-          getter = createGetter(attr.getter, $stack)
-        }
-        break
-
-    }
-
-    if (hooks) {
-      setPair(
-        vnode,
-        'directives',
-        key,
-        {
-          ns,
-          name,
-          key,
-          value,
-          binding,
-          hooks,
-          getter,
-          handler
-        }
-      )
-    }
-    else if (process.env.NODE_ENV === 'dev') {
-      logger.fatal(`directive [${name}] is not found.`)
-    }
 
   },
 
@@ -363,61 +249,177 @@ export function render(
     }
   },
 
+  renderAttributeVnode = function (name: string, binding: boolean | void, expr: Keypath | void, value: string | void) {
+    if (binding) {
+      value = addBinding($vnode, name, expr as Keypath)
+    }
+    if ($vnode.isComponent) {
+      setPair($vnode, 'props', name, value)
+    }
+    else {
+      setPair($vnode, 'nativeAttrs', name, { name, value })
+    }
+  },
+
+  renderPropertyVnode = function (name: string, hint: type.hint, binding: boolean | void, expr: Keypath | void, value: any | void) {
+    if (binding) {
+      value = addBinding($vnode, name, expr as Keypath, hint)
+    }
+    setPair($vnode, 'nativeProps', name, { name, value, hint })
+  },
+
+  renderLazyVnode = function (name: string, value: type.lazy) {
+    setPair($vnode, 'lazy', name, value)
+  },
+
+  renderTransitionVnode = function (name: string) {
+    $vnode.transition = transitions[name]
+    if (process.env.NODE_ENV === 'dev') {
+      if (!$vnode.transition) {
+        logger.fatal(`transition [${name}] is not found.`)
+      }
+    }
+  },
+
+  renderModelVnode = function (
+    ns: string, name: string, key: string, value: string,
+    expr: Keypath
+  ) {
+
+    $vnode.model = getValue(expr, env.TRUE)
+
+    setPair(
+      $vnode,
+      'directives',
+      key,
+      {
+        ns,
+        name,
+        key,
+        value,
+        binding: expr.ak,
+        hooks: directives[config.DIRECTIVE_MODEL]
+      }
+    )
+  },
+
+  renderEventMethodVnode = function (
+    ns: string, name: string, key: string, value: string,
+    method: string, args: Function | void
+  ) {
+    setPair(
+      $vnode,
+      'directives',
+      key,
+      {
+        ns,
+        name,
+        key,
+        value,
+        hooks: directives[config.DIRECTIVE_EVENT],
+        handler: createMethodListener(method as string, args, $stack)
+      }
+    )
+  },
+
+  renderEventNameVnode = function (
+    ns: string, name: string, key: string, value: string,
+    event: string
+  ) {
+    setPair(
+      $vnode,
+      'directives',
+      key,
+      {
+        ns,
+        name,
+        key,
+        value,
+        hooks: directives[config.DIRECTIVE_EVENT],
+        handler: createEventListener(event)
+      }
+    )
+  },
+
+  renderDirectiveVnode = function (
+    ns: string, name: string, key: string, value: string,
+    method: string | void, args: Function | void, getter: Function | void
+  ) {
+
+    const hooks = directives[name]
+
+    if (process.env.NODE_ENV === 'dev') {
+      if (!hooks) {
+        logger.fatal(`directive [${name}] is not found.`)
+      }
+    }
+
+    setPair(
+      $vnode,
+      'directives',
+      key,
+      {
+        ns,
+        name,
+        key,
+        value,
+        hooks,
+        getter: getter ? createGetter(getter, $stack) : env.UNDEFINED,
+        handler: method ? createMethodListener(method, args, $stack) : env.UNDEFINED,
+      }
+    )
+
+  },
+
+  renderSpreadVnode = function (expr: ExpressionNode, binding?: boolean) {
+
+    const value = getValue(expr, binding)
+
+    // 数组也算一种对象，要排除掉
+    if (is.object(value) && !is.array(value)) {
+
+      object.each(
+        value,
+        function (value: any, key: string) {
+          setPair($vnode, 'props', key, value)
+        }
+      )
+
+      const absoluteKeypath = expr['ak']
+      if (absoluteKeypath) {
+        const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath)
+        setPair(
+          $vnode,
+          'directives',
+          key,
+          {
+            ns: config.DIRECTIVE_BINDING,
+            name: env.EMPTY_STRING,
+            key,
+            hooks: directives[config.DIRECTIVE_BINDING],
+            binding: keypathUtil.join(absoluteKeypath, env.RAW_WILDCARD),
+          }
+        )
+      }
+
+    }
+    else if (process.env.NODE_ENV === 'dev') {
+      logger.warn(`[${expr.raw}] 不是对象，延展个毛啊`)
+    }
+
+  },
+
   renderElementVnode = function (
     vnode: type.data,
-    attrs: any[] | void,
+    attrs: Function | void,
     childs: Function | void,
     slots: Record<string, Function> | void
   ) {
 
     if (attrs) {
-      array.each(
-        attrs,
-        function (attr: any) {
-
-          let { name, value } = attr
-
-          switch (attr.type) {
-
-            case nodeType.ATTRIBUTE:
-
-              if (attr.binding) {
-                value = addBinding(vnode, attr)
-              }
-
-              if (vnode.isComponent) {
-                setPair(vnode, 'props', name, value)
-              }
-              else {
-                setPair(vnode, 'nativeAttrs', name, { name, value })
-              }
-
-              break
-
-            case nodeType.PROPERTY:
-              setPair(
-                vnode,
-                'nativeProps',
-                name,
-                {
-                  name,
-                  value: attr.binding ? addBinding(vnode, attr) : value,
-                  hint: attr.hint,
-                }
-              )
-              break
-
-            case nodeType.DIRECTIVE:
-              addDirective(vnode, attr)
-              break
-
-            case nodeType.SPREAD:
-              spreadObject(vnode, attr)
-              break
-
-          }
-        }
-      )
+      $vnode = vnode
+      attrs()
+      $vnode = env.UNDEFINED
     }
 
     // childs 和 slots 不可能同时存在
@@ -495,6 +497,15 @@ export function render(
           renderExpressionArg,
           renderExpressionVnode,
           renderTextVnode,
+          renderAttributeVnode,
+          renderPropertyVnode,
+          renderLazyVnode,
+          renderTransitionVnode,
+          renderModelVnode,
+          renderEventMethodVnode,
+          renderEventNameVnode,
+          renderDirectiveVnode,
+          renderSpreadVnode,
           renderElementVnode,
           renderSlot,
           renderPartial,
@@ -569,6 +580,15 @@ export function render(
     renderExpressionArg,
     renderExpressionVnode,
     renderTextVnode,
+    renderAttributeVnode,
+    renderPropertyVnode,
+    renderLazyVnode,
+    renderTransitionVnode,
+    renderModelVnode,
+    renderEventMethodVnode,
+    renderEventNameVnode,
+    renderDirectiveVnode,
+    renderSpreadVnode,
     renderElementVnode,
     renderSlot,
     renderPartial,

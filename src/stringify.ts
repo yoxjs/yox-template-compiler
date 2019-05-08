@@ -68,13 +68,31 @@ RENDER_EXPRESSION_VNODE = 'e',
 
 RENDER_TEXT_VNODE = 'f',
 
-RENDER_ELEMENT_VNODE = 'g',
+RENDER_ATTRIBUTE_VNODE = 'g',
 
-RENDER_PARTIAL = 'h',
+RENDER_PROPERTY_VNODE = 'h',
 
-RENDER_IMPORT = 'i',
+RENDER_LAZY_VNODE = 'i',
 
-ARG_CONTEXT = 'j',
+RENDER_TRANSITION_VNODE = 'j',
+
+RENDER_MODEL_VNODE = 'k',
+
+RENDER_EVENT_METHOD_VNODE = 'l',
+
+RENDER_EVENT_NAME_VNODE = 'm',
+
+RENDER_DIRECTIVE_VNODE = 'n',
+
+RENDER_SPREAD_VNODE = 'o',
+
+RENDER_ELEMENT_VNODE = 'p',
+
+RENDER_PARTIAL = 'q',
+
+RENDER_IMPORT = 'r',
+
+ARG_CONTEXT = 's',
 
 SEP_COMMA = ',',
 
@@ -96,6 +114,15 @@ CODE_PREFIX = `function(${
     RENDER_EXPRESSION_ARG,
     RENDER_EXPRESSION_VNODE,
     RENDER_TEXT_VNODE,
+    RENDER_ATTRIBUTE_VNODE,
+    RENDER_PROPERTY_VNODE,
+    RENDER_LAZY_VNODE,
+    RENDER_TRANSITION_VNODE,
+    RENDER_MODEL_VNODE,
+    RENDER_EVENT_METHOD_VNODE,
+    RENDER_EVENT_NAME_VNODE,
+    RENDER_DIRECTIVE_VNODE,
+    RENDER_SPREAD_VNODE,
     RENDER_ELEMENT_VNODE,
     RENDER_SLOT,
     RENDER_PARTIAL,
@@ -235,10 +262,29 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
 
   if (isDef(yes) || isDef(no)) {
 
-    result = `${test}?${isDef(yes) ? yes : STRING_EMPTY}:${isDef(no) ? no : STRING_EMPTY}`
+    const isJoin = array.last(joinStack)
+
+    if (isJoin) {
+      if (!isDef(yes)) {
+        yes = STRING_EMPTY
+      }
+      if (!isDef(no)) {
+        no = STRING_EMPTY
+      }
+    }
+
+    if (!isDef(no)) {
+      result = `${test} && ${yes}`
+    }
+    else if (!isDef(yes)) {
+      result = `!${test} && ${no}`
+    }
+    else {
+      result = `${test}?${yes}:${no}`
+    }
 
     // 如果是连接操作，因为 ?: 优先级最低，因此要加 ()
-    return array.last(joinStack)
+    return isJoin
       ? stringifyGroup(result)
       : result
 
@@ -432,7 +478,9 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     stringifyObject(data),
     array.falsy(outputAttrs)
       ? env.UNDEFINED
-      : stringifyArray(outputAttrs),
+      : stringifyFunction(
+          array.join(outputAttrs, SEP_COMMA)
+        ),
     outputChilds,
     outputSlots
   )
@@ -440,48 +488,70 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 }
 
 nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
-  const result: type.data = {
-    type: node.type,
-    name: toJSON(node.name),
-    binding: node.binding,
-  }
-  if (node.binding) {
-    result.expr = toJSON(node.expr)
-  }
-  else {
-    result.value = stringifyValue(node.value, node.expr, node.children)
-  }
-  return stringifyObject(result)
+  const { binding } = node
+  return stringifyCall(
+    RENDER_ATTRIBUTE_VNODE,
+    array.join(
+      trimArgs([
+        toJSON(node.name),
+        binding ? STRING_TRUE : env.UNDEFINED,
+        binding ? toJSON(node.expr) : env.UNDEFINED,
+        binding ? env.UNDEFINED : stringifyValue(node.value, node.expr, node.children)
+      ]),
+      SEP_COMMA
+    )
+  )
 }
 
 nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
-  const result: type.data = {
-    type: node.type,
-    name: toJSON(node.name),
-    hint: node.hint,
-    binding: node.binding,
-  }
-  if (node.binding) {
-    result.expr = toJSON(node.expr)
-  }
-  else {
-    result.value = stringifyValue(node.value, node.expr, node.children)
-  }
-  return stringifyObject(result)
+  const { binding } = node
+  return stringifyCall(
+    RENDER_PROPERTY_VNODE,
+    array.join(
+      trimArgs([
+        toJSON(node.name),
+        toJSON(node.hint),
+        binding ? STRING_TRUE : env.UNDEFINED,
+        binding ? toJSON(node.expr) : env.UNDEFINED,
+        binding ? env.UNDEFINED : stringifyValue(node.value, node.expr, node.children)
+      ]),
+      SEP_COMMA
+    )
+  )
 }
 
 nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 
-  const { type, ns, expr } = node,
+  const { ns, name, key, value, expr } = node
 
-  result: type.data = {
-    // renderer 遍历 attrs 要用 type
-    type,
-    ns: toJSON(ns),
-    name: toJSON(node.name),
-    key: toJSON(node.key),
-    value: toJSON(node.value),
+  if (ns === config.DIRECTIVE_LAZY) {
+    return stringifyCall(
+      RENDER_LAZY_VNODE,
+      array.join(
+        trimArgs([toJSON(name), toJSON(value)]),
+        SEP_COMMA
+      )
+    )
   }
+
+  if (ns === env.RAW_TRANSITION) {
+    return stringifyCall(
+      RENDER_TRANSITION_VNODE,
+      array.join(
+        trimArgs([toJSON(value)]),
+        SEP_COMMA
+      )
+    )
+  }
+
+  let renderName = RENDER_DIRECTIVE_VNODE,
+
+  args: (string | undefined)[] = [
+    toJSON(ns),
+    toJSON(name),
+    toJSON(key),
+    toJSON(value),
+  ]
 
   // 尽可能把表达式编译成函数，这样对外界最友好
   //
@@ -494,33 +564,55 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 
     // 如果表达式明确是在调用方法，则序列化成 method + args 的形式
     if (expr.type === exprNodeType.CALL) {
+      if (ns === config.DIRECTIVE_EVENT) {
+        renderName = RENDER_EVENT_METHOD_VNODE
+      }
       // compiler 保证了函数调用的 name 是标识符
-      result.method = toJSON(((expr as ExpressionCall).name as ExpressionIdentifier).name)
+      array.push(
+        args,
+        toJSON(((expr as ExpressionCall).name as ExpressionIdentifier).name)
+      )
       // 为了实现运行时动态收集参数，这里序列化成函数
       if (!array.falsy((expr as ExpressionCall).args)) {
         // args 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
-        result.args = stringifyFunction(
-          CODE_RETURN + stringifyArray((expr as ExpressionCall).args.map(stringifyExpressionArg)),
-          ARG_CONTEXT
+        array.push(
+          args,
+          stringifyFunction(
+            CODE_RETURN + stringifyArray((expr as ExpressionCall).args.map(stringifyExpressionArg)),
+            ARG_CONTEXT
+          )
         )
       }
     }
     // 不是调用方法，就是事件转换
     else if (ns === config.DIRECTIVE_EVENT) {
-      result.event = toJSON(expr.raw)
+      renderName = RENDER_EVENT_NAME_VNODE
+      array.push(
+        args,
+        toJSON(expr.raw)
+      )
     }
     // <input model="id">
     else if (ns === config.DIRECTIVE_MODEL) {
-      result.expr = toJSON(expr)
+      renderName = RENDER_MODEL_VNODE
+      array.push(
+        args,
+        toJSON(expr)
+      )
     }
     else if (ns === config.DIRECTIVE_CUSTOM) {
 
       // 取值函数
       // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
       if (expr.type !== exprNodeType.LITERAL) {
-        result.getter = stringifyFunction(
-          CODE_RETURN + stringifyExpressionArg(expr),
-          ARG_CONTEXT
+        array.push(args, env.UNDEFINED) // method
+        array.push(args, env.UNDEFINED) // args
+        array.push(
+          args,
+          stringifyFunction(
+            CODE_RETURN + stringifyExpressionArg(expr),
+            ARG_CONTEXT
+          )
         )
       }
 
@@ -528,16 +620,24 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 
   }
 
-  return stringifyObject(result)
+  return stringifyCall(
+    renderName,
+    array.join(
+      trimArgs(args),
+      SEP_COMMA
+    )
+  )
 
 }
 
 nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
-  return stringifyObject({
-    type: node.type,
-    expr: toJSON(node.expr),
-    binding: node.binding,
-  })
+  return stringifyCall(
+    RENDER_SPREAD_VNODE,
+    array.join(
+      trimArgs([toJSON(node.expr), node.binding ? STRING_TRUE : env.UNDEFINED]),
+      SEP_COMMA
+    )
+  )
 }
 
 nodeStringify[nodeType.TEXT] = function (node: Text): string {
