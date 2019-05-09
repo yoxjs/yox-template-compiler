@@ -1,17 +1,17 @@
-import * as config from 'yox-config/src/config'
+import * as config from '../../yox-config/src/config'
 
-import toNumber from 'yox-common/src/function/toNumber'
+import toNumber from '../../yox-common/src/function/toNumber'
 
-import * as is from 'yox-common/src/util/is'
-import * as env from 'yox-common/src/util/env'
-import * as array from 'yox-common/src/util/array'
-import * as string from 'yox-common/src/util/string'
-import * as logger from 'yox-common/src/util/logger'
+import * as is from '../../yox-common/src/util/is'
+import * as env from '../../yox-common/src/util/env'
+import * as array from '../../yox-common/src/util/array'
+import * as string from '../../yox-common/src/util/string'
+import * as logger from '../../yox-common/src/util/logger'
 
-import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
-import * as exprCompiler from 'yox-expression-compiler/src/compiler'
-import ExpressionCall from 'yox-expression-compiler/src/node/Call'
-import ExpressionLiteral from 'yox-expression-compiler/src/node/Literal'
+import * as exprNodeType from '../../yox-expression-compiler/src/nodeType'
+import * as exprCompiler from '../../yox-expression-compiler/src/compiler'
+import ExpressionCall from '../../yox-expression-compiler/src/node/Call'
+import ExpressionLiteral from '../../yox-expression-compiler/src/node/Literal'
 
 import * as helper from './helper'
 import * as creator from './creator'
@@ -614,7 +614,7 @@ export function compile(content: string): Branch[] {
     // 因为 attrs 具有动态性，compiler 无法保证最终一定会输出 type 属性
     if (element.isStyle && array.falsy(element.attrs)) {
       element.attrs = [
-        creator.createProperty(env.RAW_TYPE, config.HINT_STRING, 'text/css')
+        creator.createProperty('type', config.HINT_STRING, 'text/css')
       ]
     }
 

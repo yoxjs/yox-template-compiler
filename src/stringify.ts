@@ -1,20 +1,20 @@
-import * as config from 'yox-config/src/config'
-import * as type from 'yox-type/src/type'
+import * as config from '../../yox-config/src/config'
+import * as type from '../../yox-type/src/type'
 
-import isDef from 'yox-common/src/function/isDef'
-import toJSON from 'yox-common/src/function/toJSON'
+import isDef from '../../yox-common/src/function/isDef'
+import toJSON from '../../yox-common/src/function/toJSON'
 
-import * as env from 'yox-common/src/util/env'
-import * as array from 'yox-common/src/util/array'
-import * as string from 'yox-common/src/util/string'
-import * as object from 'yox-common/src/util/object'
+import * as env from '../../yox-common/src/util/env'
+import * as array from '../../yox-common/src/util/array'
+import * as string from '../../yox-common/src/util/string'
+import * as object from '../../yox-common/src/util/object'
 
-import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
+import * as exprNodeType from '../../yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'
 
-import ExpressionNode from 'yox-expression-compiler/src/node/Node'
-import ExpressionIdentifier from 'yox-expression-compiler/src/node/Identifier'
-import ExpressionCall from 'yox-expression-compiler/src/node/Call'
+import ExpressionNode from '../../yox-expression-compiler/src/node/Node'
+import ExpressionIdentifier from '../../yox-expression-compiler/src/node/Identifier'
+import ExpressionCall from '../../yox-expression-compiler/src/node/Call'
 
 import Node from './node/Node'
 import Text from './node/Text'
@@ -528,7 +528,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
     return stringifyCall(
       RENDER_LAZY_VNODE,
       array.join(
-        trimArgs([toJSON(name), toJSON(value)]),
+        [toJSON(name), toJSON(value)],
         SEP_COMMA
       )
     )
@@ -537,10 +537,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
   if (ns === env.RAW_TRANSITION) {
     return stringifyCall(
       RENDER_TRANSITION_VNODE,
-      array.join(
-        trimArgs([toJSON(value)]),
-        SEP_COMMA
-      )
+      toJSON(value)
     )
   }
 
@@ -548,10 +545,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
   if (ns === config.DIRECTIVE_MODEL) {
     return stringifyCall(
       RENDER_MODEL_VNODE,
-      array.join(
-        trimArgs([toJSON(expr)]),
-        SEP_COMMA
-      )
+      toJSON(expr)
     )
   }
 

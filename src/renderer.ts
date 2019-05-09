@@ -1,31 +1,29 @@
-import * as config from 'yox-config/src/config'
-import * as type from 'yox-type/src/type'
+import * as config from '../../yox-config/src/config'
+import * as type from '../../yox-type/src/type'
 
-import isDef from 'yox-common/src/function/isDef'
-import isUndef from 'yox-common/src/function/isUndef'
-import execute from 'yox-common/src/function/execute'
-import toString from 'yox-common/src/function/toString'
+import isDef from '../../yox-common/src/function/isDef'
+import isUndef from '../../yox-common/src/function/isUndef'
+import execute from '../../yox-common/src/function/execute'
+import toString from '../../yox-common/src/function/toString'
 
-import * as is from 'yox-common/src/util/is'
-import * as env from 'yox-common/src/util/env'
-import * as array from 'yox-common/src/util/array'
-import * as object from 'yox-common/src/util/object'
-import * as logger from 'yox-common/src/util/logger'
-import * as keypathUtil from 'yox-common/src/util/keypath'
+import * as is from '../../yox-common/src/util/is'
+import * as env from '../../yox-common/src/util/env'
+import * as array from '../../yox-common/src/util/array'
+import * as object from '../../yox-common/src/util/object'
+import * as logger from '../../yox-common/src/util/logger'
+import * as keypathUtil from '../../yox-common/src/util/keypath'
 
-import CustomEvent from 'yox-common/src/util/CustomEvent'
+import CustomEvent from '../../yox-common/src/util/CustomEvent'
 
-import ExpressionNode from 'yox-expression-compiler/src/node/Node'
-import Keypath from 'yox-expression-compiler/src/node/Keypath'
+import ExpressionNode from '../../yox-expression-compiler/src/node/Node'
+import Keypath from '../../yox-expression-compiler/src/node/Keypath'
 
-import * as exprExecutor from 'yox-expression-compiler/src/executor'
+import * as exprExecutor from '../../yox-expression-compiler/src/executor'
 
-import Yox from 'yox-type/src/interface/Yox'
-import VNode from 'yox-type/src/vnode/VNode'
-import DirectiveHooks from 'yox-type/src/hooks/Directive'
-import TransitionHooks from 'yox-type/src/hooks/Transition'
-
-import * as nodeType from './nodeType'
+import Yox from '../../yox-type/src/interface/Yox'
+import VNode from '../../yox-type/src/vnode/VNode'
+import DirectiveHooks from '../../yox-type/src/hooks/Directive'
+import TransitionHooks from '../../yox-type/src/hooks/Transition'
 
 function setPair(target: any, name: string, key: string, value: any) {
   const data = target[name] || (target[name] = {})

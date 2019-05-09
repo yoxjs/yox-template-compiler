@@ -1,9 +1,9 @@
-import * as type from 'yox-type/src/type'
+import * as type from '../../yox-type/src/type'
 
-import * as env from 'yox-common/src/util/env'
-import * as keypathUtil from 'yox-common/src/util/keypath'
+import * as env from '../../yox-common/src/util/env'
+import * as keypathUtil from '../../yox-common/src/util/keypath'
 
-import ExpressionNode from 'yox-expression-compiler/src/node/Node'
+import ExpressionNode from '../../yox-expression-compiler/src/node/Node'
 
 import * as nodeType from './nodeType'
 
