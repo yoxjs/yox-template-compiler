@@ -93,7 +93,7 @@ export function render(
       if (node.lookup !== env.FALSE && index > 1) {
         index -= 2
         if (process.env.NODE_ENV === 'dev') {
-          logger.warn(`Can't find [${keypath}], start looking up.`)
+          logger.debug(`Can't find [${keypath}], start looking up.`)
         }
         return lookup(stack, index, key, node, depIgnore, defaultKeypath)
       }
