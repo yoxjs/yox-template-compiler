@@ -552,7 +552,6 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
   let renderName = RENDER_DIRECTIVE_VNODE,
 
   args: (string | undefined)[] = [
-    toJSON(ns),
     toJSON(name),
     toJSON(key),
     toJSON(value),

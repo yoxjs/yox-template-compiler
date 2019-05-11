@@ -298,7 +298,7 @@ export function render(
   },
 
   renderEventMethodVnode = function (
-    ns: string, name: string, key: string, value: string,
+    name: string, key: string, value: string,
     method: string, args: Function | void
   ) {
     setPair(
@@ -306,7 +306,7 @@ export function render(
       'directives',
       key,
       {
-        ns,
+        ns: config.DIRECTIVE_EVENT,
         name,
         key,
         value,
@@ -325,7 +325,7 @@ export function render(
       'directives',
       key,
       {
-        ns,
+        ns: config.DIRECTIVE_EVENT,
         name,
         key,
         value,
@@ -336,7 +336,7 @@ export function render(
   },
 
   renderDirectiveVnode = function (
-    ns: string, name: string, key: string, value: string,
+    name: string, key: string, value: string,
     method: string | void, args: Function | void, getter: Function | void
   ) {
 
@@ -353,7 +353,7 @@ export function render(
       'directives',
       key,
       {
-        ns,
+        ns: config.DIRECTIVE_CUSTOM,
         name,
         key,
         value,
