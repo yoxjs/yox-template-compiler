@@ -10,6 +10,8 @@ import * as logger from '../../yox-common/src/util/logger'
 
 import * as exprNodeType from '../../yox-expression-compiler/src/nodeType'
 import * as exprCompiler from '../../yox-expression-compiler/src/compiler'
+
+import ExpressionNode from '../../yox-expression-compiler/src/node/Node'
 import ExpressionCall from '../../yox-expression-compiler/src/node/Call'
 import ExpressionLiteral from '../../yox-expression-compiler/src/node/Literal'
 
@@ -444,10 +446,7 @@ export function compile(content: string): Branch[] {
 
   processDirectiveSingleText = function (directive: Directive, child: Text) {
 
-    const { text } = child
-
-    // 指令的值是纯文本，可以预编译表达式，提升性能
-    const expr = exprCompiler.compile(text),
+    const { text } = child,
 
     // model="xx" model="this.x" 值只能是标识符或 Member
     isModel = directive.ns === config.DIRECTIVE_MODEL,
@@ -456,7 +455,18 @@ export function compile(content: string): Branch[] {
     isLazy = directive.ns === config.DIRECTIVE_LAZY,
 
     // 校验事件名称
-    isEvent = directive.ns === config.DIRECTIVE_EVENT
+    isEvent = directive.ns === config.DIRECTIVE_EVENT,
+
+    // 自定义指令运行不合法的表达式
+    isCustom = directive.ns === config.DIRECTIVE_CUSTOM
+
+    // 指令的值是纯文本，可以预编译表达式，提升性能
+    let expr: ExpressionNode | void
+
+    try {
+      expr = exprCompiler.compile(text)
+    }
+    catch {}
 
     if (expr) {
 
@@ -509,7 +519,7 @@ export function compile(content: string): Branch[] {
     }
     else {
       if (process.env.NODE_ENV === 'dev') {
-        if (isModel || isEvent) {
+        if (!isCustom) {
           fatal(`${directive.ns} 指令的表达式错误: [${text}]`)
         }
       }
