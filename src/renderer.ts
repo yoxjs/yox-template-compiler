@@ -317,7 +317,7 @@ export function render(
   },
 
   renderEventNameVnode = function (
-    ns: string, name: string, key: string, value: string,
+    name: string, key: string, value: string,
     event: string
   ) {
     setPair(
