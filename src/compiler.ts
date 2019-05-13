@@ -1382,9 +1382,19 @@ export function compile(content: string): Branch[] {
     }
   }
 
-  if (process.env.NODE_ENV === 'dev') {
-    if (nodeStack.length) {
-      fatal('还有节点未出栈')
+  if (nodeStack.length) {
+
+    /**
+     * 处理可能存在的自闭合元素，如下
+     *
+     * <input>
+     */
+    popSelfClosingElementIfNeeded()
+
+    if (process.env.NODE_ENV === 'dev') {
+      if (nodeStack.length) {
+        fatal('还有节点未出栈')
+      }
     }
   }
 
