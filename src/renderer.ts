@@ -460,6 +460,7 @@ export function render(
           vnodes,
           function (vnode: VNode) {
             array.push(vnodeList, vnode)
+            vnode.slot = name
             vnode.parent = context
           }
         )

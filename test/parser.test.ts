@@ -89,17 +89,6 @@ it('template 和 slot', () => {
 
   hasError = false
 
-  // slot 只能和 template 搭配使用
-  try {
-    compile('<Dog><div slot="xx"></div></Dog>')
-  }
-  catch (e) {
-    hasError = true
-  }
-  expect(hasError).toBe(true)
-
-  hasError = false
-
   // slot 不能位于 if 内
   try {
     compile('<Dog><template {{#if a}}slot="xx"{{/if}}></template></Dog>')

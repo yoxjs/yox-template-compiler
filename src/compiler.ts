@@ -594,13 +594,8 @@ export function compile(content: string): Branch[] {
   checkElement = function (element: Element) {
 
     if (process.env.NODE_ENV === 'dev') {
-      const isTemplate = element.tag === env.RAW_TEMPLATE
-
-      if (element.slot) {
-        if (!isTemplate) {
-          fatal(`slot 属性只能用于 <template>`)
-        }
-        else if (element.key) {
+      if (element.tag === env.RAW_TEMPLATE) {
+        if (element.key) {
           fatal(`<template> 不支持 key`)
         }
         else if (element.ref) {
@@ -609,9 +604,9 @@ export function compile(content: string): Branch[] {
         else if (element.attrs) {
           fatal(`<template> 不支持属性或指令`)
         }
-      }
-      else if (isTemplate) {
-        fatal(`<template> 不写 slot 属性是几个意思？`)
+        else if (!element.slot) {
+          fatal(`<template> 不写 slot 属性是几个意思？`)
+        }
       }
       else if (element.tag === env.RAW_SLOT && !element.name) {
         fatal(`<slot> 不写 name 属性是几个意思？`)

@@ -350,12 +350,16 @@ function getComponentSlots(children: Node[]): string | void {
   array.each(
     children,
     function (child: Node) {
-
       // 找到具名 slot
       if (child.type === nodeType.ELEMENT) {
         const element = child as Element
         if (element.slot) {
-          addSlot(element.slot, element.children)
+          addSlot(
+            element.slot,
+            element.tag === env.RAW_TEMPLATE
+              ? element.children
+              : [element]
+          )
           return
         }
       }
