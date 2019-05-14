@@ -319,11 +319,11 @@ function trimArgs(list: (string | void)[]) {
 
 }
 
-function renderElement(data: string, attrs: string | void, childs: string | void, slots: string | void): string {
+function renderElement(data: string, tag: string | void, attrs: string | void, childs: string | void, slots: string | void): string {
   return stringifyCall(
     RENDER_ELEMENT_VNODE,
     array.join(
-      trimArgs([data, attrs, childs, slots]),
+      trimArgs([data, tag, attrs, childs, slots]),
       SEP_COMMA
     )
   )
@@ -392,6 +392,8 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   data: type.data = {},
 
+  outputTag: string | void,
+
   outputAttrs: string[] = [],
 
   outputChilds: string | void,
@@ -430,7 +432,13 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     )
   }
 
-  data.tag = toJSON(tag)
+  // 如果以 $ 开头，表示动态组件
+  if (string.codeAt(tag) === 36) {
+    outputTag = toJSON(string.slice(tag, 1))
+  }
+  else {
+    data.tag = tag
+  }
 
   if (isSvg) {
     data.isSvg = STRING_TRUE
@@ -480,6 +488,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   return renderElement(
     stringifyObject(data),
+    outputTag,
     array.falsy(outputAttrs)
       ? env.UNDEFINED
       : stringifyFunction(

@@ -405,10 +405,21 @@ export function render(
 
   renderElementVnode = function (
     vnode: type.data,
+    tag: string | void,
     attrs: Function | void,
     childs: Function | void,
     slots: Record<string, Function> | void
   ) {
+
+    if (tag) {
+      const componentName = context.get(tag)
+      if (process.env.NODE_ENV === 'dev') {
+        if (!componentName) {
+          logger.error(`Dynamic component [${tag}] is not found.`)
+        }
+      }
+      vnode.tag = componentName
+    }
 
     if (attrs) {
       $vnode = vnode
