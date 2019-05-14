@@ -437,7 +437,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     outputTag = toJSON(string.slice(tag, 1))
   }
   else {
-    data.tag = tag
+    data.tag = toJSON(tag)
   }
 
   if (isSvg) {
