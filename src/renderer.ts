@@ -175,7 +175,7 @@ export function render(
 
       if (event instanceof CustomEvent) {
 
-        let result: any | void
+        let result: any = env.UNDEFINED
 
         if (args) {
           const scope = array.last(stack)

@@ -1262,7 +1262,7 @@ export function compile(content: string): Branch[] {
 
       const name = string.slice(code, 1)
 
-      let type = helper.name2Type[name], isCondition: true | void
+      let type = helper.name2Type[name], isCondition = env.FALSE
       if (type === nodeType.IF) {
         const node = array.pop(ifStack)
         if (node) {
