@@ -66,6 +66,12 @@ tagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i,
 // 注释
 commentPattern = /<!--[\s\S]*?-->/g,
 
+// 开始注释
+openCommentPattern = /^([\s\S]*?)<!--/,
+
+// 结束注释
+closeCommentPattern = /-->([\s\S]*?)$/,
+
 // 属性的 name
 // 支持 on-click.namespace="" 或 on-get-out="" 或 xml:xx=""
 attributePattern = /^\s*([-.:\w]+)(['"])?(?:=(['"]))?/,
@@ -160,6 +166,9 @@ export function compile(content: string): Branch[] {
 
   // 当前正在处理或即将处理的 block 类型
   blockMode = BLOCK_MODE_NONE,
+
+  // mustache 注释可能出现嵌套插值的情况
+  blockStack: boolean[] = [],
 
   code: string,
 
@@ -284,15 +293,18 @@ export function compile(content: string): Branch[] {
       }
       // 大于 1 个子节点，即有插值或 if 写法
       else if (children) {
-        // 不支持 on-click="1{{xx}}2" 或是 on-click="1{{#if x}}x{{else}}y{{/if}}2"
-        // 1. 很难做性能优化
-        // 2. 全局搜索不到事件名，不利于代码维护
-        // 3. 不利于编译成静态函数
-        if (process.env.NODE_ENV === 'dev') {
-          if (isDirective) {
-            fatal(`指令的值不能用插值或 if 语法`)
+
+        if (isDirective) {
+          processDirectiveMultiChildren()
+        }
+        // 元素层级
+        else if (!currentElement) {
+          removeComment(children)
+          if (!children.length) {
+            node.children = env.UNDEFINED
           }
         }
+
       }
       // 0 个子节点
       else if (currentElement) {
@@ -326,6 +338,69 @@ export function compile(content: string): Branch[] {
 
     if (process.env.NODE_ENV === 'dev') {
       fatal(`出栈节点类型不匹配`)
+    }
+  },
+
+  removeComment = function (children: Node[]) {
+
+    // 类似 <!-- xx {{name}} yy {{age}} zz --> 这样的注释里包含插值
+    // 按照目前的解析逻辑，是根据定界符进行模板分拆
+    // 一旦出现插值，children 长度必然大于 1
+
+    let openIndex = -1, openText = env.EMPTY_STRING, closeIndex = -1, closeText = env.EMPTY_STRING
+
+    array.each(
+      children,
+      function (child: Node, index: number) {
+        if (child.type === nodeType.TEXT) {
+          if (closeIndex >= 0) {
+            openText = (child as Text).text
+            // 处理 <!-- <!-- 这样有多个的情况
+            while (openCommentPattern.test(openText)) {
+              openText = RegExp.$1
+              openIndex = index
+            }
+
+            if (openIndex >= 0) {
+              // openIndex 肯定小于 closeIndex，因为完整的注释在解析过程中会被干掉
+              // 只有包含插值的注释才会走进这里
+
+              // 现在要确定开始和结束的文本节点，是否包含正常文本
+              if (openText) {
+                (children[openIndex] as Text).text = openText
+                openIndex++
+              }
+              if (closeText) {
+                (children[closeIndex] as Text).text = closeText
+                closeIndex--
+              }
+
+              children.splice(openIndex, closeIndex - openIndex + 1)
+
+              openIndex = closeIndex = -1
+            }
+          }
+          else {
+            closeText = (child as Text).text
+            // 处理 --> --> 这样有多个的情况
+            while (closeCommentPattern.test(closeText)) {
+              closeText = RegExp.$1
+              closeIndex = index
+            }
+          }
+        }
+      },
+      env.TRUE
+    )
+  },
+
+  processDirectiveMultiChildren = function () {
+    // 不支持 on-click="1{{xx}}2" 或是 on-click="1{{#if x}}x{{else}}y{{/if}}2"
+    // 1. 很难做性能优化
+    // 2. 全局搜索不到事件名，不利于代码维护
+    // 3. 不利于编译成静态函数
+    if (process.env.NODE_ENV === 'dev') {
+      fatal(`指令的值不能用插值或 if 语法`)
     }
   },
 
@@ -1314,7 +1389,19 @@ export function compile(content: string): Branch[] {
           openBlockIndex++
         }
         if (openBlockIndex < length) {
-          closeBlockIndex = string.indexOf(content, '}}', openBlockIndex)
+
+          // 处理 {{! {{xx}} }} 注释里包含插值
+          while (env.TRUE) {
+            closeBlockIndex = string.indexOf(content, '}}', openBlockIndex)
+            index = string.indexOf(content, '{{', openBlockIndex)
+            if (index < closeBlockIndex) {
+              array.push(blockStack, env.TRUE)
+            }
+            else if (!array.pop(blockStack)) {
+              break
+            }
+          }
+
           if (closeBlockIndex >= openBlockIndex) {
             // 确定开始和结束定界符能否配对成功，即 {{ 对 }}，{{{ 对 }}}
             // 这里不能动 openBlockIndex 和 closeBlockIndex，因为等下要用他俩 slice
@@ -1391,6 +1478,10 @@ export function compile(content: string): Branch[] {
         fatal('还有节点未出栈')
       }
     }
+  }
+
+  if (nodeList.length > 0) {
+    removeComment(nodeList)
   }
 
   return compileCache[content] = nodeList
