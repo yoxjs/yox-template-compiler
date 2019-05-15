@@ -170,6 +170,8 @@ export function compile(content: string): Branch[] {
   // mustache 注释可能出现嵌套插值的情况
   blockStack: boolean[] = [],
 
+  indexList: number[] = [],
+
   code: string,
 
   startQuote: string | void,
@@ -347,7 +349,13 @@ export function compile(content: string): Branch[] {
     // 按照目前的解析逻辑，是根据定界符进行模板分拆
     // 一旦出现插值，children 长度必然大于 1
 
-    let openIndex = -1, openText = env.EMPTY_STRING, closeIndex = -1, closeText = env.EMPTY_STRING
+    let openIndex = env.INDEX_UNVALID,
+
+    openText = env.EMPTY_STRING,
+
+    closeIndex = env.INDEX_UNVALID,
+
+    closeText = env.EMPTY_STRING
 
     array.each(
       children,
@@ -377,7 +385,7 @@ export function compile(content: string): Branch[] {
 
               children.splice(openIndex, closeIndex - openIndex + 1)
 
-              openIndex = closeIndex = -1
+              openIndex = closeIndex = env.INDEX_UNVALID
             }
           }
           else {
@@ -1367,17 +1375,76 @@ export function compile(content: string): Branch[] {
         }
       )
     }
+  },
+
+  closeBlock = function () {
+
+    // 确定开始和结束定界符能否配对成功，即 {{ 对 }}，{{{ 对 }}}
+    // 这里不能动 openBlockIndex 和 closeBlockIndex，因为等下要用他俩 slice
+    index = closeBlockIndex + 2
+
+    // 这里要用 <=，因为很可能到头了
+    if (index <= length) {
+
+      if (index < length && string.charAt(content, index) === '}') {
+        if (blockMode === BLOCK_MODE_UNSAFE) {
+          nextIndex = index + 1
+        }
+        else {
+          fatal(`{{ 和 }}} 无法配对`)
+        }
+      }
+      else {
+        if (blockMode === BLOCK_MODE_SAFE) {
+          nextIndex = index
+        }
+        else {
+          fatal(`{{{ 和 }} 无法配对`)
+        }
+      }
+
+      array.pop(blockStack)
+
+      // }} 左侧的位置
+      addIndex(closeBlockIndex)
+
+      openBlockIndex = string.indexOf(content, '{{', nextIndex)
+      closeBlockIndex = string.indexOf(content, '}}', nextIndex)
+
+      // 如果碰到连续的结束定界符，继续 close
+      if (closeBlockIndex >= nextIndex
+        && (openBlockIndex < 0 || closeBlockIndex < openBlockIndex)
+      ) {
+        return closeBlock()
+      }
+
+    }
+    else {
+      // 到头了
+      return env.TRUE
+    }
+
+  },
+
+  addIndex = function (index: number) {
+    if (!blockStack.length) {
+      array.push(indexList, index)
+    }
   }
 
+
+  // 因为存在 mustache 注释内包含插值的情况
+  // 这里把流程设计为先标记切片的位置，标记过程中丢弃无效的 block
+  // 最后处理有效的 block
   while (env.TRUE) {
+    addIndex(nextIndex)
     openBlockIndex = string.indexOf(content, '{{', nextIndex)
     if (openBlockIndex >= nextIndex) {
 
       blockMode = BLOCK_MODE_SAFE
 
-      parseHtml(
-        string.slice(content, nextIndex, openBlockIndex)
-      )
+      // {{ 左侧的位置
+      addIndex(openBlockIndex)
 
       // 跳过 {{
       openBlockIndex += 2
@@ -1388,48 +1455,25 @@ export function compile(content: string): Branch[] {
           blockMode = BLOCK_MODE_UNSAFE
           openBlockIndex++
         }
+        // {{ 右侧的位置
+        addIndex(openBlockIndex)
+        // block 是否安全
+        addIndex(blockMode)
+
+        // 打开一个 block 就入栈一个
+        array.push(blockStack, env.TRUE)
+
         if (openBlockIndex < length) {
 
-          closeBlockIndex = string.indexOf(content, '}}', index)
+          closeBlockIndex = string.indexOf(content, '}}', openBlockIndex)
 
           if (closeBlockIndex >= openBlockIndex) {
-            // 确定开始和结束定界符能否配对成功，即 {{ 对 }}，{{{ 对 }}}
-            // 这里不能动 openBlockIndex 和 closeBlockIndex，因为等下要用他俩 slice
-            index = closeBlockIndex + 2
-
-            // 这里要用 <=，因为很可能到头了
-            if (index <= length) {
-
-              if (index < length && string.charAt(content, index) === '}') {
-                if (blockMode === BLOCK_MODE_UNSAFE) {
-                  nextIndex = index + 1
-                }
-                else {
-                  fatal(`{{ 和 }}} 无法配对`)
-                }
+            // 注释可以嵌套，如 {{！  {{xx}} {{! {{xx}} }}  }}
+            nextIndex = string.indexOf(content, '{{', openBlockIndex)
+            if (nextIndex < 0 || closeBlockIndex < nextIndex) {
+              if (closeBlock()) {
+                break
               }
-              else {
-                if (blockMode === BLOCK_MODE_SAFE) {
-                  nextIndex = index
-                }
-                else {
-                  fatal(`{{{ 和 }} 无法配对`)
-                }
-              }
-
-              code = string.trim(
-                string.slice(content, openBlockIndex, closeBlockIndex)
-              )
-
-              // 不用处理 {{ }} 和 {{{ }}} 这种空 block
-              if (code) {
-                parseBlock(code)
-              }
-
-            }
-            else {
-              // 到头了
-              break
             }
           }
           else if (process.env.NODE_ENV === 'dev') {
@@ -1446,11 +1490,42 @@ export function compile(content: string): Branch[] {
 
     }
     else {
+      break
+    }
+  }
+
+  for (let i = 0, length = indexList.length; i < length; i += 5) {
+    index = indexList[i]
+
+    // {{ 左侧的位置
+    openBlockIndex = indexList[i + 1]
+    if (openBlockIndex) {
+      parseHtml(
+        string.slice(content, index, openBlockIndex)
+      )
+    }
+
+    // {{ 右侧的位置
+    openBlockIndex = indexList[i + 2]
+    blockMode = indexList[i + 3]
+    closeBlockIndex = indexList[i + 4]
+    if (closeBlockIndex) {
+
+      code = string.trim(
+        string.slice(content, openBlockIndex, closeBlockIndex)
+      )
+
+      // 不用处理 {{ }} 和 {{{ }}} 这种空 block
+      if (code) {
+        parseBlock(code)
+      }
+
+    }
+    else {
       blockMode = BLOCK_MODE_NONE
       parseHtml(
-        string.slice(content, nextIndex)
+        string.slice(content, index)
       )
-      break
     }
   }
 
