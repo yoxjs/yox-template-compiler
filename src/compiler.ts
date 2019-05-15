@@ -349,11 +349,11 @@ export function compile(content: string): Branch[] {
     // 按照目前的解析逻辑，是根据定界符进行模板分拆
     // 一旦出现插值，children 长度必然大于 1
 
-    let openIndex = env.INDEX_UNVALID,
+    let openIndex = env.RAW_MINUS_ONE,
 
     openText = env.EMPTY_STRING,
 
-    closeIndex = env.INDEX_UNVALID,
+    closeIndex = env.RAW_MINUS_ONE,
 
     closeText = env.EMPTY_STRING
 
@@ -385,7 +385,7 @@ export function compile(content: string): Branch[] {
 
               children.splice(openIndex, closeIndex - openIndex + 1)
 
-              openIndex = closeIndex = env.INDEX_UNVALID
+              openIndex = closeIndex = env.RAW_MINUS_ONE
             }
           }
           else {
