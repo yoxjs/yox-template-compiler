@@ -1390,17 +1390,7 @@ export function compile(content: string): Branch[] {
         }
         if (openBlockIndex < length) {
 
-          // 处理 {{! {{xx}} }} 注释里包含插值
-          while (env.TRUE) {
-            closeBlockIndex = string.indexOf(content, '}}', openBlockIndex)
-            index = string.indexOf(content, '{{', openBlockIndex)
-            if (index < closeBlockIndex) {
-              array.push(blockStack, env.TRUE)
-            }
-            else if (!array.pop(blockStack)) {
-              break
-            }
-          }
+          closeBlockIndex = string.indexOf(content, '}}', index)
 
           if (closeBlockIndex >= openBlockIndex) {
             // 确定开始和结束定界符能否配对成功，即 {{ 对 }}，{{{ 对 }}}
