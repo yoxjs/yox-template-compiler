@@ -415,7 +415,7 @@ export function render(
       const componentName = context.get(tag)
       if (process.env.NODE_ENV === 'dev') {
         if (!componentName) {
-          logger.error(`Dynamic component [${tag}] is not found.`)
+          logger.warn(`Dynamic component [${tag}] is not found.`)
         }
       }
       vnode.tag = componentName
