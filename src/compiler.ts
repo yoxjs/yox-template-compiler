@@ -45,9 +45,6 @@ BLOCK_MODE_UNSAFE = 3,
 // 表达式的静态 keypath
 STATIC_KEYPATH = 'sk',
 
-// 缓存编译模板
-compileCache = {},
-
 // 缓存编译正则
 patternCache = {},
 
@@ -134,14 +131,9 @@ function trimBreakline(content: string): string {
 
 export function compile(content: string): Branch[] {
 
-  let nodeList: Branch[] = compileCache[content]
-  if (nodeList) {
-    return nodeList
-  }
+  let nodeList: Branch[] = [],
 
-  nodeList = []
-
-  let nodeStack: Branch[] = [],
+  nodeStack: Branch[] = [],
 
   // 持有 if/elseif/else 节点
   ifStack: Node[] = [],
@@ -1551,6 +1543,6 @@ export function compile(content: string): Branch[] {
     removeComment(nodeList)
   }
 
-  return compileCache[content] = nodeList
+  return nodeList
 
 }
