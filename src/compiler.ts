@@ -273,13 +273,13 @@ export function compile(content: string): Branch[] {
               processElementSingleExpression(node as Element, child as Expression)
             }
             else if (isAttribute) {
-              processAttributeSingleExpression(node as Element, node as Attribute, child as Expression)
+              processAttributeSingleExpression(node as Attribute, child as Expression)
             }
             else if (isProperty) {
-              processPropertySingleExpression(node as Element, node as Property, child as Expression)
+              processPropertySingleExpression(node as Property, child as Expression)
             }
             else if (isDirective) {
-              processDirectiveSingleExpression(node as Element, node as Directive, child as Expression)
+              processDirectiveSingleExpression(node as Directive, child as Expression)
             }
             break
 
@@ -452,7 +452,7 @@ export function compile(content: string): Branch[] {
 
   },
 
-  processPropertySingleExpression = function (element: Element, prop: Property, child: Expression) {
+  processPropertySingleExpression = function (prop: Property, child: Expression) {
 
     const { expr } = child
 
@@ -462,8 +462,7 @@ export function compile(content: string): Branch[] {
     // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
     // <div class="{{className}}">
 
-    // 组件不要单向绑定，简单一点比较好，就算性能差一些也没事
-    if (!element.isComponent && expr[STATIC_KEYPATH]) {
+    if (expr[STATIC_KEYPATH]) {
       prop.binding = env.TRUE
     }
 
@@ -498,7 +497,7 @@ export function compile(content: string): Branch[] {
 
   },
 
-  processAttributeSingleExpression = function (element: Element, attr: Attribute, child: Expression) {
+  processAttributeSingleExpression = function (attr: Attribute, child: Expression) {
 
     const { expr } = child
 
@@ -508,8 +507,7 @@ export function compile(content: string): Branch[] {
     // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
     // <div class="{{className}}">
 
-    // 组件不要单向绑定，简单一点比较好，就算性能差一些也没事
-    if (!element.isComponent && expr[STATIC_KEYPATH]) {
+    if (expr[STATIC_KEYPATH]) {
       attr.binding = env.TRUE
     }
 
@@ -607,7 +605,7 @@ export function compile(content: string): Branch[] {
 
   },
 
-  processDirectiveSingleExpression = function (element: Element, directive: Directive, child: Expression) {
+  processDirectiveSingleExpression = function (directive: Directive, child: Expression) {
 
     if (process.env.NODE_ENV === 'dev') {
       fatal(`指令的表达式不能用插值语法`)
