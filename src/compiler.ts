@@ -57,6 +57,10 @@ eventPattern = /^[_$a-z]([\w]+)?$/i,
 // 有命名空间的事件
 eventNamespacePattern = /^[_$a-z]([\w]+)?\.[_$a-z]([\w]+)?$/i,
 
+// 换行符
+// 换行符比较神奇，有时候你明明看不到换行符，却真的存在一个，那就是 \r
+breaklinePattern = /^\s*[\n\r]\s*|\s*[\n\r]\s*$/g,
+
 // 标签
 tagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i,
 
@@ -114,19 +118,6 @@ attr2Prop['maxlength'] = 'maxLength'
  */
 function slicePrefix(str: string, prefix: string): string {
   return string.trim(string.slice(str, prefix.length))
-}
-
-/**
- * trim 文本开始和结束位置的换行符
- *
- * 换行符比较神奇，有时候你明明看不到换行符，却真的存在一个，那就是 \r
- *
- */
-function trimBreakline(content: string): string {
-  return content.replace(
-    /^\s*[\n\r]\s*|\s*[\n\r]\s*$/g,
-    env.EMPTY_STRING
-  )
 }
 
 export function compile(content: string): Branch[] {
@@ -888,7 +879,13 @@ export function compile(content: string): Branch[] {
     // </Component>
     // 按现在的逻辑，这样的组件是没有子节点的，因为在这里过滤掉了，因此该组件没有 slot
     // 如果这里放开了，组件就会有一个 slot
-    text = trimBreakline(text)
+
+    // trim 文本开始和结束位置的换行符
+    text = text.replace(
+      breaklinePattern,
+      env.EMPTY_STRING
+    )
+
     if (text) {
       addChild(
         creator.createText(text)
