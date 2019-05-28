@@ -549,7 +549,9 @@ export function render(
       $scope.$keypath = $keypath
 
       // 避免模板里频繁读取 list.length
-      $scope.$length = length
+      if (isDef(length)) {
+        $scope.$length = length
+      }
 
       // 类似 {{#each 1 -> 10}} 这样的临时循环，需要在 scope 上加上当前项
       // 因为通过 context.get() 无法获取数据
