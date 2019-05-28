@@ -668,8 +668,10 @@ export function compile(content: string): Branch[] {
 
   checkElement = function (element: Element) {
 
+    const isTemplate = element.tag === env.RAW_TEMPLATE
+
     if (process.env.NODE_ENV === 'dev') {
-      if (element.tag === env.RAW_TEMPLATE) {
+      if (isTemplate) {
         if (element.key) {
           fatal(`<template> 不支持 key`)
         }
@@ -688,11 +690,15 @@ export function compile(content: string): Branch[] {
       }
     }
 
+    // 没有子节点，则意味着这个插槽没任何意义
+    if (isTemplate && element.slot && !element.children) {
+      replaceChild(element)
+    }
     // style 如果啥都没写，就默认加一个 type="text/css"
     // 因为低版本 IE 没这个属性，没法正常渲染样式
     // 如果 style 写了 attribute 那就自己保证吧
     // 因为 attrs 具有动态性，compiler 无法保证最终一定会输出 type 属性
-    if (element.isStyle && array.falsy(element.attrs)) {
+    else if (element.isStyle && array.falsy(element.attrs)) {
       element.attrs = [
         creator.createProperty('type', config.HINT_STRING, 'text/css')
       ]
