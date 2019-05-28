@@ -525,60 +525,165 @@ export function render(
     }
   },
 
-  renderEach = function (handler: Function, expr: ExpressionNode, index: string | void) {
+  eachHandler = function (
+    lastLength: number,
+    lastKeypath: string,
+    lastScope: type.data,
+    generate: Function,
+    item: any,
+    key: string | number,
+    keypath: string,
+    index: string | void,
+    length: number | void
+  ) {
 
-    const value = getValue(expr),
+    $keypath = keypath
+    $scope = {}
 
-    exprKeypath = expr['ak'],
+    $stack.push($keypath, $scope)
 
-    eachKeypath = exprKeypath || keypathUtil.join($keypath, expr.raw),
+    // each 会改变 $keypath
+    $scope.$keypath = $keypath
 
-    callback = function (item: any, key: string | number, length?: number) {
-
-      let lastKeypath = $keypath, lastScope = $scope, lastKeypathStack = $stack
-
-      $keypath = keypathUtil.join(eachKeypath, toString(key))
-      $scope = {}
-      $stack = object.copy($stack)
-
-      array.push($stack, $keypath)
-      array.push($stack, $scope)
-
-      // 从下面这几句赋值可以看出
-      // scope 至少会有 '$keypath' '$length' '$item' index 等几个值
-      $scope.$keypath = $keypath
-
-      // 避免模板里频繁读取 list.length
-      if (isDef(length)) {
-        $scope.$length = length
-      }
-
-      // 类似 {{#each 1 -> 10}} 这样的临时循环，需要在 scope 上加上当前项
-      // 因为通过 context.get() 无法获取数据
-      if (!exprKeypath) {
-        $scope.$item = item
-      }
-
-      if (index) {
-        $scope[index] = key
-      }
-
-      handler()
-
-      $keypath = lastKeypath
-      $scope = lastScope
-      $stack = lastKeypathStack
-
+    // 避免模板里频繁读取 list.length
+    if (isDef(length)) {
+      $scope.$length = length
     }
 
-    if (is.array(value)) {
-      array.each(value, callback)
+    // 业务层是否写了 expr:index
+    if (index) {
+      $scope[index] = key
     }
-    else if (is.object(value)) {
-      object.each(value, callback)
+
+    // 无法通过 context.get($keypath + key) 读取到数据的场景
+    // 必须把 item 写到 scope
+    if (!keypath) {
+      $scope.$item = item
     }
-    else if (is.func(value)) {
-      value(callback)
+
+    generate()
+
+    $stack.length = lastLength
+
+    $keypath = lastKeypath
+    $scope = lastScope
+
+  },
+
+  renderEach = function (
+    generate: Function,
+    from: ExpressionNode,
+    to: ExpressionNode | void,
+    equal: boolean | void,
+    index: string | void
+  ) {
+
+    const fromValue = getValue(from),
+
+    lastLength = $stack.length,
+
+    lastKeypath = $keypath,
+
+    lastScope = $scope
+
+    if (to) {
+      let toValue = getValue(to), count = 0
+      if (fromValue < toValue) {
+        if (equal) {
+          for (let i = fromValue; i <= toValue; i++) {
+            eachHandler(
+              lastLength,
+              lastKeypath,
+              lastScope,
+              generate,
+              i,
+              count++,
+              env.EMPTY_STRING,
+              index
+            )
+          }
+        }
+        else {
+          for (let i = fromValue; i < toValue; i++) {
+            eachHandler(
+              lastLength,
+              lastKeypath,
+              lastScope,
+              generate,
+              i,
+              count++,
+              env.EMPTY_STRING,
+              index
+            )
+          }
+        }
+      }
+      else {
+        if (equal) {
+          for (let i = fromValue; i >= toValue; i--) {
+            eachHandler(
+              lastLength,
+              lastKeypath,
+              lastScope,
+              generate,
+              i,
+              count++,
+              env.EMPTY_STRING,
+              index
+            )
+          }
+        }
+        else {
+          for (let i = fromValue; i > toValue; i--) {
+            eachHandler(
+              lastLength,
+              lastKeypath,
+              lastScope,
+              generate,
+              i,
+              count++,
+              env.EMPTY_STRING,
+              index
+            )
+          }
+        }
+      }
+    }
+    else {
+      const eachKeypath = from['ak']
+      if (is.array(fromValue)) {
+        for (let i = 0, length = fromValue.length; i < length; i++) {
+          eachHandler(
+            lastLength,
+            lastKeypath,
+            lastScope,
+            generate,
+            fromValue[i],
+            i,
+            eachKeypath
+              ? keypathUtil.join(eachKeypath, env.EMPTY_STRING + i)
+              : env.EMPTY_STRING,
+            index,
+            length
+          )
+        }
+      }
+      else if (is.object(fromValue)) {
+        for (let key in fromValue) {
+          eachHandler(
+            lastLength,
+            lastKeypath,
+            lastScope,
+            generate,
+            fromValue[key],
+            key,
+            eachKeypath
+              ? keypathUtil.join(eachKeypath, key)
+              : env.EMPTY_STRING,
+            index
+          )
+        }
+      }
     }
 
   }

@@ -54,10 +54,12 @@ export function createProperty(name: string, hint: type.hint, value?: string | n
   }
 }
 
-export function createEach(expr: ExpressionNode, index: string): Each {
+export function createEach(from: ExpressionNode, to: ExpressionNode | void, equal: boolean, index: string): Each {
   return {
     type: nodeType.EACH,
-    expr,
+    from,
+    to,
+    equal,
     index,
     isComplex: env.TRUE,
   }

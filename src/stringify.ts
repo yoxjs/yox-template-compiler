@@ -696,7 +696,13 @@ nodeStringify[nodeType.EACH] = function (node: Each): string {
   return stringifyCall(
     RENDER_EACH,
     array.join(
-      trimArgs([generate, toJSON(node.expr), node.index ? toJSON(node.index) : env.UNDEFINED]),
+      trimArgs([
+        generate,
+        toJSON(node.from),
+        node.to ? toJSON(node.to) : env.UNDEFINED,
+        node.equal ? STRING_TRUE : env.UNDEFINED,
+        node.index ? toJSON(node.index) : env.UNDEFINED
+      ]),
       SEP_COMMA
     )
   )

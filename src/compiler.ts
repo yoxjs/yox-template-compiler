@@ -61,6 +61,9 @@ eventNamespacePattern = /^[_$a-z]([\w]+)?\.[_$a-z]([\w]+)?$/i,
 // 换行符比较神奇，有时候你明明看不到换行符，却真的存在一个，那就是 \r
 breaklinePattern = /^\s*[\n\r]\s*|\s*[\n\r]\s*$/g,
 
+// 区间遍历
+rangePattern = /\s*(=>|->)\s*/,
+
 // 标签
 tagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i,
 
@@ -676,14 +679,15 @@ export function compile(content: string): Branch[] {
           fatal(`<template> 不写 slot 属性是几个意思？`)
         }
       }
-      else if (element.tag === env.RAW_SLOT && !element.name) {
-        fatal(`<slot> 不写 name 属性是几个意思？`)
-      }
     }
 
     // 没有子节点，则意味着这个插槽没任何意义
     if (isTemplate && element.slot && !element.children) {
       replaceChild(element)
+    }
+    // <slot /> 如果没写 name，自动加上默认名称
+    else if (element.tag === env.RAW_SLOT && !element.name) {
+      element.name = 'children'
     }
     // style 如果啥都没写，就默认加一个 type="text/css"
     // 因为低版本 IE 没这个属性，没法正常渲染样式
@@ -1168,22 +1172,45 @@ export function compile(content: string): Branch[] {
     // {{#each xx:index}}
     function (source: string) {
       if (string.startsWith(source, config.SYNTAX_EACH)) {
+        if (process.env.NODE_ENV === 'dev') {
+          if (currentElement) {
+            fatal(
+              currentAttribute
+                ? `each 不能写在属性的值里`
+                : `each 不能写在属性层级`
+            )
+          }
+        }
         source = slicePrefix(source, config.SYNTAX_EACH)
         const terms = source.replace(/\s+/g, env.EMPTY_STRING).split(':')
         if (terms[0]) {
-          const expr = exprCompiler.compile(string.trim(terms[0]))
-          if (expr) {
-            if (!currentElement) {
+          const literal = string.trim(terms[0]),
+
+          index = string.trim(terms[1]),
+
+          match = literal.match(rangePattern)
+
+          if (match) {
+            const parts = literal.split(rangePattern),
+            from = exprCompiler.compile(parts[0]),
+            to = exprCompiler.compile(parts[2])
+            if (from && to) {
               return creator.createEach(
-                expr,
-                string.trim(terms[1])
+                from,
+                to,
+                string.trim(match[1]) === '=>',
+                index
               )
             }
-            else if (process.env.NODE_ENV === 'dev') {
-              fatal(
-                currentAttribute
-                  ? `each 不能写在属性的值里`
-                  : `each 不能写在属性层级`
+          }
+          else {
+            const expr = exprCompiler.compile(literal)
+            if (expr) {
+              return creator.createEach(
+                expr,
+                env.UNDEFINED,
+                env.FALSE,
+                index
               )
             }
           }
