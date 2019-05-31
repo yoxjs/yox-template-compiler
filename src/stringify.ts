@@ -388,7 +388,7 @@ function getComponentSlots(children: Node[]): string | void {
 
 nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
-  let { tag, isComponent, isSvg, isStyle, isStatic, isComplex, name, ref, key, html, attrs, children } = node,
+  let { tag, isComponent, isSvg, isStyle, isOption, isStatic, isComplex, name, ref, key, html, attrs, children } = node,
 
   data: type.data = {},
 
@@ -446,6 +446,10 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   if (isStyle) {
     data.isStyle = STRING_TRUE
+  }
+
+  if (isOption) {
+    data.isOption = STRING_TRUE
   }
 
   if (isStatic) {

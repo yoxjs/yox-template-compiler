@@ -695,7 +695,7 @@ export function compile(content: string): Branch[] {
     // 因为低版本 IE 没这个属性，没法正常渲染样式
 
     else {
-      let hasType = env.FALSE
+      let hasType = env.FALSE, hasValue = env.FALSE
       if (attrs) {
         array.each(
           attrs,
@@ -707,7 +707,9 @@ export function compile(content: string): Branch[] {
 
             if (name === 'type') {
               hasType = env.TRUE
-              return env.FALSE
+            }
+            else if (name === env.RAW_VALUE) {
+              hasValue = env.TRUE
             }
 
           }
@@ -718,6 +720,10 @@ export function compile(content: string): Branch[] {
           element,
           creator.createProperty('type', config.HINT_STRING, 'text/css')
         )
+      }
+      // 低版本 IE 需要给 option 标签强制加 value
+      else if (tag === 'option' && !hasValue) {
+        element.isOption = env.TRUE
       }
     }
 

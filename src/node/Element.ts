@@ -17,6 +17,8 @@ export default interface Element extends Branch {
 
   isStyle: boolean
 
+  isOption: boolean
+
   isComponent: boolean
 
   // <template slot="xx">

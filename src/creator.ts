@@ -76,6 +76,8 @@ export function createElement(tag: string, isSvg: boolean, isComponent: boolean)
     tag,
     isSvg,
     isStyle: tag === 'style',
+    // 只有 <option> 没有 value 属性时才为 true
+    isOption: env.FALSE,
     isComponent,
     isStatic: !isComponent && tag !== env.RAW_SLOT,
   }
