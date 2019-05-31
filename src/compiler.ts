@@ -58,7 +58,7 @@ eventPattern = /^[_$a-z]([\w]+)?$/i,
 eventNamespacePattern = /^[_$a-z]([\w]+)?\.[_$a-z]([\w]+)?$/i,
 
 // 换行符
-// 换行符比较神奇，有时候你明明看不到换行符，却真的存在一个，那就是 \r
+// 比较神奇是，有时候你明明看不到换行符，却真的存在一个，那就是 \r
 breaklinePattern = /^\s*[\n\r]\s*|\s*[\n\r]\s*$/g,
 
 // 区间遍历
@@ -662,7 +662,7 @@ export function compile(content: string): Branch[] {
 
   checkElement = function (element: Element) {
 
-    const isTemplate = element.tag === env.RAW_TEMPLATE
+    const { tag, attrs, slot, children } = element, isTemplate = tag === env.RAW_TEMPLATE
 
     if (process.env.NODE_ENV === 'dev') {
       if (isTemplate) {
@@ -672,33 +672,62 @@ export function compile(content: string): Branch[] {
         else if (element.ref) {
           fatal(`<template> 不支持 ref`)
         }
-        else if (element.attrs) {
+        else if (attrs) {
           fatal(`<template> 不支持属性或指令`)
         }
-        else if (!element.slot) {
+        else if (!slot) {
           fatal(`<template> 不写 slot 属性是几个意思？`)
         }
       }
     }
 
     // 没有子节点，则意味着这个插槽没任何意义
-    if (isTemplate && element.slot && !element.children) {
+    if (isTemplate && slot && !children) {
       replaceChild(element)
     }
     // <slot /> 如果没写 name，自动加上默认名称
-    else if (element.tag === env.RAW_SLOT && !element.name) {
-      element.name = 'children'
+    else if (tag === env.RAW_SLOT && !element.name) {
+      element.name = config.SLOT_NAME_DEFAULT
     }
-    // style 如果啥都没写，就默认加一个 type="text/css"
+    // 补全 style 标签的 type
+
+    // style 如果没有 type 则加一个 type="text/css"
     // 因为低版本 IE 没这个属性，没法正常渲染样式
-    // 如果 style 写了 attribute 那就自己保证吧
-    // 因为 attrs 具有动态性，compiler 无法保证最终一定会输出 type 属性
-    else if (element.isStyle && array.falsy(element.attrs)) {
-      element.attrs = [
-        creator.createProperty('type', config.HINT_STRING, 'text/css')
-      ]
+
+    else {
+      let hasType = env.FALSE
+      if (attrs) {
+        array.each(
+          attrs,
+          function (attr) {
+
+            const name = attr.type === nodeType.PROPERTY
+              ? (attr as Property).name
+              : env.UNDEFINED
+
+            if (name === 'type') {
+              hasType = env.TRUE
+              return env.FALSE
+            }
+
+          }
+        )
+      }
+      if (element.isStyle && !hasType) {
+        addProperty(
+          element,
+          creator.createProperty('type', config.HINT_STRING, 'text/css')
+        )
+      }
     }
 
+  },
+
+  addProperty = function (element: Element, prop: Property) {
+    array.push(
+      element.attrs || (element.attrs = []),
+      prop
+    )
   },
 
   bindSpecialAttr = function (element: Element, attr: Attribute) {
@@ -810,15 +839,15 @@ export function compile(content: string): Branch[] {
         }
         else if (type === nodeType.ELSE_IF) {
           if (process.env.NODE_ENV === 'dev') {
-            fatal('大哥，else 后面不能跟 else if 啊')
+            fatal('else 后面不能跟 else if 啊')
           }
         }
         else if (process.env.NODE_ENV === 'dev') {
-          fatal('大哥，只能写一个 else 啊！！')
+          fatal('只能写一个 else 啊')
         }
       }
       else if (process.env.NODE_ENV === 'dev') {
-        fatal('不写 if 是几个意思？？')
+        fatal('不写 if 是几个意思')
       }
 
     }
