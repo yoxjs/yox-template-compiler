@@ -39,11 +39,9 @@ export function render(
   transitions: Record<string, TransitionHooks>
 ) {
 
-  let $keypath = env.EMPTY_STRING,
+  let $scope: type.data = { $keypath: env.EMPTY_STRING },
 
-  $scope: type.data = { $keypath },
-
-  $stack = [$keypath, $scope],
+  $stack = [ $scope ],
 
   $vnode: any,
 
@@ -53,9 +51,7 @@ export function render(
 
   lookup = function (stack: any[], index: number, key: string, node: Keypath, depIgnore?: boolean, defaultKeypath?: string) {
 
-    let keypath = keypathUtil.join(stack[index], key),
-
-    scope = stack[index + 1]
+    let scope = stack[index], keypath = keypathUtil.join(scope.$keypath, key)
 
     node.ak = keypath
 
@@ -90,12 +86,11 @@ export function render(
     const result = context.get(keypath, lookup, depIgnore)
     if (result === lookup) {
       // undefined 或 true 都表示需要向上寻找
-      if (node.lookup !== env.FALSE && index > 1) {
-        index -= 2
+      if (node.lookup !== env.FALSE && index > 0) {
         if (process.env.NODE_ENV === 'dev') {
           logger.debug(`Can't find [${keypath}], start looking up.`)
         }
-        return lookup(stack, index, key, node, depIgnore, defaultKeypath)
+        return lookup(stack, index - 1, key, node, depIgnore, defaultKeypath)
       }
       const holder = object.get(filters, key)
       return holder
@@ -118,7 +113,7 @@ export function render(
       function (keypath: string, node: Keypath): any {
         return lookup(
           renderStack,
-          length - 2 * ((node.offset || 0) + 1),
+          length - ((node.offset || 0) + 1),
           keypath,
           node,
           depIgnore
@@ -240,7 +235,7 @@ export function render(
           isText: env.TRUE,
           text,
           context,
-          keypath: $keypath,
+          keypath: $scope.$keypath,
         }
         array.push(vnodeList, textVnode)
       }
@@ -447,7 +442,7 @@ export function render(
     }
 
     vnode.context = context
-    vnode.keypath = $keypath
+    vnode.keypath = $scope.$keypath
 
     const vnodeList = array.last(vnodeStack)
     if (vnodeList) {
@@ -526,9 +521,6 @@ export function render(
   },
 
   eachHandler = function (
-    lastLength: number,
-    lastKeypath: string,
-    lastScope: type.data,
     generate: Function,
     item: any,
     key: string | number,
@@ -537,13 +529,11 @@ export function render(
     length: number | void
   ) {
 
-    $keypath = keypath
-    $scope = {}
+    const lastScope = $scope, lastStack = $stack
 
-    $stack.push($keypath, $scope)
-
-    // each 会改变 $keypath
-    $scope.$keypath = $keypath
+    // each 会改变 keypath
+    $scope = { $keypath: keypath }
+    $stack = lastStack.concat($scope)
 
     // 避免模板里频繁读取 list.length
     if (isDef(length)) {
@@ -563,10 +553,8 @@ export function render(
 
     generate()
 
-    $stack.length = lastLength
-
-    $keypath = lastKeypath
     $scope = lastScope
+    $stack = lastStack
 
   },
 
@@ -578,13 +566,7 @@ export function render(
     index: string | void
   ) {
 
-    const fromValue = getValue(from),
-
-    lastLength = $stack.length,
-
-    lastKeypath = $keypath,
-
-    lastScope = $scope
+    const fromValue = getValue(from)
 
     if (to) {
       let toValue = getValue(to), count = 0
@@ -592,9 +574,6 @@ export function render(
         if (equal) {
           for (let i = fromValue; i <= toValue; i++) {
             eachHandler(
-              lastLength,
-              lastKeypath,
-              lastScope,
               generate,
               i,
               count++,
@@ -606,9 +585,6 @@ export function render(
         else {
           for (let i = fromValue; i < toValue; i++) {
             eachHandler(
-              lastLength,
-              lastKeypath,
-              lastScope,
               generate,
               i,
               count++,
@@ -622,9 +598,6 @@ export function render(
         if (equal) {
           for (let i = fromValue; i >= toValue; i--) {
             eachHandler(
-              lastLength,
-              lastKeypath,
-              lastScope,
               generate,
               i,
               count++,
@@ -636,9 +609,6 @@ export function render(
         else {
           for (let i = fromValue; i > toValue; i--) {
             eachHandler(
-              lastLength,
-              lastKeypath,
-              lastScope,
               generate,
               i,
               count++,
@@ -654,9 +624,6 @@ export function render(
       if (is.array(fromValue)) {
         for (let i = 0, length = fromValue.length; i < length; i++) {
           eachHandler(
-            lastLength,
-            lastKeypath,
-            lastScope,
             generate,
             fromValue[i],
             i,
@@ -671,9 +638,6 @@ export function render(
       else if (is.object(fromValue)) {
         for (let key in fromValue) {
           eachHandler(
-            lastLength,
-            lastKeypath,
-            lastScope,
             generate,
             fromValue[key],
             key,
