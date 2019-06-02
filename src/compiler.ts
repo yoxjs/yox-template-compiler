@@ -617,7 +617,6 @@ export function compile(content: string): Branch[] {
 
     hasNext: boolean | undefined
 
-    // 变成一维数组，方便遍历
     while (env.TRUE) {
       if (currentNode.children) {
         if (!hasNext) {
@@ -913,11 +912,7 @@ export function compile(content: string): Branch[] {
     // 如果这里放开了，组件就会有一个 slot
 
     // trim 文本开始和结束位置的换行符
-    text = text.replace(
-      breaklinePattern,
-      env.EMPTY_STRING
-    )
-
+    text = text.replace(breaklinePattern, env.EMPTY_STRING)
     if (text) {
       addChild(
         creator.createText(text)
