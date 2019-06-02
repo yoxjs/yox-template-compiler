@@ -435,7 +435,8 @@ export function render(
         function (slot: Function, name: string) {
           vnodeStack.push([])
           slot()
-          renderSlots[name] = array.pop(vnodeStack)
+          const vnodes = array.pop(vnodeStack) as VNode[]
+          renderSlots[name] = vnodes.length ? vnodes : env.UNDEFINED
         }
       )
       vnode.slots = renderSlots
