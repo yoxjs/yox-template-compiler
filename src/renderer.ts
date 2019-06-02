@@ -87,7 +87,7 @@ export function render(
     if (result === lookup) {
       // undefined 或 true 都表示需要向上寻找
       if (node.lookup !== env.FALSE && index > 0) {
-        if (process.env.NODE_ENV === 'dev') {
+        if (process.env.NODE_ENV === 'development') {
           logger.debug(`Can't find [${keypath}], start looking up.`)
         }
         return lookup(stack, index - 1, key, node, depIgnore, defaultKeypath)
@@ -267,7 +267,7 @@ export function render(
 
   renderTransitionVnode = function (name: string) {
     $vnode.transition = transitions[name]
-    if (process.env.NODE_ENV === 'dev') {
+    if (process.env.NODE_ENV === 'development') {
       if (!$vnode.transition) {
         logger.fatal(`transition [${name}] is not found.`)
       }
@@ -337,7 +337,7 @@ export function render(
 
     const hooks = directives[name]
 
-    if (process.env.NODE_ENV === 'dev') {
+    if (process.env.NODE_ENV === 'development') {
       if (!hooks) {
         logger.fatal(`directive [${name}] is not found.`)
       }
@@ -392,7 +392,7 @@ export function render(
       }
 
     }
-    else if (process.env.NODE_ENV === 'dev') {
+    else if (process.env.NODE_ENV === 'development') {
       logger.warn(`[${expr.raw}] 不是对象，延展个毛啊`)
     }
 
@@ -408,7 +408,7 @@ export function render(
 
     if (tag) {
       const componentName = context.get(tag)
-      if (process.env.NODE_ENV === 'dev') {
+      if (process.env.NODE_ENV === 'development') {
         if (!componentName) {
           logger.warn(`Dynamic component [${tag}] is not found.`)
         }
@@ -515,7 +515,7 @@ export function render(
           renderEach
         )
       }
-      else if (process.env.NODE_ENV === 'dev') {
+      else if (process.env.NODE_ENV === 'development') {
         logger.fatal(`partial [${name}] is not found.`)
       }
     }

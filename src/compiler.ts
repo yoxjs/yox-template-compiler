@@ -163,7 +163,7 @@ export function compile(content: string): Branch[] {
   startQuote: string | void,
 
   fatal = function (msg: string) {
-    if (process.env.NODE_ENV === 'dev') {
+    if (process.env.NODE_ENV === 'development') {
       logger.fatal(`Error compiling ${env.RAW_TEMPLATE}:\n${content}\n- ${msg}`)
     }
   },
@@ -230,7 +230,7 @@ export function compile(content: string): Branch[] {
         }
       }
 
-      if (process.env.NODE_ENV === 'dev') {
+      if (process.env.NODE_ENV === 'development') {
         if (isElement) {
           const element = node as Element
           if (tagName && element.tag !== tagName) {
@@ -324,7 +324,7 @@ export function compile(content: string): Branch[] {
 
     }
 
-    if (process.env.NODE_ENV === 'dev') {
+    if (process.env.NODE_ENV === 'development') {
       fatal(`出栈节点类型不匹配`)
     }
   },
@@ -393,7 +393,7 @@ export function compile(content: string): Branch[] {
     // 1. 很难做性能优化
     // 2. 全局搜索不到事件名，不利于代码维护
     // 3. 不利于编译成静态函数
-    if (process.env.NODE_ENV === 'dev') {
+    if (process.env.NODE_ENV === 'development') {
       fatal(`指令的值不能用插值或 if 语法`)
     }
   },
@@ -467,7 +467,7 @@ export function compile(content: string): Branch[] {
     const { name } = attr
 
     if (isSpecialAttr(element, attr)) {
-      if (process.env.NODE_ENV === 'dev') {
+      if (process.env.NODE_ENV === 'development') {
         fatal(`${name} 忘了写值吧？`)
       }
     }
@@ -539,7 +539,7 @@ export function compile(content: string): Branch[] {
 
     if (expr) {
 
-      if (process.env.NODE_ENV === 'dev') {
+      if (process.env.NODE_ENV === 'development') {
 
         const { raw } = expr
 
@@ -587,7 +587,7 @@ export function compile(content: string): Branch[] {
 
     }
     else {
-      if (process.env.NODE_ENV === 'dev') {
+      if (process.env.NODE_ENV === 'development') {
         if (!isCustom) {
           fatal(`${directive.ns} 指令的表达式错误: [${text}]`)
         }
@@ -601,7 +601,7 @@ export function compile(content: string): Branch[] {
 
   processDirectiveSingleExpression = function (directive: Directive, child: Expression) {
 
-    if (process.env.NODE_ENV === 'dev') {
+    if (process.env.NODE_ENV === 'development') {
       fatal(`指令的表达式不能用插值语法`)
     }
 
@@ -664,7 +664,7 @@ export function compile(content: string): Branch[] {
 
     const { tag, attrs, slot, children } = element, isTemplate = tag === env.RAW_TEMPLATE
 
-    if (process.env.NODE_ENV === 'dev') {
+    if (process.env.NODE_ENV === 'development') {
       if (isTemplate) {
         if (element.key) {
           fatal(`<template> 不支持 key`)
@@ -716,8 +716,8 @@ export function compile(content: string): Branch[] {
         )
       }
       if (element.isStyle && !hasType) {
-        addProperty(
-          element,
+        array.push(
+          element.attrs || (element.attrs = []),
           creator.createProperty('type', config.HINT_STRING, 'text/css')
         )
       }
@@ -729,13 +729,6 @@ export function compile(content: string): Branch[] {
 
   },
 
-  addProperty = function (element: Element, prop: Property) {
-    array.push(
-      element.attrs || (element.attrs = []),
-      prop
-    )
-  },
-
   bindSpecialAttr = function (element: Element, attr: Attribute) {
 
     const { name, value } = attr,
@@ -743,7 +736,7 @@ export function compile(content: string): Branch[] {
     // 这三个属性值要求是字符串
     isStringValueRequired = name === env.RAW_NAME || name === env.RAW_SLOT
 
-    if (process.env.NODE_ENV === 'dev') {
+    if (process.env.NODE_ENV === 'development') {
       // 因为要拎出来给 element，所以不能用 if
       if (array.last(nodeStack) !== element) {
         fatal(`${name} 不能写在 if 内`)
@@ -844,15 +837,15 @@ export function compile(content: string): Branch[] {
           array.push(ifStack, node)
         }
         else if (type === nodeType.ELSE_IF) {
-          if (process.env.NODE_ENV === 'dev') {
+          if (process.env.NODE_ENV === 'development') {
             fatal('else 后面不能跟 else if 啊')
           }
         }
-        else if (process.env.NODE_ENV === 'dev') {
+        else if (process.env.NODE_ENV === 'development') {
           fatal('只能写一个 else 啊')
         }
       }
-      else if (process.env.NODE_ENV === 'dev') {
+      else if (process.env.NODE_ENV === 'development') {
         fatal('不写 if 是几个意思')
       }
 
@@ -962,7 +955,7 @@ export function compile(content: string): Branch[] {
              *   </template>
              * </Component>
              */
-            if (process.env.NODE_ENV === 'dev') {
+            if (process.env.NODE_ENV === 'development') {
               if (tag === env.RAW_TEMPLATE) {
                 const lastNode = array.last(nodeStack)
                 if (!lastNode || !(lastNode as Element).isComponent) {
@@ -1012,7 +1005,7 @@ export function compile(content: string): Branch[] {
 
           // <div class="11 name="xxx"></div>
           // 这里会匹配上 xxx"，match[2] 就是那个引号
-          if (process.env.NODE_ENV === 'dev') {
+          if (process.env.NODE_ENV === 'development') {
             if (match[2]) {
               fatal(`上一个属性似乎没有正常结束`)
             }
@@ -1029,7 +1022,7 @@ export function compile(content: string): Branch[] {
           // 这里要用 on- 判断前缀，否则 on 太容易重名了
           else if (string.startsWith(name, config.DIRECTIVE_ON + directiveSeparator)) {
             const event = slicePrefix(name, config.DIRECTIVE_ON + directiveSeparator)
-            if (process.env.NODE_ENV === 'dev') {
+            if (process.env.NODE_ENV === 'development') {
               if (!event) {
                 fatal('缺少事件名称')
               }
@@ -1055,7 +1048,7 @@ export function compile(content: string): Branch[] {
           // 这里要用 o- 判断前缀，否则 o 太容易重名了
           else if (string.startsWith(name, config.DIRECTIVE_CUSTOM + directiveSeparator)) {
             const custom = slicePrefix(name, config.DIRECTIVE_CUSTOM + directiveSeparator)
-            if (process.env.NODE_ENV === 'dev') {
+            if (process.env.NODE_ENV === 'development') {
               if (!custom) {
                 fatal('缺少自定义指令名称')
               }
@@ -1161,7 +1154,7 @@ export function compile(content: string): Branch[] {
           text = content
           addTextChild(text)
         }
-        else if (process.env.NODE_ENV === 'dev') {
+        else if (process.env.NODE_ENV === 'development') {
           fatal(`${currentAttribute.name} 没有找到结束引号`)
         }
 
@@ -1192,7 +1185,7 @@ export function compile(content: string): Branch[] {
 
       }
       else {
-        if (process.env.NODE_ENV === 'dev') {
+        if (process.env.NODE_ENV === 'development') {
           if (string.trim(content)) {
             fatal(`<${currentElement.tag}> 属性里不要写乱七八糟的字符`)
           }
@@ -1207,7 +1200,7 @@ export function compile(content: string): Branch[] {
     // {{#each xx:index}}
     function (source: string) {
       if (string.startsWith(source, config.SYNTAX_EACH)) {
-        if (process.env.NODE_ENV === 'dev') {
+        if (process.env.NODE_ENV === 'development') {
           if (currentElement) {
             fatal(
               currentAttribute
@@ -1250,7 +1243,7 @@ export function compile(content: string): Branch[] {
             }
           }
         }
-        if (process.env.NODE_ENV === 'dev') {
+        if (process.env.NODE_ENV === 'development') {
           fatal(`无效的 each`)
         }
       }
@@ -1263,7 +1256,7 @@ export function compile(content: string): Branch[] {
           if (!currentElement) {
             return creator.createImport(source)
           }
-          else if (process.env.NODE_ENV === 'dev') {
+          else if (process.env.NODE_ENV === 'development') {
             fatal(
               currentAttribute
                 ? `import 不能写在属性的值里`
@@ -1271,7 +1264,7 @@ export function compile(content: string): Branch[] {
             )
           }
         }
-        if (process.env.NODE_ENV === 'dev') {
+        if (process.env.NODE_ENV === 'development') {
           fatal(`无效的 import`)
         }
       }
@@ -1284,7 +1277,7 @@ export function compile(content: string): Branch[] {
           if (!currentElement) {
             return creator.createPartial(source)
           }
-          else if (process.env.NODE_ENV === 'dev') {
+          else if (process.env.NODE_ENV === 'development') {
             fatal(
               currentAttribute
                 ? `partial 不能写在属性的值里`
@@ -1292,7 +1285,7 @@ export function compile(content: string): Branch[] {
             )
           }
         }
-        if (process.env.NODE_ENV === 'dev') {
+        if (process.env.NODE_ENV === 'development') {
           fatal(`无效的 partial`)
         }
       }
@@ -1305,7 +1298,7 @@ export function compile(content: string): Branch[] {
         if (expr) {
           return creator.createIf(expr)
         }
-        if (process.env.NODE_ENV === 'dev') {
+        if (process.env.NODE_ENV === 'development') {
           fatal(`无效的 if`)
         }
       }
@@ -1318,7 +1311,7 @@ export function compile(content: string): Branch[] {
         if (expr) {
           return creator.createElseIf(expr)
         }
-        if (process.env.NODE_ENV === 'dev') {
+        if (process.env.NODE_ENV === 'development') {
           fatal(`无效的 else if`)
         }
       }
@@ -1330,7 +1323,7 @@ export function compile(content: string): Branch[] {
         if (!string.trim(source)) {
           return creator.createElse()
         }
-        if (process.env.NODE_ENV === 'dev') {
+        if (process.env.NODE_ENV === 'development') {
           fatal(`else 后面不要写乱七八糟的东西`)
         }
       }
@@ -1349,11 +1342,11 @@ export function compile(content: string): Branch[] {
                 : env.FALSE
             )
           }
-          else if (process.env.NODE_ENV === 'dev') {
+          else if (process.env.NODE_ENV === 'development') {
             fatal(`延展属性只能用于组件属性`)
           }
         }
-        if (process.env.NODE_ENV === 'dev') {
+        if (process.env.NODE_ENV === 'development') {
           fatal(`无效的 spread`)
         }
       }
@@ -1366,7 +1359,7 @@ export function compile(content: string): Branch[] {
         if (expr) {
           return creator.createExpression(expr, blockMode === BLOCK_MODE_SAFE)
         }
-        if (process.env.NODE_ENV === 'dev') {
+        if (process.env.NODE_ENV === 'development') {
           fatal(`无效的 expression`)
         }
       }
@@ -1409,7 +1402,7 @@ export function compile(content: string): Branch[] {
           type = node.type
           isCondition = env.TRUE
         }
-        else if (process.env.NODE_ENV === 'dev') {
+        else if (process.env.NODE_ENV === 'development') {
           fatal(`if 还没开始就结束了？`)
         }
       }
@@ -1533,15 +1526,15 @@ export function compile(content: string): Branch[] {
               }
             }
           }
-          else if (process.env.NODE_ENV === 'dev') {
+          else if (process.env.NODE_ENV === 'development') {
             fatal('找不到结束定界符')
           }
         }
-        else if (process.env.NODE_ENV === 'dev') {
+        else if (process.env.NODE_ENV === 'development') {
           fatal('{{{ 后面没字符串了？')
         }
       }
-      else if (process.env.NODE_ENV === 'dev') {
+      else if (process.env.NODE_ENV === 'development') {
         fatal('{{ 后面没字符串了？')
       }
 
@@ -1595,7 +1588,7 @@ export function compile(content: string): Branch[] {
      */
     popSelfClosingElementIfNeeded()
 
-    if (process.env.NODE_ENV === 'dev') {
+    if (process.env.NODE_ENV === 'development') {
       if (nodeStack.length) {
         fatal('还有节点未出栈')
       }
