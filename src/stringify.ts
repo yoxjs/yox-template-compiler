@@ -156,8 +156,8 @@ function stringifyArray(arr: any[]): string {
   return `[${array.join(arr, SEP_COMMA)}]`
 }
 
-function stringifyCall(name: string, arg: string): string {
-  return `${name}(${arg})`
+function stringifyCall(name: string, args: (string | void)[]): string {
+  return `${name}(${array.join(trimArgs(args), SEP_COMMA)})`
 }
 
 function stringifyFunction(result: string | void, arg?: string): string {
@@ -173,10 +173,7 @@ function stringifyExpression(renderName: string, expr: ExpressionNode, extra: st
   if (extra) {
     array.push(args, extra)
   }
-  return stringifyCall(
-    renderName,
-    array.join(args, SEP_COMMA)
-  )
+  return stringifyCall(renderName, args)
 }
 
 function stringifyExpressionArg(expr: ExpressionNode): string {
@@ -322,10 +319,7 @@ function trimArgs(list: (string | void)[]) {
 function renderElement(data: string, tag: string | void, attrs: string | void, childs: string | void, slots: string | void): string {
   return stringifyCall(
     RENDER_ELEMENT_VNODE,
-    array.join(
-      trimArgs([data, tag, attrs, childs, slots]),
-      SEP_COMMA
-    )
+    [data, tag, attrs, childs, slots]
   )
 }
 
@@ -398,12 +392,10 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
   outputChilds: string | void,
 
-  outputSlots: string | void,
-
-  args: string[]
+  outputSlots: string | void
 
   if (tag === env.RAW_SLOT) {
-    args = [toJSON(config.SLOT_DATA_PREFIX + name)]
+    const args = [toJSON(config.SLOT_DATA_PREFIX + name)]
     if (children) {
       array.push(
         args,
@@ -412,10 +404,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
         )
       )
     }
-    return stringifyCall(
-      RENDER_SLOT,
-      array.join(args, SEP_COMMA)
-    )
+    return stringifyCall(RENDER_SLOT, args)
   }
 
   array.push(collectStack, env.FALSE)
@@ -508,15 +497,12 @@ nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
   const { binding } = node
   return stringifyCall(
     RENDER_ATTRIBUTE_VNODE,
-    array.join(
-      trimArgs([
-        toJSON(node.name),
-        binding ? STRING_TRUE : env.UNDEFINED,
-        binding ? toJSON(node.expr) : env.UNDEFINED,
-        binding ? env.UNDEFINED : stringifyValue(node.value, node.expr, node.children)
-      ]),
-      SEP_COMMA
-    )
+    [
+      toJSON(node.name),
+      binding ? STRING_TRUE : env.UNDEFINED,
+      binding ? toJSON(node.expr) : env.UNDEFINED,
+      binding ? env.UNDEFINED : stringifyValue(node.value, node.expr, node.children)
+    ]
   )
 }
 
@@ -524,16 +510,13 @@ nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
   const { binding } = node
   return stringifyCall(
     RENDER_PROPERTY_VNODE,
-    array.join(
-      trimArgs([
-        toJSON(node.name),
-        toJSON(node.hint),
-        binding ? STRING_TRUE : env.UNDEFINED,
-        binding ? toJSON(node.expr) : env.UNDEFINED,
-        binding ? env.UNDEFINED : stringifyValue(node.value, node.expr, node.children)
-      ]),
-      SEP_COMMA
-    )
+    [
+      toJSON(node.name),
+      toJSON(node.hint),
+      binding ? STRING_TRUE : env.UNDEFINED,
+      binding ? toJSON(node.expr) : env.UNDEFINED,
+      binding ? env.UNDEFINED : stringifyValue(node.value, node.expr, node.children)
+    ]
   )
 }
 
@@ -544,17 +527,14 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
   if (ns === config.DIRECTIVE_LAZY) {
     return stringifyCall(
       RENDER_LAZY_VNODE,
-      array.join(
-        [toJSON(name), toJSON(value)],
-        SEP_COMMA
-      )
+      [toJSON(name), toJSON(value)]
     )
   }
 
   if (ns === env.RAW_TRANSITION) {
     return stringifyCall(
       RENDER_TRANSITION_VNODE,
-      toJSON(value)
+      [toJSON(value)]
     )
   }
 
@@ -562,7 +542,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
   if (ns === config.DIRECTIVE_MODEL) {
     return stringifyCall(
       RENDER_MODEL_VNODE,
-      toJSON(expr)
+      [toJSON(expr)]
     )
   }
 
@@ -633,23 +613,14 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 
   }
 
-  return stringifyCall(
-    renderName,
-    array.join(
-      trimArgs(args),
-      SEP_COMMA
-    )
-  )
+  return stringifyCall(renderName, args)
 
 }
 
 nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
   return stringifyCall(
     RENDER_SPREAD_VNODE,
-    array.join(
-      trimArgs([toJSON(node.expr), node.binding ? STRING_TRUE : env.UNDEFINED]),
-      SEP_COMMA
-    )
+    [toJSON(node.expr), node.binding ? STRING_TRUE : env.UNDEFINED]
   )
 }
 
@@ -660,7 +631,7 @@ nodeStringify[nodeType.TEXT] = function (node: Text): string {
   if (array.last(collectStack) && !array.last(joinStack)) {
     return stringifyCall(
       RENDER_TEXT_VNODE,
-      result
+      [result]
     )
   }
 
@@ -692,45 +663,43 @@ nodeStringify[nodeType.IF] = function (node: If): string {
 
 nodeStringify[nodeType.EACH] = function (node: Each): string {
 
-  // compiler 保证了 children 一定有值
-  const generate = stringifyFunction(
-    stringifyChildren(node.children as Node[], node.isComplex)
-  )
-
   return stringifyCall(
     RENDER_EACH,
-    array.join(
-      trimArgs([
-        generate,
-        toJSON(node.from),
-        node.to ? toJSON(node.to) : env.UNDEFINED,
-        node.equal ? STRING_TRUE : env.UNDEFINED,
-        node.index ? toJSON(node.index) : env.UNDEFINED
-      ]),
-      SEP_COMMA
-    )
+    [
+      // compiler 保证了 children 一定有值
+      stringifyFunction(
+        stringifyChildren(node.children as Node[], node.isComplex)
+      ),
+      toJSON(node.from),
+      node.to ? toJSON(node.to) : env.UNDEFINED,
+      node.equal ? STRING_TRUE : env.UNDEFINED,
+      node.index ? toJSON(node.index) : env.UNDEFINED
+    ]
   )
 
 }
 
 nodeStringify[nodeType.PARTIAL] = function (node: Partial): string {
 
-  const name = toJSON(node.name),
-
-  // compiler 保证了 children 一定有值
-  children = stringifyFunction(
-    stringifyChildren(node.children as Node[], node.isComplex)
+  return stringifyCall(
+    RENDER_PARTIAL,
+    [
+      toJSON(node.name),
+      // compiler 保证了 children 一定有值
+      stringifyFunction(
+        stringifyChildren(node.children as Node[], node.isComplex)
+      )
+    ]
   )
-
-  return stringifyCall(RENDER_PARTIAL, `${name}${SEP_COMMA}${children}`)
 
 }
 
 nodeStringify[nodeType.IMPORT] = function (node: Import): string {
 
-  const name = toJSON(node.name)
-
-  return stringifyCall(RENDER_IMPORT, `${name}`)
+  return stringifyCall(
+    RENDER_IMPORT,
+    [toJSON(node.name)]
+  )
 
 }
 
