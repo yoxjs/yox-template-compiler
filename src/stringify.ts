@@ -108,35 +108,41 @@ STRING_FALSE = '!1',
 
 STRING_EMPTY = toJSON(env.EMPTY_STRING),
 
-CODE_RETURN = 'return ',
+CODE_RETURN = 'return '
 
-CODE_PREFIX = `function(${
-  array.join([
-    RENDER_EXPRESSION,
-    RENDER_EXPRESSION_ARG,
-    RENDER_EXPRESSION_VNODE,
-    RENDER_TEXT_VNODE,
-    RENDER_ATTRIBUTE_VNODE,
-    RENDER_PROPERTY_VNODE,
-    RENDER_LAZY_VNODE,
-    RENDER_TRANSITION_VNODE,
-    RENDER_MODEL_VNODE,
-    RENDER_EVENT_METHOD_VNODE,
-    RENDER_EVENT_NAME_VNODE,
-    RENDER_DIRECTIVE_VNODE,
-    RENDER_SPREAD_VNODE,
-    RENDER_ELEMENT_VNODE,
-    RENDER_SLOT,
-    RENDER_PARTIAL,
-    RENDER_IMPORT,
-    RENDER_EACH
-  ], SEP_COMMA)
-}){return `,
-
-CODE_SUFFIX = `}`
+// 序列化代码的前缀
+let codePrefix: string | void,
 
 // 表达式求值是否要求返回字符串类型
-let isStringRequired: boolean | void
+isStringRequired: boolean | void
+
+function getCodePrefix() {
+  if (!codePrefix) {
+    codePrefix = `function(${
+      array.join([
+        RENDER_EXPRESSION,
+        RENDER_EXPRESSION_ARG,
+        RENDER_EXPRESSION_VNODE,
+        RENDER_TEXT_VNODE,
+        RENDER_ATTRIBUTE_VNODE,
+        RENDER_PROPERTY_VNODE,
+        RENDER_LAZY_VNODE,
+        RENDER_TRANSITION_VNODE,
+        RENDER_MODEL_VNODE,
+        RENDER_EVENT_METHOD_VNODE,
+        RENDER_EVENT_NAME_VNODE,
+        RENDER_DIRECTIVE_VNODE,
+        RENDER_SPREAD_VNODE,
+        RENDER_ELEMENT_VNODE,
+        RENDER_SLOT,
+        RENDER_PARTIAL,
+        RENDER_IMPORT,
+        RENDER_EACH
+      ], SEP_COMMA)
+    }){${CODE_RETURN}`
+  }
+  return codePrefix
+}
 
 /**
  * 目的是 保证调用参数顺序稳定，减少运行时判断
@@ -697,9 +703,9 @@ nodeStringify[nodeType.IMPORT] = function (node: Import): string {
 }
 
 export function stringify(node: Node): string {
-  return CODE_PREFIX + nodeStringify[node.type](node) + CODE_SUFFIX
+  return getCodePrefix() + nodeStringify[node.type](node) + '}'
 }
 
 export function hasStringify(code: string): boolean {
-  return string.startsWith(code, CODE_PREFIX)
+  return string.startsWith(code, getCodePrefix())
 }
