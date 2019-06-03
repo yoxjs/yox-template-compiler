@@ -100,6 +100,8 @@ SEP_COLON = ':',
 
 SEP_PLUS = '+',
 
+SEP_AND = '&&',
+
 STRING_TRUE = '!0',
 
 STRING_FALSE = '!1',
@@ -136,6 +138,31 @@ CODE_SUFFIX = `}`
 // 表达式求值是否要求返回字符串类型
 let isStringRequired: boolean | void
 
+/**
+ * 目的是 保证调用参数顺序稳定，减少运行时判断
+ */
+function trimArgs(list: (string | void)[]) {
+
+  let args: string[] = [], removable = env.TRUE
+
+  array.each(
+    list,
+    function (arg: string | void) {
+      if (isDef(arg)) {
+        removable = env.FALSE
+        array.unshift(args, arg as string)
+      }
+      else if (!removable) {
+        array.unshift(args, STRING_FALSE)
+      }
+    },
+    env.TRUE
+  )
+
+  return args
+
+}
+
 function stringifyObject(obj: Object): string {
   const fields: string[] = []
   object.each(
@@ -168,19 +195,15 @@ function stringifyGroup(code: string): string {
   return `(${code})`
 }
 
-function stringifyExpression(renderName: string, expr: ExpressionNode, extra: string[] | void): string {
-  const args = [toJSON(expr)]
-  if (extra) {
-    array.push(args, extra)
-  }
-  return stringifyCall(renderName, args)
+function stringifyExpression(renderName: string, expr: ExpressionNode, extra?: any): string {
+  return stringifyCall(renderName, [toJSON(expr), extra])
 }
 
 function stringifyExpressionArg(expr: ExpressionNode): string {
   return stringifyExpression(
     RENDER_EXPRESSION_ARG,
     expr,
-    [ARG_CONTEXT]
+    ARG_CONTEXT
   )
 }
 
@@ -271,10 +294,10 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
     }
 
     if (!isDef(no)) {
-      result = `${test} && ${yes}`
+      result = `${test}${SEP_AND}${yes}`
     }
     else if (!isDef(yes)) {
-      result = `!${test} && ${no}`
+      result = `!${test}${SEP_AND}${no}`
     }
     else {
       result = `${test}?${yes}:${no}`
@@ -288,31 +311,6 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
   }
 
   return STRING_EMPTY
-
-}
-
-/**
- * 目的是 保证调用参数顺序稳定，减少运行时判断
- */
-function trimArgs(list: (string | void)[]) {
-
-  let args: string[] = [], removable = env.TRUE
-
-  array.each(
-    list,
-    function (arg: string | void) {
-      if (isDef(arg)) {
-        removable = env.FALSE
-        array.unshift(args, arg as string)
-      }
-      else if (!removable) {
-        array.unshift(args, STRING_FALSE)
-      }
-    },
-    env.TRUE
-  )
-
-  return args
 
 }
 
@@ -454,7 +452,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   if (html) {
-    data.html = stringifyExpression(RENDER_EXPRESSION, html, [STRING_TRUE])
+    data.html = stringifyExpression(RENDER_EXPRESSION, html, STRING_TRUE)
   }
 
   if (isComponent) {
@@ -642,18 +640,13 @@ nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
 
   // 强制保留 isStringRequired 参数，减少运行时判断参数是否存在
   // 因为还有 stack 参数呢，各种判断真的很累
-  let renderName = RENDER_EXPRESSION,
-
-  args = [isStringRequired ? STRING_TRUE : env.UNDEFINED]
-
-  if (array.last(collectStack) && !array.last(joinStack)) {
-    renderName = RENDER_EXPRESSION_VNODE
-  }
 
   return stringifyExpression(
-    renderName,
+    array.last(collectStack) && !array.last(joinStack)
+      ? RENDER_EXPRESSION_VNODE
+      : RENDER_EXPRESSION,
     node.expr,
-    trimArgs(args),
+    isStringRequired ? STRING_TRUE : env.UNDEFINED
   )
 }
 
