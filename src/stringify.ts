@@ -76,23 +76,25 @@ RENDER_LAZY_VNODE = 'i',
 
 RENDER_TRANSITION_VNODE = 'j',
 
-RENDER_MODEL_VNODE = 'k',
+RENDER_BINDING_VNODE = 'k',
 
-RENDER_EVENT_METHOD_VNODE = 'l',
+RENDER_MODEL_VNODE = 'l',
 
-RENDER_EVENT_NAME_VNODE = 'm',
+RENDER_EVENT_METHOD_VNODE = 'm',
 
-RENDER_DIRECTIVE_VNODE = 'n',
+RENDER_EVENT_NAME_VNODE = 'n',
 
-RENDER_SPREAD_VNODE = 'o',
+RENDER_DIRECTIVE_VNODE = 'o',
 
-RENDER_ELEMENT_VNODE = 'p',
+RENDER_SPREAD_VNODE = 'p',
 
-RENDER_PARTIAL = 'q',
+RENDER_ELEMENT_VNODE = 'q',
 
-RENDER_IMPORT = 'r',
+RENDER_PARTIAL = 'r',
 
-ARG_CONTEXT = 's',
+RENDER_IMPORT = 's',
+
+ARG_CONTEXT = 't',
 
 SEP_COMMA = ',',
 
@@ -128,6 +130,7 @@ function getCodePrefix() {
         RENDER_PROPERTY_VNODE,
         RENDER_LAZY_VNODE,
         RENDER_TRANSITION_VNODE,
+        RENDER_BINDING_VNODE,
         RENDER_MODEL_VNODE,
         RENDER_EVENT_METHOD_VNODE,
         RENDER_EVENT_NAME_VNODE,
@@ -498,30 +501,49 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 }
 
 nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
-  const { binding } = node
+
+  const value = node.binding
+    ? stringifyCall(
+      RENDER_BINDING_VNODE,
+      [
+        toJSON(node.name),
+        toJSON(node.expr)
+      ]
+    )
+    : stringifyValue(node.value, node.expr, node.children)
+
   return stringifyCall(
     RENDER_ATTRIBUTE_VNODE,
     [
       toJSON(node.name),
-      binding ? STRING_TRUE : env.UNDEFINED,
-      binding ? toJSON(node.expr) : env.UNDEFINED,
-      binding ? env.UNDEFINED : stringifyValue(node.value, node.expr, node.children)
+      value
     ]
   )
+
 }
 
 nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
-  const { binding } = node
+
+  const value = node.binding
+    ? stringifyCall(
+      RENDER_BINDING_VNODE,
+      [
+        toJSON(node.name),
+        toJSON(node.expr),
+        toJSON(node.hint)
+      ]
+    )
+    : stringifyValue(node.value, node.expr, node.children)
+
   return stringifyCall(
     RENDER_PROPERTY_VNODE,
     [
       toJSON(node.name),
       toJSON(node.hint),
-      binding ? STRING_TRUE : env.UNDEFINED,
-      binding ? toJSON(node.expr) : env.UNDEFINED,
-      binding ? env.UNDEFINED : stringifyValue(node.value, node.expr, node.children)
+      value
     ]
   )
+
 }
 
 nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {

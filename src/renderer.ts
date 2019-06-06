@@ -138,30 +138,6 @@ export function render(
 
   },
 
-  addBinding = function (vnode: type.data, name: string, expr: Keypath, hint?: type.hint): any {
-
-    const holder = getValue(expr, env.TRUE),
-
-    key = keypathUtil.join(config.DIRECTIVE_BINDING, name)
-
-    setPair(
-      vnode,
-      'directives',
-      key,
-      {
-        ns: config.DIRECTIVE_BINDING,
-        name,
-        key,
-        hooks: directives[config.DIRECTIVE_BINDING],
-        binding: holder.keypath,
-        hint,
-      }
-    )
-
-    return holder.value
-
-  },
-
   createEventListener = function (type: string): type.listener {
     return function (event: CustomEvent, data?: type.data) {
       // 事件名称相同的情况，只可能是监听 DOM 事件，比如写一个 Button 组件
@@ -256,10 +232,7 @@ export function render(
     }
   },
 
-  renderAttributeVnode = function (name: string, binding: boolean | void, expr: Keypath | void, value: string | void) {
-    if (binding) {
-      value = addBinding($vnode, name, expr as Keypath)
-    }
+  renderAttributeVnode = function (name: string, value: string | void) {
     if ($vnode.isComponent) {
       setPair($vnode, 'props', name, value)
     }
@@ -268,10 +241,7 @@ export function render(
     }
   },
 
-  renderPropertyVnode = function (name: string, hint: type.hint, binding: boolean | void, expr: Keypath | void, value: any | void) {
-    if (binding) {
-      value = addBinding($vnode, name, expr as Keypath, hint)
-    }
+  renderPropertyVnode = function (name: string, hint: type.hint, value: any | void) {
     setPair($vnode, 'nativeProps', name, { name, value, hint })
   },
 
@@ -286,6 +256,30 @@ export function render(
         logger.fatal(`transition [${name}] is not found.`)
       }
     }
+  },
+
+  renderBindingVnode = function (name: string, expr: Keypath, hint?: type.hint): any {
+
+    const holder = getValue(expr, env.TRUE),
+
+    key = keypathUtil.join(config.DIRECTIVE_BINDING, name)
+
+    setPair(
+      $vnode,
+      'directives',
+      key,
+      {
+        ns: config.DIRECTIVE_BINDING,
+        name,
+        key,
+        hooks: directives[config.DIRECTIVE_BINDING],
+        binding: holder.keypath,
+        hint,
+      }
+    )
+
+    return holder.value
+
   },
 
   renderModelVnode = function (expr: Keypath) {
@@ -521,6 +515,7 @@ export function render(
           renderPropertyVnode,
           renderLazyVnode,
           renderTransitionVnode,
+          renderBindingVnode,
           renderModelVnode,
           renderEventMethodVnode,
           renderEventNameVnode,
@@ -683,6 +678,7 @@ export function render(
     renderPropertyVnode,
     renderLazyVnode,
     renderTransitionVnode,
+    renderBindingVnode,
     renderModelVnode,
     renderEventMethodVnode,
     renderEventNameVnode,
