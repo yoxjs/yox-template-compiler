@@ -574,7 +574,7 @@ export function compile(content: string): Branch[] {
         }
 
         if (isModel && !expr[STATIC_KEYPATH]) {
-          fatal(`${directive.ns} 指令的值格式错误: [${raw}]`)
+          fatal(`model 指令的值格式错误: [${raw}]`)
         }
 
       }
