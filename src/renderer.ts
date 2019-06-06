@@ -115,17 +115,6 @@ export function render(
 
   },
 
-  getKeypathValue = function (expr: Keypath, depIgnore?: boolean) {
-    return lookup(
-      $stack,
-      $stack.length - ((expr.offset || 0) + 1),
-      expr.sk as string,
-      // undefined 或 true 都表示需要向上寻找
-      expr.lookup !== env.FALSE,
-      depIgnore
-    )
-  },
-
   getValue = function (expr: ExpressionNode, depIgnore?: boolean, stack?: any[]) {
 
     const renderStack = stack || $stack,
@@ -151,7 +140,7 @@ export function render(
 
   addBinding = function (vnode: type.data, name: string, expr: Keypath, hint?: type.hint): any {
 
-    const holder = getKeypathValue(expr, env.TRUE),
+    const holder = getValue(expr, env.TRUE),
 
     key = keypathUtil.join(config.DIRECTIVE_BINDING, name)
 
@@ -301,7 +290,7 @@ export function render(
 
   renderModelVnode = function (expr: Keypath) {
 
-    const holder = getKeypathValue(expr, env.TRUE)
+    const holder = getValue(expr, env.TRUE)
 
     $vnode.model = holder.value
 
