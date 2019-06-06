@@ -624,7 +624,10 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
   return stringifyCall(
     RENDER_SPREAD_VNODE,
-    [toJSON(node.expr), node.binding ? STRING_TRUE : env.UNDEFINED]
+    [
+      toJSON(node.expr),
+      node.binding ? STRING_TRUE : env.UNDEFINED
+    ]
   )
 }
 

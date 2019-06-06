@@ -24,6 +24,7 @@ import Yox from '../../yox-type/src/interface/Yox'
 import VNode from '../../yox-type/src/vnode/VNode'
 import DirectiveHooks from '../../yox-type/src/hooks/Directive'
 import TransitionHooks from '../../yox-type/src/hooks/Transition'
+import ValueHolder from '../../yox-type/src/interface/ValueHolder'
 
 function setPair(target: any, name: string, key: string, value: any) {
   const data = target[name] || (target[name] = {})
@@ -49,11 +50,9 @@ export function render(
 
   localPartials: Record<string, Function> = {},
 
-  lookup = function (stack: any[], index: number, key: string, node: Keypath, depIgnore?: boolean, defaultKeypath?: string) {
+  lookup = function (stack: any[], index: number, key: string, upable: boolean, depIgnore?: boolean, defaultKeypath?: string): ValueHolder {
 
-    let scope = stack[index], keypath = keypathUtil.join(scope.$keypath, key)
-
-    node.ak = keypath
+    let scope = stack[index], keypath = keypathUtil.join(scope.$keypath, key), value: any = stack, holder = env.VALUE_HOLDER
 
     // 如果最后还是取不到值，用回最初的 keypath
     if (isUndef(defaultKeypath)) {
@@ -62,11 +61,11 @@ export function render(
 
     // 如果取的是 scope 上直接有的数据，如 $keypath
     if (isDef(scope[key])) {
-      return scope[key]
+      value = scope[key]
     }
 
     // 如果取的是数组项，则要更进一步
-    if (isDef(scope.$item)) {
+    else if (isDef(scope.$item)) {
       scope = scope.$item
 
       // 到这里 scope 可能为空
@@ -74,35 +73,60 @@ export function render(
 
       // 取 this
       if (key === env.EMPTY_STRING) {
-        return scope
+        value = scope
       }
       // 取 this.xx
-      if (scope != env.NULL && isDef(scope[key])) {
-        return scope[key]
+      else if (scope != env.NULL && isDef(scope[key])) {
+        value = scope[key]
       }
     }
 
-    // 正常取数据
-    const result = context.get(keypath, lookup, depIgnore)
-    if (result === lookup) {
-      // undefined 或 true 都表示需要向上寻找
-      if (node.lookup !== env.FALSE && index > 0) {
-        if (process.env.NODE_ENV === 'development') {
-          logger.debug(`Can't find [${keypath}], start looking up.`)
+    if (value === stack) {
+      // 正常取数据
+      value = context.get(keypath, stack, depIgnore)
+      if (value === stack) {
+
+        if (upable && index > 0) {
+          if (process.env.NODE_ENV === 'development') {
+            logger.debug(`Can't find [${keypath}], start looking up.`)
+          }
+          return lookup(stack, index - 1, key, upable, depIgnore, defaultKeypath)
         }
-        return lookup(stack, index - 1, key, node, depIgnore, defaultKeypath)
+
+        // 到头了，最后尝试过滤器
+        const result = object.get(filters, key)
+        if (result) {
+          holder = result
+          holder.keypath = key
+        }
+        else {
+          holder.value = env.UNDEFINED
+          holder.keypath = defaultKeypath
+        }
+        return holder
+
       }
-      const holder = object.get(filters, key)
-      return holder
-        ? holder.value
-        : (node.ak = defaultKeypath, env.UNDEFINED)
     }
 
-    return result
+    holder.value = value
+    holder.keypath = keypath
+
+    return holder
 
   },
 
-  getValue = function (expr: ExpressionNode, depIgnore?: boolean, stack?: any[]): any {
+  getKeypathValue = function (expr: Keypath, depIgnore?: boolean) {
+    return lookup(
+      $stack,
+      $stack.length - ((expr.offset || 0) + 1),
+      expr.sk as string,
+      // undefined 或 true 都表示需要向上寻找
+      expr.lookup !== env.FALSE,
+      depIgnore
+    )
+  },
+
+  getValue = function (expr: ExpressionNode, depIgnore?: boolean, stack?: any[]) {
 
     const renderStack = stack || $stack,
 
@@ -110,12 +134,13 @@ export function render(
 
     return exprExecutor.execute(
       expr,
-      function (keypath: string, node: Keypath): any {
+      function (keypath, node) {
         return lookup(
           renderStack,
           length - ((node.offset || 0) + 1),
           keypath,
-          node,
+          // undefined 或 true 都表示需要向上寻找
+          node.lookup !== env.FALSE,
           depIgnore
         )
       },
@@ -126,7 +151,7 @@ export function render(
 
   addBinding = function (vnode: type.data, name: string, expr: Keypath, hint?: type.hint): any {
 
-    const value = getValue(expr, env.TRUE),
+    const holder = getKeypathValue(expr, env.TRUE),
 
     key = keypathUtil.join(config.DIRECTIVE_BINDING, name)
 
@@ -139,12 +164,12 @@ export function render(
         name,
         key,
         hooks: directives[config.DIRECTIVE_BINDING],
-        binding: expr.ak,
+        binding: holder.keypath,
         hint,
       }
     )
 
-    return value
+    return holder.value
 
   },
 
@@ -207,14 +232,14 @@ export function render(
   },
 
   renderExpression = function (expr: ExpressionNode, stringRequired: boolean | void): any {
-    const value = getValue(expr)
+    const value = getValue(expr).value
     return stringRequired
       ? toString(value)
       : value
   },
 
   renderExpressionArg = function (expr: ExpressionNode, stack: any[]): any {
-    return getValue(expr, env.UNDEFINED, stack)
+    return getValue(expr, env.UNDEFINED, stack).value
   },
 
   renderExpressionVnode = function (expr: ExpressionNode, stringRequired: boolean) {
@@ -276,7 +301,9 @@ export function render(
 
   renderModelVnode = function (expr: Keypath) {
 
-    $vnode.model = getValue(expr, env.TRUE)
+    const holder = getKeypathValue(expr, env.TRUE)
+
+    $vnode.model = holder.value
 
     setPair(
       $vnode,
@@ -286,7 +313,7 @@ export function render(
         ns: config.DIRECTIVE_MODEL,
         name: env.EMPTY_STRING,
         key: config.DIRECTIVE_MODEL,
-        binding: expr.ak,
+        binding: holder.keypath,
         hooks: directives[config.DIRECTIVE_MODEL]
       }
     )
@@ -362,38 +389,40 @@ export function render(
 
   renderSpreadVnode = function (expr: ExpressionNode, binding?: boolean) {
 
-    const value = getValue(expr, binding)
+    const { value, keypath } = getValue(expr, binding)
 
-    // 数组也算一种对象，要排除掉
-    if (is.object(value) && !is.array(value)) {
+    // 如果为 null 或 undefined，则不需要 warn
+    if (value != env.NULL) {
+      // 数组也算一种对象，要排除掉
+      if (is.object(value) && !is.array(value)) {
 
-      object.each(
-        value,
-        function (value: any, key: string) {
-          setPair($vnode, 'props', key, value)
-        }
-      )
-
-      const absoluteKeypath = expr['ak']
-      if (absoluteKeypath) {
-        const key = keypathUtil.join(config.DIRECTIVE_BINDING, absoluteKeypath)
-        setPair(
-          $vnode,
-          'directives',
-          key,
-          {
-            ns: config.DIRECTIVE_BINDING,
-            name: env.EMPTY_STRING,
-            key,
-            hooks: directives[config.DIRECTIVE_BINDING],
-            binding: keypathUtil.join(absoluteKeypath, env.RAW_WILDCARD),
+        object.each(
+          value,
+          function (value, key) {
+            setPair($vnode, 'props', key, value)
           }
         )
-      }
 
-    }
-    else if (process.env.NODE_ENV === 'development') {
-      logger.warn(`[${expr.raw}] 不是对象，延展个毛啊`)
+        if (keypath) {
+          const key = keypathUtil.join(config.DIRECTIVE_BINDING, keypath)
+          setPair(
+            $vnode,
+            'directives',
+            key,
+            {
+              ns: config.DIRECTIVE_BINDING,
+              name: env.EMPTY_STRING,
+              key,
+              hooks: directives[config.DIRECTIVE_BINDING],
+              binding: keypathUtil.join(keypath, env.RAW_WILDCARD),
+            }
+          )
+        }
+
+      }
+      else if (process.env.NODE_ENV === 'development') {
+        logger.warn(`[${expr.raw}] 不是对象，延展个毛啊`)
+      }
     }
 
   },
@@ -567,10 +596,14 @@ export function render(
     index: string | void
   ) {
 
-    const fromValue = getValue(from)
+    const fromHolder = getValue(from),
+
+    fromValue = fromHolder.value,
+
+    fromKeypath = fromHolder.keypath
 
     if (to) {
-      let toValue = getValue(to), count = 0
+      let toValue = getValue(to).value, count = 0
       if (fromValue < toValue) {
         if (equal) {
           for (let i = fromValue; i <= toValue; i++) {
@@ -621,15 +654,14 @@ export function render(
       }
     }
     else {
-      const eachKeypath = from['ak']
       if (is.array(fromValue)) {
         for (let i = 0, length = fromValue.length; i < length; i++) {
           eachHandler(
             generate,
             fromValue[i],
             i,
-            eachKeypath
-              ? keypathUtil.join(eachKeypath, env.EMPTY_STRING + i)
+            fromKeypath
+              ? keypathUtil.join(fromKeypath, env.EMPTY_STRING + i)
               : env.EMPTY_STRING,
             index,
             length
@@ -642,8 +674,8 @@ export function render(
             generate,
             fromValue[key],
             key,
-            eachKeypath
-              ? keypathUtil.join(eachKeypath, key)
+            fromKeypath
+              ? keypathUtil.join(fromKeypath, key)
               : env.EMPTY_STRING,
             index
           )
