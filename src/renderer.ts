@@ -432,7 +432,13 @@ export function render(
 
   },
 
-  renderExpressionIdentifier = function (name: string, holder: boolean | void, depIgnore: boolean | void, lookup: boolean | void, offset: number | void) {
+  renderExpressionIdentifier = function (
+    name: string,
+    lookup: boolean | void,
+    offset: number | void,
+    holder: boolean | void,
+    depIgnore: boolean | void
+  ) {
     const result = lookupValue(
       $stack,
       $stack.length - ((offset || 0) + 1),
@@ -444,14 +450,21 @@ export function render(
     return holder ? result : result.value
   },
 
-  renderExpressionMemberIdentifier = function (identifier: string, runtimeKeypath: string[], holder: boolean | void, depIgnore: boolean | void, lookup: boolean | void, offset: number | void) {
+  renderExpressionMemberIdentifier = function (
+    identifier: string,
+    runtimeKeypath: string[],
+    lookup: boolean | void,
+    offset: number | void,
+    holder: boolean | void,
+    depIgnore: boolean | void
+  ) {
     array.unshift(runtimeKeypath, identifier)
     return renderExpressionIdentifier(
       array.join(runtimeKeypath, keypathUtil.separator),
-      holder,
-      depIgnore,
       lookup,
-      offset
+      offset,
+      holder,
+      depIgnore
     )
   },
 
