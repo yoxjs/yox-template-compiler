@@ -450,22 +450,12 @@ export function render(
     return holder ? result : result.value
   },
 
-  renderExpressionMemberIdentifier = function (
+  renderExpressionMemberKeypath = function (
     identifier: string,
     runtimeKeypath: string[],
-    lookup: boolean | void,
-    offset: number | void,
-    holder: boolean | void,
-    depIgnore: boolean | void
   ) {
     array.unshift(runtimeKeypath, identifier)
-    return renderExpressionIdentifier(
-      array.join(runtimeKeypath, keypathUtil.separator),
-      lookup,
-      offset,
-      holder,
-      depIgnore
-    )
+    return array.join(runtimeKeypath, keypathUtil.separator)
   },
 
   renderExpressionMemberLiteral = function (
@@ -552,7 +542,7 @@ export function render(
           renderSpreadVnode,
           renderElementVnode,
           renderExpressionIdentifier,
-          renderExpressionMemberIdentifier,
+          renderExpressionMemberKeypath,
           renderExpressionMemberLiteral,
           renderExpressionCall,
           renderSlot,
@@ -717,7 +707,7 @@ export function render(
     renderSpreadVnode,
     renderElementVnode,
     renderExpressionIdentifier,
-    renderExpressionMemberIdentifier,
+    renderExpressionMemberKeypath,
     renderExpressionMemberLiteral,
     renderExpressionCall,
     renderSlot,
