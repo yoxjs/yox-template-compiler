@@ -8,7 +8,9 @@ import * as env from '../../yox-common/src/util/env'
 import * as array from '../../yox-common/src/util/array'
 import * as string from '../../yox-common/src/util/string'
 import * as object from '../../yox-common/src/util/object'
+import * as stringifier from '../../yox-common/src/util/stringify'
 
+import * as exprStringify from '../../yox-expression-compiler/src/stringify'
 import * as exprNodeType from '../../yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'
 
@@ -90,11 +92,19 @@ RENDER_SPREAD_VNODE = 'p',
 
 RENDER_ELEMENT_VNODE = 'q',
 
-RENDER_PARTIAL = 'r',
+RENDER_EXPRESSION_IDENTIFIER = 'r',
 
-RENDER_IMPORT = 's',
+RENDER_EXPRESSION_MEMBER_IDENTIFIER = 's',
 
-ARG_CONTEXT = 't',
+RENDER_EXPRESSION_MEMBER_LITERAL = 't',
+
+RENDER_EXPRESSION_CALL = 'u',
+
+RENDER_PARTIAL = 'v',
+
+RENDER_IMPORT = 'w',
+
+ARG_CONTEXT = 'x',
 
 SEP_COMMA = ',',
 
@@ -103,12 +113,6 @@ SEP_COLON = ':',
 SEP_PLUS = '+',
 
 SEP_AND = '&&',
-
-STRING_TRUE = '!0',
-
-STRING_FALSE = '!1',
-
-STRING_EMPTY = toJSON(env.EMPTY_STRING),
 
 CODE_RETURN = 'return '
 
@@ -137,6 +141,10 @@ function getCodePrefix() {
         RENDER_DIRECTIVE_VNODE,
         RENDER_SPREAD_VNODE,
         RENDER_ELEMENT_VNODE,
+        RENDER_EXPRESSION_IDENTIFIER,
+        RENDER_EXPRESSION_MEMBER_IDENTIFIER,
+        RENDER_EXPRESSION_MEMBER_LITERAL,
+        RENDER_EXPRESSION_CALL,
         RENDER_SLOT,
         RENDER_PARTIAL,
         RENDER_IMPORT,
@@ -147,29 +155,16 @@ function getCodePrefix() {
   return codePrefix
 }
 
-/**
- * 目的是 保证调用参数顺序稳定，减少运行时判断
- */
-function trimArgs(list: (string | void)[]) {
-
-  let args: string[] = [], removable = env.TRUE
-
-  array.each(
-    list,
-    function (arg: string | void) {
-      if (isDef(arg)) {
-        removable = env.FALSE
-        array.unshift(args, arg as string)
-      }
-      else if (!removable) {
-        array.unshift(args, STRING_FALSE)
-      }
-    },
-    env.TRUE
+function renderExpression(expr: ExpressionNode, holder?: boolean, depIgnore?: boolean) {
+  return exprStringify.stringify(
+    expr,
+    RENDER_EXPRESSION_IDENTIFIER,
+    RENDER_EXPRESSION_MEMBER_IDENTIFIER,
+    RENDER_EXPRESSION_MEMBER_LITERAL,
+    RENDER_EXPRESSION_CALL,
+    holder,
+    depIgnore
   )
-
-  return args
-
 }
 
 function stringifyObject(obj: Object): string {
@@ -185,15 +180,7 @@ function stringifyObject(obj: Object): string {
       }
     }
   )
-  return `{${array.join(fields, SEP_COMMA)}}`
-}
-
-function stringifyArray(arr: any[]): string {
-  return `[${array.join(arr, SEP_COMMA)}]`
-}
-
-function stringifyCall(name: string, args: (string | void)[]): string {
-  return `${name}(${array.join(trimArgs(args), SEP_COMMA)})`
+  return stringifier.toObject(fields)
 }
 
 function stringifyFunction(result: string | void, arg?: string): string {
@@ -205,7 +192,13 @@ function stringifyGroup(code: string): string {
 }
 
 function stringifyExpression(renderName: string, expr: ExpressionNode, extra?: any): string {
-  return stringifyCall(renderName, [toJSON(expr), extra])
+  return stringifier.toCall(
+    renderName,
+    [
+      renderExpression(expr),
+      extra
+    ]
+  )
 }
 
 function stringifyExpressionArg(expr: ExpressionNode): string {
@@ -283,8 +276,8 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
   else if (stub) {
     no = renderElement(
       stringifyObject({
-        isComment: STRING_TRUE,
-        text: STRING_EMPTY,
+        isComment: stringifier.TRUE,
+        text: stringifier.EMPTY,
       })
     )
   }
@@ -295,10 +288,10 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
 
     if (isJoin) {
       if (!isDef(yes)) {
-        yes = STRING_EMPTY
+        yes = stringifier.EMPTY
       }
       if (!isDef(no)) {
-        no = STRING_EMPTY
+        no = stringifier.EMPTY
       }
     }
 
@@ -319,12 +312,12 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
 
   }
 
-  return STRING_EMPTY
+  return stringifier.EMPTY
 
 }
 
 function renderElement(data: string, tag: string | void, attrs: string | void, childs: string | void, slots: string | void): string {
-  return stringifyCall(
+  return stringifier.toCall(
     RENDER_ELEMENT_VNODE,
     [data, tag, attrs, childs, slots]
   )
@@ -411,7 +404,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
         )
       )
     }
-    return stringifyCall(RENDER_SLOT, args)
+    return stringifier.toCall(RENDER_SLOT, args)
   }
 
   array.push(collectStack, env.FALSE)
@@ -437,19 +430,19 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   if (isSvg) {
-    data.isSvg = STRING_TRUE
+    data.isSvg = stringifier.TRUE
   }
 
   if (isStyle) {
-    data.isStyle = STRING_TRUE
+    data.isStyle = stringifier.TRUE
   }
 
   if (isOption) {
-    data.isOption = STRING_TRUE
+    data.isOption = stringifier.TRUE
   }
 
   if (isStatic) {
-    data.isStatic = STRING_TRUE
+    data.isStatic = stringifier.TRUE
   }
 
   if (ref) {
@@ -461,11 +454,11 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   if (html) {
-    data.html = stringifyExpression(RENDER_EXPRESSION, html, STRING_TRUE)
+    data.html = stringifyExpression(RENDER_EXPRESSION, html, stringifier.TRUE)
   }
 
   if (isComponent) {
-    data.isComponent = STRING_TRUE
+    data.isComponent = stringifier.TRUE
     if (children) {
       collectStack[collectStack.length - 1] = env.TRUE
       outputSlots = getComponentSlots(children)
@@ -503,16 +496,16 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
 
   const value = node.binding
-    ? stringifyCall(
+    ? stringifier.toCall(
       RENDER_BINDING_VNODE,
       [
         toJSON(node.name),
-        toJSON(node.expr)
+        renderExpression(node.expr as ExpressionNode, env.TRUE, env.TRUE)
       ]
     )
     : stringifyValue(node.value, node.expr, node.children)
 
-  return stringifyCall(
+  return stringifier.toCall(
     RENDER_ATTRIBUTE_VNODE,
     [
       toJSON(node.name),
@@ -525,17 +518,17 @@ nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
 nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
 
   const value = node.binding
-    ? stringifyCall(
+    ? stringifier.toCall(
       RENDER_BINDING_VNODE,
       [
         toJSON(node.name),
-        toJSON(node.expr),
+        renderExpression(node.expr as ExpressionNode, env.TRUE, env.TRUE),
         toJSON(node.hint)
       ]
     )
     : stringifyValue(node.value, node.expr, node.children)
 
-  return stringifyCall(
+  return stringifier.toCall(
     RENDER_PROPERTY_VNODE,
     [
       toJSON(node.name),
@@ -551,14 +544,14 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
   const { ns, name, key, value, expr } = node
 
   if (ns === config.DIRECTIVE_LAZY) {
-    return stringifyCall(
+    return stringifier.toCall(
       RENDER_LAZY_VNODE,
       [toJSON(name), toJSON(value)]
     )
   }
 
   if (ns === env.RAW_TRANSITION) {
-    return stringifyCall(
+    return stringifier.toCall(
       RENDER_TRANSITION_VNODE,
       [toJSON(value)]
     )
@@ -566,9 +559,11 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 
   // <input model="id">
   if (ns === config.DIRECTIVE_MODEL) {
-    return stringifyCall(
+    return stringifier.toCall(
       RENDER_MODEL_VNODE,
-      [toJSON(expr)]
+      [
+        renderExpression(expr as ExpressionNode, env.TRUE, env.TRUE)
+      ]
     )
   }
 
@@ -605,7 +600,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
         array.push(
           args,
           stringifyFunction(
-            CODE_RETURN + stringifyArray((expr as ExpressionCall).args.map(stringifyExpressionArg)),
+            CODE_RETURN + stringifier.toArray((expr as ExpressionCall).args.map(stringifyExpressionArg)),
             ARG_CONTEXT
           )
         )
@@ -639,16 +634,15 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 
   }
 
-  return stringifyCall(renderName, args)
+  return stringifier.toCall(renderName, args)
 
 }
 
 nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
-  return stringifyCall(
+  return stringifier.toCall(
     RENDER_SPREAD_VNODE,
     [
-      toJSON(node.expr),
-      node.binding ? STRING_TRUE : env.UNDEFINED
+      renderExpression(node.expr, env.TRUE, node.binding)
     ]
   )
 }
@@ -658,7 +652,7 @@ nodeStringify[nodeType.TEXT] = function (node: Text): string {
   const result = toJSON(node.text)
 
   if (array.last(collectStack) && !array.last(joinStack)) {
-    return stringifyCall(
+    return stringifier.toCall(
       RENDER_TEXT_VNODE,
       [result]
     )
@@ -677,7 +671,7 @@ nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
       ? RENDER_EXPRESSION_VNODE
       : RENDER_EXPRESSION,
     node.expr,
-    isStringRequired ? STRING_TRUE : env.UNDEFINED
+    isStringRequired ? stringifier.TRUE : env.UNDEFINED
   )
 }
 
@@ -687,16 +681,16 @@ nodeStringify[nodeType.IF] = function (node: If): string {
 
 nodeStringify[nodeType.EACH] = function (node: Each): string {
 
-  return stringifyCall(
+  return stringifier.toCall(
     RENDER_EACH,
     [
       // compiler 保证了 children 一定有值
       stringifyFunction(
         stringifyChildren(node.children as Node[], node.isComplex)
       ),
-      toJSON(node.from),
-      node.to ? toJSON(node.to) : env.UNDEFINED,
-      node.equal ? STRING_TRUE : env.UNDEFINED,
+      renderExpression(node.from, env.TRUE),
+      node.to ? renderExpression(node.to, env.TRUE) : env.UNDEFINED,
+      node.equal ? stringifier.TRUE : env.UNDEFINED,
       node.index ? toJSON(node.index) : env.UNDEFINED
     ]
   )
@@ -705,7 +699,7 @@ nodeStringify[nodeType.EACH] = function (node: Each): string {
 
 nodeStringify[nodeType.PARTIAL] = function (node: Partial): string {
 
-  return stringifyCall(
+  return stringifier.toCall(
     RENDER_PARTIAL,
     [
       toJSON(node.name),
@@ -720,7 +714,7 @@ nodeStringify[nodeType.PARTIAL] = function (node: Partial): string {
 
 nodeStringify[nodeType.IMPORT] = function (node: Import): string {
 
-  return stringifyCall(
+  return stringifier.toCall(
     RENDER_IMPORT,
     [toJSON(node.name)]
   )

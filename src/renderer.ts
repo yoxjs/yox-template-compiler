@@ -16,9 +16,6 @@ import * as keypathUtil from '../../yox-common/src/util/keypath'
 import CustomEvent from '../../yox-common/src/util/CustomEvent'
 
 import ExpressionNode from '../../yox-expression-compiler/src/node/Node'
-import Keypath from '../../yox-expression-compiler/src/node/Keypath'
-
-import * as exprExecutor from '../../yox-expression-compiler/src/executor'
 
 import Yox from '../../yox-type/src/interface/Yox'
 import VNode from '../../yox-type/src/vnode/VNode'
@@ -50,7 +47,7 @@ export function render(
 
   localPartials: Record<string, Function> = {},
 
-  lookup = function (stack: any[], index: number, key: string, upable: boolean, depIgnore?: boolean, defaultKeypath?: string): ValueHolder {
+  lookupValue = function (stack: any[], index: number, key: string, upable: boolean, depIgnore: boolean | void, defaultKeypath: string | void): ValueHolder {
 
     let scope = stack[index], keypath = keypathUtil.join(scope.$keypath, key), value: any = stack, holder = env.VALUE_HOLDER
 
@@ -90,7 +87,7 @@ export function render(
           if (process.env.NODE_ENV === 'development') {
             logger.debug(`Can't find [${keypath}], start looking up.`)
           }
-          return lookup(stack, index - 1, key, upable, depIgnore, defaultKeypath)
+          return lookupValue(stack, index - 1, key, upable, depIgnore, defaultKeypath)
         }
 
         // 到头了，最后尝试过滤器
@@ -112,29 +109,6 @@ export function render(
     holder.keypath = keypath
 
     return holder
-
-  },
-
-  getValue = function (expr: ExpressionNode, depIgnore?: boolean, stack?: any[]) {
-
-    const renderStack = stack || $stack,
-
-    { length } = renderStack
-
-    return exprExecutor.execute(
-      expr,
-      function (keypath, node) {
-        return lookup(
-          renderStack,
-          length - ((node.offset || 0) + 1),
-          keypath,
-          // undefined 或 true 都表示需要向上寻找
-          node.lookup !== env.FALSE,
-          depIgnore
-        )
-      },
-      context
-    )
 
   },
 
@@ -196,15 +170,14 @@ export function render(
     }
   },
 
-  renderExpression = function (expr: ExpressionNode, stringRequired: boolean | void): any {
-    const value = getValue(expr).value
+  renderExpression = function (value: any, stringRequired: boolean | void): any {
     return stringRequired
       ? toString(value)
       : value
   },
 
-  renderExpressionArg = function (expr: ExpressionNode, stack: any[]): any {
-    return getValue(expr, env.UNDEFINED, stack).value
+  renderExpressionArg = function (value: any, stack: any[]): any {
+    return value
   },
 
   renderExpressionVnode = function (expr: ExpressionNode, stringRequired: boolean) {
@@ -258,11 +231,9 @@ export function render(
     }
   },
 
-  renderBindingVnode = function (name: string, expr: Keypath, hint?: type.hint): any {
+  renderBindingVnode = function (name: string, holder: ValueHolder, hint?: type.hint): any {
 
-    const holder = getValue(expr, env.TRUE),
-
-    key = keypathUtil.join(config.DIRECTIVE_BINDING, name)
+    const key = keypathUtil.join(config.DIRECTIVE_BINDING, name)
 
     setPair(
       $vnode,
@@ -282,9 +253,7 @@ export function render(
 
   },
 
-  renderModelVnode = function (expr: Keypath) {
-
-    const holder = getValue(expr, env.TRUE)
+  renderModelVnode = function (holder: ValueHolder) {
 
     $vnode.model = holder.value
 
@@ -370,9 +339,9 @@ export function render(
 
   },
 
-  renderSpreadVnode = function (expr: ExpressionNode, binding?: boolean) {
+  renderSpreadVnode = function (holder: ValueHolder) {
 
-    const { value, keypath } = getValue(expr, binding)
+    const { value, keypath } = holder
 
     // 如果为 null 或 undefined，则不需要 warn
     if (value != env.NULL) {
@@ -402,9 +371,6 @@ export function render(
           )
         }
 
-      }
-      else if (process.env.NODE_ENV === 'development') {
-        logger.warn(`[${expr.raw}] 不是对象，延展个毛啊`)
       }
     }
 
@@ -466,6 +432,43 @@ export function render(
 
   },
 
+  renderExpressionIdentifier = function (name: string, depIgnore: boolean | void, lookup: boolean | void, offset: number | void) {
+    return lookupValue(
+      $stack,
+      $stack.length - ((offset || 0) + 1),
+      name,
+      // undefined 或 true 都表示需要向上寻找
+      lookup !== env.FALSE,
+      depIgnore
+    )
+  },
+
+  renderExpressionMemberIdentifier = function (identifier: string, runtimeKeypath: string[], depIgnore: boolean | void, lookup: boolean | void, offset: number | void) {
+    array.unshift(runtimeKeypath, identifier)
+    return renderExpressionIdentifier(array.join(runtimeKeypath, keypathUtil.separator), depIgnore, lookup, offset)
+  },
+
+  renderExpressionMemberLiteral = function (value: any, staticKeypath: string | void, runtimeKeypath: string[] | void) {
+    if (isDef(runtimeKeypath)) {
+      staticKeypath = array.join(runtimeKeypath as string[], keypathUtil.separator)
+    }
+    const holder = env.VALUE_HOLDER, result = object.get(value, staticKeypath as string)
+    holder.keypath = env.UNDEFINED
+    holder.value = result ? result.value : env.UNDEFINED
+    return holder
+  },
+
+  renderExpressionCall = function (fn: Function | void, args: any[]) {
+    const holder = env.VALUE_HOLDER
+    holder.keypath = env.UNDEFINED
+    holder.value = execute(
+      fn,
+      context,
+      args
+    )
+    return holder
+  },
+
   // <slot name="xx"/>
   renderSlot = function (name: string, defaultRender?: Function) {
 
@@ -522,6 +525,10 @@ export function render(
           renderDirectiveVnode,
           renderSpreadVnode,
           renderElementVnode,
+          renderExpressionIdentifier,
+          renderExpressionMemberIdentifier,
+          renderExpressionMemberLiteral,
+          renderExpressionCall,
           renderSlot,
           renderPartial,
           renderImport,
@@ -574,20 +581,18 @@ export function render(
 
   renderEach = function (
     generate: Function,
-    from: ExpressionNode,
-    to: ExpressionNode | void,
+    from: ValueHolder,
+    to: ValueHolder | void,
     equal: boolean | void,
     index: string | void
   ) {
 
-    const fromHolder = getValue(from),
+    const fromValue = from.value,
 
-    fromValue = fromHolder.value,
-
-    fromKeypath = fromHolder.keypath
+    fromKeypath = from.keypath
 
     if (to) {
-      let toValue = getValue(to).value, count = 0
+      let toValue = to.value, count = 0
       if (fromValue < toValue) {
         if (equal) {
           for (let i = fromValue; i <= toValue; i++) {
@@ -685,6 +690,10 @@ export function render(
     renderDirectiveVnode,
     renderSpreadVnode,
     renderElementVnode,
+    renderExpressionIdentifier,
+    renderExpressionMemberIdentifier,
+    renderExpressionMemberLiteral,
+    renderExpressionCall,
     renderSlot,
     renderPartial,
     renderImport,
