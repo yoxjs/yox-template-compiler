@@ -43,7 +43,7 @@ BLOCK_MODE_SAFE = 2,
 BLOCK_MODE_UNSAFE = 3,
 
 // 表达式的静态 keypath
-STATIC_KEYPATH = 'sk',
+STATIC_KEYPATH = 'keypath',
 
 // 缓存编译正则
 patternCache = {},
