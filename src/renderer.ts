@@ -432,8 +432,8 @@ export function render(
 
   },
 
-  renderExpressionIdentifier = function (name: string, depIgnore: boolean | void, lookup: boolean | void, offset: number | void) {
-    return lookupValue(
+  renderExpressionIdentifier = function (name: string, holder: boolean | void, depIgnore: boolean | void, lookup: boolean | void, offset: number | void) {
+    const result = lookupValue(
       $stack,
       $stack.length - ((offset || 0) + 1),
       name,
@@ -441,21 +441,28 @@ export function render(
       lookup !== env.FALSE,
       depIgnore
     )
+    return holder ? result : result.value
   },
 
-  renderExpressionMemberIdentifier = function (identifier: string, runtimeKeypath: string[], depIgnore: boolean | void, lookup: boolean | void, offset: number | void) {
+  renderExpressionMemberIdentifier = function (identifier: string, runtimeKeypath: string[], holder: boolean | void, depIgnore: boolean | void, lookup: boolean | void, offset: number | void) {
     array.unshift(runtimeKeypath, identifier)
-    return renderExpressionIdentifier(array.join(runtimeKeypath, keypathUtil.separator), depIgnore, lookup, offset)
+    return renderExpressionIdentifier(
+      array.join(runtimeKeypath, keypathUtil.separator),
+      holder,
+      depIgnore,
+      lookup,
+      offset
+    )
   },
 
-  renderExpressionMemberLiteral = function (value: any, staticKeypath: string | void, runtimeKeypath: string[] | void) {
+  renderExpressionMemberLiteral = function (value: any, staticKeypath: string | void, runtimeKeypath: string[] | void, holder: boolean | void) {
     if (isDef(runtimeKeypath)) {
       staticKeypath = array.join(runtimeKeypath as string[], keypathUtil.separator)
     }
-    const holder = env.VALUE_HOLDER, result = object.get(value, staticKeypath as string)
-    holder.keypath = env.UNDEFINED
-    holder.value = result ? result.value : env.UNDEFINED
-    return holder
+    const result = env.VALUE_HOLDER, match = object.get(value, staticKeypath as string)
+    result.keypath = env.UNDEFINED
+    result.value = match ? match.value : env.UNDEFINED
+    return holder ? result : result.value
   },
 
   renderExpressionCall = function (fn: Function | void, args: any[]) {
