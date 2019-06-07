@@ -58,53 +58,49 @@ collectStack: (boolean | void)[] = [],
 
 nodeStringify = {},
 
-RENDER_SLOT = 'a',
+RENDER_EXPRESSION_IDENTIFIER = 'a',
 
-RENDER_EACH = 'b',
+RENDER_EXPRESSION_MEMBER_KEYPATH = 'b',
 
-RENDER_EXPRESSION = 'c',
+RENDER_EXPRESSION_MEMBER_LITERAL = 'c',
 
-RENDER_EXPRESSION_ARG = 'd',
+RENDER_EXPRESSION_CALL = 'd',
 
-RENDER_EXPRESSION_VNODE = 'e',
+RENDER_TEXT_VNODE = 'e',
 
-RENDER_TEXT_VNODE = 'f',
+RENDER_ATTRIBUTE_VNODE = 'f',
 
-RENDER_ATTRIBUTE_VNODE = 'g',
+RENDER_PROPERTY_VNODE = 'g',
 
-RENDER_PROPERTY_VNODE = 'h',
+RENDER_LAZY_VNODE = 'h',
 
-RENDER_LAZY_VNODE = 'i',
+RENDER_TRANSITION_VNODE = 'i',
 
-RENDER_TRANSITION_VNODE = 'j',
+RENDER_BINDING_VNODE = 'j',
 
-RENDER_BINDING_VNODE = 'k',
+RENDER_MODEL_VNODE = 'k',
 
-RENDER_MODEL_VNODE = 'l',
+RENDER_EVENT_METHOD_VNODE = 'l',
 
-RENDER_EVENT_METHOD_VNODE = 'm',
+RENDER_EVENT_NAME_VNODE = 'm',
 
-RENDER_EVENT_NAME_VNODE = 'n',
+RENDER_DIRECTIVE_VNODE = 'n',
 
-RENDER_DIRECTIVE_VNODE = 'o',
+RENDER_SPREAD_VNODE = 'o',
 
-RENDER_SPREAD_VNODE = 'p',
+RENDER_ELEMENT_VNODE = 'p',
 
-RENDER_ELEMENT_VNODE = 'q',
+RENDER_SLOT = 'q',
 
-RENDER_EXPRESSION_IDENTIFIER = 'r',
+RENDER_PARTIAL = 'r',
 
-RENDER_EXPRESSION_MEMBER_IDENTIFIER = 's',
+RENDER_IMPORT = 's',
 
-RENDER_EXPRESSION_MEMBER_LITERAL = 't',
+RENDER_EACH = 't',
 
-RENDER_EXPRESSION_CALL = 'u',
+TO_STRING = 'u',
 
-RENDER_PARTIAL = 'v',
-
-RENDER_IMPORT = 'w',
-
-ARG_CONTEXT = 'x',
+ARG_STACK = 'v',
 
 SEP_COMMA = ',',
 
@@ -126,9 +122,10 @@ function getCodePrefix() {
   if (!codePrefix) {
     codePrefix = `function(${
       array.join([
-        RENDER_EXPRESSION,
-        RENDER_EXPRESSION_ARG,
-        RENDER_EXPRESSION_VNODE,
+        RENDER_EXPRESSION_IDENTIFIER,
+        RENDER_EXPRESSION_MEMBER_KEYPATH,
+        RENDER_EXPRESSION_MEMBER_LITERAL,
+        RENDER_EXPRESSION_CALL,
         RENDER_TEXT_VNODE,
         RENDER_ATTRIBUTE_VNODE,
         RENDER_PROPERTY_VNODE,
@@ -141,29 +138,27 @@ function getCodePrefix() {
         RENDER_DIRECTIVE_VNODE,
         RENDER_SPREAD_VNODE,
         RENDER_ELEMENT_VNODE,
-        RENDER_EXPRESSION_IDENTIFIER,
-        RENDER_EXPRESSION_MEMBER_IDENTIFIER,
-        RENDER_EXPRESSION_MEMBER_LITERAL,
-        RENDER_EXPRESSION_CALL,
         RENDER_SLOT,
         RENDER_PARTIAL,
         RENDER_IMPORT,
-        RENDER_EACH
+        RENDER_EACH,
+        TO_STRING,
       ], SEP_COMMA)
     }){${CODE_RETURN}`
   }
   return codePrefix
 }
 
-function renderExpression(expr: ExpressionNode, holder?: boolean, depIgnore?: boolean) {
+function renderExpression(expr: ExpressionNode, holder?: boolean, depIgnore?: boolean, stack?: string) {
   return exprStringify.stringify(
     expr,
     RENDER_EXPRESSION_IDENTIFIER,
-    RENDER_EXPRESSION_MEMBER_IDENTIFIER,
+    RENDER_EXPRESSION_MEMBER_KEYPATH,
     RENDER_EXPRESSION_MEMBER_LITERAL,
     RENDER_EXPRESSION_CALL,
     holder,
-    depIgnore
+    depIgnore,
+    stack
   )
 }
 
@@ -191,22 +186,29 @@ function stringifyGroup(code: string): string {
   return `(${code})`
 }
 
-function stringifyExpression(renderName: string, expr: ExpressionNode, extra?: any): string {
+function stringifyExpression(expr: ExpressionNode, toString: boolean | void): string {
+  const value = renderExpression(expr)
+  return toString
+    ? stringifier.toCall(
+      TO_STRING,
+      [
+        value
+      ]
+    )
+    : value
+}
+
+function stringifyExpressionVnode(expr: ExpressionNode, toString: boolean | void): string {
   return stringifier.toCall(
-    renderName,
+    RENDER_TEXT_VNODE,
     [
-      renderExpression(expr),
-      extra
+      stringifyExpression(expr, toString)
     ]
   )
 }
 
 function stringifyExpressionArg(expr: ExpressionNode): string {
-  return stringifyExpression(
-    RENDER_EXPRESSION_ARG,
-    expr,
-    ARG_CONTEXT
-  )
+  return renderExpression(expr, env.FALSE, env.FALSE, ARG_STACK)
 }
 
 function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[] | void): string | void {
@@ -215,7 +217,7 @@ function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[
   }
   // 只有一个表达式时，保持原始类型
   if (expr) {
-    return stringifyExpression(RENDER_EXPRESSION, expr)
+    return stringifyExpression(expr)
   }
   // 多个值拼接时，要求是字符串
   if (children) {
@@ -259,7 +261,7 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
 
   let { children, isComplex, next } = node,
 
-  test = stringifyExpression(RENDER_EXPRESSION, node.expr),
+  test = stringifyExpression(node.expr),
 
   yes = stringifyConditionChildren(children, isComplex),
 
@@ -454,7 +456,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   if (html) {
-    data.html = stringifyExpression(RENDER_EXPRESSION, html, stringifier.TRUE)
+    data.html = stringifyExpression(html, env.TRUE)
   }
 
   if (isComponent) {
@@ -601,7 +603,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
           args,
           stringifyFunction(
             CODE_RETURN + stringifier.toArray((expr as ExpressionCall).args.map(stringifyExpressionArg)),
-            ARG_CONTEXT
+            ARG_STACK
           )
         )
       }
@@ -625,7 +627,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
           args,
           stringifyFunction(
             CODE_RETURN + stringifyExpressionArg(expr),
-            ARG_CONTEXT
+            ARG_STACK
           )
         )
       }
@@ -666,13 +668,18 @@ nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
   // 强制保留 isStringRequired 参数，减少运行时判断参数是否存在
   // 因为还有 stack 参数呢，各种判断真的很累
 
+  if (array.last(collectStack) && !array.last(joinStack)) {
+    return stringifyExpressionVnode(
+      node.expr,
+      isStringRequired
+    )
+  }
+
   return stringifyExpression(
-    array.last(collectStack) && !array.last(joinStack)
-      ? RENDER_EXPRESSION_VNODE
-      : RENDER_EXPRESSION,
     node.expr,
-    isStringRequired ? stringifier.TRUE : env.UNDEFINED
+    isStringRequired
   )
+
 }
 
 nodeStringify[nodeType.IF] = function (node: If): string {

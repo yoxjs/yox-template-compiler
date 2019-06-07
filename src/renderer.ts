@@ -170,22 +170,6 @@ export function render(
     }
   },
 
-  renderExpression = function (value: any, stringRequired: boolean | void): any {
-    return stringRequired
-      ? toString(value)
-      : value
-  },
-
-  renderExpressionArg = function (value: any, stack: any[]): any {
-    return value
-  },
-
-  renderExpressionVnode = function (expr: ExpressionNode, stringRequired: boolean) {
-    renderTextVnode(
-      renderExpression(expr, stringRequired)
-    )
-  },
-
   renderTextVnode = function (text: string) {
     const vnodeList = array.last(vnodeStack)
     if (vnodeList) {
@@ -437,11 +421,13 @@ export function render(
     lookup: boolean | void,
     offset: number | void,
     holder: boolean | void,
-    depIgnore: boolean | void
+    depIgnore: boolean | void,
+    stack: any[] | void
   ) {
-    const result = lookupValue(
-      $stack,
-      $stack.length - ((offset || 0) + 1),
+    const myStack = stack || $stack,
+    result = lookupValue(
+      myStack,
+      myStack.length - ((offset || 0) + 1),
       name,
       // undefined 或 true 都表示需要向上寻找
       lookup !== env.FALSE,
@@ -452,7 +438,7 @@ export function render(
 
   renderExpressionMemberKeypath = function (
     identifier: string,
-    runtimeKeypath: string[],
+    runtimeKeypath: string[]
   ) {
     array.unshift(runtimeKeypath, identifier)
     return array.join(runtimeKeypath, keypathUtil.separator)
@@ -526,9 +512,10 @@ export function render(
       const partial = partials[name]
       if (partial) {
         partial(
-          renderExpression,
-          renderExpressionArg,
-          renderExpressionVnode,
+          renderExpressionIdentifier,
+          renderExpressionMemberKeypath,
+          renderExpressionMemberLiteral,
+          renderExpressionCall,
           renderTextVnode,
           renderAttributeVnode,
           renderPropertyVnode,
@@ -541,14 +528,11 @@ export function render(
           renderDirectiveVnode,
           renderSpreadVnode,
           renderElementVnode,
-          renderExpressionIdentifier,
-          renderExpressionMemberKeypath,
-          renderExpressionMemberLiteral,
-          renderExpressionCall,
           renderSlot,
           renderPartial,
           renderImport,
-          renderEach
+          renderEach,
+          toString
         )
       }
       else if (process.env.NODE_ENV === 'development') {
@@ -691,9 +675,10 @@ export function render(
   }
 
   return template(
-    renderExpression,
-    renderExpressionArg,
-    renderExpressionVnode,
+    renderExpressionIdentifier,
+    renderExpressionMemberKeypath,
+    renderExpressionMemberLiteral,
+    renderExpressionCall,
     renderTextVnode,
     renderAttributeVnode,
     renderPropertyVnode,
@@ -706,14 +691,11 @@ export function render(
     renderDirectiveVnode,
     renderSpreadVnode,
     renderElementVnode,
-    renderExpressionIdentifier,
-    renderExpressionMemberKeypath,
-    renderExpressionMemberLiteral,
-    renderExpressionCall,
     renderSlot,
     renderPartial,
     renderImport,
-    renderEach
+    renderEach,
+    toString
   )
 
 }
