@@ -42,9 +42,6 @@ BLOCK_MODE_SAFE = 2,
 // {{{ x }}}
 BLOCK_MODE_UNSAFE = 3,
 
-// 表达式的静态 keypath
-STATIC_KEYPATH = 'keypath',
-
 // 缓存编译正则
 patternCache = {},
 
@@ -456,7 +453,7 @@ export function compile(content: string): Branch[] {
     // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
     // <div class="{{className}}">
 
-    if (expr[STATIC_KEYPATH]) {
+    if (expr.type === exprNodeType.IDENTIFIER) {
       prop.binding = env.TRUE
     }
 
@@ -501,7 +498,7 @@ export function compile(content: string): Branch[] {
     // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
     // <div class="{{className}}">
 
-    if (expr[STATIC_KEYPATH]) {
+    if (expr.type === exprNodeType.IDENTIFIER) {
       attr.binding = env.TRUE
     }
 
@@ -573,7 +570,7 @@ export function compile(content: string): Branch[] {
           }
         }
 
-        if (isModel && !expr[STATIC_KEYPATH]) {
+        if (isModel && expr.type !== exprNodeType.IDENTIFIER) {
           fatal(`model 指令的值格式错误: [${raw}]`)
         }
 
@@ -1332,9 +1329,7 @@ export function compile(content: string): Branch[] {
           if (currentElement && currentElement.isComponent) {
             return creator.createSpread(
               expr,
-              is.string(expr[STATIC_KEYPATH])
-                ? env.TRUE
-                : env.FALSE
+              expr.type === exprNodeType.IDENTIFIER
             )
           }
           else if (process.env.NODE_ENV === 'development') {
