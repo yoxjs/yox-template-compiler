@@ -468,7 +468,12 @@ export function render(
     )
   },
 
-  renderExpressionMemberLiteral = function (value: any, staticKeypath: string | void, runtimeKeypath: string[] | void, holder: boolean | void) {
+  renderExpressionMemberLiteral = function (
+    value: any,
+    staticKeypath: string | void,
+    runtimeKeypath: string[] | void,
+    holder: boolean | void
+  ) {
     if (isDef(runtimeKeypath)) {
       staticKeypath = array.join(runtimeKeypath as string[], keypathUtil.separator)
     }
@@ -478,15 +483,16 @@ export function render(
     return holder ? result : result.value
   },
 
-  renderExpressionCall = function (fn: Function | void, args: any[]) {
-    const holder = env.VALUE_HOLDER
-    holder.keypath = env.UNDEFINED
-    holder.value = execute(
-      fn,
-      context,
-      args
-    )
-    return holder
+  renderExpressionCall = function (
+    fn: Function | void,
+    args: any[] | void,
+    holder: boolean | void
+  ) {
+    const result = env.VALUE_HOLDER
+    result.keypath = env.UNDEFINED
+    // 当 holder 为 true, args 为空时，args 会传入 false
+    result.value = execute(fn, context, args || env.UNDEFINED)
+    return holder ? result : result.value
   },
 
   // <slot name="xx"/>

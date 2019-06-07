@@ -184,7 +184,7 @@ function stringifyObject(obj: Object): string {
 }
 
 function stringifyFunction(result: string | void, arg?: string): string {
-  return `function(${arg || env.EMPTY_STRING}){${result || env.EMPTY_STRING}}`
+  return `${env.RAW_FUNCTION}(${arg || env.EMPTY_STRING}){${result || env.EMPTY_STRING}}`
 }
 
 function stringifyGroup(code: string): string {
