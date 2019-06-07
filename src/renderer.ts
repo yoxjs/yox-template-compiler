@@ -15,8 +15,6 @@ import * as keypathUtil from '../../yox-common/src/util/keypath'
 
 import CustomEvent from '../../yox-common/src/util/CustomEvent'
 
-import ExpressionNode from '../../yox-expression-compiler/src/node/Node'
-
 import Yox from '../../yox-type/src/interface/Yox'
 import VNode from '../../yox-type/src/vnode/VNode'
 import DirectiveHooks from '../../yox-type/src/hooks/Directive'
@@ -47,7 +45,7 @@ export function render(
 
   localPartials: Record<string, Function> = {},
 
-  lookupValue = function (stack: any[], index: number, key: string, upable: boolean, depIgnore: boolean | void, defaultKeypath: string | void): ValueHolder {
+  findValue = function (stack: any[], index: number, key: string, lookup: boolean, depIgnore?: boolean, defaultKeypath?: string): ValueHolder {
 
     let scope = stack[index], keypath = keypathUtil.join(scope.$keypath, key), value: any = stack, holder = env.VALUE_HOLDER
 
@@ -83,11 +81,11 @@ export function render(
       value = context.get(keypath, stack, depIgnore)
       if (value === stack) {
 
-        if (upable && index > 0) {
+        if (lookup && index > 0) {
           if (process.env.NODE_ENV === 'development') {
             logger.debug(`Can't find [${keypath}], start looking up.`)
           }
-          return lookupValue(stack, index - 1, key, upable, depIgnore, defaultKeypath)
+          return findValue(stack, index - 1, key, lookup, depIgnore, defaultKeypath)
         }
 
         // 到头了，最后尝试过滤器
@@ -418,19 +416,18 @@ export function render(
 
   renderExpressionIdentifier = function (
     name: string,
-    lookup: boolean | void,
-    offset: number | void,
-    holder: boolean | void,
-    depIgnore: boolean | void,
-    stack: any[] | void
+    lookup: boolean,
+    offset?: number,
+    holder?: boolean,
+    depIgnore?: boolean,
+    stack?: any[]
   ) {
     const myStack = stack || $stack,
-    result = lookupValue(
+    result = findValue(
       myStack,
       myStack.length - ((offset || 0) + 1),
       name,
-      // undefined 或 true 都表示需要向上寻找
-      lookup !== env.FALSE,
+      lookup,
       depIgnore
     )
     return holder ? result : result.value
