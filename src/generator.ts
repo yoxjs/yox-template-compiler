@@ -2,7 +2,6 @@ import * as config from '../../yox-config/src/config'
 import * as type from '../../yox-type/src/type'
 
 import isDef from '../../yox-common/src/function/isDef'
-import toJSON from '../../yox-common/src/function/toJSON'
 
 import * as env from '../../yox-common/src/util/env'
 import * as array from '../../yox-common/src/util/array'
@@ -162,7 +161,7 @@ function stringifyObject(obj: Object): string {
       if (isDef(value)) {
         array.push(
           fields,
-          `${toJSON(key)}${generator.COLON}${value}`
+          generator.toString(key) + generator.COLON + value
         )
       }
     }
@@ -205,7 +204,7 @@ function stringifyExpressionArg(expr: ExpressionNode): string {
 
 function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[] | void): string | void {
   if (isDef(value)) {
-    return toJSON(value)
+    return generator.toString(value)
   }
   // 只有一个表达式时，保持原始类型
   if (expr) {
@@ -389,7 +388,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
   outputSlots: string | void
 
   if (tag === env.RAW_SLOT) {
-    const args = [toJSON(config.SLOT_DATA_PREFIX + name)]
+    const args = [generator.toString(config.SLOT_DATA_PREFIX + name)]
     if (children) {
       array.push(
         args,
@@ -417,10 +416,10 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
 
   // 如果以 $ 开头，表示动态组件
   if (string.codeAt(tag) === 36) {
-    outputTag = toJSON(string.slice(tag, 1))
+    outputTag = generator.toString(string.slice(tag, 1))
   }
   else {
-    data.tag = toJSON(tag)
+    data.tag = generator.toString(tag)
   }
 
   if (isSvg) {
@@ -493,7 +492,7 @@ nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute): string {
     ? generator.toCall(
       RENDER_BINDING_VNODE,
       [
-        toJSON(node.name),
+        generator.toString(node.name),
         renderExpression(node.expr as ExpressionNode, env.TRUE, env.TRUE)
       ]
     )
@@ -502,7 +501,7 @@ nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute): string {
   return generator.toCall(
     RENDER_ATTRIBUTE_VNODE,
     [
-      toJSON(node.name),
+      generator.toString(node.name),
       value
     ]
   )
@@ -515,9 +514,9 @@ nodeGenerator[nodeType.PROPERTY] = function (node: Property): string {
     ? generator.toCall(
       RENDER_BINDING_VNODE,
       [
-        toJSON(node.name),
+        generator.toString(node.name),
         renderExpression(node.expr as ExpressionNode, env.TRUE, env.TRUE),
-        toJSON(node.hint)
+        generator.toString(node.hint)
       ]
     )
     : stringifyValue(node.value, node.expr, node.children)
@@ -525,8 +524,8 @@ nodeGenerator[nodeType.PROPERTY] = function (node: Property): string {
   return generator.toCall(
     RENDER_PROPERTY_VNODE,
     [
-      toJSON(node.name),
-      toJSON(node.hint),
+      generator.toString(node.name),
+      generator.toString(node.hint),
       value
     ]
   )
@@ -540,14 +539,14 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
   if (ns === config.DIRECTIVE_LAZY) {
     return generator.toCall(
       RENDER_LAZY_VNODE,
-      [toJSON(name), toJSON(value)]
+      [generator.toString(name), generator.toString(value)]
     )
   }
 
   if (ns === env.RAW_TRANSITION) {
     return generator.toCall(
       RENDER_TRANSITION_VNODE,
-      [toJSON(value)]
+      [generator.toString(value)]
     )
   }
 
@@ -564,9 +563,9 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
   let renderName = RENDER_DIRECTIVE_VNODE,
 
   args: (string | undefined)[] = [
-    toJSON(name),
-    toJSON(key),
-    toJSON(value),
+    generator.toString(name),
+    generator.toString(key),
+    generator.toString(value),
   ]
 
   // 尽可能把表达式编译成函数，这样对外界最友好
@@ -586,7 +585,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
       // compiler 保证了函数调用的 name 是标识符
       array.push(
         args,
-        toJSON(((expr as ExpressionCall).name as ExpressionIdentifier).name)
+        generator.toString(((expr as ExpressionCall).name as ExpressionIdentifier).name)
       )
       // 为了实现运行时动态收集参数，这里序列化成函数
       if (!array.falsy((expr as ExpressionCall).args)) {
@@ -605,7 +604,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
       renderName = RENDER_EVENT_NAME_VNODE
       array.push(
         args,
-        toJSON(expr.raw)
+        generator.toString(expr.raw)
       )
     }
     else if (ns === config.DIRECTIVE_CUSTOM) {
@@ -643,7 +642,7 @@ nodeGenerator[nodeType.SPREAD] = function (node: Spread): string {
 
 nodeGenerator[nodeType.TEXT] = function (node: Text): string {
 
-  const result = toJSON(node.text)
+  const result = generator.toString(node.text)
 
   if (array.last(collectStack) && !array.last(joinStack)) {
     return generator.toCall(
@@ -690,7 +689,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each): string {
       renderExpression(node.from, env.TRUE),
       node.to ? renderExpression(node.to, env.TRUE) : env.UNDEFINED,
       node.equal ? generator.TRUE : env.UNDEFINED,
-      node.index ? toJSON(node.index) : env.UNDEFINED
+      node.index ? generator.toString(node.index) : env.UNDEFINED
     ]
   )
 
@@ -701,7 +700,7 @@ nodeGenerator[nodeType.PARTIAL] = function (node: Partial): string {
   return generator.toCall(
     RENDER_PARTIAL,
     [
-      toJSON(node.name),
+      generator.toString(node.name),
       // compiler 保证了 children 一定有值
       stringifyFunction(
         stringifyChildren(node.children as Node[], node.isComplex)
@@ -716,7 +715,7 @@ nodeGenerator[nodeType.IMPORT] = function (node: Import): string {
   return generator.toCall(
     RENDER_IMPORT,
     [
-      toJSON(node.name)
+      generator.toString(node.name)
     ]
   )
 
