@@ -13,6 +13,8 @@ import * as object from '../../yox-common/src/util/object'
 import * as logger from '../../yox-common/src/util/logger'
 import * as keypathUtil from '../../yox-common/src/util/keypath'
 
+import valueHolder from '../../yox-common/src/util/valueHolder'
+
 import CustomEvent from '../../yox-common/src/util/CustomEvent'
 
 import Yox from '../../yox-type/src/interface/Yox'
@@ -47,7 +49,7 @@ export function render(
 
   findValue = function (stack: any[], index: number, key: string, lookup: boolean, depIgnore?: boolean, defaultKeypath?: string): ValueHolder {
 
-    let scope = stack[index], keypath = keypathUtil.join(scope.$keypath, key), value: any = stack, holder = env.VALUE_HOLDER
+    let scope = stack[index], keypath = keypathUtil.join(scope.$keypath, key), value: any = stack, holder = valueHolder
 
     // 如果最后还是取不到值，用回最初的 keypath
     if (isUndef(defaultKeypath)) {
@@ -450,7 +452,7 @@ export function render(
     if (isDef(runtimeKeypath)) {
       staticKeypath = array.join(runtimeKeypath as string[], keypathUtil.separator)
     }
-    const result = env.VALUE_HOLDER, match = object.get(value, staticKeypath as string)
+    const result = valueHolder, match = object.get(value, staticKeypath as string)
     result.keypath = env.UNDEFINED
     result.value = match ? match.value : env.UNDEFINED
     return holder ? result : result.value
@@ -461,7 +463,7 @@ export function render(
     args: any[] | void,
     holder: boolean | void
   ) {
-    const result = env.VALUE_HOLDER
+    const result = valueHolder
     result.keypath = env.UNDEFINED
     // 当 holder 为 true, args 为空时，args 会传入 false
     result.value = execute(fn, context, args || env.UNDEFINED)
