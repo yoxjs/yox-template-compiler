@@ -8,9 +8,9 @@ import * as env from '../../yox-common/src/util/env'
 import * as array from '../../yox-common/src/util/array'
 import * as string from '../../yox-common/src/util/string'
 import * as object from '../../yox-common/src/util/object'
-import * as stringifier from '../../yox-common/src/util/stringify'
+import * as generator from '../../yox-common/src/util/generator'
 
-import * as exprStringify from '../../yox-expression-compiler/src/stringify'
+import * as exprGenerator from '../../yox-expression-compiler/src/generator'
 import * as exprNodeType from '../../yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'
 
@@ -56,7 +56,7 @@ const joinStack: boolean[] = [],
 // 是否正在收集子节点
 collectStack: (boolean | void)[] = [],
 
-nodeStringify = {},
+nodeGenerator = {},
 
 RENDER_EXPRESSION_IDENTIFIER = 'a',
 
@@ -102,14 +102,6 @@ TO_STRING = 'u',
 
 ARG_STACK = 'v',
 
-SEP_COMMA = ',',
-
-SEP_COLON = ':',
-
-SEP_PLUS = '+',
-
-SEP_AND = '&&',
-
 CODE_RETURN = 'return '
 
 // 序列化代码的前缀
@@ -143,14 +135,14 @@ function getCodePrefix() {
         RENDER_IMPORT,
         RENDER_EACH,
         TO_STRING,
-      ], SEP_COMMA)
+      ], generator.COMMA)
     }){${CODE_RETURN}`
   }
   return codePrefix
 }
 
 function renderExpression(expr: ExpressionNode, holder?: boolean, depIgnore?: boolean, stack?: string) {
-  return exprStringify.stringify(
+  return exprGenerator.generate(
     expr,
     RENDER_EXPRESSION_IDENTIFIER,
     RENDER_EXPRESSION_MEMBER_KEYPATH,
@@ -170,12 +162,12 @@ function stringifyObject(obj: Object): string {
       if (isDef(value)) {
         array.push(
           fields,
-          `${toJSON(key)}${SEP_COLON}${value}`
+          `${toJSON(key)}${generator.COLON}${value}`
         )
       }
     }
   )
-  return stringifier.toObject(fields)
+  return generator.toObject(fields)
 }
 
 function stringifyFunction(result: string | void, arg?: string): string {
@@ -189,7 +181,7 @@ function stringifyGroup(code: string): string {
 function stringifyExpression(expr: ExpressionNode, toString: boolean | void): string {
   const value = renderExpression(expr)
   return toString
-    ? stringifier.toCall(
+    ? generator.toCall(
       TO_STRING,
       [
         value
@@ -199,7 +191,7 @@ function stringifyExpression(expr: ExpressionNode, toString: boolean | void): st
 }
 
 function stringifyExpressionVnode(expr: ExpressionNode, toString: boolean | void): string {
-  return stringifier.toCall(
+  return generator.toCall(
     RENDER_TEXT_VNODE,
     [
       stringifyExpression(expr, toString)
@@ -237,10 +229,10 @@ function stringifyChildren(children: Node[], isComplex: boolean | void): string 
   const value = array.join(
     children.map(
       function (child: Node) {
-        return nodeStringify[child.type](child)
+        return nodeGenerator[child.type](child)
       }
     ),
-    isJoin ? SEP_PLUS : SEP_COMMA
+    isJoin ? generator.PLUS : generator.COMMA
   )
   array.pop(joinStack)
 
@@ -278,8 +270,8 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
   else if (stub) {
     no = renderElement(
       stringifyObject({
-        isComment: stringifier.TRUE,
-        text: stringifier.EMPTY,
+        isComment: generator.TRUE,
+        text: generator.EMPTY,
       })
     )
   }
@@ -290,21 +282,21 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
 
     if (isJoin) {
       if (!isDef(yes)) {
-        yes = stringifier.EMPTY
+        yes = generator.EMPTY
       }
       if (!isDef(no)) {
-        no = stringifier.EMPTY
+        no = generator.EMPTY
       }
     }
 
     if (!isDef(no)) {
-      result = `${test}${SEP_AND}${yes}`
+      result = test + generator.AND + yes
     }
     else if (!isDef(yes)) {
-      result = `!${test}${SEP_AND}${no}`
+      result = generator.NOT + test + generator.AND + no
     }
     else {
-      result = `${test}?${yes}:${no}`
+      result = test + generator.QUESTION + yes + generator.COLON + no
     }
 
     // 如果是连接操作，因为 ?: 优先级最低，因此要加 ()
@@ -314,12 +306,12 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
 
   }
 
-  return stringifier.EMPTY
+  return generator.EMPTY
 
 }
 
 function renderElement(data: string, tag: string | void, attrs: string | void, childs: string | void, slots: string | void): string {
-  return stringifier.toCall(
+  return generator.toCall(
     RENDER_ELEMENT_VNODE,
     [data, tag, attrs, childs, slots]
   )
@@ -382,7 +374,7 @@ function getComponentSlots(children: Node[]): string | void {
 
 }
 
-nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
+nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
 
   let { tag, isComponent, isSvg, isStyle, isOption, isStatic, isComplex, name, ref, key, html, attrs, children } = node,
 
@@ -406,7 +398,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
         )
       )
     }
-    return stringifier.toCall(RENDER_SLOT, args)
+    return generator.toCall(RENDER_SLOT, args)
   }
 
   array.push(collectStack, env.FALSE)
@@ -417,7 +409,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
       function (attr: Node) {
         array.push(
           outputAttrs,
-          nodeStringify[attr.type](attr)
+          nodeGenerator[attr.type](attr)
         )
       }
     )
@@ -432,19 +424,19 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   if (isSvg) {
-    data.isSvg = stringifier.TRUE
+    data.isSvg = generator.TRUE
   }
 
   if (isStyle) {
-    data.isStyle = stringifier.TRUE
+    data.isStyle = generator.TRUE
   }
 
   if (isOption) {
-    data.isOption = stringifier.TRUE
+    data.isOption = generator.TRUE
   }
 
   if (isStatic) {
-    data.isStatic = stringifier.TRUE
+    data.isStatic = generator.TRUE
   }
 
   if (ref) {
@@ -460,7 +452,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   if (isComponent) {
-    data.isComponent = stringifier.TRUE
+    data.isComponent = generator.TRUE
     if (children) {
       collectStack[collectStack.length - 1] = env.TRUE
       outputSlots = getComponentSlots(children)
@@ -487,7 +479,7 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
     array.falsy(outputAttrs)
       ? env.UNDEFINED
       : stringifyFunction(
-          array.join(outputAttrs, SEP_COMMA)
+          array.join(outputAttrs, generator.COMMA)
         ),
     outputChilds,
     outputSlots
@@ -495,10 +487,10 @@ nodeStringify[nodeType.ELEMENT] = function (node: Element): string {
 
 }
 
-nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
+nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute): string {
 
   const value = node.binding
-    ? stringifier.toCall(
+    ? generator.toCall(
       RENDER_BINDING_VNODE,
       [
         toJSON(node.name),
@@ -507,7 +499,7 @@ nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
     )
     : stringifyValue(node.value, node.expr, node.children)
 
-  return stringifier.toCall(
+  return generator.toCall(
     RENDER_ATTRIBUTE_VNODE,
     [
       toJSON(node.name),
@@ -517,10 +509,10 @@ nodeStringify[nodeType.ATTRIBUTE] = function (node: Attribute): string {
 
 }
 
-nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
+nodeGenerator[nodeType.PROPERTY] = function (node: Property): string {
 
   const value = node.binding
-    ? stringifier.toCall(
+    ? generator.toCall(
       RENDER_BINDING_VNODE,
       [
         toJSON(node.name),
@@ -530,7 +522,7 @@ nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
     )
     : stringifyValue(node.value, node.expr, node.children)
 
-  return stringifier.toCall(
+  return generator.toCall(
     RENDER_PROPERTY_VNODE,
     [
       toJSON(node.name),
@@ -541,19 +533,19 @@ nodeStringify[nodeType.PROPERTY] = function (node: Property): string {
 
 }
 
-nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
+nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
 
   const { ns, name, key, value, expr } = node
 
   if (ns === config.DIRECTIVE_LAZY) {
-    return stringifier.toCall(
+    return generator.toCall(
       RENDER_LAZY_VNODE,
       [toJSON(name), toJSON(value)]
     )
   }
 
   if (ns === env.RAW_TRANSITION) {
-    return stringifier.toCall(
+    return generator.toCall(
       RENDER_TRANSITION_VNODE,
       [toJSON(value)]
     )
@@ -561,7 +553,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 
   // <input model="id">
   if (ns === config.DIRECTIVE_MODEL) {
-    return stringifier.toCall(
+    return generator.toCall(
       RENDER_MODEL_VNODE,
       [
         renderExpression(expr as ExpressionNode, env.TRUE, env.TRUE)
@@ -602,7 +594,7 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
         array.push(
           args,
           stringifyFunction(
-            CODE_RETURN + stringifier.toArray((expr as ExpressionCall).args.map(stringifyExpressionArg)),
+            CODE_RETURN + generator.toArray((expr as ExpressionCall).args.map(stringifyExpressionArg)),
             ARG_STACK
           )
         )
@@ -636,12 +628,12 @@ nodeStringify[nodeType.DIRECTIVE] = function (node: Directive): string {
 
   }
 
-  return stringifier.toCall(renderName, args)
+  return generator.toCall(renderName, args)
 
 }
 
-nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
-  return stringifier.toCall(
+nodeGenerator[nodeType.SPREAD] = function (node: Spread): string {
+  return generator.toCall(
     RENDER_SPREAD_VNODE,
     [
       renderExpression(node.expr, env.TRUE, node.binding)
@@ -649,12 +641,12 @@ nodeStringify[nodeType.SPREAD] = function (node: Spread): string {
   )
 }
 
-nodeStringify[nodeType.TEXT] = function (node: Text): string {
+nodeGenerator[nodeType.TEXT] = function (node: Text): string {
 
   const result = toJSON(node.text)
 
   if (array.last(collectStack) && !array.last(joinStack)) {
-    return stringifier.toCall(
+    return generator.toCall(
       RENDER_TEXT_VNODE,
       [result]
     )
@@ -663,7 +655,7 @@ nodeStringify[nodeType.TEXT] = function (node: Text): string {
   return result
 }
 
-nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
+nodeGenerator[nodeType.EXPRESSION] = function (node: Expression): string {
 
   // 强制保留 isStringRequired 参数，减少运行时判断参数是否存在
   // 因为还有 stack 参数呢，各种判断真的很累
@@ -682,13 +674,13 @@ nodeStringify[nodeType.EXPRESSION] = function (node: Expression): string {
 
 }
 
-nodeStringify[nodeType.IF] = function (node: If): string {
+nodeGenerator[nodeType.IF] = function (node: If): string {
   return stringifyIf(node, node.stub)
 }
 
-nodeStringify[nodeType.EACH] = function (node: Each): string {
+nodeGenerator[nodeType.EACH] = function (node: Each): string {
 
-  return stringifier.toCall(
+  return generator.toCall(
     RENDER_EACH,
     [
       // compiler 保证了 children 一定有值
@@ -697,16 +689,16 @@ nodeStringify[nodeType.EACH] = function (node: Each): string {
       ),
       renderExpression(node.from, env.TRUE),
       node.to ? renderExpression(node.to, env.TRUE) : env.UNDEFINED,
-      node.equal ? stringifier.TRUE : env.UNDEFINED,
+      node.equal ? generator.TRUE : env.UNDEFINED,
       node.index ? toJSON(node.index) : env.UNDEFINED
     ]
   )
 
 }
 
-nodeStringify[nodeType.PARTIAL] = function (node: Partial): string {
+nodeGenerator[nodeType.PARTIAL] = function (node: Partial): string {
 
-  return stringifier.toCall(
+  return generator.toCall(
     RENDER_PARTIAL,
     [
       toJSON(node.name),
@@ -719,19 +711,21 @@ nodeStringify[nodeType.PARTIAL] = function (node: Partial): string {
 
 }
 
-nodeStringify[nodeType.IMPORT] = function (node: Import): string {
+nodeGenerator[nodeType.IMPORT] = function (node: Import): string {
 
-  return stringifier.toCall(
+  return generator.toCall(
     RENDER_IMPORT,
-    [toJSON(node.name)]
+    [
+      toJSON(node.name)
+    ]
   )
 
 }
 
-export function stringify(node: Node): string {
-  return getCodePrefix() + nodeStringify[node.type](node) + '}'
+export function generate(node: Node): string {
+  return getCodePrefix() + nodeGenerator[node.type](node) + '}'
 }
 
-export function hasStringify(code: string): boolean {
+export function hasGenerated(code: string): boolean {
   return string.startsWith(code, getCodePrefix())
 }
