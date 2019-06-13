@@ -238,9 +238,6 @@ export function render(
   },
 
   renderModelVnode = function (holder: ValueHolder) {
-
-    $vnode.model = holder.value
-
     setPair(
       $vnode,
       'directives',
@@ -249,6 +246,7 @@ export function render(
         ns: config.DIRECTIVE_MODEL,
         name: env.EMPTY_STRING,
         key: config.DIRECTIVE_MODEL,
+        value: holder.value,
         binding: holder.keypath,
         hooks: directives[config.DIRECTIVE_MODEL]
       }

@@ -313,8 +313,15 @@ export function compile(content: string): Branch[] {
       else if (isElement) {
         checkElement(node as Element)
       }
-      else if (currentElement && isAttribute && isSpecialAttr(currentElement, node as Attribute)) {
-        bindSpecialAttr(currentElement, node as Attribute)
+      else if (currentElement) {
+        if (isAttribute) {
+          if (isSpecialAttr(currentElement, node as Attribute)) {
+            bindSpecialAttr(currentElement, node as Attribute)
+          }
+        }
+        else if (isDirective) {
+          checkDirective(currentElement, node as Directive)
+        }
       }
 
       return node
@@ -723,6 +730,17 @@ export function compile(content: string): Branch[] {
       }
     }
 
+  },
+
+  checkDirective = function (element: Element, directive: Directive) {
+    if (process.env.NODE_ENV === 'development') {
+      // model 不能写在 if 里，影响节点的静态结构
+      if (directive.ns === config.DIRECTIVE_MODEL) {
+        if (array.last(nodeStack) !== element) {
+          fatal(`model 不能写在 if 内`)
+        }
+      }
+    }
   },
 
   bindSpecialAttr = function (element: Element, attr: Attribute) {
