@@ -349,7 +349,7 @@ export function compile(content: string): Branch[] {
 
     array.each(
       children,
-      function (child: Node, index: number) {
+      function (child, index) {
         if (child.type === nodeType.TEXT) {
           if (closeIndex >= 0) {
             openText = (child as Text).text

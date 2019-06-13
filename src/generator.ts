@@ -2,6 +2,7 @@ import * as config from '../../yox-config/src/config'
 import * as type from '../../yox-type/src/type'
 
 import isDef from '../../yox-common/src/function/isDef'
+import isUndef from '../../yox-common/src/function/isUndef'
 
 import * as env from '../../yox-common/src/util/env'
 import * as array from '../../yox-common/src/util/array'
@@ -280,18 +281,18 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
     const isJoin = array.last(joinStack)
 
     if (isJoin) {
-      if (!isDef(yes)) {
+      if (isUndef(yes)) {
         yes = generator.EMPTY
       }
-      if (!isDef(no)) {
+      if (isUndef(no)) {
         no = generator.EMPTY
       }
     }
 
-    if (!isDef(no)) {
+    if (isUndef(no)) {
       result = test + generator.AND + yes
     }
-    else if (!isDef(yes)) {
+    else if (isUndef(yes)) {
       result = generator.NOT + test + generator.AND + no
     }
     else {
@@ -359,7 +360,7 @@ function getComponentSlots(children: Node[]): string | void {
 
   object.each(
     slots,
-    function (children: any, name: string) {
+    function (children, name) {
       // 强制为复杂节点，因为 slot 的子节点不能用字符串拼接的方式来渲染
       result[name] = stringifyFunction(
         stringifyChildren(children, env.TRUE)
@@ -539,14 +540,20 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
   if (ns === config.DIRECTIVE_LAZY) {
     return generator.toCall(
       RENDER_LAZY_VNODE,
-      [generator.toString(name), generator.toString(value)]
+      [
+        generator.toString(name),
+        generator.toString(value)
+      ]
     )
   }
 
+  // <div transition="name">
   if (ns === env.RAW_TRANSITION) {
     return generator.toCall(
       RENDER_TRANSITION_VNODE,
-      [generator.toString(value)]
+      [
+        generator.toString(value)
+      ]
     )
   }
 
@@ -647,7 +654,9 @@ nodeGenerator[nodeType.TEXT] = function (node: Text): string {
   if (array.last(collectStack) && !array.last(joinStack)) {
     return generator.toCall(
       RENDER_TEXT_VNODE,
-      [result]
+      [
+        result
+      ]
     )
   }
 
