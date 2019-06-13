@@ -28,6 +28,8 @@ function setPair(target: any, name: string, key: string, value: any) {
   data[key] = value
 }
 
+const KEY_DIRECTIVES = 'directives'
+
 export function render(
   context: Yox,
   template: Function,
@@ -85,7 +87,7 @@ export function render(
 
         if (lookup && index > 0) {
           if (process.env.NODE_ENV === 'development') {
-            logger.debug(`Can't find [${keypath}], start looking up.`)
+            logger.debug(`"${keypath}" can't be found in the current context, start looking up.`)
           }
           return findValue(stack, index - 1, key, lookup, depIgnore, defaultKeypath)
         }
@@ -210,7 +212,7 @@ export function render(
     $vnode.transition = transitions[name]
     if (process.env.NODE_ENV === 'development') {
       if (!$vnode.transition) {
-        logger.fatal(`transition [${name}] is not found.`)
+        logger.fatal(`Transition "${name}" can't be found.`)
       }
     }
   },
@@ -221,7 +223,7 @@ export function render(
 
     setPair(
       $vnode,
-      'directives',
+      KEY_DIRECTIVES,
       key,
       {
         ns: config.DIRECTIVE_BINDING,
@@ -240,7 +242,7 @@ export function render(
   renderModelVnode = function (holder: ValueHolder) {
     setPair(
       $vnode,
-      'directives',
+      KEY_DIRECTIVES,
       config.DIRECTIVE_MODEL,
       {
         ns: config.DIRECTIVE_MODEL,
@@ -259,7 +261,7 @@ export function render(
   ) {
     setPair(
       $vnode,
-      'directives',
+      KEY_DIRECTIVES,
       key,
       {
         ns: config.DIRECTIVE_EVENT,
@@ -278,7 +280,7 @@ export function render(
   ) {
     setPair(
       $vnode,
-      'directives',
+      KEY_DIRECTIVES,
       key,
       {
         ns: config.DIRECTIVE_EVENT,
@@ -300,13 +302,13 @@ export function render(
 
     if (process.env.NODE_ENV === 'development') {
       if (!hooks) {
-        logger.fatal(`directive [${name}] is not found.`)
+        logger.fatal(`Directive ${name} can't be found.`)
       }
     }
 
     setPair(
       $vnode,
-      'directives',
+      KEY_DIRECTIVES,
       key,
       {
         ns: config.DIRECTIVE_CUSTOM,
@@ -341,7 +343,7 @@ export function render(
           const key = keypathUtil.join(config.DIRECTIVE_BINDING, keypath)
           setPair(
             $vnode,
-            'directives',
+            KEY_DIRECTIVES,
             key,
             {
               ns: config.DIRECTIVE_BINDING,
@@ -370,7 +372,7 @@ export function render(
       const componentName = context.get(tag)
       if (process.env.NODE_ENV === 'development') {
         if (!componentName) {
-          logger.warn(`Dynamic component [${tag}] is not found.`)
+          logger.warn(`Dynamic component "${tag}" can't be found.`)
         }
       }
       vnode.tag = componentName
@@ -532,7 +534,7 @@ export function render(
         )
       }
       else if (process.env.NODE_ENV === 'development') {
-        logger.fatal(`partial [${name}] is not found.`)
+        logger.fatal(`Partial "${name}" can't be found.`)
       }
     }
   },
