@@ -617,9 +617,9 @@ export function compile(content: string): Branch[] {
 
     prevNode: any,
 
-    hasChildren: boolean | undefined,
+    hasChildren: boolean | void,
 
-    hasNext: boolean | undefined
+    hasNext: boolean | void
 
     while (env.TRUE) {
       if (currentNode.children) {
