@@ -519,7 +519,7 @@ export function compile(content: string): Branch[] {
 
   processDirectiveSingleText = function (directive: Directive, child: Text) {
 
-    const { text } = child,
+    let { text } = child,
 
     // model="xx" model="this.x" 值只能是标识符或 Member
     isModel = directive.ns === config.DIRECTIVE_MODEL,
@@ -531,15 +531,15 @@ export function compile(content: string): Branch[] {
     isEvent = directive.ns === config.DIRECTIVE_EVENT,
 
     // 自定义指令运行不合法的表达式
-    isCustom = directive.ns === config.DIRECTIVE_CUSTOM
+    isCustom = directive.ns === config.DIRECTIVE_CUSTOM,
 
     // 指令的值是纯文本，可以预编译表达式，提升性能
-    let expr: ExpressionNode | void
+    expr: ExpressionNode | void
 
     try {
       expr = exprCompiler.compile(text)
     }
-    catch {}
+    catch (e) {}
 
     if (expr) {
 
