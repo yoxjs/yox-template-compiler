@@ -1,11 +1,23 @@
 {
-  "extends": "../yox-config/tsconfig.json",
-  "compilerOptions": {},
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "composite": true
+  },
+  "references": [
+    {
+      "path": "../yox-type"
+    },
+    {
+      "path": "../yox-config"
+    },
+    {
+      "path": "../yox-common"
+    },
+    {
+      "path": "../yox-expression-compiler"
+    }
+  ],
   "include": [
-    "src/**/*.ts",
-    "../yox-type/src/**/*.ts",
-    "../yox-config/src/**/*.ts",
-    "../yox-common/src/**/*.ts",
-    "../yox-expression-compiler/src/**/*.ts"
+    "src/**/*.ts"
   ]
 }
