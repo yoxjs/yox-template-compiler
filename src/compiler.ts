@@ -1,19 +1,19 @@
-import * as config from '../../yox-config/src/config'
+import * as config from 'yox-config/src/config'
 
-import toNumber from '../../yox-common/src/function/toNumber'
+import toNumber from 'yox-common/src/function/toNumber'
 
-import * as is from '../../yox-common/src/util/is'
-import * as env from '../../yox-common/src/util/env'
-import * as array from '../../yox-common/src/util/array'
-import * as string from '../../yox-common/src/util/string'
-import * as logger from '../../yox-common/src/util/logger'
+import * as is from 'yox-common/src/util/is'
+import * as env from 'yox-common/src/util/env'
+import * as array from 'yox-common/src/util/array'
+import * as string from 'yox-common/src/util/string'
+import * as logger from 'yox-common/src/util/logger'
 
-import * as exprNodeType from '../../yox-expression-compiler/src/nodeType'
-import * as exprCompiler from '../../yox-expression-compiler/src/compiler'
+import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
+import * as exprCompiler from 'yox-expression-compiler/src/compiler'
 
-import ExpressionNode from '../../yox-expression-compiler/src/node/Node'
-import ExpressionCall from '../../yox-expression-compiler/src/node/Call'
-import ExpressionLiteral from '../../yox-expression-compiler/src/node/Literal'
+import ExpressionNode from 'yox-expression-compiler/src/node/Node'
+import ExpressionCall from 'yox-expression-compiler/src/node/Call'
+import ExpressionLiteral from 'yox-expression-compiler/src/node/Literal'
 
 import * as helper from './helper'
 import * as creator from './creator'
