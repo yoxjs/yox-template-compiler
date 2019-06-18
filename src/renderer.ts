@@ -17,11 +17,14 @@ import valueHolder from '../../yox-common/src/util/valueHolder'
 
 import CustomEvent from '../../yox-common/src/util/CustomEvent'
 
-import Yox from '../../yox-type/src/interface/Yox'
-import VNode from '../../yox-type/src/vnode/VNode'
-import DirectiveHooks from '../../yox-type/src/hooks/Directive'
-import TransitionHooks from '../../yox-type/src/hooks/Transition'
-import ValueHolder from '../../yox-type/src/interface/ValueHolder'
+import {
+  Yox,
+  ValueHolder,
+  DirectiveHooks,
+  TransitionHooks,
+} from '../../yox-type/src/class'
+
+import { VNode } from '../../yox-type/src/vnode'
 
 function setPair(target: any, name: string, key: string, value: any) {
   const data = target[name] || (target[name] = {})
