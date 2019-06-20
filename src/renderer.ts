@@ -5,11 +5,14 @@ import {
   getter,
   listener,
   ValueHolder,
-  Yox,
   VNode,
+} from '../../yox-type/src/type'
+
+import {
+  Yox,
   DirectiveHooks,
   TransitionHooks,
-} from '../../yox-type/src/type'
+} from '../../yox-type/src/global'
 
 import * as config from '../../yox-config/src/config'
 
