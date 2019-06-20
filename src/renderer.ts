@@ -4,7 +4,7 @@ import {
   lazy,
   getter,
   listener,
-  valueHolder,
+  ValueHolder,
   Yox,
   VNode,
   DirectiveHooks,
@@ -55,7 +55,7 @@ export function render(
 
   localPartials: Record<string, Function> = {},
 
-  findValue = function (stack: any[], index: number, key: string, lookup: boolean, depIgnore?: boolean, defaultKeypath?: string): valueHolder {
+  findValue = function (stack: any[], index: number, key: string, lookup: boolean, depIgnore?: boolean, defaultKeypath?: string): ValueHolder {
 
     let scope = stack[index], keypath = keypathUtil.join(scope.$keypath, key), value: any = stack, holder = globalHolder
 
@@ -223,7 +223,7 @@ export function render(
     }
   },
 
-  renderBindingVnode = function (name: string, holder: valueHolder, hint?: hint): any {
+  renderBindingVnode = function (name: string, holder: ValueHolder, hint?: hint): any {
 
     const key = keypathUtil.join(config.DIRECTIVE_BINDING, name)
 
@@ -245,7 +245,7 @@ export function render(
 
   },
 
-  renderModelVnode = function (holder: valueHolder) {
+  renderModelVnode = function (holder: ValueHolder) {
     setPair(
       $vnode,
       KEY_DIRECTIVES,
@@ -329,7 +329,7 @@ export function render(
 
   },
 
-  renderSpreadVnode = function (holder: valueHolder) {
+  renderSpreadVnode = function (holder: ValueHolder) {
 
     const { value, keypath } = holder
 
@@ -585,8 +585,8 @@ export function render(
 
   renderEach = function (
     generate: Function,
-    from: valueHolder,
-    to: valueHolder | void,
+    from: ValueHolder,
+    to: ValueHolder | void,
     equal: boolean | void,
     index: string | void
   ) {
