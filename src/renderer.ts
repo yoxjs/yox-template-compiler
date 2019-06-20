@@ -1,5 +1,17 @@
+import {
+  data,
+  hint,
+  lazy,
+  getter,
+  listener,
+  valueHolder,
+  Yox,
+  VNode,
+  DirectiveHooks,
+  TransitionHooks,
+} from '../../yox-type/src/type'
+
 import * as config from '../../yox-config/src/config'
-import * as type from '../../yox-type/src/type'
 
 import isDef from '../../yox-common/src/function/isDef'
 import isUndef from '../../yox-common/src/function/isUndef'
@@ -13,18 +25,9 @@ import * as object from '../../yox-common/src/util/object'
 import * as logger from '../../yox-common/src/util/logger'
 import * as keypathUtil from '../../yox-common/src/util/keypath'
 
-import valueHolder from '../../yox-common/src/util/valueHolder'
+import globalHolder from '../../yox-common/src/util/holder'
 
 import CustomEvent from '../../yox-common/src/util/CustomEvent'
-
-import {
-  Yox,
-  ValueHolder,
-  DirectiveHooks,
-  TransitionHooks,
-} from '../../yox-type/src/class'
-
-import { VNode } from '../../yox-type/src/vnode'
 
 function setPair(target: any, name: string, key: string, value: any) {
   const data = target[name] || (target[name] = {})
@@ -42,7 +45,7 @@ export function render(
   transitions: Record<string, TransitionHooks>
 ) {
 
-  let $scope: type.data = { $keypath: env.EMPTY_STRING },
+  let $scope: data = { $keypath: env.EMPTY_STRING },
 
   $stack = [ $scope ],
 
@@ -52,9 +55,9 @@ export function render(
 
   localPartials: Record<string, Function> = {},
 
-  findValue = function (stack: any[], index: number, key: string, lookup: boolean, depIgnore?: boolean, defaultKeypath?: string): ValueHolder {
+  findValue = function (stack: any[], index: number, key: string, lookup: boolean, depIgnore?: boolean, defaultKeypath?: string): valueHolder {
 
-    let scope = stack[index], keypath = keypathUtil.join(scope.$keypath, key), value: any = stack, holder = valueHolder
+    let scope = stack[index], keypath = keypathUtil.join(scope.$keypath, key), value: any = stack, holder = globalHolder
 
     // 如果最后还是取不到值，用回最初的 keypath
     if (isUndef(defaultKeypath)) {
@@ -117,8 +120,8 @@ export function render(
 
   },
 
-  createEventListener = function (type: string): type.listener {
-    return function (event: CustomEvent, data?: type.data) {
+  createEventListener = function (type: string): listener {
+    return function (event: CustomEvent, data?: data) {
       // 事件名称相同的情况，只可能是监听 DOM 事件，比如写一个 Button 组件
       // <button on-click="click"> 纯粹的封装了一个原生 click 事件
       if (type !== event.type) {
@@ -132,8 +135,8 @@ export function render(
     name: string,
     args: Function | void,
     stack: any[]
-  ): type.listener {
-    return function (event: CustomEvent, data?: type.data) {
+  ): listener {
+    return function (event: CustomEvent, data?: data) {
 
       const method = context[name]
 
@@ -169,7 +172,7 @@ export function render(
     }
   },
 
-  createGetter = function (getter: Function, stack: any[]): type.getter {
+  createGetter = function (getter: Function, stack: any[]): getter {
     return function () {
       return getter(stack)
     }
@@ -203,11 +206,11 @@ export function render(
     }
   },
 
-  renderPropertyVnode = function (name: string, hint: type.hint, value: any | void) {
+  renderPropertyVnode = function (name: string, hint: hint, value: any | void) {
     setPair($vnode, 'nativeProps', name, { name, value, hint })
   },
 
-  renderLazyVnode = function (name: string, value: type.lazy) {
+  renderLazyVnode = function (name: string, value: lazy) {
     setPair($vnode, 'lazy', name, value)
   },
 
@@ -220,7 +223,7 @@ export function render(
     }
   },
 
-  renderBindingVnode = function (name: string, holder: ValueHolder, hint?: type.hint): any {
+  renderBindingVnode = function (name: string, holder: valueHolder, hint?: hint): any {
 
     const key = keypathUtil.join(config.DIRECTIVE_BINDING, name)
 
@@ -242,7 +245,7 @@ export function render(
 
   },
 
-  renderModelVnode = function (holder: ValueHolder) {
+  renderModelVnode = function (holder: valueHolder) {
     setPair(
       $vnode,
       KEY_DIRECTIVES,
@@ -326,7 +329,7 @@ export function render(
 
   },
 
-  renderSpreadVnode = function (holder: ValueHolder) {
+  renderSpreadVnode = function (holder: valueHolder) {
 
     const { value, keypath } = holder
 
@@ -364,7 +367,7 @@ export function render(
   },
 
   renderElementVnode = function (
-    vnode: type.data,
+    vnode: data,
     tag: string | void,
     attrs: Function | void,
     childs: Function | void,
@@ -456,9 +459,9 @@ export function render(
       staticKeypath = array.join(runtimeKeypath as string[], keypathUtil.separator)
     }
     const match = object.get(value, staticKeypath as string)
-    valueHolder.keypath = env.UNDEFINED
-    valueHolder.value = match ? match.value : env.UNDEFINED
-    return holder ? valueHolder : valueHolder.value
+    globalHolder.keypath = env.UNDEFINED
+    globalHolder.value = match ? match.value : env.UNDEFINED
+    return holder ? globalHolder : globalHolder.value
   },
 
   renderExpressionCall = function (
@@ -466,10 +469,10 @@ export function render(
     args: any[] | void,
     holder: boolean | void
   ) {
-    valueHolder.keypath = env.UNDEFINED
+    globalHolder.keypath = env.UNDEFINED
     // 当 holder 为 true, args 为空时，args 会传入 false
-    valueHolder.value = execute(fn, context, args || env.UNDEFINED)
-    return holder ? valueHolder : valueHolder.value
+    globalHolder.value = execute(fn, context, args || env.UNDEFINED)
+    return holder ? globalHolder : globalHolder.value
   },
 
   // <slot name="xx"/>
@@ -582,8 +585,8 @@ export function render(
 
   renderEach = function (
     generate: Function,
-    from: ValueHolder,
-    to: ValueHolder | void,
+    from: valueHolder,
+    to: valueHolder | void,
     equal: boolean | void,
     index: string | void
   ) {
