@@ -8,12 +8,6 @@ import {
   VNode,
 } from '../../yox-type/src/type'
 
-import {
-  Yox,
-  DirectiveHooks,
-  TransitionHooks,
-} from '../../yox-type/src/global'
-
 import * as config from '../../yox-config/src/config'
 
 import isDef from '../../yox-common/src/function/isDef'
@@ -40,7 +34,7 @@ function setPair(target: any, name: string, key: string, value: any) {
 const KEY_DIRECTIVES = 'directives'
 
 export function render(
-  context: Yox,
+  context: YoxInterface,
   template: Function,
   filters: Record<string, Function>,
   partials: Record<string, Function>,
