@@ -8,6 +8,12 @@ import {
   VNode,
 } from '../../yox-type/src/type'
 
+import {
+  YoxInterface,
+  DirectiveHooks,
+  TransitionHooks,
+} from '../../yox-type/src/global'
+
 import * as config from '../../yox-config/src/config'
 
 import isDef from '../../yox-common/src/function/isDef'
