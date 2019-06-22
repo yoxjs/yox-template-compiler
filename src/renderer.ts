@@ -3,12 +3,12 @@ import {
   hint,
   lazy,
   getter,
-  listener,
   ValueHolder,
   VNode,
 } from '../../yox-type/src/type'
 
 import {
+  listener,
   YoxInterface,
   DirectiveHooks,
   TransitionHooks,
