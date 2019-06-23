@@ -1,3 +1,11 @@
+import {
+  isSvg,
+  isSelfClosing,
+  createAttribute,
+  getAttributeDefaultValue,
+  compatElement,
+} from './platform/web'
+
 import * as config from '../../yox-config/src/config'
 
 import toNumber from '../../yox-common/src/function/toNumber'
@@ -81,37 +89,7 @@ attributePattern = /^\s*([-.:\w]+)(['"])?(?:=(['"]))?/,
 componentNamePattern = /^[$A-Z]|-/,
 
 // 自闭合标签
-selfClosingTagPattern = /^\s*(\/)?>/,
-
-// 常见的自闭合标签
-selfClosingTagNames = 'area,base,embed,track,source,param,input,col,img,br,hr'.split(','),
-
-// 常见的 svg 标签
-svgTagNames = 'svg,g,defs,desc,metadata,symbol,use,image,path,rect,circle,line,ellipse,polyline,polygon,text,tspan,tref,textpath,marker,pattern,clippath,mask,filter,cursor,view,animate,font,font-face,glyph,missing-glyph,foreignObject'.split(','),
-
-// 常见的字符串类型的属性
-// 注意：autocomplete,autocapitalize 不是布尔类型
-stringProperyNames = 'id,class,name,value,for,accesskey,title,style,src,type,href,target,alt,placeholder,preload,poster,wrap,accept,pattern,dir,autocomplete,autocapitalize'.split(','),
-
-// 常见的数字类型的属性
-numberProperyNames = 'min,minlength,max,maxlength,step,width,height,size,rows,cols,tabindex'.split(','),
-
-// 常见的布尔类型的属性
-booleanProperyNames = 'disabled,checked,required,multiple,readonly,autofocus,autoplay,controls,loop,muted,novalidate,draggable,hidden,spellcheck'.split(','),
-
-// 某些属性 attribute name 和 property name 不同
-attr2Prop = {}
-
-// 列举几个常见的
-attr2Prop['for'] = 'htmlFor'
-attr2Prop['class'] = 'className'
-attr2Prop['accesskey'] = 'accessKey'
-attr2Prop['style'] = 'style.cssText'
-attr2Prop['novalidate'] = 'noValidate'
-attr2Prop['readonly'] = 'readOnly'
-attr2Prop['tabindex'] = 'tabIndex'
-attr2Prop['minlength'] = 'minLength'
-attr2Prop['maxlength'] = 'maxLength'
+selfClosingTagPattern = /^\s*(\/)?>/
 
 /**
  * 截取前缀之后的字符串
@@ -181,7 +159,7 @@ export function compile(content: string): Branch[] {
     if (lastNode && lastNode.type === nodeType.ELEMENT) {
       const element = lastNode as Element
       if (element.tag !== popingTagName
-        && array.has(selfClosingTagNames, element.tag)
+        && isSelfClosing(element.tag)
       ) {
         popStack(element.type, element.tag)
       }
@@ -468,22 +446,13 @@ export function compile(content: string): Branch[] {
 
   processAttributeEmptyChildren = function (element: Element, attr: Attribute) {
 
-    const { name } = attr
-
     if (isSpecialAttr(element, attr)) {
       if (process.env.NODE_ENV === 'development') {
-        fatal(`${name} 忘了写值吧？`)
+        fatal(`${attr.name} 忘了写值吧？`)
       }
     }
-    // 比如 <Dog isLive>
-    else if (element.isComponent) {
-      attr.value = env.TRUE
-    }
-    // <div data-name checked>
     else {
-      attr.value = string.startsWith(name, 'data-')
-        ? env.EMPTY_STRING
-        : name
+      attr.value = getAttributeDefaultValue(element, attr.name)
     }
 
   },
@@ -665,7 +634,7 @@ export function compile(content: string): Branch[] {
 
   checkElement = function (element: Element) {
 
-    const { tag, attrs, slot, children } = element, isTemplate = tag === env.RAW_TEMPLATE
+    const { tag, slot } = element, isTemplate = tag === env.RAW_TEMPLATE
 
     if (process.env.NODE_ENV === 'development') {
       if (isTemplate) {
@@ -675,7 +644,7 @@ export function compile(content: string): Branch[] {
         else if (element.ref) {
           fatal(`<template> 不支持 ref`)
         }
-        else if (attrs) {
+        else if (element.attrs) {
           fatal(`<template> 不支持属性或指令`)
         }
         else if (!slot) {
@@ -685,49 +654,15 @@ export function compile(content: string): Branch[] {
     }
 
     // 没有子节点，则意味着这个插槽没任何意义
-    if (isTemplate && slot && !children) {
+    if (isTemplate && slot && !element.children) {
       replaceChild(element)
     }
     // <slot /> 如果没写 name，自动加上默认名称
     else if (tag === env.RAW_SLOT && !element.name) {
       element.name = config.SLOT_NAME_DEFAULT
     }
-    // 补全 style 标签的 type
-
-    // style 如果没有 type 则加一个 type="text/css"
-    // 因为低版本 IE 没这个属性，没法正常渲染样式
-
     else {
-      let hasType = env.FALSE, hasValue = env.FALSE
-      if (attrs) {
-        array.each(
-          attrs,
-          function (attr) {
-
-            const name = attr.type === nodeType.PROPERTY
-              ? (attr as Property).name
-              : env.UNDEFINED
-
-            if (name === 'type') {
-              hasType = env.TRUE
-            }
-            else if (name === env.RAW_VALUE) {
-              hasValue = env.TRUE
-            }
-
-          }
-        )
-      }
-      if (element.isStyle && !hasType) {
-        array.push(
-          element.attrs || (element.attrs = []),
-          creator.createProperty('type', config.HINT_STRING, 'text/css')
-        )
-      }
-      // 低版本 IE 需要给 option 标签强制加 value
-      else if (tag === 'option' && !hasValue) {
-        element.isOption = env.TRUE
-      }
+      compatElement(element)
     }
 
   },
@@ -976,7 +911,7 @@ export function compile(content: string): Branch[] {
 
             const node = creator.createElement(
               tag,
-              array.has(svgTagNames, tag),
+              isSvg(tag),
               componentNamePattern.test(tag)
             )
 
@@ -1069,47 +1004,7 @@ export function compile(content: string): Branch[] {
             )
           }
           else {
-            // 组件用驼峰格式
-            if (currentElement.isComponent) {
-              node = creator.createAttribute(
-                string.camelize(name)
-              )
-            }
-            // 原生 dom 属性
-            else {
-
-              // 把 attr 优化成 prop
-              const lowerName = string.lower(name)
-
-              // <slot> 、<template> 或 svg 中的属性不用识别为 property
-              if (helper.specialTags[currentElement.tag] || currentElement.isSvg) {
-                node = creator.createAttribute(name)
-              }
-              // 尝试识别成 property
-              else if (array.has(stringProperyNames, lowerName)) {
-                node = creator.createProperty(
-                  attr2Prop[lowerName] || lowerName,
-                  config.HINT_STRING
-                )
-              }
-              else if (array.has(numberProperyNames, lowerName)) {
-                node = creator.createProperty(
-                  attr2Prop[lowerName] || lowerName,
-                  config.HINT_NUMBER
-                )
-              }
-              else if (array.has(booleanProperyNames, lowerName)) {
-                node = creator.createProperty(
-                  attr2Prop[lowerName] || lowerName,
-                  config.HINT_BOOLEAN
-                )
-              }
-              // 没辙，还是个 attribute
-              else {
-                node = creator.createAttribute(name)
-              }
-
-            }
+            node = createAttribute(currentElement, name)
           }
 
           addChild(node)
