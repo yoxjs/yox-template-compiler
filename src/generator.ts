@@ -1,5 +1,8 @@
+import {
+  data,
+} from '../../yox-type/src/type'
+
 import * as config from '../../yox-config/src/config'
-import * as type from '../../yox-type/src/type'
 
 import isDef from '../../yox-common/src/function/isDef'
 import isUndef from '../../yox-common/src/function/isUndef'
@@ -347,7 +350,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
 
   let { tag, isComponent, isSvg, isStyle, isOption, isStatic, isComplex, name, ref, key, html, attrs, children } = node,
 
-  data: type.data = {},
+  data: data = {},
 
   outputTag: string | void,
 

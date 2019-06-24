@@ -1,8 +1,8 @@
 import {
   data,
-  hint,
-  lazy,
-  getter,
+  lazyValue,
+  propertyHint,
+  computedGetter,
   ValueHolder,
   VNode,
 } from '../../yox-type/src/type'
@@ -175,7 +175,7 @@ export function render(
     }
   },
 
-  createGetter = function (getter: Function, stack: any[]): getter {
+  createGetter = function (getter: Function, stack: any[]): computedGetter {
     return function () {
       return getter(stack)
     }
@@ -209,11 +209,11 @@ export function render(
     }
   },
 
-  renderPropertyVnode = function (name: string, hint: hint, value: any | void) {
+  renderPropertyVnode = function (name: string, hint: propertyHint, value: any | void) {
     setPair($vnode, 'nativeProps', name, { name, value, hint })
   },
 
-  renderLazyVnode = function (name: string, value: lazy) {
+  renderLazyVnode = function (name: string, value: lazyValue) {
     setPair($vnode, 'lazy', name, value)
   },
 
@@ -226,7 +226,7 @@ export function render(
     }
   },
 
-  renderBindingVnode = function (name: string, holder: ValueHolder, hint?: hint): any {
+  renderBindingVnode = function (name: string, holder: ValueHolder, hint?: propertyHint): any {
 
     const key = keypathUtil.join(config.DIRECTIVE_BINDING, name)
 
