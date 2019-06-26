@@ -2,7 +2,6 @@ import {
   data,
   lazyValue,
   propertyHint,
-  computedGetter,
   ValueHolder,
   VNode,
 } from '../../yox-type/src/type'
@@ -175,7 +174,7 @@ export function render(
     }
   },
 
-  createGetter = function (getter: Function, stack: any[]): computedGetter {
+  createGetter = function (getter: Function, stack: any[]): () => any {
     return function () {
       return getter(stack)
     }
