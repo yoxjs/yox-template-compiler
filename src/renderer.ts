@@ -123,7 +123,7 @@ export function render(
 
   },
 
-  createEventListener = function (type: string): Listener {
+  createEventListener = function (type: string): Listener<any> {
     return function (event: CustomEvent, data?: data) {
       // 事件名称相同的情况，只可能是监听 DOM 事件，比如写一个 Button 组件
       // <button on-click="click"> 纯粹的封装了一个原生 click 事件
@@ -138,7 +138,7 @@ export function render(
     name: string,
     args: Function | void,
     stack: any[]
-  ): Listener {
+  ): Listener<any> {
     return function (event: CustomEvent, data?: data) {
 
       const method = context[name]
