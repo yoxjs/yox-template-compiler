@@ -1,8 +1,8 @@
 import {
-  isSvg,
   isSelfClosing,
   createAttribute,
   getAttributeDefaultValue,
+  createElement,
   compatElement,
 } from './platform/web'
 
@@ -84,9 +84,6 @@ closeCommentPattern = /-->([\s\S]*?)$/,
 // 属性的 name
 // 支持 on-click.namespace="" 或 on-get-out="" 或 xml:xx=""
 attributePattern = /^\s*([-.:\w]+)(['"])?(?:=(['"]))?/,
-
-// 首字母大写，或中间包含 -
-componentNamePattern = /^[$A-Z]|-/,
 
 // 自闭合标签
 selfClosingTagPattern = /^\s*(\/)?>/
@@ -909,11 +906,7 @@ export function compile(content: string): Branch[] {
               }
             }
 
-            const node = creator.createElement(
-              tag,
-              isSvg(tag),
-              componentNamePattern.test(tag)
-            )
+            const node = createElement(tag)
 
             addChild(node)
             currentElement = node

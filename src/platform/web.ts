@@ -12,8 +12,11 @@ import * as helper from '../helper'
 import * as creator from '../creator'
 import * as nodeType from '../nodeType'
 
+// 首字母大写，或中间包含 -
+const componentNamePattern = /^[$A-Z]|-/,
+
 // 常见的自闭合标签
-const selfClosingTagNames = 'area,base,embed,track,source,param,input,col,img,br,hr'.split(','),
+selfClosingTagNames = 'area,base,embed,track,source,param,input,col,img,br,hr'.split(','),
 
 // 常见的 svg 标签
 svgTagNames = 'svg,g,defs,desc,metadata,symbol,use,image,path,rect,circle,line,ellipse,polyline,polygon,text,tspan,tref,textpath,marker,pattern,clippath,mask,filter,cursor,view,animate,font,font-face,glyph,missing-glyph,foreignObject'.split(','),
@@ -105,6 +108,15 @@ export function getAttributeDefaultValue(element: Element, name: string) {
       ? env.EMPTY_STRING
       : name
   }
+}
+
+export function createElement(tagName: string) {
+  return creator.createElement(
+    tagName,
+    isSvg(tagName),
+    tagName === 'style',
+    componentNamePattern.test(tagName)
+  )
 }
 
 export function compatElement(element: Element) {

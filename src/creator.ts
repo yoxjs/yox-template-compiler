@@ -67,7 +67,7 @@ export function createEach(from: ExpressionNode, to: ExpressionNode | void, equa
   }
 }
 
-export function createElement(tag: string, isSvg: boolean, isComponent: boolean): Element {
+export function createElement(tag: string, isSvg: boolean, isStyle: boolean, isComponent: boolean): Element {
   // 是 svg 就不可能是组件
   // 加这个判断的原因是，svg 某些标签含有 连字符 和 大写字母，比较蛋疼
   if (isSvg) {
@@ -77,7 +77,7 @@ export function createElement(tag: string, isSvg: boolean, isComponent: boolean)
     type: nodeType.ELEMENT,
     tag,
     isSvg,
-    isStyle: tag === 'style',
+    isStyle,
     // 只有 <option> 没有 value 属性时才为 true
     isOption: env.FALSE,
     isComponent,
