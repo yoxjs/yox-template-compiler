@@ -49,10 +49,6 @@ export function isSelfClosing(tagName: string) {
   return array.has(selfClosingTagNames, tagName)
 }
 
-export function isSvg(tagName: string) {
-  return array.has(svgTagNames, tagName)
-}
-
 export function createAttribute(element: Element, name: string): Attribute | Property {
 
   // 组件用驼峰格式
@@ -111,11 +107,20 @@ export function getAttributeDefaultValue(element: Element, name: string) {
 }
 
 export function createElement(tagName: string) {
+
+  let isSvg = array.has(svgTagNames, tagName), isComponent = env.FALSE
+
+  // 是 svg 就不可能是组件
+  // 加这个判断的原因是，svg 某些标签含有 连字符 和 大写字母，比较蛋疼
+  if (!isSvg && componentNamePattern.test(tagName)) {
+    isComponent = env.TRUE
+  }
+
   return creator.createElement(
     tagName,
-    isSvg(tagName),
+    isSvg,
     tagName === 'style',
-    componentNamePattern.test(tagName)
+    isComponent
   )
 }
 
