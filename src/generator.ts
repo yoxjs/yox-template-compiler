@@ -1,5 +1,5 @@
 import {
-  data,
+  Data,
 } from '../../yox-type/src/type'
 
 import * as config from '../../yox-config/src/config'
@@ -350,7 +350,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
 
   let { tag, isComponent, isSvg, isStyle, isOption, isStatic, isComplex, name, ref, key, html, attrs, children } = node,
 
-  data: data = {},
+  data: Data = {},
 
   outputTag: string | void,
 

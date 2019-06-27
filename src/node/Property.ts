@@ -1,5 +1,5 @@
 import {
-  propertyHint,
+  PropertyHint,
 } from '../../../yox-type/src/type'
 
 import ExpressionNode from '../../../yox-expression-compiler/src/node/Node'
@@ -12,7 +12,7 @@ export default interface Property extends Branch {
 
   name: string
 
-  hint: propertyHint
+  hint: PropertyHint
 
   value?: string | number | boolean
 

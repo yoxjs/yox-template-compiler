@@ -1,7 +1,7 @@
 import {
-  data,
-  lazyValue,
-  propertyHint,
+  Data,
+  LazyValue,
+  PropertyHint,
   ValueHolder,
   VNode,
 } from '../../yox-type/src/type'
@@ -47,7 +47,7 @@ export function render(
   transitions: Record<string, TransitionHooks>
 ) {
 
-  let $scope: data = { $keypath: env.EMPTY_STRING },
+  let $scope: Data = { $keypath: env.EMPTY_STRING },
 
   $stack = [ $scope ],
 
@@ -123,7 +123,7 @@ export function render(
   },
 
   createEventListener = function (type: string): Listener<any> {
-    return function (event: CustomEvent, data?: data) {
+    return function (event: CustomEvent, data?: Data) {
       // 事件名称相同的情况，只可能是监听 DOM 事件，比如写一个 Button 组件
       // <button on-click="click"> 纯粹的封装了一个原生 click 事件
       if (type !== event.type) {
@@ -138,7 +138,7 @@ export function render(
     args: Function | void,
     stack: any[]
   ): Listener<any> {
-    return function (event: CustomEvent, data?: data) {
+    return function (event: CustomEvent, data?: Data) {
 
       const method = context[name]
 
@@ -208,11 +208,11 @@ export function render(
     }
   },
 
-  renderPropertyVnode = function (name: string, hint: propertyHint, value: any | void) {
+  renderPropertyVnode = function (name: string, hint: PropertyHint, value: any | void) {
     setPair($vnode, 'nativeProps', name, { name, value, hint })
   },
 
-  renderLazyVnode = function (name: string, value: lazyValue) {
+  renderLazyVnode = function (name: string, value: LazyValue) {
     setPair($vnode, 'lazy', name, value)
   },
 
@@ -225,7 +225,7 @@ export function render(
     }
   },
 
-  renderBindingVnode = function (name: string, holder: ValueHolder, hint?: propertyHint): any {
+  renderBindingVnode = function (name: string, holder: ValueHolder, hint?: PropertyHint): any {
 
     const key = keypathUtil.join(config.DIRECTIVE_BINDING, name)
 
@@ -369,7 +369,7 @@ export function render(
   },
 
   renderElementVnode = function (
-    vnode: data,
+    vnode: Data,
     tag: string | void,
     attrs: Function | void,
     childs: Function | void,

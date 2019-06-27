@@ -1,5 +1,5 @@
 import {
-  propertyHint,
+  PropertyHint,
 } from '../../yox-type/src/type'
 
 import * as env from '../../yox-common/src/util/env'
@@ -44,7 +44,7 @@ export function createDirective(ns: string, name: string, value?: string | numbe
   }
 }
 
-export function createProperty(name: string, hint: propertyHint, value?: string | number | boolean, expr?: ExpressionNode, children?: Node[]): Property {
+export function createProperty(name: string, hint: PropertyHint, value?: string | number | boolean, expr?: ExpressionNode, children?: Node[]): Property {
   return {
     type: nodeType.PROPERTY,
     isStatic: env.TRUE,
