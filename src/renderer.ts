@@ -1,17 +1,23 @@
 import {
   Data,
+  Listener,
   LazyValue,
-  PropertyHint,
   ValueHolder,
-  VNode,
+  PropertyHint,
 } from '../../yox-type/src/type'
 
 import {
-  Listener,
-  YoxInterface,
+  VNode,
+} from '../../yox-type/src/vnode'
+
+import {
   DirectiveHooks,
   TransitionHooks,
-} from '../../yox-type/src/global'
+} from '../../yox-type/src/hooks'
+
+import {
+  YoxInterface,
+} from '../../yox-type/src/yox'
 
 import * as config from '../../yox-config/src/config'
 
