@@ -126,7 +126,7 @@ function renderExpression(expr: ExpressionNode, holder?: boolean, depIgnore?: bo
   )
 }
 
-function stringifyObject(obj: Object): string {
+function stringifyObject(obj: object): string {
   const fields: string[] = []
   object.each(
     obj,
