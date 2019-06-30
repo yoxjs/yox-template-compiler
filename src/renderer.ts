@@ -544,6 +544,7 @@ export function render(
           renderPartial,
           renderImport,
           renderEach,
+          renderRange,
           toString
         )
       }
@@ -593,91 +594,95 @@ export function render(
 
   renderEach = function (
     generate: Function,
-    from: ValueHolder,
-    to: ValueHolder | void,
+    holder: ValueHolder,
+    index: string | void
+  ) {
+
+    const { keypath, value } = holder
+
+    if (is.array(value)) {
+      for (let i = 0, length = value.length; i < length; i++) {
+        eachHandler(
+          generate,
+          value[i],
+          i,
+          keypath
+            ? keypathUtil.join(keypath, env.EMPTY_STRING + i)
+            : env.EMPTY_STRING,
+          index,
+          length
+        )
+      }
+    }
+    else if (is.object(value)) {
+      for (let key in value) {
+        eachHandler(
+          generate,
+          value[key],
+          key,
+          keypath
+            ? keypathUtil.join(keypath, key)
+            : env.EMPTY_STRING,
+          index
+        )
+      }
+    }
+
+  },
+
+  renderRange = function (
+    generate: Function,
+    from: number,
+    to: number,
     equal: boolean | void,
     index: string | void
   ) {
 
-    const fromValue = from.value,
+    let count = 0
 
-    fromKeypath = from.keypath
-
-    if (to) {
-      let toValue = to.value, count = 0
-      if (fromValue < toValue) {
-        if (equal) {
-          for (let i = fromValue; i <= toValue; i++) {
-            eachHandler(
-              generate,
-              i,
-              count++,
-              env.EMPTY_STRING,
-              index
-            )
-          }
-        }
-        else {
-          for (let i = fromValue; i < toValue; i++) {
-            eachHandler(
-              generate,
-              i,
-              count++,
-              env.EMPTY_STRING,
-              index
-            )
-          }
+    if (from < to) {
+      if (equal) {
+        for (let i = from; i <= to; i++) {
+          eachHandler(
+            generate,
+            i,
+            count++,
+            env.EMPTY_STRING,
+            index
+          )
         }
       }
       else {
-        if (equal) {
-          for (let i = fromValue; i >= toValue; i--) {
-            eachHandler(
-              generate,
-              i,
-              count++,
-              env.EMPTY_STRING,
-              index
-            )
-          }
-        }
-        else {
-          for (let i = fromValue; i > toValue; i--) {
-            eachHandler(
-              generate,
-              i,
-              count++,
-              env.EMPTY_STRING,
-              index
-            )
-          }
+        for (let i = from; i < to; i++) {
+          eachHandler(
+            generate,
+            i,
+            count++,
+            env.EMPTY_STRING,
+            index
+          )
         }
       }
     }
     else {
-      if (is.array(fromValue)) {
-        for (let i = 0, length = fromValue.length; i < length; i++) {
+      if (equal) {
+        for (let i = from; i >= to; i--) {
           eachHandler(
             generate,
-            fromValue[i],
             i,
-            fromKeypath
-              ? keypathUtil.join(fromKeypath, env.EMPTY_STRING + i)
-              : env.EMPTY_STRING,
-            index,
-            length
+            count++,
+            env.EMPTY_STRING,
+            index
           )
         }
       }
-      else if (is.object(fromValue)) {
-        for (let key in fromValue) {
+      else {
+        for (let i = from; i > to; i--) {
           eachHandler(
             generate,
-            fromValue[key],
-            key,
-            fromKeypath
-              ? keypathUtil.join(fromKeypath, key)
-              : env.EMPTY_STRING,
+            i,
+            count++,
+            env.EMPTY_STRING,
             index
           )
         }
@@ -707,6 +712,7 @@ export function render(
     renderPartial,
     renderImport,
     renderEach,
+    renderRange,
     toString
   )
 

@@ -101,9 +101,11 @@ RENDER_IMPORT = 's',
 
 RENDER_EACH = 't',
 
-TO_STRING = 'u',
+RENDER_RANGE = 'u',
 
-ARG_STACK = 'v',
+TO_STRING = 'v',
+
+ARG_STACK = 'w',
 
 CODE_RETURN = 'return '
 
@@ -660,16 +662,31 @@ nodeGenerator[nodeType.IF] = function (node: If): string {
 
 nodeGenerator[nodeType.EACH] = function (node: Each): string {
 
+  // compiler 保证了 children 一定有值
+  const children = stringifyFunction(
+    stringifyChildren(node.children as Node[], node.isComplex)
+  )
+
+  // 遍历区间
+  if (node.to) {
+    return generator.toCall(
+      RENDER_RANGE,
+      [
+        children,
+        renderExpression(node.from),
+        renderExpression(node.to),
+        node.equal ? generator.TRUE : env.UNDEFINED,
+        node.index ? generator.toString(node.index) : env.UNDEFINED
+      ]
+    )
+  }
+
+  // 遍历数组和对象
   return generator.toCall(
     RENDER_EACH,
     [
-      // compiler 保证了 children 一定有值
-      stringifyFunction(
-        stringifyChildren(node.children as Node[], node.isComplex)
-      ),
+      children,
       renderExpression(node.from, env.TRUE),
-      node.to ? renderExpression(node.to, env.TRUE) : env.UNDEFINED,
-      node.equal ? generator.TRUE : env.UNDEFINED,
       node.index ? generator.toString(node.index) : env.UNDEFINED
     ]
   )
@@ -727,6 +744,7 @@ export function generate(node: Node): string {
         RENDER_PARTIAL,
         RENDER_IMPORT,
         RENDER_EACH,
+        RENDER_RANGE,
         TO_STRING,
       ], generator.COMMA)
     }){${CODE_RETURN}`
