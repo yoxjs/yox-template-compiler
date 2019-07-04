@@ -270,7 +270,8 @@ export function render(
   },
 
   renderEventMethodVnode = function (
-    name: string, key: string, value: string,
+    name: string, key: string,
+    value: string, isNative: true | void,
     method: string, args: Function | void
   ) {
     setPair(
@@ -283,13 +284,15 @@ export function render(
         key,
         value,
         hooks: directives[config.DIRECTIVE_EVENT],
-        handler: createMethodListener(method as string, args, $stack)
+        handler: createMethodListener(method, args, $stack),
+        isNative,
       }
     )
   },
 
   renderEventNameVnode = function (
-    name: string, key: string, value: string,
+    name: string, key: string,
+    value: string, isNative: true | void,
     event: string
   ) {
     setPair(
@@ -302,7 +305,8 @@ export function render(
         key,
         value,
         hooks: directives[config.DIRECTIVE_EVENT],
-        handler: createEventListener(event)
+        handler: createEventListener(event),
+        isNative,
       }
     )
   },

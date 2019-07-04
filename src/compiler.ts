@@ -953,22 +953,35 @@ export function compile(content: string): Branch[] {
 
           if (name === config.DIRECTIVE_MODEL || name === env.RAW_TRANSITION) {
             node = creator.createDirective(
-              string.camelize(name),
-              env.EMPTY_STRING
+              env.EMPTY_STRING,
+              string.camelize(name)
             )
           }
           // 这里要用 on- 判断前缀，否则 on 太容易重名了
           else if (string.startsWith(name, config.DIRECTIVE_ON + directiveSeparator)) {
-            const event = slicePrefix(name, config.DIRECTIVE_ON + directiveSeparator)
+            let event = slicePrefix(name, config.DIRECTIVE_ON + directiveSeparator), isNative = env.FALSE
             if (process.env.NODE_ENV === 'development') {
               if (!event) {
                 fatal('缺少事件名称')
               }
             }
+            event = string.camelize(event)
+            // <Button on-click.native="xxx">
+            if (string.endsWith(event, config.NAMESPACE_NATIVE)) {
+              event = string.slice(
+                event,
+                0,
+                event.length - config.NAMESPACE_NATIVE.length
+              )
+              isNative = env.TRUE
+            }
             node = creator.createDirective(
-              config.DIRECTIVE_EVENT,
-              string.camelize(event)
+              event,
+              config.DIRECTIVE_EVENT
             )
+            if (isNative) {
+              (node as Directive).isNative = env.TRUE
+            }
           }
           // 当一个元素绑定了多个事件时，可分别指定每个事件的 lazy
           // 当只有一个事件时，可简写成 lazy
@@ -979,8 +992,8 @@ export function compile(content: string): Branch[] {
               lazy = slicePrefix(lazy, directiveSeparator)
             }
             node = creator.createDirective(
-              config.DIRECTIVE_LAZY,
-              lazy ? string.camelize(lazy) : env.EMPTY_STRING
+              lazy ? string.camelize(lazy) : env.EMPTY_STRING,
+              config.DIRECTIVE_LAZY
             )
           }
           // 这里要用 o- 判断前缀，否则 o 太容易重名了
@@ -992,8 +1005,8 @@ export function compile(content: string): Branch[] {
               }
             }
             node = creator.createDirective(
-              config.DIRECTIVE_CUSTOM,
-              string.camelize(custom)
+              string.camelize(custom),
+              config.DIRECTIVE_CUSTOM
             )
           }
           else {

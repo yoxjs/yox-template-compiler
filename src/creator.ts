@@ -32,15 +32,12 @@ export function createAttribute(name: string): Attribute {
   }
 }
 
-export function createDirective(ns: string, name: string, value?: string | number | boolean, expr?: ExpressionNode, children?: Node[]): Directive {
+export function createDirective(name: string, ns: string): Directive {
   return {
     type: nodeType.DIRECTIVE,
     ns,
     name,
-    key: keypathUtil.join(ns, name),
-    value,
-    expr,
-    children,
+    key: keypathUtil.join(ns, name)
   }
 }
 
