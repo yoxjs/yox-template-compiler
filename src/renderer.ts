@@ -271,7 +271,7 @@ export function render(
 
   renderEventMethodVnode = function (
     name: string, key: string,
-    value: string, isNative: true | void,
+    modifier: string, value: string,
     method: string, args: Function | void
   ) {
     setPair(
@@ -283,16 +283,16 @@ export function render(
         name,
         key,
         value,
+        modifier,
         hooks: directives[config.DIRECTIVE_EVENT],
         handler: createMethodListener(method, args, $stack),
-        isNative,
       }
     )
   },
 
   renderEventNameVnode = function (
     name: string, key: string,
-    value: string, isNative: true | void,
+    modifier: string, value: string,
     event: string
   ) {
     setPair(
@@ -304,9 +304,9 @@ export function render(
         name,
         key,
         value,
+        modifier,
         hooks: directives[config.DIRECTIVE_EVENT],
         handler: createEventListener(event),
-        isNative,
       }
     )
   },
@@ -458,7 +458,7 @@ export function render(
     runtimeKeypath: string[]
   ) {
     array.unshift(runtimeKeypath, identifier)
-    return array.join(runtimeKeypath, keypathUtil.separator)
+    return array.join(runtimeKeypath, env.RAW_DOT)
   },
 
   renderExpressionMemberLiteral = function (
@@ -468,7 +468,7 @@ export function render(
     holder: boolean | void
   ) {
     if (isDef(runtimeKeypath)) {
-      staticKeypath = array.join(runtimeKeypath as string[], keypathUtil.separator)
+      staticKeypath = array.join(runtimeKeypath as string[], env.RAW_DOT)
     }
     const match = object.get(value, staticKeypath as string)
     globalHolder.keypath = env.UNDEFINED

@@ -954,34 +954,24 @@ export function compile(content: string): Branch[] {
           if (name === config.DIRECTIVE_MODEL || name === env.RAW_TRANSITION) {
             node = creator.createDirective(
               env.EMPTY_STRING,
-              string.camelize(name)
+              name,
+              env.EMPTY_STRING,
             )
           }
           // 这里要用 on- 判断前缀，否则 on 太容易重名了
           else if (string.startsWith(name, config.DIRECTIVE_ON + directiveSeparator)) {
-            let event = slicePrefix(name, config.DIRECTIVE_ON + directiveSeparator), isNative = env.FALSE
+            let event = slicePrefix(name, config.DIRECTIVE_ON + directiveSeparator)
             if (process.env.NODE_ENV === 'development') {
               if (!event) {
                 fatal('缺少事件名称')
               }
             }
-            event = string.camelize(event)
-            // <Button on-click.native="xxx">
-            if (string.endsWith(event, config.NAMESPACE_NATIVE)) {
-              event = string.slice(
-                event,
-                0,
-                event.length - config.NAMESPACE_NATIVE.length
-              )
-              isNative = env.TRUE
-            }
+            const [directiveName, diectiveModifier] = string.camelize(event).split(env.RAW_DOT)
             node = creator.createDirective(
-              event,
-              config.DIRECTIVE_EVENT
+              directiveName,
+              config.DIRECTIVE_EVENT,
+              diectiveModifier
             )
-            if (isNative) {
-              (node as Directive).isNative = env.TRUE
-            }
           }
           // 当一个元素绑定了多个事件时，可分别指定每个事件的 lazy
           // 当只有一个事件时，可简写成 lazy
@@ -993,7 +983,8 @@ export function compile(content: string): Branch[] {
             }
             node = creator.createDirective(
               lazy ? string.camelize(lazy) : env.EMPTY_STRING,
-              config.DIRECTIVE_LAZY
+              config.DIRECTIVE_LAZY,
+              env.EMPTY_STRING
             )
           }
           // 这里要用 o- 判断前缀，否则 o 太容易重名了
@@ -1004,9 +995,11 @@ export function compile(content: string): Branch[] {
                 fatal('缺少自定义指令名称')
               }
             }
+            const [directiveName, diectiveModifier] = string.camelize(custom).split(env.RAW_DOT)
             node = creator.createDirective(
-              string.camelize(custom),
-              config.DIRECTIVE_CUSTOM
+              directiveName,
+              config.DIRECTIVE_CUSTOM,
+              diectiveModifier
             )
           }
           else {

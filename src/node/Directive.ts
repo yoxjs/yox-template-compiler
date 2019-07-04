@@ -12,12 +12,13 @@ export default interface Directive extends Branch {
 
   key: string
 
+  // 修饰符
+  modifier: string
+
+  // expr 和 value 二选一
   expr?: ExpressionNode
 
   // lazy 是 boolean 或 number
   value?: string | number | boolean
-
-  // 是否监听了 native 事件
-  isNative?: true
 
 }

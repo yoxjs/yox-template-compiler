@@ -509,7 +509,7 @@ nodeGenerator[nodeType.PROPERTY] = function (node: Property): string {
 
 nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
 
-  const { ns, name, key, value, expr, isNative } = node
+  const { ns, name, key, value, expr, modifier } = node
 
   if (ns === config.DIRECTIVE_LAZY) {
     return generator.toCall(
@@ -546,15 +546,9 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
   args: (string | undefined)[] = [
     generator.toString(name),
     generator.toString(key),
+    generator.toString(modifier),
     generator.toString(value),
   ]
-
-  if (ns === config.DIRECTIVE_EVENT) {
-    array.push(
-      args,
-      generator.toString(isNative)
-    )
-  }
 
   // 尽可能把表达式编译成函数，这样对外界最友好
   //
