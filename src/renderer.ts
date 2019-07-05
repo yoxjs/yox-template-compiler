@@ -317,7 +317,8 @@ export function render(
   },
 
   renderDirectiveVnode = function (
-    name: string, key: string, value: string,
+    name: string, key: string,
+    modifier: string, value: string,
     method: string | void, args: Function | void, getter: Function | void
   ) {
 
@@ -339,6 +340,7 @@ export function render(
         key,
         value,
         hooks,
+        modifier,
         getter: getter ? createGetter(getter, $stack) : env.UNDEFINED,
         handler: method ? createMethodListener(method, args, $stack) : env.UNDEFINED,
       }
