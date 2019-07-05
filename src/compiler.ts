@@ -1,12 +1,4 @@
 import {
-  isSelfClosing,
-  createAttribute,
-  getAttributeDefaultValue,
-  createElement,
-  compatElement,
-} from './platform/web'
-
-import {
   SYNTAX_COMMENT,
   SYNTAX_EACH,
   SYNTAX_ELSE,
@@ -23,7 +15,16 @@ import {
   DIRECTIVE_MODEL,
   DIRECTIVE_CUSTOM,
   SLOT_NAME_DEFAULT,
+  MODIFER_NATIVE,
 } from '../../yox-config/src/config'
+
+import {
+  isSelfClosing,
+  createAttribute,
+  getAttributeDefaultValue,
+  createElement,
+  compatElement,
+} from './platform/web'
 
 import toNumber from '../../yox-common/src/function/toNumber'
 
@@ -511,6 +512,7 @@ export function compile(content: string): Branch[] {
     isLazy = directive.ns === DIRECTIVE_LAZY,
 
     // 校验事件名称
+    // 且命名空间不能用 native
     isEvent = directive.ns === DIRECTIVE_EVENT,
 
     // 自定义指令运行不合法的表达式
@@ -549,14 +551,26 @@ export function compile(content: string): Branch[] {
         // 上面检测过方法调用，接下来事件指令只需要判断是否以下两种格式：
         // on-click="name" 或 on-click="name.namespace"
         else if (isEvent) {
-          if (!eventPattern.test(raw) && !eventNamespacePattern.test(raw)) {
-            fatal('事件转换名称只能是 [name] 或 [name.namespace] 格式')
+          if (eventPattern.test(raw) || eventNamespacePattern.test(raw)) {
+
+            // native 有特殊用处，不能给业务层用
+            if (eventNamespacePattern.test(raw)
+              && raw.split(env.RAW_DOT)[1] === MODIFER_NATIVE
+            ) {
+              fatal(`事件转换名称的命名空间不能使用 ${MODIFER_NATIVE}`)
+            }
+
+            // <Button on-click="click"> 这种写法没有意义
+            if (currentElement
+              && currentElement.isComponent
+              && directive.name === raw
+            ) {
+              fatal('转换组件事件的名称不能相同')
+            }
+
           }
-          else if (currentElement
-            && currentElement.isComponent
-            && directive.name === raw
-          ) {
-            fatal('转换组件事件的名称不能相同')
+          else {
+            fatal('事件转换名称只能是 [name] 或 [name.namespace] 格式')
           }
         }
 
