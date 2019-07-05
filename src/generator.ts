@@ -318,7 +318,7 @@ function getComponentSlots(children: Node[]): string | void {
 
   array.each(
     children,
-    function (child: Node) {
+    function (child) {
       // 找到具名 slot
       if (child.type === nodeType.ELEMENT) {
         const element = child as Element
@@ -387,7 +387,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
   if (attrs) {
     array.each(
       attrs,
-      function (attr: Node) {
+      function (attr) {
         array.push(
           outputAttrs,
           nodeGenerator[attr.type](attr)
