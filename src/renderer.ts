@@ -248,8 +248,8 @@ export function render(
         ns: DIRECTIVE_BINDING,
         name,
         key,
+        modifier: holder.keypath,
         hooks: directives[DIRECTIVE_BINDING],
-        binding: holder.keypath,
         hint,
       }
     )
@@ -268,7 +268,7 @@ export function render(
         name: env.EMPTY_STRING,
         key: DIRECTIVE_MODEL,
         value: holder.value,
-        binding: holder.keypath,
+        modifier: holder.keypath,
         hooks: directives[DIRECTIVE_MODEL]
       }
     )
@@ -372,8 +372,8 @@ export function render(
               ns: DIRECTIVE_BINDING,
               name: env.EMPTY_STRING,
               key,
+              modifier: keypathUtil.join(keypath, env.RAW_WILDCARD),
               hooks: directives[DIRECTIVE_BINDING],
-              binding: keypathUtil.join(keypath, env.RAW_WILDCARD),
             }
           )
         }
