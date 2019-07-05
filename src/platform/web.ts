@@ -1,4 +1,8 @@
-import * as config from '../../../yox-config/src/config'
+import {
+  HINT_STRING,
+  HINT_NUMBER,
+  HINT_BOOLEAN,
+} from '../../../yox-config/src/config'
 
 import * as env from '../../../yox-common/src/util/env'
 import * as array from '../../../yox-common/src/util/array'
@@ -71,19 +75,19 @@ export function createAttribute(element: Element, name: string): Attribute | Pro
     else if (array.has(stringProperyNames, lowerName)) {
       return creator.createProperty(
         attr2Prop[lowerName] || lowerName,
-        config.HINT_STRING
+        HINT_STRING
       )
     }
     else if (array.has(numberProperyNames, lowerName)) {
       return creator.createProperty(
         attr2Prop[lowerName] || lowerName,
-        config.HINT_NUMBER
+        HINT_NUMBER
       )
     }
     else if (array.has(booleanProperyNames, lowerName)) {
       return creator.createProperty(
         attr2Prop[lowerName] || lowerName,
-        config.HINT_BOOLEAN
+        HINT_BOOLEAN
       )
     }
 
@@ -154,7 +158,7 @@ export function compatElement(element: Element) {
   if (element.isStyle && !hasType) {
     array.push(
       element.attrs || (element.attrs = []),
-      creator.createProperty('type', config.HINT_STRING, 'text/css')
+      creator.createProperty('type', HINT_STRING, 'text/css')
     )
   }
   // 低版本 IE 需要给 option 标签强制加 value

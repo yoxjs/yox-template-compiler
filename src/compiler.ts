@@ -6,7 +6,24 @@ import {
   compatElement,
 } from './platform/web'
 
-import * as config from '../../yox-config/src/config'
+import {
+  SYNTAX_COMMENT,
+  SYNTAX_EACH,
+  SYNTAX_ELSE,
+  SYNTAX_ELSE_IF,
+  SYNTAX_IF,
+  SYNTAX_IMPORT,
+  SYNTAX_PARTIAL,
+  SYNTAX_SPREAD,
+  HINT_BOOLEAN,
+  HINT_NUMBER,
+  DIRECTIVE_ON,
+  DIRECTIVE_EVENT,
+  DIRECTIVE_LAZY,
+  DIRECTIVE_MODEL,
+  DIRECTIVE_CUSTOM,
+  SLOT_NAME_DEFAULT,
+} from '../../yox-config/src/config'
 
 import toNumber from '../../yox-common/src/function/toNumber'
 
@@ -397,7 +414,7 @@ export function compile(content: string): Branch[] {
 
   processPropertyEmptyChildren = function (element: Element, prop: Property) {
 
-    if (prop.hint === config.HINT_BOOLEAN) {
+    if (prop.hint === HINT_BOOLEAN) {
       prop.value = env.TRUE
     }
     else {
@@ -411,10 +428,10 @@ export function compile(content: string): Branch[] {
 
     const { text } = child
 
-    if (prop.hint === config.HINT_NUMBER) {
+    if (prop.hint === HINT_NUMBER) {
       prop.value = toNumber(text)
     }
-    else if (prop.hint === config.HINT_BOOLEAN) {
+    else if (prop.hint === HINT_BOOLEAN) {
       prop.value = text === env.RAW_TRUE || text === prop.name
     }
     else {
@@ -488,16 +505,16 @@ export function compile(content: string): Branch[] {
     let { text } = child,
 
     // model="xx" model="this.x" 值只能是标识符或 Member
-    isModel = directive.ns === config.DIRECTIVE_MODEL,
+    isModel = directive.ns === DIRECTIVE_MODEL,
 
     // lazy 的值必须是大于 0 的数字
-    isLazy = directive.ns === config.DIRECTIVE_LAZY,
+    isLazy = directive.ns === DIRECTIVE_LAZY,
 
     // 校验事件名称
-    isEvent = directive.ns === config.DIRECTIVE_EVENT,
+    isEvent = directive.ns === DIRECTIVE_EVENT,
 
     // 自定义指令运行不合法的表达式
-    isCustom = directive.ns === config.DIRECTIVE_CUSTOM,
+    isCustom = directive.ns === DIRECTIVE_CUSTOM,
 
     // 指令的值是纯文本，可以预编译表达式，提升性能
     expr: ExpressionNode | void
@@ -656,7 +673,7 @@ export function compile(content: string): Branch[] {
     }
     // <slot /> 如果没写 name，自动加上默认名称
     else if (tag === env.RAW_SLOT && !element.name) {
-      element.name = config.SLOT_NAME_DEFAULT
+      element.name = SLOT_NAME_DEFAULT
     }
     else {
       compatElement(element)
@@ -667,7 +684,7 @@ export function compile(content: string): Branch[] {
   checkDirective = function (element: Element, directive: Directive) {
     if (process.env.NODE_ENV === 'development') {
       // model 不能写在 if 里，影响节点的静态结构
-      if (directive.ns === config.DIRECTIVE_MODEL) {
+      if (directive.ns === DIRECTIVE_MODEL) {
         if (array.last(nodeStack) !== element) {
           fatal(`model 不能写在 if 内`)
         }
@@ -951,7 +968,7 @@ export function compile(content: string): Branch[] {
 
           let node: Attribute | Directive | Property, name = match[1]
 
-          if (name === config.DIRECTIVE_MODEL || name === env.RAW_TRANSITION) {
+          if (name === DIRECTIVE_MODEL || name === env.RAW_TRANSITION) {
             node = creator.createDirective(
               env.EMPTY_STRING,
               name,
@@ -959,8 +976,8 @@ export function compile(content: string): Branch[] {
             )
           }
           // 这里要用 on- 判断前缀，否则 on 太容易重名了
-          else if (string.startsWith(name, config.DIRECTIVE_ON + directiveSeparator)) {
-            let event = slicePrefix(name, config.DIRECTIVE_ON + directiveSeparator)
+          else if (string.startsWith(name, DIRECTIVE_ON + directiveSeparator)) {
+            let event = slicePrefix(name, DIRECTIVE_ON + directiveSeparator)
             if (process.env.NODE_ENV === 'development') {
               if (!event) {
                 fatal('缺少事件名称')
@@ -969,27 +986,27 @@ export function compile(content: string): Branch[] {
             const [directiveName, diectiveModifier] = string.camelize(event).split(env.RAW_DOT)
             node = creator.createDirective(
               directiveName,
-              config.DIRECTIVE_EVENT,
+              DIRECTIVE_EVENT,
               diectiveModifier
             )
           }
           // 当一个元素绑定了多个事件时，可分别指定每个事件的 lazy
           // 当只有一个事件时，可简写成 lazy
           // <div on-click="xx" lazy-click
-          else if (string.startsWith(name, config.DIRECTIVE_LAZY)) {
-            let lazy = slicePrefix(name, config.DIRECTIVE_LAZY)
+          else if (string.startsWith(name, DIRECTIVE_LAZY)) {
+            let lazy = slicePrefix(name, DIRECTIVE_LAZY)
             if (string.startsWith(lazy, directiveSeparator)) {
               lazy = slicePrefix(lazy, directiveSeparator)
             }
             node = creator.createDirective(
               lazy ? string.camelize(lazy) : env.EMPTY_STRING,
-              config.DIRECTIVE_LAZY,
+              DIRECTIVE_LAZY,
               env.EMPTY_STRING
             )
           }
           // 这里要用 o- 判断前缀，否则 o 太容易重名了
-          else if (string.startsWith(name, config.DIRECTIVE_CUSTOM + directiveSeparator)) {
-            const custom = slicePrefix(name, config.DIRECTIVE_CUSTOM + directiveSeparator)
+          else if (string.startsWith(name, DIRECTIVE_CUSTOM + directiveSeparator)) {
+            const custom = slicePrefix(name, DIRECTIVE_CUSTOM + directiveSeparator)
             if (process.env.NODE_ENV === 'development') {
               if (!custom) {
                 fatal('缺少自定义指令名称')
@@ -998,7 +1015,7 @@ export function compile(content: string): Branch[] {
             const [directiveName, diectiveModifier] = string.camelize(custom).split(env.RAW_DOT)
             node = creator.createDirective(
               directiveName,
-              config.DIRECTIVE_CUSTOM,
+              DIRECTIVE_CUSTOM,
               diectiveModifier
             )
           }
@@ -1035,7 +1052,7 @@ export function compile(content: string): Branch[] {
         // 有结束引号
         if (match) {
           text = string.slice(content, 0, match.index)
-          addTextChild(text)
+          addTextChild(text as string)
 
           text += startQuote
 
@@ -1103,7 +1120,7 @@ export function compile(content: string): Branch[] {
   blockParsers = [
     // {{#each xx:index}}
     function (source: string) {
-      if (string.startsWith(source, config.SYNTAX_EACH)) {
+      if (string.startsWith(source, SYNTAX_EACH)) {
         if (process.env.NODE_ENV === 'development') {
           if (currentElement) {
             fatal(
@@ -1113,7 +1130,7 @@ export function compile(content: string): Branch[] {
             )
           }
         }
-        source = slicePrefix(source, config.SYNTAX_EACH)
+        source = slicePrefix(source, SYNTAX_EACH)
         const terms = source.replace(/\s+/g, env.EMPTY_STRING).split(':')
         if (terms[0]) {
           const literal = string.trim(terms[0]),
@@ -1154,8 +1171,8 @@ export function compile(content: string): Branch[] {
     },
     // {{#import name}}
     function (source: string) {
-      if (string.startsWith(source, config.SYNTAX_IMPORT)) {
-        source = slicePrefix(source, config.SYNTAX_IMPORT)
+      if (string.startsWith(source, SYNTAX_IMPORT)) {
+        source = slicePrefix(source, SYNTAX_IMPORT)
         if (source) {
           if (!currentElement) {
             return creator.createImport(source)
@@ -1175,8 +1192,8 @@ export function compile(content: string): Branch[] {
     },
     // {{#partial name}}
     function (source: string) {
-      if (string.startsWith(source, config.SYNTAX_PARTIAL)) {
-        source = slicePrefix(source, config.SYNTAX_PARTIAL)
+      if (string.startsWith(source, SYNTAX_PARTIAL)) {
+        source = slicePrefix(source, SYNTAX_PARTIAL)
         if (source) {
           if (!currentElement) {
             return creator.createPartial(source)
@@ -1196,8 +1213,8 @@ export function compile(content: string): Branch[] {
     },
     // {{#if expr}}
     function (source: string) {
-      if (string.startsWith(source, config.SYNTAX_IF)) {
-        source = slicePrefix(source, config.SYNTAX_IF)
+      if (string.startsWith(source, SYNTAX_IF)) {
+        source = slicePrefix(source, SYNTAX_IF)
         const expr = exprCompiler.compile(source)
         if (expr) {
           return creator.createIf(expr)
@@ -1209,8 +1226,8 @@ export function compile(content: string): Branch[] {
     },
     // {{else if expr}}
     function (source: string) {
-      if (string.startsWith(source, config.SYNTAX_ELSE_IF)) {
-        source = slicePrefix(source, config.SYNTAX_ELSE_IF)
+      if (string.startsWith(source, SYNTAX_ELSE_IF)) {
+        source = slicePrefix(source, SYNTAX_ELSE_IF)
         const expr = exprCompiler.compile(source)
         if (expr) {
           return creator.createElseIf(expr)
@@ -1222,8 +1239,8 @@ export function compile(content: string): Branch[] {
     },
     // {{else}}
     function (source: string) {
-      if (string.startsWith(source, config.SYNTAX_ELSE)) {
-        source = slicePrefix(source, config.SYNTAX_ELSE)
+      if (string.startsWith(source, SYNTAX_ELSE)) {
+        source = slicePrefix(source, SYNTAX_ELSE)
         if (!string.trim(source)) {
           return creator.createElse()
         }
@@ -1234,8 +1251,8 @@ export function compile(content: string): Branch[] {
     },
     // {{...obj}}
     function (source: string) {
-      if (string.startsWith(source, config.SYNTAX_SPREAD)) {
-        source = slicePrefix(source, config.SYNTAX_SPREAD)
+      if (string.startsWith(source, SYNTAX_SPREAD)) {
+        source = slicePrefix(source, SYNTAX_SPREAD)
         const expr = exprCompiler.compile(source)
         if (expr) {
           if (currentElement && currentElement.isComponent) {
@@ -1255,7 +1272,7 @@ export function compile(content: string): Branch[] {
     },
     // {{expr}}
     function (source: string) {
-      if (!config.SYNTAX_COMMENT.test(source)) {
+      if (!SYNTAX_COMMENT.test(source)) {
         source = string.trim(source)
         const expr = exprCompiler.compile(source)
         if (expr) {

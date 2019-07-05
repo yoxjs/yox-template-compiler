@@ -2,7 +2,14 @@ import {
   Data,
 } from '../../yox-type/src/type'
 
-import * as config from '../../yox-config/src/config'
+import {
+  SLOT_DATA_PREFIX,
+  SLOT_NAME_DEFAULT,
+  DIRECTIVE_LAZY,
+  DIRECTIVE_MODEL,
+  DIRECTIVE_EVENT,
+  DIRECTIVE_CUSTOM,
+} from '../../yox-config/src/config'
 
 import isDef from '../../yox-common/src/function/isDef'
 import isUndef from '../../yox-common/src/function/isUndef'
@@ -300,7 +307,7 @@ function getComponentSlots(children: Node[]): string | void {
   addSlot = function (name: string, nodes: Node[] | void) {
 
     if (!array.falsy(nodes)) {
-      name = config.SLOT_DATA_PREFIX + name
+      name = SLOT_DATA_PREFIX + name
       array.push(
         slots[name] || (slots[name] = []),
         nodes as Node[]
@@ -327,7 +334,7 @@ function getComponentSlots(children: Node[]): string | void {
       }
 
       // 匿名 slot，名称统一为 children
-      addSlot(config.SLOT_NAME_DEFAULT, [child])
+      addSlot(SLOT_NAME_DEFAULT, [child])
 
     }
   )
@@ -363,7 +370,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
   outputSlots: string | void
 
   if (tag === env.RAW_SLOT) {
-    const args = [generator.toString(config.SLOT_DATA_PREFIX + name)]
+    const args = [generator.toString(SLOT_DATA_PREFIX + name)]
     if (children) {
       array.push(
         args,
@@ -511,7 +518,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
 
   const { ns, name, key, value, expr, modifier } = node
 
-  if (ns === config.DIRECTIVE_LAZY) {
+  if (ns === DIRECTIVE_LAZY) {
     return generator.toCall(
       RENDER_LAZY_VNODE,
       [
@@ -532,7 +539,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
   }
 
   // <input model="id">
-  if (ns === config.DIRECTIVE_MODEL) {
+  if (ns === DIRECTIVE_MODEL) {
     return generator.toCall(
       RENDER_MODEL_VNODE,
       [
@@ -561,7 +568,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
 
     // 如果表达式明确是在调用方法，则序列化成 method + args 的形式
     if (expr.type === exprNodeType.CALL) {
-      if (ns === config.DIRECTIVE_EVENT) {
+      if (ns === DIRECTIVE_EVENT) {
         renderName = RENDER_EVENT_METHOD_VNODE
       }
       // compiler 保证了函数调用的 name 是标识符
@@ -582,14 +589,14 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
       }
     }
     // 不是调用方法，就是事件转换
-    else if (ns === config.DIRECTIVE_EVENT) {
+    else if (ns === DIRECTIVE_EVENT) {
       renderName = RENDER_EVENT_NAME_VNODE
       array.push(
         args,
         generator.toString(expr.raw)
       )
     }
-    else if (ns === config.DIRECTIVE_CUSTOM) {
+    else if (ns === DIRECTIVE_CUSTOM) {
 
       // 取值函数
       // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数

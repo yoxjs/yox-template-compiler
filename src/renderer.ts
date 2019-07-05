@@ -19,7 +19,12 @@ import {
   YoxInterface,
 } from '../../yox-type/src/yox'
 
-import * as config from '../../yox-config/src/config'
+import {
+  DIRECTIVE_BINDING,
+  DIRECTIVE_MODEL,
+  DIRECTIVE_EVENT,
+  DIRECTIVE_CUSTOM,
+} from '../../yox-config/src/config'
 
 import isDef from '../../yox-common/src/function/isDef'
 import isUndef from '../../yox-common/src/function/isUndef'
@@ -233,17 +238,17 @@ export function render(
 
   renderBindingVnode = function (name: string, holder: ValueHolder, hint?: PropertyHint): any {
 
-    const key = keypathUtil.join(config.DIRECTIVE_BINDING, name)
+    const key = keypathUtil.join(DIRECTIVE_BINDING, name)
 
     setPair(
       $vnode,
       KEY_DIRECTIVES,
       key,
       {
-        ns: config.DIRECTIVE_BINDING,
+        ns: DIRECTIVE_BINDING,
         name,
         key,
-        hooks: directives[config.DIRECTIVE_BINDING],
+        hooks: directives[DIRECTIVE_BINDING],
         binding: holder.keypath,
         hint,
       }
@@ -257,14 +262,14 @@ export function render(
     setPair(
       $vnode,
       KEY_DIRECTIVES,
-      config.DIRECTIVE_MODEL,
+      DIRECTIVE_MODEL,
       {
-        ns: config.DIRECTIVE_MODEL,
+        ns: DIRECTIVE_MODEL,
         name: env.EMPTY_STRING,
-        key: config.DIRECTIVE_MODEL,
+        key: DIRECTIVE_MODEL,
         value: holder.value,
         binding: holder.keypath,
-        hooks: directives[config.DIRECTIVE_MODEL]
+        hooks: directives[DIRECTIVE_MODEL]
       }
     )
   },
@@ -279,12 +284,12 @@ export function render(
       KEY_DIRECTIVES,
       key,
       {
-        ns: config.DIRECTIVE_EVENT,
+        ns: DIRECTIVE_EVENT,
         name,
         key,
         value,
         modifier,
-        hooks: directives[config.DIRECTIVE_EVENT],
+        hooks: directives[DIRECTIVE_EVENT],
         handler: createMethodListener(method, args, $stack),
       }
     )
@@ -300,12 +305,12 @@ export function render(
       KEY_DIRECTIVES,
       key,
       {
-        ns: config.DIRECTIVE_EVENT,
+        ns: DIRECTIVE_EVENT,
         name,
         key,
         value,
         modifier,
-        hooks: directives[config.DIRECTIVE_EVENT],
+        hooks: directives[DIRECTIVE_EVENT],
         handler: createEventListener(event),
       }
     )
@@ -329,7 +334,7 @@ export function render(
       KEY_DIRECTIVES,
       key,
       {
-        ns: config.DIRECTIVE_CUSTOM,
+        ns: DIRECTIVE_CUSTOM,
         name,
         key,
         value,
@@ -358,16 +363,16 @@ export function render(
         )
 
         if (keypath) {
-          const key = keypathUtil.join(config.DIRECTIVE_BINDING, keypath)
+          const key = keypathUtil.join(DIRECTIVE_BINDING, keypath)
           setPair(
             $vnode,
             KEY_DIRECTIVES,
             key,
             {
-              ns: config.DIRECTIVE_BINDING,
+              ns: DIRECTIVE_BINDING,
               name: env.EMPTY_STRING,
               key,
-              hooks: directives[config.DIRECTIVE_BINDING],
+              hooks: directives[DIRECTIVE_BINDING],
               binding: keypathUtil.join(keypath, env.RAW_WILDCARD),
             }
           )
