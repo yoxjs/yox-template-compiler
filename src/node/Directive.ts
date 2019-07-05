@@ -13,7 +13,7 @@ export default interface Directive extends Branch {
   key: string
 
   // 修饰符
-  modifier: string
+  modifier?: string
 
   // expr 和 value 二选一
   expr?: ExpressionNode

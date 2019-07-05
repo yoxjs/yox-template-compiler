@@ -985,8 +985,7 @@ export function compile(content: string): Branch[] {
           if (name === DIRECTIVE_MODEL || name === env.RAW_TRANSITION) {
             node = creator.createDirective(
               env.EMPTY_STRING,
-              name,
-              env.EMPTY_STRING,
+              name
             )
           }
           // 这里要用 on- 判断前缀，否则 on 太容易重名了
@@ -1014,8 +1013,7 @@ export function compile(content: string): Branch[] {
             }
             node = creator.createDirective(
               lazy ? string.camelize(lazy) : env.EMPTY_STRING,
-              DIRECTIVE_LAZY,
-              env.EMPTY_STRING
+              DIRECTIVE_LAZY
             )
           }
           // 这里要用 o- 判断前缀，否则 o 太容易重名了

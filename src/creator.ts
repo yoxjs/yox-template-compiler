@@ -32,7 +32,7 @@ export function createAttribute(name: string): Attribute {
   }
 }
 
-export function createDirective(name: string, ns: string, modifier: string): Directive {
+export function createDirective(name: string, ns: string, modifier?: string): Directive {
   return {
     type: nodeType.DIRECTIVE,
     ns,
