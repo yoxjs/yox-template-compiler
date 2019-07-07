@@ -24,6 +24,7 @@ import {
   getAttributeDefaultValue,
   createElement,
   compatElement,
+  setElementText,
 } from './platform/web'
 
 import toNumber from '../../yox-common/src/function/toNumber'
@@ -401,6 +402,12 @@ export function compile(content: string): Branch[] {
     // 不把元素子节点智能转换为 textContent property
     // 因为子节点还有 <div>1{{a}}{{b}}</div> 这样的情况
     // 还是在序列化的时候统一处理比较好
+
+    // 唯独需要在这特殊处理的是 html 实体
+    // 但这只是 WEB 平台的特殊逻辑，所以丢给 platform 处理
+    if (setElementText(element, child.text)) {
+      element.children = env.UNDEFINED
+    }
 
   },
 

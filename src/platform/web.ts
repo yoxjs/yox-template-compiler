@@ -19,6 +19,9 @@ import * as nodeType from '../nodeType'
 // 首字母大写，或中间包含 -
 const componentNamePattern = /^[$A-Z]|-/,
 
+// HTML 实体（中间最多 6 位，没见过更长的）
+htmlEntityPattern = /&[#\w\d]{2,6};/,
+
 // 常见的自闭合标签
 selfClosingTagNames = 'area,base,embed,track,source,param,input,col,img,br,hr'.split(','),
 
@@ -166,4 +169,11 @@ export function compatElement(element: Element) {
     element.isOption = env.TRUE
   }
 
+}
+
+export function setElementText(element: Element, text: string) {
+  if (htmlEntityPattern.test(text)) {
+    element.html = text
+    return env.TRUE
+  }
 }

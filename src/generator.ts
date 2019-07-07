@@ -14,6 +14,7 @@ import {
 import isDef from '../../yox-common/src/function/isDef'
 import isUndef from '../../yox-common/src/function/isUndef'
 
+import * as is from '../../yox-common/src/util/is'
 import * as env from '../../yox-common/src/util/env'
 import * as array from '../../yox-common/src/util/array'
 import * as string from '../../yox-common/src/util/string'
@@ -113,6 +114,7 @@ RENDER_RANGE = 'u',
 TO_STRING = 'v',
 
 ARG_STACK = 'w'
+
 
 // 序列化代码的参数列表
 let codeArgs: string | void,
@@ -427,7 +429,9 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   if (html) {
-    data.html = stringifyExpression(html, env.TRUE)
+    data.html = is.string(html)
+      ? generator.toString(html)
+      : stringifyExpression(html as ExpressionNode, env.TRUE)
   }
 
   if (isComponent) {
