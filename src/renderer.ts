@@ -39,8 +39,9 @@ import * as logger from '../../yox-common/src/util/logger'
 import * as keypathUtil from '../../yox-common/src/util/keypath'
 
 import globalHolder from '../../yox-common/src/util/holder'
-
 import CustomEvent from '../../yox-common/src/util/CustomEvent'
+
+import Observer from '../../yox-observer/src/Observer'
 
 function setPair(target: any, name: string, key: string, value: any) {
   const data = target[name] || (target[name] = {})
@@ -51,6 +52,7 @@ const KEY_DIRECTIVES = 'directives'
 
 export function render(
   context: YoxInterface,
+  observer: Observer,
   template: Function,
   filters: Record<string, Function>,
   partials: Record<string, Function>,
@@ -101,7 +103,7 @@ export function render(
 
     if (value === stack) {
       // 正常取数据
-      value = context.get(keypath, stack, depIgnore)
+      value = observer.get(keypath, stack, depIgnore)
       if (value === stack) {
 
         if (lookup && index > 0) {
@@ -394,7 +396,7 @@ export function render(
   ) {
 
     if (tag) {
-      const componentName = context.get(tag)
+      const componentName = observer.get(tag)
       if (process.env.NODE_ENV === 'development') {
         if (!componentName) {
           logger.warn(`Dynamic component "${tag}" can't be found.`)
