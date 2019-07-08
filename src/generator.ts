@@ -111,9 +111,11 @@ RENDER_EACH = 't',
 
 RENDER_RANGE = 'u',
 
-TO_STRING = 'v',
+RENDER_EQUAL_RANGE = 'v',
 
-ARG_STACK = 'w'
+TO_STRING = 'w',
+
+ARG_STACK = 'x'
 
 
 // 序列化代码的参数列表
@@ -679,13 +681,23 @@ nodeGenerator[nodeType.EACH] = function (node: Each): string {
 
   // 遍历区间
   if (node.to) {
+    if (node.equal) {
+      return generator.toCall(
+        RENDER_EQUAL_RANGE,
+        [
+          children,
+          renderExpression(node.from),
+          renderExpression(node.to),
+          node.index ? generator.toString(node.index) : env.UNDEFINED
+        ]
+      )
+    }
     return generator.toCall(
       RENDER_RANGE,
       [
         children,
         renderExpression(node.from),
         renderExpression(node.to),
-        node.equal ? generator.TRUE : env.UNDEFINED,
         node.index ? generator.toString(node.index) : env.UNDEFINED
       ]
     )
@@ -754,6 +766,7 @@ export function generate(node: Node): string {
       RENDER_IMPORT,
       RENDER_EACH,
       RENDER_RANGE,
+      RENDER_EQUAL_RANGE,
       TO_STRING,
     ], generator.COMMA)
   }

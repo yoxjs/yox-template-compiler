@@ -558,6 +558,7 @@ export function render(
           renderImport,
           renderEach,
           renderRange,
+          renderEqualRange,
           toString
         )
       }
@@ -647,58 +648,65 @@ export function render(
     generate: Function,
     from: number,
     to: number,
-    equal: boolean | void,
     index: string | void
   ) {
 
     let count = 0
 
     if (from < to) {
-      if (equal) {
-        for (let i = from; i <= to; i++) {
-          eachHandler(
-            generate,
-            i,
-            count++,
-            env.EMPTY_STRING,
-            index
-          )
-        }
-      }
-      else {
-        for (let i = from; i < to; i++) {
-          eachHandler(
-            generate,
-            i,
-            count++,
-            env.EMPTY_STRING,
-            index
-          )
-        }
+      for (let i = from; i < to; i++) {
+        eachHandler(
+          generate,
+          i,
+          count++,
+          env.EMPTY_STRING,
+          index
+        )
       }
     }
     else {
-      if (equal) {
-        for (let i = from; i >= to; i--) {
-          eachHandler(
-            generate,
-            i,
-            count++,
-            env.EMPTY_STRING,
-            index
-          )
-        }
+      for (let i = from; i > to; i--) {
+        eachHandler(
+          generate,
+          i,
+          count++,
+          env.EMPTY_STRING,
+          index
+        )
       }
-      else {
-        for (let i = from; i > to; i--) {
-          eachHandler(
-            generate,
-            i,
-            count++,
-            env.EMPTY_STRING,
-            index
-          )
-        }
+    }
+
+  },
+
+  renderEqualRange = function (
+    generate: Function,
+    from: number,
+    to: number,
+    index: string | void
+  ) {
+
+    let count = 0
+
+    if (from < to) {
+      for (let i = from; i <= to; i++) {
+        eachHandler(
+          generate,
+          i,
+          count++,
+          env.EMPTY_STRING,
+          index
+        )
+      }
+    }
+    else {
+      for (let i = from; i >= to; i--) {
+        eachHandler(
+          generate,
+          i,
+          count++,
+          env.EMPTY_STRING,
+          index
+        )
       }
     }
 
@@ -726,6 +734,7 @@ export function render(
     renderImport,
     renderEach,
     renderRange,
+    renderEqualRange,
     toString
   )
 
