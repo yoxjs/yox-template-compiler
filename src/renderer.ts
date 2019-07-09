@@ -108,7 +108,7 @@ export function render(
 
         if (lookup && index > 0) {
           if (process.env.NODE_ENV === 'development') {
-            logger.debug(`"${keypath}" can't be found in the current context, start looking up.`)
+            logger.debug(`The data "${keypath}" can't be found in the current context, start looking up.`)
           }
           return findValue(stack, index - 1, key, lookup, depIgnore, defaultKeypath)
         }
@@ -233,7 +233,7 @@ export function render(
     $vnode.transition = transitions[name]
     if (process.env.NODE_ENV === 'development') {
       if (!$vnode.transition) {
-        logger.fatal(`Transition "${name}" can't be found.`)
+        logger.fatal(`The transition "${name}" can't be found.`)
       }
     }
   },
@@ -328,7 +328,7 @@ export function render(
 
     if (process.env.NODE_ENV === 'development') {
       if (!hooks) {
-        logger.fatal(`Directive ${name} can't be found.`)
+        logger.fatal(`The directive ${name} can't be found.`)
       }
     }
 
@@ -399,7 +399,7 @@ export function render(
       const componentName = observer.get(tag)
       if (process.env.NODE_ENV === 'development') {
         if (!componentName) {
-          logger.warn(`Dynamic component "${tag}" can't be found.`)
+          logger.warn(`The dynamic component "${tag}" can't be found.`)
         }
       }
       vnode.tag = componentName
@@ -563,7 +563,7 @@ export function render(
         )
       }
       else if (process.env.NODE_ENV === 'development') {
-        logger.fatal(`Partial "${name}" can't be found.`)
+        logger.fatal(`The partial "${name}" can't be found.`)
       }
     }
   },

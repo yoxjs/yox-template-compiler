@@ -685,7 +685,7 @@ export function compile(content: string): Branch[] {
           fatal(`The "ref" is not supported in <template>.`)
         }
         else if (element.attrs) {
-          fatal(`Attributes or directives are not supported in <template>.`)
+          fatal(`The attributes and directives are not supported in <template>.`)
         }
         else if (!slot) {
           fatal(`The "slot" is required in <template>.`)
@@ -827,15 +827,15 @@ export function compile(content: string): Branch[] {
         }
         else if (type === nodeType.ELSE_IF) {
           if (process.env.NODE_ENV === 'development') {
-            fatal('The else block must not be followed by an else if block.')
+            fatal('The "else" block must not be followed by an "else if" block.')
           }
         }
         else if (process.env.NODE_ENV === 'development') {
-          fatal("The else block can't appear more than once.")
+          fatal(`The "else" block can't appear more than once in a conditional statement.`)
         }
       }
       else if (process.env.NODE_ENV === 'development') {
-        fatal('The if block is required.')
+        fatal('The "if" block is required.')
       }
 
     }
@@ -1150,8 +1150,8 @@ export function compile(content: string): Branch[] {
           if (currentElement) {
             fatal(
               currentAttribute
-                ? `each 不能写在属性的值里`
-                : `each 不能写在属性层级`
+                ? `The "each" block can't be appear in an attribute value.`
+                : `The "each" block can't be appear in attribute level.`
             )
           }
         }
@@ -1205,8 +1205,8 @@ export function compile(content: string): Branch[] {
           else if (process.env.NODE_ENV === 'development') {
             fatal(
               currentAttribute
-                ? `import 不能写在属性的值里`
-                : `import 不能写在属性层级`
+                ? `The "import" block can't be appear in an attribute value.`
+                : `The "import" block can't be appear in attribute level.`
             )
           }
         }
@@ -1226,8 +1226,8 @@ export function compile(content: string): Branch[] {
           else if (process.env.NODE_ENV === 'development') {
             fatal(
               currentAttribute
-                ? `partial 不能写在属性的值里`
-                : `partial 不能写在属性层级`
+                ? `The "partial" block can't be appear in an attribute value.`
+                : `The "partial" block can't be appear in attribute level.`
             )
           }
         }
@@ -1270,7 +1270,7 @@ export function compile(content: string): Branch[] {
           return creator.createElse()
         }
         if (process.env.NODE_ENV === 'development') {
-          fatal(`else 后面不要写乱七八糟的东西`)
+          fatal(`The "else" must not be followed by anything.`)
         }
       }
     },
@@ -1287,7 +1287,7 @@ export function compile(content: string): Branch[] {
             )
           }
           else if (process.env.NODE_ENV === 'development') {
-            fatal(`延展属性只能用于组件属性`)
+            fatal(`The spread can only be used by a component.`)
           }
         }
         if (process.env.NODE_ENV === 'development') {
@@ -1471,7 +1471,7 @@ export function compile(content: string): Branch[] {
             }
           }
           else if (process.env.NODE_ENV === 'development') {
-            fatal('找不到结束定界符')
+            fatal('The end delimiter is not found.')
           }
         }
         else if (process.env.NODE_ENV === 'development') {
