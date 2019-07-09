@@ -155,7 +155,7 @@ export function compile(content: string): Branch[] {
 
   fatal = function (msg: string) {
     if (process.env.NODE_ENV === 'development') {
-      logger.fatal(`Error compiling ${env.RAW_TEMPLATE}:\n${content}\n- ${msg}`)
+      logger.fatal(`Error compiling template\n\n${content}\n\nmessage: ${msg}`)
     }
   },
 
@@ -225,7 +225,7 @@ export function compile(content: string): Branch[] {
         if (isElement) {
           const element = node as Element
           if (tagName && element.tag !== tagName) {
-            fatal(`结束标签是${tagName}，开始标签却是${element.tag}`)
+            fatal(`End tag is "${tagName}"，but start tag is "${element.tag}".`)
           }
         }
       }
@@ -392,7 +392,7 @@ export function compile(content: string): Branch[] {
     // 2. 全局搜索不到事件名，不利于代码维护
     // 3. 不利于编译成静态函数
     if (process.env.NODE_ENV === 'development') {
-      fatal(`指令的值不能用插值或 if 语法`)
+      fatal(`{{ and }} are not allowed in directive.`)
     }
   },
 
@@ -470,7 +470,7 @@ export function compile(content: string): Branch[] {
 
     if (isSpecialAttr(element, attr)) {
       if (process.env.NODE_ENV === 'development') {
-        fatal(`${attr.name} 忘了写值吧？`)
+        fatal(`The value of "${attr.name}" is empty.`)
       }
     }
     else {
@@ -526,12 +526,16 @@ export function compile(content: string): Branch[] {
     isCustom = directive.ns === DIRECTIVE_CUSTOM,
 
     // 指令的值是纯文本，可以预编译表达式，提升性能
-    expr: ExpressionNode | void
+    expr: ExpressionNode | void,
+
+    error: any
 
     try {
       expr = exprCompiler.compile(text)
     }
-    catch (e) {}
+    catch (e) {
+      error = e
+    }
 
     if (expr) {
 
@@ -544,14 +548,14 @@ export function compile(content: string): Branch[] {
             || !is.number((expr as ExpressionLiteral).value)
             || (expr as ExpressionLiteral).value <= 0
           ) {
-            fatal(`lazy 指令的值 [${raw}] 必须是大于 0 的数字`)
+            fatal(`The value of lazy must be a number greater than 0.`)
           }
         }
 
         // 如果指令表达式是函数调用，则只能调用方法（难道还有别的可以调用的吗？）
         else if (expr.type === exprNodeType.CALL) {
           if ((expr as ExpressionCall).name.type !== exprNodeType.IDENTIFIER) {
-            fatal('指令表达式的类型如果是函数调用，则只能调用方法')
+            fatal('The method name that appear on directive must be an identifier.')
           }
         }
 
@@ -564,7 +568,7 @@ export function compile(content: string): Branch[] {
             if (eventNamespacePattern.test(raw)
               && raw.split(env.RAW_DOT)[1] === MODIFER_NATIVE
             ) {
-              fatal(`事件转换名称的命名空间不能使用 ${MODIFER_NATIVE}`)
+              fatal(`The event namespace "${MODIFER_NATIVE}" is permitted.`)
             }
 
             // <Button on-click="click"> 这种写法没有意义
@@ -572,17 +576,18 @@ export function compile(content: string): Branch[] {
               && currentElement.isComponent
               && directive.name === raw
             ) {
-              fatal('转换组件事件的名称不能相同')
+              fatal(`The event name listened and fired can't be the same.`)
             }
 
           }
+          // 事件转换名称只能是 [name] 或 [name.namespace] 格式
           else {
-            fatal('事件转换名称只能是 [name] 或 [name.namespace] 格式')
+            fatal('The event name and namespace must be an identifier.')
           }
         }
 
         if (isModel && expr.type !== exprNodeType.IDENTIFIER) {
-          fatal(`model 指令的值格式错误: [${raw}]`)
+          fatal(`The value of the model must be an identifier.`)
         }
 
       }
@@ -597,7 +602,7 @@ export function compile(content: string): Branch[] {
     else {
       if (process.env.NODE_ENV === 'development') {
         if (!isCustom) {
-          fatal(`${directive.ns} 指令的表达式错误: [${text}]`)
+          throw error
         }
       }
       directive.value = text
@@ -610,7 +615,7 @@ export function compile(content: string): Branch[] {
   processDirectiveSingleExpression = function (directive: Directive, child: Expression) {
 
     if (process.env.NODE_ENV === 'development') {
-      fatal(`指令的表达式不能用插值语法`)
+      fatal(`{{ and }} are not allowed in directive.`)
     }
 
   },
@@ -674,16 +679,16 @@ export function compile(content: string): Branch[] {
     if (process.env.NODE_ENV === 'development') {
       if (isTemplate) {
         if (element.key) {
-          fatal(`<template> 不支持 key`)
+          fatal(`The "key" is not supported in <template>.`)
         }
         else if (element.ref) {
-          fatal(`<template> 不支持 ref`)
+          fatal(`The "ref" is not supported in <template>.`)
         }
         else if (element.attrs) {
-          fatal(`<template> 不支持属性或指令`)
+          fatal(`Attributes or directives are not supported in <template>.`)
         }
         else if (!slot) {
-          fatal(`<template> 不写 slot 属性是几个意思？`)
+          fatal(`The "slot" is required in <template>.`)
         }
       }
     }
@@ -707,7 +712,7 @@ export function compile(content: string): Branch[] {
       // model 不能写在 if 里，影响节点的静态结构
       if (directive.ns === DIRECTIVE_MODEL) {
         if (array.last(nodeStack) !== element) {
-          fatal(`model 不能写在 if 内`)
+          fatal(`The "model" can't be used within an if block.`)
         }
       }
     }
@@ -723,14 +728,14 @@ export function compile(content: string): Branch[] {
     if (process.env.NODE_ENV === 'development') {
       // 因为要拎出来给 element，所以不能用 if
       if (array.last(nodeStack) !== element) {
-        fatal(`${name} 不能写在 if 内`)
+        fatal(`The "${name}" can't be used within an if block.`)
       }
       // 对于所有特殊属性来说，空字符串是肯定不行的，没有任何意义
       if (value === env.EMPTY_STRING) {
-        fatal(`${name} 的值不能是空字符串`)
+        fatal(`The value of "${name}" is empty.`)
       }
       else if (isStringValueRequired && string.falsy(value)) {
-        fatal(`${name} 的值只能是字符串字面量`)
+        fatal(`The value of "${name}" can only be a string literal.`)
       }
     }
 
@@ -822,15 +827,15 @@ export function compile(content: string): Branch[] {
         }
         else if (type === nodeType.ELSE_IF) {
           if (process.env.NODE_ENV === 'development') {
-            fatal('else 后面不能跟 else if 啊')
+            fatal('The else block must not be followed by an else if block.')
           }
         }
         else if (process.env.NODE_ENV === 'development') {
-          fatal('只能写一个 else 啊')
+          fatal("The else block can't appear more than once.")
         }
       }
       else if (process.env.NODE_ENV === 'development') {
-        fatal('不写 if 是几个意思')
+        fatal('The if block is required.')
       }
 
     }
@@ -939,7 +944,7 @@ export function compile(content: string): Branch[] {
               if (tag === env.RAW_TEMPLATE) {
                 const lastNode = array.last(nodeStack)
                 if (!lastNode || !(lastNode as Element).isComponent) {
-                  fatal('<template> 只能写在组件标签内')
+                  fatal('<template> can only be used within an component children.')
                 }
               }
             }
@@ -1000,7 +1005,7 @@ export function compile(content: string): Branch[] {
             let event = slicePrefix(name, DIRECTIVE_ON + directiveSeparator)
             if (process.env.NODE_ENV === 'development') {
               if (!event) {
-                fatal('缺少事件名称')
+                fatal('The event name is required.')
               }
             }
             const [directiveName, diectiveModifier] = string.camelize(event).split(env.RAW_DOT)
@@ -1028,7 +1033,7 @@ export function compile(content: string): Branch[] {
             const custom = slicePrefix(name, DIRECTIVE_CUSTOM + directiveSeparator)
             if (process.env.NODE_ENV === 'development') {
               if (!custom) {
-                fatal('缺少自定义指令名称')
+                fatal('The directive name is required.')
               }
             }
             const [directiveName, diectiveModifier] = string.camelize(custom).split(env.RAW_DOT)
@@ -1094,8 +1099,9 @@ export function compile(content: string): Branch[] {
           text = content
           addTextChild(text)
         }
+        // 没找到结束引号
         else if (process.env.NODE_ENV === 'development') {
-          fatal(`${currentAttribute.name} 没有找到结束引号`)
+          fatal(`Unterminated quoted string in "${currentAttribute.name}".`)
         }
 
       }
@@ -1184,7 +1190,7 @@ export function compile(content: string): Branch[] {
           }
         }
         if (process.env.NODE_ENV === 'development') {
-          fatal(`无效的 each`)
+          fatal(`Invalid each`)
         }
       }
     },
@@ -1205,7 +1211,7 @@ export function compile(content: string): Branch[] {
           }
         }
         if (process.env.NODE_ENV === 'development') {
-          fatal(`无效的 import`)
+          fatal(`Invalid import`)
         }
       }
     },
@@ -1226,7 +1232,7 @@ export function compile(content: string): Branch[] {
           }
         }
         if (process.env.NODE_ENV === 'development') {
-          fatal(`无效的 partial`)
+          fatal(`Invalid partial`)
         }
       }
     },
@@ -1239,7 +1245,7 @@ export function compile(content: string): Branch[] {
           return creator.createIf(expr)
         }
         if (process.env.NODE_ENV === 'development') {
-          fatal(`无效的 if`)
+          fatal(`Invalid if`)
         }
       }
     },
@@ -1252,7 +1258,7 @@ export function compile(content: string): Branch[] {
           return creator.createElseIf(expr)
         }
         if (process.env.NODE_ENV === 'development') {
-          fatal(`无效的 else if`)
+          fatal(`Invalid else if`)
         }
       }
     },
@@ -1285,7 +1291,7 @@ export function compile(content: string): Branch[] {
           }
         }
         if (process.env.NODE_ENV === 'development') {
-          fatal(`无效的 spread`)
+          fatal(`Invalid spread`)
         }
       }
     },
@@ -1298,7 +1304,7 @@ export function compile(content: string): Branch[] {
           return creator.createExpression(expr, blockMode === BLOCK_MODE_SAFE)
         }
         if (process.env.NODE_ENV === 'development') {
-          fatal(`无效的 expression`)
+          fatal(`Invalid expression`)
         }
       }
     },
