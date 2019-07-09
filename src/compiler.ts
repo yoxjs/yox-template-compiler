@@ -322,8 +322,9 @@ export function compile(content: string): Branch[] {
 
     }
 
+    // 出栈节点类型不匹配
     if (process.env.NODE_ENV === 'development') {
-      fatal(`出栈节点类型不匹配`)
+      fatal(`The poping node type is not as expected.`)
     }
   },
 
@@ -568,7 +569,7 @@ export function compile(content: string): Branch[] {
             if (eventNamespacePattern.test(raw)
               && raw.split(env.RAW_DOT)[1] === MODIFER_NATIVE
             ) {
-              fatal(`The event namespace "${MODIFER_NATIVE}" is permitted.`)
+              fatal(`The event namespace "${MODIFER_NATIVE}" is not permitted.`)
             }
 
             // <Button on-click="click"> 这种写法没有意义
@@ -615,7 +616,7 @@ export function compile(content: string): Branch[] {
   processDirectiveSingleExpression = function (directive: Directive, child: Expression) {
 
     if (process.env.NODE_ENV === 'development') {
-      fatal(`{{ and }} are not allowed in directive.`)
+      fatal(`{{ and }} are not allowed in a directive value.`)
     }
 
   },
@@ -712,7 +713,7 @@ export function compile(content: string): Branch[] {
       // model 不能写在 if 里，影响节点的静态结构
       if (directive.ns === DIRECTIVE_MODEL) {
         if (array.last(nodeStack) !== element) {
-          fatal(`The "model" can't be used within an if block.`)
+          fatal(`The "model" can't be used in an if block.`)
         }
       }
     }
@@ -728,7 +729,7 @@ export function compile(content: string): Branch[] {
     if (process.env.NODE_ENV === 'development') {
       // 因为要拎出来给 element，所以不能用 if
       if (array.last(nodeStack) !== element) {
-        fatal(`The "${name}" can't be used within an if block.`)
+        fatal(`The "${name}" can't be used in an if block.`)
       }
       // 对于所有特殊属性来说，空字符串是肯定不行的，没有任何意义
       if (value === env.EMPTY_STRING) {
@@ -988,7 +989,7 @@ export function compile(content: string): Branch[] {
           // 这里会匹配上 xxx"，match[2] 就是那个引号
           if (process.env.NODE_ENV === 'development') {
             if (match[2]) {
-              fatal(`上一个属性似乎没有正常结束`)
+              fatal(`The previous attribute is not end.`)
             }
           }
 
@@ -1133,7 +1134,7 @@ export function compile(content: string): Branch[] {
       else {
         if (process.env.NODE_ENV === 'development') {
           if (string.trim(content)) {
-            fatal(`<${currentElement.tag}> 属性里不要写乱七八糟的字符`)
+            fatal(`Invalid character is found in <${currentElement.tag}> attribute level.`)
           }
         }
         text = content
@@ -1347,7 +1348,7 @@ export function compile(content: string): Branch[] {
           isCondition = env.TRUE
         }
         else if (process.env.NODE_ENV === 'development') {
-          fatal(`if 还没开始就结束了？`)
+          fatal(`The "if" block is closing, but it does't opened.`)
         }
       }
 
@@ -1385,7 +1386,7 @@ export function compile(content: string): Branch[] {
           nextIndex = index + 1
         }
         else {
-          fatal(`{{ 和 }}} 无法配对`)
+          fatal(`{{ and }}} is not a pair.`)
         }
       }
       else {
@@ -1393,7 +1394,7 @@ export function compile(content: string): Branch[] {
           nextIndex = index
         }
         else {
-          fatal(`{{{ 和 }} 无法配对`)
+          fatal(`{{{ and }} is not a pair.`)
         }
       }
 
@@ -1475,11 +1476,13 @@ export function compile(content: string): Branch[] {
           }
         }
         else if (process.env.NODE_ENV === 'development') {
-          fatal('{{{ 后面没字符串了？')
+          // {{{ 后面没字符串了？
+          fatal('Unterminated template literal.')
         }
       }
       else if (process.env.NODE_ENV === 'development') {
-        fatal('{{ 后面没字符串了？')
+        // {{ 后面没字符串了？
+        fatal('Unterminated template literal.')
       }
 
     }
@@ -1534,7 +1537,7 @@ export function compile(content: string): Branch[] {
 
     if (process.env.NODE_ENV === 'development') {
       if (nodeStack.length) {
-        fatal('还有节点未出栈')
+        fatal('Some nodes is still in the stack.')
       }
     }
   }
