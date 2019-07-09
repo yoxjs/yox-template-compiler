@@ -22,8 +22,7 @@ export default interface Element extends Branch {
   // 是否是 <option> 元素
   isOption: boolean
 
-  // 是否是组件元素，相对 DOM 元素来的
-  // 如果未来要搞跨平台方案，此属性可忽略
+  // 是否是组件元素，而不是平台内置元素
   isComponent: boolean
 
   // <template slot="xx">
