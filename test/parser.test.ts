@@ -16,20 +16,6 @@ function checkValue(node: any, text: string) {
   }
 }
 
-it('空模板', () => {
-
-  let ast1 = compile(' ')
-
-  expect(ast1.length).toBe(1)
-  expect(ast1[0].type).toBe(nodeType.TEXT)
-  expect(ast1[0].text).toBe(' ')
-
-  let ast2 = compile('')
-
-  expect(ast2.length).toBe(0)
-
-})
-
 it('template 和 slot', () => {
 
   let hasError = false
@@ -114,24 +100,7 @@ it('template 和 slot', () => {
 
 })
 
-it('支持多个根元素', () => {
 
-  let ast = compile('<div></div><span></span><ul></ul>text')
-
-  expect(ast.length).toBe(4)
-
-  expect(ast[0].type).toBe(nodeType.ELEMENT)
-  expect(ast[0].tag).toBe('div')
-
-  expect(ast[1].type).toBe(nodeType.ELEMENT)
-  expect(ast[1].tag).toBe('span')
-
-  expect(ast[2].type).toBe(nodeType.ELEMENT)
-  expect(ast[2].tag).toBe('ul')
-
-  expect(ast[3].type).toBe(nodeType.TEXT)
-  expect(ast[3].text).toBe('text')
-})
 
 it('复杂节点和简单节点', () => {
 
@@ -241,47 +210,7 @@ it('静态子树', () => {
 
 })
 
-it('svg', () => {
 
-  let ast: any
-
-  ast = compile('<svg></svg')
-
-  expect(ast.length).toBe(1)
-
-  expect(ast[0].type).toBe(nodeType.ELEMENT)
-  expect(ast[0].tag).toBe('svg')
-  expect(ast[0].isSvg).toBe(true)
-  expect(ast[0].isComponent).toBe(false)
-
-  ast = compile('<font-face></font-face')
-
-  expect(ast.length).toBe(1)
-
-  expect(ast[0].type).toBe(nodeType.ELEMENT)
-  expect(ast[0].tag).toBe('font-face')
-  expect(ast[0].isSvg).toBe(true)
-  expect(ast[0].isComponent).toBe(false)
-
-  ast = compile('<missing-glyph></missing-glyph')
-
-  expect(ast.length).toBe(1)
-
-  expect(ast[0].type).toBe(nodeType.ELEMENT)
-  expect(ast[0].tag).toBe('missing-glyph')
-  expect(ast[0].isSvg).toBe(true)
-  expect(ast[0].isComponent).toBe(false)
-
-  ast = compile('<foreignObject></foreignObject')
-
-  expect(ast.length).toBe(1)
-
-  expect(ast[0].type).toBe(nodeType.ELEMENT)
-  expect(ast[0].tag).toBe('foreignObject')
-  expect(ast[0].isSvg).toBe(true)
-  expect(ast[0].isComponent).toBe(false)
-
-})
 
 it('style', () => {
 
@@ -298,53 +227,7 @@ it('style', () => {
 
 })
 
-it('匹配开始结束标签', () => {
 
-  let hasError = false
-
-  try {
-    compile('<div></span>')
-  }
-  catch {
-    hasError = true
-  }
-
-  expect(hasError).toBe(true)
-
-  hasError = false
-
-  try {
-    compile('<div><a></b></div>')
-  }
-  catch {
-    hasError = true
-  }
-
-  expect(hasError).toBe(true)
-
-})
-
-it('简单的标签组合', () => {
-
-  let ast = compile('<div>123<span>456</span>789</div>')
-  expect(ast.length).toBe(1)
-
-  expect(ast[0].type).toBe(nodeType.ELEMENT)
-  expect(ast[0].tag).toBe('div')
-
-  expect(ast[0].children.length).toBe(3)
-
-  expect(ast[0].children[0].type).toBe(nodeType.TEXT)
-  expect(ast[0].children[0].text).toBe('123')
-
-  expect(ast[0].children[1].type).toBe(nodeType.ELEMENT)
-  expect(ast[0].children[1].tag).toBe('span')
-  expect(ast[0].children[1].children.length).toBe(1)
-  expect(ast[0].children[1].attrs).toBe(undefined)
-
-  expect(ast[0].children[2].type).toBe(nodeType.TEXT)
-  expect(ast[0].children[2].text).toBe('789')
-})
 
 it('延展属性', () => {
 

@@ -324,7 +324,7 @@ export function compile(content: string): Branch[] {
 
     // 出栈节点类型不匹配
     if (process.env.NODE_ENV === 'development') {
-      fatal(`The poping node type is not as expected.`)
+      fatal(`The type of poping node is not expected.`)
     }
   },
 
@@ -393,7 +393,7 @@ export function compile(content: string): Branch[] {
     // 2. 全局搜索不到事件名，不利于代码维护
     // 3. 不利于编译成静态函数
     if (process.env.NODE_ENV === 'development') {
-      fatal(`{{ and }} are not allowed in directive.`)
+      fatal('For performance, "{{" and "}}" are not allowed in directive value.')
     }
   },
 
@@ -549,7 +549,7 @@ export function compile(content: string): Branch[] {
             || !is.number((expr as ExpressionLiteral).value)
             || (expr as ExpressionLiteral).value <= 0
           ) {
-            fatal(`The value of lazy must be a number greater than 0.`)
+            fatal('The value of lazy must be a number greater than 0.')
           }
         }
 
@@ -588,7 +588,7 @@ export function compile(content: string): Branch[] {
         }
 
         if (isModel && expr.type !== exprNodeType.IDENTIFIER) {
-          fatal(`The value of the model must be an identifier.`)
+          fatal('The value of the model must be an identifier.')
         }
 
       }
@@ -616,7 +616,7 @@ export function compile(content: string): Branch[] {
   processDirectiveSingleExpression = function (directive: Directive, child: Expression) {
 
     if (process.env.NODE_ENV === 'development') {
-      fatal(`{{ and }} are not allowed in a directive value.`)
+      fatal('For performance, "{{" and "}}" are not allowed in directive value.')
     }
 
   },
@@ -919,7 +919,7 @@ export function compile(content: string): Branch[] {
         // 如果 <tag 前面有别的字符，会走进第四个 parser
         if (match && match.index === 0) {
           const tag = match[2]
-          if (match[1] === '/') {
+          if (match[1] === env.RAW_SLASH) {
             /**
              * 处理可能存在的自闭合元素，如下
              *
@@ -968,7 +968,7 @@ export function compile(content: string): Branch[] {
         if (currentElement && !currentAttribute) {
 
           // 自闭合标签
-          if (match[1] === '/') {
+          if (match[1] === env.RAW_SLASH) {
             popStack(currentElement.type, currentElement.tag)
           }
 
@@ -1327,7 +1327,7 @@ export function compile(content: string): Branch[] {
   },
 
   parseBlock = function (code: string) {
-    if (string.charAt(code) === '/') {
+    if (string.charAt(code) === env.RAW_SLASH) {
 
       /**
        * 处理可能存在的自闭合元素，如下
