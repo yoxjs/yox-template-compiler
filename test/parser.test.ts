@@ -16,199 +16,9 @@ function checkValue(node: any, text: string) {
   }
 }
 
-it('template 和 slot', () => {
-
-  let hasError = false
-
-  // template 必须搭配 slot 属性
-  try {
-    compile('<template></template>')
-  }
-  catch {
-    hasError = true
-  }
-  expect(hasError).toBe(true)
-
-  hasError = false
-
-  // template 必须在组件内使用
-  try {
-    compile('<template slot="xx"></template>')
-  }
-  catch (e) {
-    hasError = true
-  }
-  expect(hasError).toBe(true)
-
-  hasError = false
-
-  // slot 不能用插值
-  try {
-    compile('<Dog><template slot="{{a}}"></template></Dog>')
-  }
-  catch (e) {
-    hasError = true
-  }
-  expect(hasError).toBe(true)
-
-  hasError = false
-
-  // slot 不能是空字符串
-  try {
-    compile('<Dog><template slot=""></template></Dog>')
-  }
-  catch (e) {
-    hasError = true
-  }
-  expect(hasError).toBe(true)
-
-  hasError = false
-
-  // slot 不能不写值
-  try {
-    compile('<Dog><template slot></template></Dog>')
-  }
-  catch (e) {
-    hasError = true
-  }
-  expect(hasError).toBe(true)
-
-  hasError = false
-
-  // slot 不能位于 if 内
-  try {
-    compile('<Dog><template {{#if a}}slot="xx"{{/if}}></template></Dog>')
-  }
-  catch (e) {
-    hasError = true
-  }
-  expect(hasError).toBe(true)
-
-
-  hasError = false
-
-  try {
-    let ast = compile('<Dog><template slot="xx"></template></Dog>')
-    expect(ast[0].children[0].slot != null).toBe(true)
-    expect(ast[0].children[0].slot).toBe('xx')
-    expect(ast[0].children[0].attrs).toBe(undefined)
-  }
-  catch (e) {
-    hasError = true
-  }
-  expect(hasError).toBe(false)
-
-})
 
 
 
-it('复杂节点和简单节点', () => {
-
-  let ast: any
-
-  ast = compile('<div></div>')
-
-  expect(!!ast[0].isComplex).toBe(false)
-
-  ast = compile('<span id="xx">{{x}}</span>')
-
-  expect(!!ast[0].isComplex).toBe(false)
-  expect(!!ast[0].attrs[0].isComplex).toBe(false)
-
-  ast = compile('<span id="x{{x}}x"></span>')
-
-  expect(!!ast[0].isComplex).toBe(false)
-  expect(!!ast[0].attrs[0].isComplex).toBe(false)
-
-  ast = compile('<span id="x{{x}}x{{#if x}}1{{else}}2{{/if}}"></span>')
-
-  expect(!!ast[0].isComplex).toBe(false)
-  expect(!!ast[0].attrs[0].isComplex).toBe(false)
-
-  ast = compile('<span>x{{x}}x{{#if x}}1{{else}}2{{/if}}</span>')
-
-  expect(!!ast[0].isComplex).toBe(false)
-
-  ast = compile('<span>x{{x}}x{{#if x}}<input>{{else}}2{{/if}}</span>')
-
-  expect(!!ast[0].isComplex).toBe(true)
-
-  ast = compile('<span>x{{x}}x{{#each a}}123{{/each}}</span>')
-
-  expect(!!ast[0].isComplex).toBe(true)
-
-  ast = compile('<span>x{{x}}x{{#partial a}}123{{/partial}}</span>')
-
-  expect(!!ast[0].isComplex).toBe(true)
-
-  ast = compile('<span>x{{x}}x{{> a}}</span>')
-
-  expect(!!ast[0].isComplex).toBe(true)
-
-})
-
-it('静态子树', () => {
-
-  let ast: any
-
-  ast = compile('<div><span id="xx">1123</span></div>')
-
-  expect(ast[0].isStatic).toBe(true)
-  expect(ast[0].children[0].isStatic).toBe(true)
-
-  ast = compile('<div><span id="xx">{{x}}</span></div>')
-
-  expect(ast[0].isStatic).toBe(false)
-  expect(ast[0].children[0].isStatic).toBe(false)
-
-  ast = compile('<div><span id="xx">{{#if x}}x{{/if}}</span></div>')
-
-  expect(ast[0].isStatic).toBe(false)
-  expect(ast[0].children[0].isStatic).toBe(false)
-
-  ast = compile('<div><span id="xx">{{> name}}</span></div>')
-
-  expect(ast[0].isStatic).toBe(false)
-  expect(ast[0].children[0].isStatic).toBe(false)
-
-  ast = compile('<div><span id="{{x}}"></span></div>')
-
-  expect(ast[0].isStatic).toBe(false)
-  expect(ast[0].children[0].isStatic).toBe(false)
-
-  ast = compile('<div><span on-click="x"></span></div>')
-
-  expect(ast[0].isStatic).toBe(false)
-  expect(ast[0].children[0].isStatic).toBe(false)
-
-  ast = compile('<div><span o-x="x"></span></div>')
-
-  expect(ast[0].isStatic).toBe(false)
-  expect(ast[0].children[0].isStatic).toBe(false)
-
-  ast = compile(`
-    <div>
-      <div>xx</div>
-      <div>{{x}}</div>
-    </div>
-  `)
-
-  expect(ast[0].isStatic).toBe(false)
-  expect(ast[0].children[0].isStatic).toBe(true)
-  expect(ast[0].children[1].isStatic).toBe(false)
-
-  ast = compile(`
-    <div>
-      <slot name="xx"/>
-      <div>{{x}}</div>
-    </div>
-  `)
-
-  expect(ast[0].isStatic).toBe(false)
-  expect(ast[0].children[0].isStatic).toBe(false)
-  expect(ast[0].children[1].isStatic).toBe(false)
-
-})
 
 
 
@@ -650,43 +460,6 @@ it('directive', () => {
 
 })
 
-it('文本换行', () => {
-
-  let ast = compile(`
-    <div
-      a="1"
-      b="2"      c="3"
-      d="4"
-    >
-      5
-      6
-    </div>
-  `)
-
-  expect(ast.length).toBe(1)
-  expect(ast[0].attrs.length).toBe(4)
-  expect(ast[0].children.length).toBe(1)
-
-  expect(ast[0].attrs[0].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[0].name).toBe('a')
-  checkValue(ast[0].attrs[0], '1')
-
-  expect(ast[0].attrs[1].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[1].name).toBe('b')
-  checkValue(ast[0].attrs[1], '2')
-
-  expect(ast[0].attrs[2].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[2].name).toBe('c')
-  checkValue(ast[0].attrs[2], '3')
-
-  expect(ast[0].attrs[3].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[3].name).toBe('d')
-  checkValue(ast[0].attrs[3], '4')
-
-  expect(ast[0].children[0].type).toBe(nodeType.TEXT)
-  expect(ast[0].children[0].text).toBe('5\n      6')
-
-})
 
 it('自动 binding', () => {
 
@@ -786,29 +559,6 @@ it('lazy 指令自动转型', () => {
 
 })
 
-it('默认属性值', () => {
-
-  let ast = compile(`
-    <div a b="">1</div>
-  `)
-
-  expect(ast.length).toBe(1)
-  expect(ast[0].attrs.length).toBe(2)
-  expect(ast[0].children.length).toBe(1)
-
-  expect(ast[0].attrs[0].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[0].name).toBe('a')
-  checkValue(ast[0].attrs[0], 'a')
-
-  expect(ast[0].attrs[1].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[1].name).toBe('b')
-  checkValue(ast[0].attrs[1], '')
-
-  expect(ast[0].children[0].type).toBe(nodeType.TEXT)
-  expect(ast[0].children[0].text).toBe('1')
-
-})
-
 it('非转义插值', () => {
 
   let ast1 = compile(`
@@ -834,45 +584,7 @@ it('非转义插值', () => {
 
 })
 
-it('自闭合标签', () => {
 
-  let ast1 = compile('<div><br/></div>')
-  expect(ast1.length).toBe(1)
-
-  expect(ast1[0].type).toBe(nodeType.ELEMENT)
-  expect(ast1[0].tag).toBe('div')
-
-  expect(ast1[0].children.length).toBe(1)
-
-  expect(ast1[0].children[0].type).toBe(nodeType.ELEMENT)
-  expect(ast1[0].children[0].tag).toBe('br')
-
-  let ast2 = compile('<div><br></div>')
-  expect(ast2.length).toBe(1)
-
-  expect(ast2[0].type).toBe(nodeType.ELEMENT)
-  expect(ast2[0].tag).toBe('div')
-
-  expect(ast2[0].children.length).toBe(1)
-
-  expect(ast2[0].children[0].type).toBe(nodeType.ELEMENT)
-  expect(ast2[0].children[0].tag).toBe('br')
-
-  let ast3 = compile('<div><br>1</div>')
-  expect(ast3.length).toBe(1)
-
-  expect(ast3[0].type).toBe(nodeType.ELEMENT)
-  expect(ast3[0].tag).toBe('div')
-
-  expect(ast3[0].children.length).toBe(2)
-
-  expect(ast3[0].children[0].type).toBe(nodeType.ELEMENT)
-  expect(ast3[0].children[0].tag).toBe('br')
-
-  expect(ast3[0].children[1].type).toBe(nodeType.TEXT)
-  expect(ast3[0].children[1].text).toBe('1')
-
-})
 
 it('if', () => {
 
@@ -999,20 +711,4 @@ it('对象字面量', () => {
   expect(ast[0].children[0].type).toBe(nodeType.EXPRESSION)
   expect(ast[0].children[0].safe).toBe(true)
   expect(ast[0].children[0].expr.type).toBe(exprNodeType.OBJECT)
-})
-
-it('html 注释', () => {
-
-  let ast = compile(`
-    <div id="<!-- xxx -->">
-      <!-- 1 -->
-      <!-- 2 -->
-    </div>
-  `)
-
-  expect(ast[0].children).toBe(undefined)
-  expect(ast[0].attrs.length).toBe(1)
-  expect(ast[0].attrs[0].type).toBe(nodeType.PROPERTY)
-  expect(ast[0].attrs[0].value).toBe('<!-- xxx -->')
-
 })

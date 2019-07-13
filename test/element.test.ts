@@ -1,6 +1,7 @@
 import { compile } from '../src/compiler'
 import * as nodeType from '../src/nodeType'
 
+import Node from '../src/node/Node'
 import Element from '../src/node/Element'
 import Property from '../src/node/Property'
 import Text from '../src/node/Text'
@@ -102,6 +103,284 @@ test('option', () => {
   }
 
 })
+
+test('template', () => {
+
+  let hasError = false
+
+  // template 必须在组件内使用
+  try {
+    compile('<template slot="xx"></template>')
+  }
+  catch (e) {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // template 必须搭配 slot 属性
+  try {
+    compile('<Dog><template></template></Dog>')
+  }
+  catch (e) {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // slot 不能用插值
+  try {
+    compile('<Dog><template slot="{{a}}"></template></Dog>')
+  }
+  catch (e) {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // slot 不能是空字符串
+  try {
+    compile('<Dog><template slot=""></template></Dog>')
+  }
+  catch (e) {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // slot 不能不写值
+  try {
+    compile('<Dog><template slot></template></Dog>')
+  }
+  catch (e) {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+  hasError = false
+
+  // slot 不能位于 if 内
+  try {
+    compile('<Dog><template {{#if a}}slot="xx"{{/if}}></template></Dog>')
+  }
+  catch (e) {
+    hasError = true
+  }
+  expect(hasError).toBe(true)
+
+
+  hasError = false
+
+  try {
+    let ast = compile('<Dog><template slot="xx"></template></Dog>')
+    let { children } = ast[0]
+    expect(children != null).toBe(true)
+    if (children) {
+      expect(children[0].type).toBe(nodeType.ELEMENT)
+      expect((children[0] as Element).slot != null).toBe(true)
+      expect((children[0] as Element).slot).toBe('xx')
+      expect((children[0] as Element).attrs).toBe(undefined)
+      expect((children[0] as Element).children).toBe(undefined)
+    }
+
+  }
+  catch (e) {
+    hasError = true
+  }
+  expect(hasError).toBe(false)
+
+})
+
+test('复杂元素和简单元素', () => {
+
+  let ast = compile('<div></div>')
+
+  expect(ast[0].isComplex).not.toBe(true)
+
+  ast = compile('<span id="xx">{{x}}</span>')
+
+  expect(ast[0].isComplex).not.toBe(true)
+
+  let attrs = (ast[0] as Element).attrs
+  expect(attrs != null).toBe(true)
+  if (attrs) {
+    expect(attrs[0].isComplex).not.toBe(true)
+  }
+
+
+  ast = compile('<span id="x{{x}}x"></span>')
+
+  expect(ast[0].isComplex).not.toBe(true)
+
+  attrs = (ast[0] as Element).attrs
+  expect(attrs != null).toBe(true)
+  if (attrs) {
+    expect(attrs[0].isComplex).not.toBe(true)
+  }
+
+
+  ast = compile('<span id="x{{x}}x{{#if x}}1{{else}}2{{/if}}"></span>')
+
+  expect(ast[0].isComplex).not.toBe(true)
+
+  attrs = (ast[0] as Element).attrs
+  expect(attrs != null).toBe(true)
+  if (attrs) {
+    expect(attrs[0].isComplex).not.toBe(true)
+  }
+
+
+  ast = compile('<span>x{{x}}x{{#if x}}1{{else}}2{{/if}}</span>')
+  expect(ast[0].isComplex).not.toBe(true)
+
+
+  ast = compile('<span>x{{x}}x{{#if x}}<input>{{else}}2{{/if}}</span>')
+  expect(ast[0].isComplex).toBe(true)
+
+
+  ast = compile('<span>x{{x}}x{{#each a}}123{{/each}}</span>')
+  expect(ast[0].isComplex).toBe(true)
+
+
+  ast = compile('<span>x{{x}}x{{#partial a}}123{{/partial}}</span>')
+  expect(ast[0].isComplex).toBe(true)
+
+  ast = compile('<span>{{> a}}</span>')
+  expect(ast[0].isComplex).toBe(true)
+
+})
+
+
+test('静态元素', () => {
+
+  let ast = compile('<div><span id="xx">1123</span></div>')
+
+  expect(ast[0].isStatic).toBe(true)
+  expect((ast[0].children as Node[])[0].isStatic).toBe(true)
+
+  ast = compile('<div><span id="xx">{{x}}</span></div>')
+  expect(ast[0].isStatic).toBe(false)
+  expect((ast[0].children as Node[])[0].isStatic).toBe(false)
+
+  ast = compile('<div><span id="xx">{{#if x}}x{{/if}}</span></div>')
+  expect(ast[0].isStatic).toBe(false)
+  expect((ast[0].children as Node[])[0].isStatic).toBe(false)
+
+  ast = compile('<div><span id="xx">{{> name}}</span></div>')
+  expect(ast[0].isStatic).toBe(false)
+  expect((ast[0].children as Node[])[0].isStatic).toBe(false)
+
+  ast = compile('<div><span id="{{x}}"></span></div>')
+  expect(ast[0].isStatic).toBe(false)
+  expect((ast[0].children as Node[])[0].isStatic).toBe(false)
+
+  ast = compile('<div><span on-click="x"></span></div>')
+  expect(ast[0].isStatic).toBe(false)
+  expect((ast[0].children as Node[])[0].isStatic).toBe(false)
+
+  ast = compile('<div><span o-x="x"></span></div>')
+  expect(ast[0].isStatic).toBe(false)
+  expect((ast[0].children as Node[])[0].isStatic).toBe(false)
+
+  ast = compile(`
+    <div>
+      <div>xx</div>
+      <div>{{x}}</div>
+    </div>
+  `)
+  expect(ast[0].isStatic).toBe(false)
+  expect((ast[0].children as Node[])[0].isStatic).toBe(true)
+  expect((ast[0].children as Node[])[1].isStatic).toBe(false)
+
+  ast = compile(`
+    <div>
+      <slot name="xx"/>
+      <div>{{x}}</div>
+    </div>
+  `)
+
+  expect(ast[0].isStatic).toBe(false)
+  expect((ast[0].children as Node[])[0].isStatic).toBe(false)
+  expect((ast[0].children as Node[])[1].isStatic).toBe(false)
+
+})
+
+
+test('标签名后加 if', () => {
+
+  let ast = compile(`
+    <div{{#if xx}} id="xx"{{/if}}>
+    </div>
+  `)
+
+  expect(ast.length).toBe(1)
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+  expect(ast[0].isStatic).toBe(false)
+  expect((ast[0] as Element).tag).toBe('div')
+
+  let attrs = (ast[0] as Element).attrs as Node[]
+  expect(attrs.length).toBe(1)
+  expect(attrs[0].type).toBe(nodeType.IF)
+
+})
+
+
+test('自闭合标签', () => {
+
+  let ast = compile('<div><br/></div>')
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+
+  let root = ast[0] as Element
+  expect(root.tag).toBe('div')
+
+  let children = root.children as Node[]
+  expect(children.length).toBe(1)
+
+  expect(children[0].type).toBe(nodeType.ELEMENT)
+  expect((children[0] as Element).tag).toBe('br')
+
+
+
+  ast = compile('<div><br></div>')
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+
+  root = ast[0] as Element
+  expect(root.tag).toBe('div')
+
+  children = root.children as Node[]
+  expect(children.length).toBe(1)
+
+  expect(children[0].type).toBe(nodeType.ELEMENT)
+  expect((children[0] as Element).tag).toBe('br')
+
+
+  ast = compile('<div><br>1</div>')
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+
+  root = ast[0] as Element
+  expect(root.tag).toBe('div')
+
+  children = root.children as Node[]
+  expect(children.length).toBe(2)
+
+  expect(children[0].type).toBe(nodeType.ELEMENT)
+  expect((children[0] as Element).tag).toBe('br')
+
+  expect(children[1].type).toBe(nodeType.TEXT)
+  expect((children[1] as Text).text).toBe('1')
+
+})
+
 
 test('支持多个根元素', () => {
 

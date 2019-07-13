@@ -346,6 +346,7 @@ export function compile(content: string): Branch[] {
       children,
       function (child, index) {
         if (child.type === nodeType.TEXT) {
+          // 有了结束 index，这里的任务是配对开始 index
           if (closeIndex >= 0) {
             openText = (child as Text).text
             // 处理 <!-- <!-- 这样有多个的情况
@@ -358,22 +359,35 @@ export function compile(content: string): Branch[] {
               // openIndex 肯定小于 closeIndex，因为完整的注释在解析过程中会被干掉
               // 只有包含插值的注释才会走进这里
 
+              let startIndex = openIndex, endIndex = closeIndex
+
               // 现在要确定开始和结束的文本节点，是否包含正常文本
               if (openText) {
                 (children[openIndex] as Text).text = openText
-                openIndex++
+                startIndex++
               }
               if (closeText) {
-                (children[closeIndex] as Text).text = closeText
-                closeIndex--
+                // 合并开始和结束文本，如 1<!-- {{x}}{{y}} -->2
+                // 这里要把 1 和 2 两个文本节点合并成一个
+                if (openText) {
+                  (children[openIndex] as Text).text += closeText
+                }
+                else {
+                  (children[closeIndex] as Text).text = closeText
+                  endIndex--
+                }
               }
 
-              children.splice(openIndex, closeIndex - openIndex + 1)
+              children.splice(startIndex, endIndex - startIndex + 1)
 
+              // 重置，再继续寻找结束 index
               openIndex = closeIndex = env.MINUS_ONE
             }
           }
           else {
+            // 从后往前遍历
+            // 一旦发现能匹配 --> 就可以断定这是注释的结束 index
+            // 剩下的就是找开始 index
             closeText = (child as Text).text
             // 处理 --> --> 这样有多个的情况
             while (closeCommentPattern.test(closeText)) {
@@ -845,17 +859,31 @@ export function compile(content: string): Branch[] {
     else {
 
       if (currentBranch) {
-        array.push(
-          // 这里不能写 currentElement && !currentAttribute，举个例子
-          //
-          // <div id="x" {{#if}} name="xx" alt="xx" {{/if}}
-          //
-          // 当 name 属性结束后，条件满足，但此时已不是元素属性层级了
-          currentElement && currentBranch.type === nodeType.ELEMENT
-            ? currentElement.attrs || (currentElement.attrs = [])
-            : currentBranch.children || (currentBranch.children = []),
-          node
-        )
+        // 这里不能写 currentElement && !currentAttribute，举个例子
+        //
+        // <div id="x" {{#if}} name="xx" alt="xx" {{/if}}
+        //
+        // 当 name 属性结束后，条件满足，但此时已不是元素属性层级了
+        if (currentElement && currentBranch.type === nodeType.ELEMENT) {
+          const attrs = currentElement.attrs || (currentElement.attrs = [])
+          // node 没法转型，一堆可能的类型怎么转啊...
+          array.push(attrs, node as any)
+        }
+        else {
+          const children = currentBranch.children || (currentBranch.children = []),
+          lastChild = array.last(children)
+          // 连续添加文本节点，则直接合并
+          if (lastChild
+            && lastChild.type === nodeType.TEXT
+            && node.type === nodeType.TEXT
+          ) {
+            (lastChild as Text).text += (node as Text).text
+            return
+          }
+          else {
+            array.push(children, node)
+          }
+        }
       }
       else {
         array.push(nodeList, node)
