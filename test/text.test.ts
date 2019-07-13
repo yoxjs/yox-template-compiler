@@ -6,6 +6,32 @@ import Element from '../src/node/Element'
 import Attribute from '../src/node/Attribute'
 import Text from '../src/node/Text'
 
+test('html entity', () => {
+
+  let ast = compile(`
+    <div>1&nbsp;2</div>
+  `)
+
+  expect(ast.length).toBe(1)
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+
+  let root = ast[0] as Element
+  expect(root.html).toBe('1&nbsp;2')
+  expect(root.children).toBe(undefined)
+
+
+
+  ast = compile(`
+    <div>1&nbsp;2{{name}}</div>
+  `)
+
+  root = ast[0] as Element
+
+  expect(root.html).toBe(undefined)
+  expect(Array.isArray(root.children)).toBe(true)
+
+})
+
 test('文本换行', () => {
 
   let ast = compile(`

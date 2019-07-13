@@ -698,17 +698,3 @@ it('结构完整', () => {
   expect(hasError).toBe(true)
 
 })
-
-it('对象字面量', () => {
-
-  let ast = compile(`
-    <div>
-      {{ { name: 'yox' } }}
-    </div>
-  `)
-
-  expect(ast[0].children.length).toBe(1)
-  expect(ast[0].children[0].type).toBe(nodeType.EXPRESSION)
-  expect(ast[0].children[0].safe).toBe(true)
-  expect(ast[0].children[0].expr.type).toBe(exprNodeType.OBJECT)
-})
