@@ -6,7 +6,7 @@ import ExpressionNode from '../../../yox-expression-compiler/src/node/Node'
 import Branch from './Branch'
 
 /**
- * 键值对
+ * HTML 元素的 JavaScript 属性
  */
 export default interface Property extends Branch {
 

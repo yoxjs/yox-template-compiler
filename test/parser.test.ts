@@ -212,20 +212,7 @@ it('静态子树', () => {
 
 
 
-it('style', () => {
 
-  let ast: any
-
-  ast = compile('<style></style>')
-
-  expect(ast.length).toBe(1)
-
-  expect(ast[0].type).toBe(nodeType.ELEMENT)
-  expect(ast[0].tag).toBe('style')
-  expect(ast[0].isStyle).toBe(true)
-  expect(ast[0].isComponent).toBe(false)
-
-})
 
 
 
@@ -331,61 +318,6 @@ it('attribute', () => {
 
   expect(ast[0].children[0].type).toBe(nodeType.TEXT)
   expect(ast[0].children[0].text).toBe('5')
-
-})
-
-it('property', () => {
-
-  // 布尔类型为 true，它的值只能是 属性名或 true，其他都是 false
-  let ast = compile('<div data-index="1" id="2" width="100" checked disabled="disabled" required="true" autofocus="false" muted="1" for="xx"></div>')
-
-  expect(ast.length).toBe(1)
-  expect(ast[0].attrs.length).toBe(9)
-  expect(ast[0].children).toBe(undefined)
-
-  expect(ast[0].attrs[0].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[0].name).toBe('data-index')
-  checkValue(ast[0].attrs[0], '1')
-
-  expect(ast[0].attrs[1].type).toBe(nodeType.PROPERTY)
-  expect(ast[0].attrs[1].name).toBe('id')
-  expect(ast[0].attrs[1].hint).toBe(config.HINT_STRING)
-  checkValue(ast[0].attrs[1], '2')
-
-  expect(ast[0].attrs[2].type).toBe(nodeType.PROPERTY)
-  expect(ast[0].attrs[2].name).toBe('width')
-  expect(ast[0].attrs[2].hint).toBe(config.HINT_NUMBER)
-  checkValue(ast[0].attrs[2], 100)
-
-  expect(ast[0].attrs[3].type).toBe(nodeType.PROPERTY)
-  expect(ast[0].attrs[3].name).toBe('checked')
-  expect(ast[0].attrs[3].hint).toBe(config.HINT_BOOLEAN)
-  checkValue(ast[0].attrs[3], true)
-
-  expect(ast[0].attrs[4].type).toBe(nodeType.PROPERTY)
-  expect(ast[0].attrs[4].name).toBe('disabled')
-  expect(ast[0].attrs[4].hint).toBe(config.HINT_BOOLEAN)
-  checkValue(ast[0].attrs[4], true)
-
-  expect(ast[0].attrs[5].type).toBe(nodeType.PROPERTY)
-  expect(ast[0].attrs[5].name).toBe('required')
-  expect(ast[0].attrs[5].hint).toBe(config.HINT_BOOLEAN)
-  checkValue(ast[0].attrs[5], true)
-
-  expect(ast[0].attrs[6].type).toBe(nodeType.PROPERTY)
-  expect(ast[0].attrs[6].name).toBe('autofocus')
-  expect(ast[0].attrs[6].hint).toBe(config.HINT_BOOLEAN)
-  checkValue(ast[0].attrs[6], false)
-
-  expect(ast[0].attrs[7].type).toBe(nodeType.PROPERTY)
-  expect(ast[0].attrs[7].name).toBe('muted')
-  expect(ast[0].attrs[7].hint).toBe(config.HINT_BOOLEAN)
-  checkValue(ast[0].attrs[7], false)
-
-  expect(ast[0].attrs[8].type).toBe(nodeType.PROPERTY)
-  expect(ast[0].attrs[8].name).toBe('htmlFor')
-  expect(ast[0].attrs[8].hint).toBe(config.HINT_STRING)
-  checkValue(ast[0].attrs[8], 'xx')
 
 })
 

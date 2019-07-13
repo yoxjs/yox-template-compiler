@@ -601,6 +601,8 @@ export function compile(content: string): Branch[] {
 
     }
     else {
+      // 自定义指令支持错误的表达式
+      // 反正是自定义的规则，爱怎么写就怎么写
       if (process.env.NODE_ENV === 'development') {
         if (!isCustom) {
           throw error
