@@ -292,34 +292,6 @@ it('属性引号', () => {
 
 })
 
-it('attribute', () => {
-
-  let ast = compile('<div id="1" name="2" xml1:age="3" xml2:number="4">5</div>')
-
-  expect(ast.length).toBe(1)
-  expect(ast[0].attrs.length).toBe(4)
-  expect(ast[0].children.length).toBe(1)
-
-  expect(ast[0].attrs[0].type).toBe(nodeType.PROPERTY)
-  expect(ast[0].attrs[0].name).toBe('id')
-  checkValue(ast[0].attrs[0], '1')
-
-  expect(ast[0].attrs[1].type).toBe(nodeType.PROPERTY)
-  expect(ast[0].attrs[1].name).toBe('name')
-  checkValue(ast[0].attrs[1], '2')
-
-  expect(ast[0].attrs[2].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[2].name).toBe('xml1:age')
-  checkValue(ast[0].attrs[2], '3')
-
-  expect(ast[0].attrs[3].type).toBe(nodeType.ATTRIBUTE)
-  expect(ast[0].attrs[3].name).toBe('xml2:number')
-  checkValue(ast[0].attrs[3], '4')
-
-  expect(ast[0].children[0].type).toBe(nodeType.TEXT)
-  expect(ast[0].children[0].text).toBe('5')
-
-})
 
 it('event', () => {
 

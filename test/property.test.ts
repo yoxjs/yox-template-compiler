@@ -9,11 +9,14 @@ import Property from '../src/node/Property'
 test('property', () => {
 
   // 布尔类型为 true，它的值只能是 属性名或 true，其他都是 false
+  // height(number) 和 title(string) 属性因无值被忽略
   let ast = compile(`
     <div
       data-index="1"
       id="2"
       width="100"
+      height
+      title
       checked
       disabled="disabled"
       required="true"
