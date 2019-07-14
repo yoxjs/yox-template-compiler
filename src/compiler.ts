@@ -41,6 +41,7 @@ import * as exprCompiler from '../../yox-expression-compiler/src/compiler'
 import ExpressionNode from '../../yox-expression-compiler/src/node/Node'
 import ExpressionCall from '../../yox-expression-compiler/src/node/Call'
 import ExpressionLiteral from '../../yox-expression-compiler/src/node/Literal'
+import ExpressionIdentifier from '../..//yox-expression-compiler/src/node/Identifier'
 
 import * as helper from './helper'
 import * as creator from './creator'
@@ -74,6 +75,9 @@ patternCache = {},
 
 // 指令分隔符，如 on-click 和 lazy-click
 directiveSeparator = '-',
+
+// 调用的方法
+methodPattern = /^[_$a-z]([\w]+)?$/,
 
 // 没有命名空间的事件
 eventPattern = /^[_$a-z]([\w]+)?$/i,
@@ -569,8 +573,13 @@ export function compile(content: string): Branch[] {
 
         // 如果指令表达式是函数调用，则只能调用方法（难道还有别的可以调用的吗？）
         else if (expr.type === exprNodeType.CALL) {
-          if ((expr as ExpressionCall).name.type !== exprNodeType.IDENTIFIER) {
-            fatal('The method name that appear on directive must be an identifier.')
+          let methodName = (expr as ExpressionCall).name
+          if (methodName.type !== exprNodeType.IDENTIFIER) {
+            fatal('Invalid method name.')
+          }
+          // 函数调用调用方法，因此不能是 a.b() 的形式
+          else if (!methodPattern.test((methodName as ExpressionIdentifier).name)) {
+            fatal('Invalid method name.')
           }
         }
 

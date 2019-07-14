@@ -172,6 +172,18 @@ test('template', () => {
   }
   expect(hasError).toBe(true)
 
+  hasError = false
+
+  // template 上只能写 slot
+  try {
+    compile('<Dog><template slot="11" key="1"></template></Dog>')
+  }
+  catch (e) {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
 
   let ast = compile('<Dog><template slot="xx">11</template></Dog>')
   let { children } = ast[0]
