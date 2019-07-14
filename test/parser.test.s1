@@ -65,43 +65,6 @@ it('延展属性', () => {
 
 })
 
-it('属性引号', () => {
-
-  let hasError = false
-
-  try {
-    compile('<div class="11></div>')
-  }
-  catch {
-    hasError = true
-  }
-
-  expect(hasError).toBe(true)
-
-  hasError = false
-
-  try {
-    compile('<div class="11 name="xxx"></div>')
-  }
-  catch {
-    hasError = true
-  }
-
-  expect(hasError).toBe(true)
-
-  hasError = false
-
-  try {
-    compile('<div class="11" name="xxx" "></div>')
-  }
-  catch {
-    hasError = true
-  }
-
-  expect(hasError).toBe(true)
-
-})
-
 
 it('event', () => {
 
@@ -490,99 +453,10 @@ it('自动 binding', () => {
 
 it('lazy 指令自动转型', () => {
 
-  let ast: any
 
-  ast = compile(`
-    <div lazy></div>
-  `)
-
-  expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
-  expect(ast[0].attrs[0].ns).toBe(config.DIRECTIVE_LAZY)
-  expect(ast[0].attrs[0].name).toBe('')
-  expect(ast[0].attrs[0].expr).toBe(undefined)
-  expect(ast[0].attrs[0].value).toBe(true)
-
-
-  ast = compile(`
-    <div lazy="100"></div>
-  `)
-
-  expect(ast[0].attrs[0].type).toBe(nodeType.DIRECTIVE)
-  expect(ast[0].attrs[0].ns).toBe(config.DIRECTIVE_LAZY)
-  expect(ast[0].attrs[0].name).toBe('')
-  expect(ast[0].attrs[0].expr).toBe(undefined)
-  expect(ast[0].attrs[0].value).toBe(100)
-
-  let hasError = false
-
-  // 必须大于 0
-  try {
-    compile('<div lazy="0"></div>')
-  }
-  catch {
-    hasError = true
-  }
-  expect(hasError).toBe(true)
-
-  hasError = false
-
-  // 必须大于 0
-  try {
-    compile('<div lazy="-1"></div>')
-  }
-  catch {
-    hasError = true
-  }
-  expect(hasError).toBe(true)
-
-  hasError = false
-
-  // 必须大于 0
-  try {
-    compile('<div lazy="haha"></div>')
-  }
-  catch {
-    hasError = true
-  }
-  expect(hasError).toBe(true)
-
-  hasError = false
-
-  // 必须大于 0
-  try {
-    compile('<div lazy=""></div>')
-  }
-  catch {
-    hasError = true
-  }
-  expect(hasError).toBe(true)
 
 })
 
-it('非转义插值', () => {
-
-  let ast1 = compile(`
-    <div>{{a}}</div>
-  `)
-
-  expect(ast1.length).toBe(1)
-  expect(ast1[0].attrs).toBe(undefined)
-  expect(ast1[0].children.length).toBe(1)
-
-  expect(ast1[0].children[0].type).toBe(nodeType.EXPRESSION)
-  expect(typeof ast1[0].children[0].expr).toBe('object')
-
-  let ast2 = compile(`
-    <div>{{{a}}}</div>
-  `)
-
-  expect(ast2.length).toBe(1)
-  expect(ast2[0].attrs).toBe(undefined)
-  expect(ast2[0].children).toBe(undefined)
-
-  expect(typeof ast2[0].html).toBe('object')
-
-})
 
 
 
@@ -636,47 +510,6 @@ it('if', () => {
   expect(hasError).toBe(false)
 
 })
-
-it('each', () => {
-
-  let ast: any, hasError = false
-
-  try {
-    ast = compile(`
-      <div>
-        {{#each x}}{{/each}}
-      </div>
-    `)
-    expect(ast[0].children).toBe(undefined)
-  }
-  catch {
-    hasError = true
-  }
-
-  expect(hasError).toBe(false)
-
-})
-
-it('partial', () => {
-
-  let ast: any, hasError = false
-
-  try {
-    ast = compile(`
-      <div>
-        {{#partial x}}{{/partial}}
-      </div>
-    `)
-    expect(ast[0].children).toBe(undefined)
-  }
-  catch {
-    hasError = true
-  }
-
-  expect(hasError).toBe(false)
-
-})
-
 
 it('结构完整', () => {
 

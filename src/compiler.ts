@@ -1191,7 +1191,7 @@ export function compile(content: string): Branch[] {
         if (terms[0]) {
           const literal = string.trim(terms[0]),
 
-          index = string.trim(terms[1]),
+          index = terms[1] ? string.trim(terms[1]) : env.UNDEFINED,
 
           match = literal.match(rangePattern)
 

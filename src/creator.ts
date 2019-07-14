@@ -54,7 +54,7 @@ export function createProperty(name: string, hint: PropertyHint, value?: string 
   }
 }
 
-export function createEach(from: ExpressionNode, to: ExpressionNode | void, equal: boolean, index: string): Each {
+export function createEach(from: ExpressionNode, to: ExpressionNode | void, equal: boolean, index: string | void): Each {
   return {
     type: nodeType.EACH,
     from,

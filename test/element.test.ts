@@ -14,7 +14,7 @@ test('匹配开始结束标签', () => {
   try {
     compile('<div></span>')
   }
-  catch {
+  catch (e) {
     hasError = true
   }
 
@@ -25,7 +25,7 @@ test('匹配开始结束标签', () => {
   try {
     compile('<div><a></b></div>')
   }
-  catch {
+  catch (e) {
     hasError = true
   }
 
@@ -173,26 +173,22 @@ test('template', () => {
   expect(hasError).toBe(true)
 
 
-  hasError = false
-
-  try {
-    let ast = compile('<Dog><template slot="xx"></template></Dog>')
-    let { children } = ast[0]
-    expect(children != null).toBe(true)
-    if (children) {
-      expect(children[0].type).toBe(nodeType.ELEMENT)
-      expect((children[0] as Element).slot != null).toBe(true)
-      expect((children[0] as Element).slot).toBe('xx')
-      expect((children[0] as Element).attrs).toBe(undefined)
-      expect((children[0] as Element).children).toBe(undefined)
-    }
-
+  let ast = compile('<Dog><template slot="xx">11</template></Dog>')
+  let { children } = ast[0]
+  expect(children != null).toBe(true)
+  if (children) {
+    expect(children[0].type).toBe(nodeType.ELEMENT)
+    expect((children[0] as Element).slot != null).toBe(true)
+    expect((children[0] as Element).slot).toBe('xx')
+    expect((children[0] as Element).attrs).toBe(undefined)
+    expect(Array.isArray((children[0] as Element).children)).toBe(true)
   }
-  catch (e) {
-    hasError = true
-  }
-  expect(hasError).toBe(false)
 
+})
+
+test('空的 template', () => {
+  let ast = compile('<Dog><template slot="xx"></template></Dog>')
+  expect(ast[0].children).toBe(undefined)
 })
 
 test('复杂元素和简单元素', () => {

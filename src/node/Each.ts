@@ -16,6 +16,6 @@ export default interface Each extends Branch {
 
   equal: boolean
 
-  index: string
+  index: string | void
 
 }
