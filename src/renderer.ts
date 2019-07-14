@@ -70,6 +70,8 @@ export function render(
 
   localPartials: Record<string, Function> = {},
 
+  renderedSlots: Record<string, true> = {},
+
   findValue = function (stack: any[], index: number, key: string, lookup: boolean, depIgnore?: boolean, defaultKeypath?: string): ValueHolder {
 
     let scope = stack[index], keypath = keypathUtil.join(scope.$keypath, key), value: any = stack, holder = globalHolder
@@ -517,6 +519,14 @@ export function render(
       else if (defaultRender) {
         defaultRender()
       }
+    }
+
+    // 不能重复输出相同名称的 slot
+    if (process.env.NODE_ENV === 'development') {
+      if (renderedSlots[name]) {
+        logger.fatal(`The slot "${name}" is rendered.`)
+      }
+      renderedSlots[name] = env.TRUE
     }
 
   },
