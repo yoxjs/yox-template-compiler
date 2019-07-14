@@ -1048,12 +1048,18 @@ export function compile(content: string): Branch[] {
                 fatal('The event name is required.')
               }
             }
-            const [directiveName, diectiveModifier] = string.camelize(event).split(env.RAW_DOT)
+            const [directiveName, diectiveModifier, extra] = string.camelize(event).split(env.RAW_DOT)
             node = creator.createDirective(
               directiveName,
               DIRECTIVE_EVENT,
               diectiveModifier
             )
+            // on-a.b.c
+            if (process.env.NODE_ENV === 'development') {
+              if (is.string(extra)) {
+                fatal('Invalid event namespace.')
+              }
+            }
           }
           // 当一个元素绑定了多个事件时，可分别指定每个事件的 lazy
           // 当只有一个事件时，可简写成 lazy
@@ -1076,12 +1082,18 @@ export function compile(content: string): Branch[] {
                 fatal('The directive name is required.')
               }
             }
-            const [directiveName, diectiveModifier] = string.camelize(custom).split(env.RAW_DOT)
+            const [directiveName, diectiveModifier, extra] = string.camelize(custom).split(env.RAW_DOT)
             node = creator.createDirective(
               directiveName,
               DIRECTIVE_CUSTOM,
               diectiveModifier
             )
+            // o-a.b.c
+            if (process.env.NODE_ENV === 'development') {
+              if (is.string(extra)) {
+                fatal('Invalid directive modifier.')
+              }
+            }
           }
           else {
             node = createAttribute(currentElement, name)

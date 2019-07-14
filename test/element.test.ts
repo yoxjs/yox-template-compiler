@@ -31,6 +31,25 @@ test('匹配开始结束标签', () => {
 
   expect(hasError).toBe(true)
 
+
+  hasError = false
+
+  try {
+    compile(`
+      <div>
+        {{#if a}}
+          1
+        {{else}}
+          2
+    `)
+  }
+  catch (e) {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
 })
 
 test('简单的标签组合', () => {
