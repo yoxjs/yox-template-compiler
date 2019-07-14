@@ -25,47 +25,6 @@ function checkValue(node: any, text: string) {
 
 
 
-
-it('延展属性', () => {
-
-  let hasError = false
-
-  // 延展属性只能用于组件
-  try {
-    compile('<div {{...obj}}></div>')
-  }
-  catch {
-    hasError = true
-  }
-
-  expect(hasError).toBe(true)
-
-  hasError = false
-
-  try {
-    compile('<Dog {{...obj}}></Dog>')
-  }
-  catch {
-    hasError = true
-  }
-
-  expect(hasError).toBe(false)
-
-  // 只能用于属性层级
-  hasError = false
-
-  try {
-    compile('<Dog>{{...obj}}</Dog>')
-  }
-  catch {
-    hasError = true
-  }
-
-  expect(hasError).toBe(true)
-
-})
-
-
 it('event', () => {
 
   let hasError = false
@@ -451,65 +410,6 @@ it('自动 binding', () => {
 
 })
 
-it('lazy 指令自动转型', () => {
-
-
-
-})
-
-
-
-
-it('if', () => {
-
-  let ast: any
-
-  ast = compile('{{#if x > 1}}a{{else if x < 0}}b{{else}}c{{/if}}')
-
-  expect(ast.length).toBe(1)
-  expect(ast[0].type).toBe(nodeType.IF)
-  expect(ast[0].children.length).toBe(1)
-  expect(ast[0].children[0].type).toBe(nodeType.TEXT)
-  expect(ast[0].children[0].text).toBe('a')
-
-  expect(ast[0].next.type).toBe(nodeType.ELSE_IF)
-  expect(ast[0].next.children.length).toBe(1)
-  expect(ast[0].next.children[0].type).toBe(nodeType.TEXT)
-  expect(ast[0].next.children[0].text).toBe('b')
-
-  expect(ast[0].next.next.type).toBe(nodeType.ELSE)
-  expect(ast[0].next.next.children.length).toBe(1)
-  expect(ast[0].next.next.children[0].type).toBe(nodeType.TEXT)
-  expect(ast[0].next.next.children[0].text).toBe('c')
-
-  ast = compile('{{#if x > 1}}a{{else if x < 0}}{{else}}c{{/if}}')
-  expect(ast[0].next.children).toBe(undefined)
-
-  let hasError = false
-
-  try {
-    ast = compile('{{#if x > 1}}{{else if x < 0}}{{else}}{{/if}}')
-    expect(ast.length).toBe(0)
-  }
-  catch {
-    hasError = true
-  }
-
-  expect(hasError).toBe(false)
-
-  hasError = false
-
-  try {
-    ast = compile('{{#if x > 1}}{{/if}}')
-    expect(ast.length).toBe(0)
-  }
-  catch (e) {
-    hasError = true
-  }
-
-  expect(hasError).toBe(false)
-
-})
 
 it('结构完整', () => {
 
