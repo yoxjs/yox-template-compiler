@@ -2,11 +2,11 @@ import {
   HINT_STRING,
   HINT_NUMBER,
   HINT_BOOLEAN,
-} from '../../../yox-config/src/config'
+} from 'yox-config/src/config'
 
-import * as env from '../../../yox-common/src/util/env'
-import * as array from '../../../yox-common/src/util/array'
-import * as string from '../../../yox-common/src/util/string'
+import * as env from 'yox-common/src/util/env'
+import * as array from 'yox-common/src/util/array'
+import * as string from 'yox-common/src/util/string'
 
 import Element from '../node/Element'
 import Attribute from '../node/Attribute'

@@ -1,6 +1,6 @@
 import { compile } from '../src/compiler'
 import * as nodeType from '../src/nodeType'
-import * as exprNodeType from '../../yox-expression-compiler/src/nodeType'
+import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 
 import Node from '../src/node/Node'
 import Element from '../src/node/Element'

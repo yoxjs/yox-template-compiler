@@ -1,6 +1,6 @@
 import { compile } from '../src/compiler'
 import * as nodeType from '../src/nodeType'
-import * as config from '../../yox-config/src/config'
+import * as config from 'yox-config/src/config'
 
 import Text from '../src/node/Text'
 import Element from '../src/node/Element'

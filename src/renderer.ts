@@ -1,6 +1,6 @@
 import {
   SLOT_DATA_PREFIX,
-} from '../../yox-config/src/config'
+} from 'yox-config/src/config'
 
 import {
   Data,
@@ -8,45 +8,45 @@ import {
   LazyValue,
   ValueHolder,
   PropertyHint,
-} from '../../yox-type/src/type'
+} from 'yox-type/src/type'
 
 import {
   VNode,
-} from '../../yox-type/src/vnode'
+} from 'yox-type/src/vnode'
 
 import {
   DirectiveHooks,
   TransitionHooks,
-} from '../../yox-type/src/hooks'
+} from 'yox-type/src/hooks'
 
 import {
   YoxInterface,
-} from '../../yox-type/src/yox'
+} from 'yox-type/src/yox'
 
 import {
   DIRECTIVE_BINDING,
   DIRECTIVE_MODEL,
   DIRECTIVE_EVENT,
   DIRECTIVE_CUSTOM,
-} from '../../yox-config/src/config'
+} from 'yox-config/src/config'
 
-import isDef from '../../yox-common/src/function/isDef'
-import isUndef from '../../yox-common/src/function/isUndef'
-import execute from '../../yox-common/src/function/execute'
-import toString from '../../yox-common/src/function/toString'
+import isDef from 'yox-common/src/function/isDef'
+import isUndef from 'yox-common/src/function/isUndef'
+import execute from 'yox-common/src/function/execute'
+import toString from 'yox-common/src/function/toString'
 
-import * as is from '../../yox-common/src/util/is'
-import * as env from '../../yox-common/src/util/env'
-import * as array from '../../yox-common/src/util/array'
-import * as object from '../../yox-common/src/util/object'
-import * as string from '../../yox-common/src/util/string'
-import * as logger from '../../yox-common/src/util/logger'
-import * as keypathUtil from '../../yox-common/src/util/keypath'
+import * as is from 'yox-common/src/util/is'
+import * as env from 'yox-common/src/util/env'
+import * as array from 'yox-common/src/util/array'
+import * as object from 'yox-common/src/util/object'
+import * as string from 'yox-common/src/util/string'
+import * as logger from 'yox-common/src/util/logger'
+import * as keypathUtil from 'yox-common/src/util/keypath'
 
-import globalHolder from '../../yox-common/src/util/holder'
-import CustomEvent from '../../yox-common/src/util/CustomEvent'
+import globalHolder from 'yox-common/src/util/holder'
+import CustomEvent from 'yox-common/src/util/CustomEvent'
 
-import Observer from '../../yox-observer/src/Observer'
+import Observer from 'yox-observer/src/Observer'
 
 function setPair(target: any, name: string, key: string, value: any) {
   const data = target[name] || (target[name] = {})
