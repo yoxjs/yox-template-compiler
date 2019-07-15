@@ -1,6 +1,6 @@
 import {
   Data,
-} from 'yox-type/src/type'
+} from 'yox-common/src/type/type'
 
 import {
   SLOT_DATA_PREFIX,

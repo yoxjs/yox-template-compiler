@@ -1,6 +1,6 @@
 import {
   PropertyHint,
-} from 'yox-type/src/type'
+} from 'yox-common/src/type/type'
 
 import * as env from 'yox-common/src/util/env'
 import * as keypathUtil from 'yox-common/src/util/keypath'

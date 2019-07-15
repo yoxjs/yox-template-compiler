@@ -8,20 +8,20 @@ import {
   LazyValue,
   ValueHolder,
   PropertyHint,
-} from 'yox-type/src/type'
+} from 'yox-common/src/type/type'
 
 import {
   VNode,
-} from 'yox-type/src/vnode'
+} from 'yox-common/src/type/vnode'
 
 import {
   DirectiveHooks,
   TransitionHooks,
-} from 'yox-type/src/hooks'
+} from 'yox-common/src/type/hooks'
 
 import {
   YoxInterface,
-} from 'yox-type/src/yox'
+} from 'yox-common/src/type/yox'
 
 import {
   DIRECTIVE_BINDING,
