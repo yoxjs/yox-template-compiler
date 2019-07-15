@@ -61,7 +61,7 @@ export function render(
   template: Function,
   filters: Record<string, Function>,
   partials: Record<string, Function>,
-  directives: Record<string, DirectiveHooks>,
+  directives: Record<string, DirectiveHooks<YoxInterface>>,
   transitions: Record<string, TransitionHooks>
 ) {
 
