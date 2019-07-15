@@ -1,4 +1,8 @@
 import {
+  SLOT_DATA_PREFIX,
+} from '../../yox-config/src/config'
+
+import {
   Data,
   Listener,
   LazyValue,
@@ -35,6 +39,7 @@ import * as is from '../../yox-common/src/util/is'
 import * as env from '../../yox-common/src/util/env'
 import * as array from '../../yox-common/src/util/array'
 import * as object from '../../yox-common/src/util/object'
+import * as string from '../../yox-common/src/util/string'
 import * as logger from '../../yox-common/src/util/logger'
 import * as keypathUtil from '../../yox-common/src/util/keypath'
 
@@ -524,7 +529,7 @@ export function render(
     // 不能重复输出相同名称的 slot
     if (process.env.NODE_ENV === 'development') {
       if (renderedSlots[name]) {
-        logger.fatal(`The slot "${name}" can't render more than one time.`)
+        logger.fatal(`The slot "${string.slice(name, SLOT_DATA_PREFIX.length)}" can't render more than one time.`)
       }
       renderedSlots[name] = env.TRUE
     }
