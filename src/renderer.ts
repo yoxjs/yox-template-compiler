@@ -524,7 +524,7 @@ export function render(
     // 不能重复输出相同名称的 slot
     if (process.env.NODE_ENV === 'development') {
       if (renderedSlots[name]) {
-        logger.fatal(`The slot "${name}" is rendered.`)
+        logger.fatal(`The slot "${name}" can't render more than one time.`)
       }
       renderedSlots[name] = env.TRUE
     }
