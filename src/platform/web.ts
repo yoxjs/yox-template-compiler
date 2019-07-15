@@ -4,7 +4,8 @@ import {
   HINT_BOOLEAN,
 } from 'yox-config/src/config'
 
-import * as env from 'yox-common/src/util/env'
+import * as constant from 'yox-type/src/constant'
+
 import * as array from 'yox-common/src/util/array'
 import * as string from 'yox-common/src/util/string'
 
@@ -103,24 +104,24 @@ export function createAttribute(element: Element, name: string): Attribute | Pro
 export function getAttributeDefaultValue(element: Element, name: string) {
   // 比如 <Dog isLive>
   if (element.isComponent) {
-    return env.TRUE
+    return constant.TRUE
   }
   // <div data-name checked>
   else {
     return string.startsWith(name, 'data-')
-      ? env.EMPTY_STRING
+      ? constant.EMPTY_STRING
       : name
   }
 }
 
 export function createElement(tagName: string) {
 
-  let isSvg = array.has(svgTagNames, tagName), isComponent = env.FALSE
+  let isSvg = array.has(svgTagNames, tagName), isComponent = constant.FALSE
 
   // 是 svg 就不可能是组件
   // 加这个判断的原因是，svg 某些标签含有 连字符 和 大写字母，比较蛋疼
   if (!isSvg && componentNamePattern.test(tagName)) {
-    isComponent = env.TRUE
+    isComponent = constant.TRUE
   }
 
   return creator.createElement(
@@ -133,7 +134,7 @@ export function createElement(tagName: string) {
 
 export function compatElement(element: Element) {
 
-  let { tag, attrs } = element, hasType = env.FALSE, hasValue = env.FALSE
+  let { tag, attrs } = element, hasType = constant.FALSE, hasValue = constant.FALSE
 
   if (attrs) {
     array.each(
@@ -142,13 +143,13 @@ export function compatElement(element: Element) {
 
         const name = attr.type === nodeType.PROPERTY
           ? (attr as Property).name
-          : env.UNDEFINED
+          : constant.UNDEFINED
 
         if (name === 'type') {
-          hasType = env.TRUE
+          hasType = constant.TRUE
         }
-        else if (name === env.RAW_VALUE) {
-          hasValue = env.TRUE
+        else if (name === constant.RAW_VALUE) {
+          hasValue = constant.TRUE
         }
 
       }
@@ -166,7 +167,7 @@ export function compatElement(element: Element) {
   }
   // 低版本 IE 需要给 option 标签强制加 value
   else if (tag === 'option' && !hasValue) {
-    element.isOption = env.TRUE
+    element.isOption = constant.TRUE
   }
 
 }
@@ -174,6 +175,6 @@ export function compatElement(element: Element) {
 export function setElementText(element: Element, text: string) {
   if (htmlEntityPattern.test(text)) {
     element.html = text
-    return env.TRUE
+    return constant.TRUE
   }
 }

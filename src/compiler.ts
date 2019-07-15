@@ -27,10 +27,11 @@ import {
   setElementText,
 } from './platform/web'
 
+import * as constant from 'yox-type/src/constant'
+
 import toNumber from 'yox-common/src/function/toNumber'
 
 import * as is from 'yox-common/src/util/is'
-import * as env from 'yox-common/src/util/env'
 import * as array from 'yox-common/src/util/array'
 import * as string from 'yox-common/src/util/string'
 import * as logger from 'yox-common/src/util/logger'
@@ -209,18 +210,18 @@ export function compile(content: string): Branch[] {
 
       if (currentBranch) {
         if (currentBranch.isStatic && !node.isStatic) {
-          currentBranch.isStatic = env.FALSE
+          currentBranch.isStatic = constant.FALSE
         }
         if (!currentBranch.isComplex) {
           if (node.isComplex || isElement) {
-            currentBranch.isComplex = env.TRUE
+            currentBranch.isComplex = constant.TRUE
           }
           // <div {{#if xx}} xx{{/if}}>
           else if (currentElement
             && currentElement !== currentBranch
             && (isAttribute || isProperty || isDirective)
           ) {
-            currentBranch.isComplex = env.TRUE
+            currentBranch.isComplex = constant.TRUE
           }
         }
       }
@@ -284,7 +285,7 @@ export function compile(content: string): Branch[] {
         else if (!currentElement) {
           removeComment(children)
           if (!children.length) {
-            node.children = env.UNDEFINED
+            node.children = constant.UNDEFINED
           }
         }
 
@@ -338,13 +339,13 @@ export function compile(content: string): Branch[] {
     // 按照目前的解析逻辑，是根据定界符进行模板分拆
     // 一旦出现插值，children 长度必然大于 1
 
-    let openIndex = env.MINUS_ONE,
+    let openIndex = constant.MINUS_ONE,
 
-    openText = env.EMPTY_STRING,
+    openText = constant.EMPTY_STRING,
 
-    closeIndex = env.MINUS_ONE,
+    closeIndex = constant.MINUS_ONE,
 
-    closeText = env.EMPTY_STRING
+    closeText = constant.EMPTY_STRING
 
     array.each(
       children,
@@ -385,7 +386,7 @@ export function compile(content: string): Branch[] {
               children.splice(startIndex, endIndex - startIndex + 1)
 
               // 重置，再继续寻找结束 index
-              openIndex = closeIndex = env.MINUS_ONE
+              openIndex = closeIndex = constant.MINUS_ONE
             }
           }
           else {
@@ -401,7 +402,7 @@ export function compile(content: string): Branch[] {
           }
         }
       },
-      env.TRUE
+      constant.TRUE
     )
   },
 
@@ -425,7 +426,7 @@ export function compile(content: string): Branch[] {
     // 唯独需要在这特殊处理的是 html 实体
     // 但这只是 WEB 平台的特殊逻辑，所以丢给 platform 处理
     if (setElementText(element, child.text)) {
-      element.children = env.UNDEFINED
+      element.children = constant.UNDEFINED
     }
 
   },
@@ -434,7 +435,7 @@ export function compile(content: string): Branch[] {
 
     if (!element.isComponent && !element.slot && !child.safe) {
       element.html = child.expr
-      element.children = env.UNDEFINED
+      element.children = constant.UNDEFINED
     }
 
   },
@@ -442,7 +443,7 @@ export function compile(content: string): Branch[] {
   processPropertyEmptyChildren = function (element: Element, prop: Property) {
 
     if (prop.hint === HINT_BOOLEAN) {
-      prop.value = env.TRUE
+      prop.value = constant.TRUE
     }
     else {
       // string 或 number 类型的属性，如果不写值，直接忽略
@@ -459,13 +460,13 @@ export function compile(content: string): Branch[] {
       prop.value = toNumber(text)
     }
     else if (prop.hint === HINT_BOOLEAN) {
-      prop.value = text === env.RAW_TRUE || text === prop.name
+      prop.value = text === constant.RAW_TRUE || text === prop.name
     }
     else {
       prop.value = text
     }
 
-    prop.children = env.UNDEFINED
+    prop.children = constant.UNDEFINED
 
   },
 
@@ -474,13 +475,13 @@ export function compile(content: string): Branch[] {
     const { expr } = child
 
     prop.expr = expr
-    prop.children = env.UNDEFINED
+    prop.children = constant.UNDEFINED
 
     // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
     // <div class="{{className}}">
 
     if (expr.type === exprNodeType.IDENTIFIER) {
-      prop.binding = env.TRUE
+      prop.binding = constant.TRUE
     }
 
   },
@@ -501,7 +502,7 @@ export function compile(content: string): Branch[] {
   processAttributeSingleText = function (attr: Attribute, child: Text) {
 
     attr.value = child.text
-    attr.children = env.UNDEFINED
+    attr.children = constant.UNDEFINED
 
   },
 
@@ -510,20 +511,20 @@ export function compile(content: string): Branch[] {
     const { expr } = child
 
     attr.expr = expr
-    attr.children = env.UNDEFINED
+    attr.children = constant.UNDEFINED
 
     // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
     // <div class="{{className}}">
 
     if (expr.type === exprNodeType.IDENTIFIER) {
-      attr.binding = env.TRUE
+      attr.binding = constant.TRUE
     }
 
   },
 
   processDirectiveEmptyChildren = function (element: Element, directive: Directive) {
 
-    directive.value = env.TRUE
+    directive.value = constant.TRUE
 
   },
 
@@ -590,7 +591,7 @@ export function compile(content: string): Branch[] {
 
             // native 有特殊用处，不能给业务层用
             if (eventNamespacePattern.test(raw)
-              && raw.split(env.RAW_DOT)[1] === MODIFER_NATIVE
+              && raw.split(constant.RAW_DOT)[1] === MODIFER_NATIVE
             ) {
               fatal(`The event namespace "${MODIFER_NATIVE}" is not permitted.`)
             }
@@ -634,7 +635,7 @@ export function compile(content: string): Branch[] {
       directive.value = text
     }
 
-    directive.children = env.UNDEFINED
+    directive.children = constant.UNDEFINED
 
   },
 
@@ -656,14 +657,14 @@ export function compile(content: string): Branch[] {
 
     hasNext: boolean | void
 
-    while (env.TRUE) {
+    while (constant.TRUE) {
       if (currentNode.children) {
         if (!hasNext) {
           if (currentNode.next) {
             delete currentNode.next
           }
         }
-        hasChildren = hasNext = env.TRUE
+        hasChildren = hasNext = constant.TRUE
       }
       prevNode = currentNode.prev
       if (prevNode) {
@@ -700,7 +701,7 @@ export function compile(content: string): Branch[] {
 
   checkElement = function (element: Element) {
 
-    const { tag, slot } = element, isTemplate = tag === env.RAW_TEMPLATE
+    const { tag, slot } = element, isTemplate = tag === constant.RAW_TEMPLATE
 
     if (process.env.NODE_ENV === 'development') {
       if (isTemplate) {
@@ -724,7 +725,7 @@ export function compile(content: string): Branch[] {
       replaceChild(element)
     }
     // <slot /> 如果没写 name，自动加上默认名称
-    else if (tag === env.RAW_SLOT && !element.name) {
+    else if (tag === constant.RAW_SLOT && !element.name) {
       element.name = SLOT_NAME_DEFAULT
     }
     else {
@@ -749,7 +750,7 @@ export function compile(content: string): Branch[] {
     const { name, value } = attr,
 
     // 这三个属性值要求是字符串
-    isStringValueRequired = name === env.RAW_NAME || name === env.RAW_SLOT
+    isStringValueRequired = name === constant.RAW_NAME || name === constant.RAW_SLOT
 
     if (process.env.NODE_ENV === 'development') {
       // 因为要拎出来给 element，所以不能用 if
@@ -757,7 +758,7 @@ export function compile(content: string): Branch[] {
         fatal(`The "${name}" can't be used in an if block.`)
       }
       // 对于所有特殊属性来说，空字符串是肯定不行的，没有任何意义
-      if (value === env.EMPTY_STRING) {
+      if (value === constant.EMPTY_STRING) {
         fatal(`The value of "${name}" is empty.`)
       }
       else if (isStringValueRequired && string.falsy(value)) {
@@ -772,7 +773,7 @@ export function compile(content: string): Branch[] {
 
   isSpecialAttr = function (element: Element, attr: Attribute): boolean {
     return helper.specialAttrs[attr.name]
-      || element.tag === env.RAW_SLOT && attr.name === env.RAW_NAME
+      || element.tag === constant.RAW_SLOT && attr.name === constant.RAW_NAME
   },
 
   replaceChild = function (oldNode: Node, newNode?: Node) {
@@ -808,7 +809,7 @@ export function compile(content: string): Branch[] {
               delete (currentBranch as Element).attrs
             }
             else {
-              currentBranch.children = env.UNDEFINED
+              currentBranch.children = constant.UNDEFINED
             }
           }
         }
@@ -903,7 +904,7 @@ export function compile(content: string): Branch[] {
         // 方便 virtual dom 进行对比
         // 这个跟 virtual dom 的实现原理密切相关，不加 stub 会有问题
         if (!currentElement) {
-          (node as If).stub = env.TRUE
+          (node as If).stub = constant.TRUE
         }
         array.push(ifStack, node)
       }
@@ -917,11 +918,11 @@ export function compile(content: string): Branch[] {
       // 这里不处理树枝节点的进栈，因为当树枝节点出栈时，还有一次处理机会，那时它的 isStatic 已确定下来，不会再变
       if (currentBranch) {
         if (currentBranch.isStatic && !node.isStatic) {
-          currentBranch.isStatic = env.FALSE
+          currentBranch.isStatic = constant.FALSE
         }
         // 当前树枝节点是简单节点，一旦加入了一个复杂子节点，当前树枝节点变为复杂节点
         if (!currentBranch.isComplex && node.isComplex) {
-          currentBranch.isComplex = env.TRUE
+          currentBranch.isComplex = constant.TRUE
         }
       }
     }
@@ -942,7 +943,7 @@ export function compile(content: string): Branch[] {
     // 如果这里放开了，组件就会有一个 slot
 
     // trim 文本开始和结束位置的换行符
-    text = text.replace(breaklinePattern, env.EMPTY_STRING)
+    text = text.replace(breaklinePattern, constant.EMPTY_STRING)
     if (text) {
       addChild(
         creator.createText(text)
@@ -958,7 +959,7 @@ export function compile(content: string): Branch[] {
         // 如果 <tag 前面有别的字符，会走进第四个 parser
         if (match && match.index === 0) {
           const tag = match[2]
-          if (match[1] === env.RAW_SLASH) {
+          if (match[1] === constant.RAW_SLASH) {
             /**
              * 处理可能存在的自闭合元素，如下
              *
@@ -981,7 +982,7 @@ export function compile(content: string): Branch[] {
              * </Component>
              */
             if (process.env.NODE_ENV === 'development') {
-              if (tag === env.RAW_TEMPLATE) {
+              if (tag === constant.RAW_TEMPLATE) {
                 const lastNode = array.last(nodeStack)
                 if (!lastNode || !(lastNode as Element).isComponent) {
                   fatal('<template> can only be used within an component children.')
@@ -1007,11 +1008,11 @@ export function compile(content: string): Branch[] {
         if (currentElement && !currentAttribute) {
 
           // 自闭合标签
-          if (match[1] === env.RAW_SLASH) {
+          if (match[1] === constant.RAW_SLASH) {
             popStack(currentElement.type, currentElement.tag)
           }
 
-          currentElement = env.UNDEFINED
+          currentElement = constant.UNDEFINED
         }
         // 处理结束标签的 >
         return match[0]
@@ -1034,9 +1035,9 @@ export function compile(content: string): Branch[] {
 
           let node: Attribute | Directive | Property, name = match[1]
 
-          if (name === DIRECTIVE_MODEL || name === env.RAW_TRANSITION) {
+          if (name === DIRECTIVE_MODEL || name === constant.RAW_TRANSITION) {
             node = creator.createDirective(
-              env.EMPTY_STRING,
+              constant.EMPTY_STRING,
               name
             )
           }
@@ -1048,7 +1049,7 @@ export function compile(content: string): Branch[] {
                 fatal('The event name is required.')
               }
             }
-            const [directiveName, diectiveModifier, extra] = string.camelize(event).split(env.RAW_DOT)
+            const [directiveName, diectiveModifier, extra] = string.camelize(event).split(constant.RAW_DOT)
             node = creator.createDirective(
               directiveName,
               DIRECTIVE_EVENT,
@@ -1070,7 +1071,7 @@ export function compile(content: string): Branch[] {
               lazy = slicePrefix(lazy, directiveSeparator)
             }
             node = creator.createDirective(
-              lazy ? string.camelize(lazy) : env.EMPTY_STRING,
+              lazy ? string.camelize(lazy) : constant.EMPTY_STRING,
               DIRECTIVE_LAZY
             )
           }
@@ -1082,7 +1083,7 @@ export function compile(content: string): Branch[] {
                 fatal('The directive name is required.')
               }
             }
-            const [directiveName, diectiveModifier, extra] = string.camelize(custom).split(env.RAW_DOT)
+            const [directiveName, diectiveModifier, extra] = string.camelize(custom).split(constant.RAW_DOT)
             node = creator.createDirective(
               directiveName,
               DIRECTIVE_CUSTOM,
@@ -1137,12 +1138,12 @@ export function compile(content: string): Branch[] {
           // 否则无法区分 <div a b=""> 中的 a 和 b
           if (!currentAttribute.children) {
             addChild(
-              creator.createText(env.EMPTY_STRING)
+              creator.createText(constant.EMPTY_STRING)
             )
           }
 
           popStack(currentAttribute.type)
-          currentAttribute = env.UNDEFINED
+          currentAttribute = constant.UNDEFINED
 
         }
         // 没有结束引号，整段匹配
@@ -1170,14 +1171,14 @@ export function compile(content: string): Branch[] {
           text = string.slice(content, 0, match.index)
           if (text) {
             addTextChild(
-              text.replace(commentPattern, env.EMPTY_STRING)
+              text.replace(commentPattern, constant.EMPTY_STRING)
             )
           }
         }
         else {
           text = content
           addTextChild(
-            text.replace(commentPattern, env.EMPTY_STRING)
+            text.replace(commentPattern, constant.EMPTY_STRING)
           )
         }
 
@@ -1208,11 +1209,11 @@ export function compile(content: string): Branch[] {
           }
         }
         source = slicePrefix(source, SYNTAX_EACH)
-        const terms = source.replace(/\s+/g, env.EMPTY_STRING).split(':')
+        const terms = source.replace(/\s+/g, constant.EMPTY_STRING).split(':')
         if (terms[0]) {
           const literal = string.trim(terms[0]),
 
-          index = terms[1] ? string.trim(terms[1]) : env.UNDEFINED,
+          index = terms[1] ? string.trim(terms[1]) : constant.UNDEFINED,
 
           match = literal.match(rangePattern)
 
@@ -1234,8 +1235,8 @@ export function compile(content: string): Branch[] {
             if (expr) {
               return creator.createEach(
                 expr,
-                env.UNDEFINED,
-                env.FALSE,
+                constant.UNDEFINED,
+                constant.FALSE,
                 index
               )
             }
@@ -1370,7 +1371,7 @@ export function compile(content: string): Branch[] {
           const match = parse(code)
           if (match) {
             code = string.slice(code, match.length)
-            return env.FALSE
+            return constant.FALSE
           }
         }
       )
@@ -1378,7 +1379,7 @@ export function compile(content: string): Branch[] {
   },
 
   parseBlock = function (code: string) {
-    if (string.charAt(code) === env.RAW_SLASH) {
+    if (string.charAt(code) === constant.RAW_SLASH) {
 
       /**
        * 处理可能存在的自闭合元素，如下
@@ -1391,12 +1392,12 @@ export function compile(content: string): Branch[] {
 
       const name = string.slice(code, 1)
 
-      let type = helper.name2Type[name], isCondition = env.FALSE
+      let type = helper.name2Type[name], isCondition = constant.FALSE
       if (type === nodeType.IF) {
         const node = array.pop(ifStack)
         if (node) {
           type = node.type
-          isCondition = env.TRUE
+          isCondition = constant.TRUE
         }
         else if (process.env.NODE_ENV === 'development') {
           fatal(`The "if" block is closing, but it does't opened.`)
@@ -1416,7 +1417,7 @@ export function compile(content: string): Branch[] {
           const node = parse(code)
           if (node) {
             addChild(node)
-            return env.FALSE
+            return constant.FALSE
           }
         }
       )
@@ -1467,7 +1468,7 @@ export function compile(content: string): Branch[] {
     }
     else {
       // 到头了
-      return env.TRUE
+      return constant.TRUE
     }
 
   },
@@ -1482,7 +1483,7 @@ export function compile(content: string): Branch[] {
   // 因为存在 mustache 注释内包含插值的情况
   // 这里把流程设计为先标记切片的位置，标记过程中丢弃无效的 block
   // 最后处理有效的 block
-  while (env.TRUE) {
+  while (constant.TRUE) {
     addIndex(nextIndex)
     openBlockIndex = string.indexOf(content, '{{', nextIndex)
     if (openBlockIndex >= nextIndex) {
@@ -1507,7 +1508,7 @@ export function compile(content: string): Branch[] {
         addIndex(blockMode)
 
         // 打开一个 block 就入栈一个
-        array.push(blockStack, env.TRUE)
+        array.push(blockStack, constant.TRUE)
 
         if (openBlockIndex < length) {
 

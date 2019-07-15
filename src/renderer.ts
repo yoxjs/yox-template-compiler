@@ -8,20 +8,21 @@ import {
   LazyValue,
   ValueHolder,
   PropertyHint,
-} from 'yox-common/src/type/type'
+} from 'yox-type/src/type'
 
 import {
   VNode,
-} from 'yox-common/src/type/vnode'
+} from 'yox-type/src/vnode'
 
 import {
   DirectiveHooks,
   TransitionHooks,
-} from 'yox-common/src/type/hooks'
+} from 'yox-type/src/hooks'
 
 import {
   YoxInterface,
-} from 'yox-common/src/type/yox'
+  CustomEvent,
+} from 'yox-type/src/yox'
 
 import {
   DIRECTIVE_BINDING,
@@ -30,13 +31,14 @@ import {
   DIRECTIVE_CUSTOM,
 } from 'yox-config/src/config'
 
+import * as constant from 'yox-type/src/constant'
+
 import isDef from 'yox-common/src/function/isDef'
 import isUndef from 'yox-common/src/function/isUndef'
 import execute from 'yox-common/src/function/execute'
 import toString from 'yox-common/src/function/toString'
 
 import * as is from 'yox-common/src/util/is'
-import * as env from 'yox-common/src/util/env'
 import * as array from 'yox-common/src/util/array'
 import * as object from 'yox-common/src/util/object'
 import * as string from 'yox-common/src/util/string'
@@ -44,7 +46,6 @@ import * as logger from 'yox-common/src/util/logger'
 import * as keypathUtil from 'yox-common/src/util/keypath'
 
 import globalHolder from 'yox-common/src/util/holder'
-import CustomEvent from 'yox-common/src/util/CustomEvent'
 
 import Observer from 'yox-observer/src/Observer'
 
@@ -65,7 +66,7 @@ export function render(
   transitions: Record<string, TransitionHooks>
 ) {
 
-  let $scope: Data = { $keypath: env.EMPTY_STRING },
+  let $scope: Data = { $keypath: constant.EMPTY_STRING },
 
   $stack = [ $scope ],
 
@@ -99,11 +100,11 @@ export function render(
       // 比如 new Array(10) 然后遍历这个数组，每一项肯定是空
 
       // 取 this
-      if (key === env.EMPTY_STRING) {
+      if (key === constant.EMPTY_STRING) {
         value = scope
       }
       // 取 this.xx
-      else if (scope != env.NULL && isDef(scope[key])) {
+      else if (scope != constant.NULL && isDef(scope[key])) {
         value = scope[key]
       }
     }
@@ -127,7 +128,7 @@ export function render(
           holder.keypath = key
         }
         else {
-          holder.value = env.UNDEFINED
+          holder.value = constant.UNDEFINED
           holder.keypath = defaultKeypath
         }
         return holder
@@ -164,7 +165,7 @@ export function render(
 
       if (event instanceof CustomEvent) {
 
-        let result: any = env.UNDEFINED
+        let result: any = constant.UNDEFINED
 
         if (args) {
           const scope = array.last(stack)
@@ -173,7 +174,7 @@ export function render(
             scope.$data = data
             result = execute(method, context, args(stack))
             scope.$event =
-            scope.$data = env.UNDEFINED
+            scope.$data = constant.UNDEFINED
           }
         }
         else {
@@ -187,7 +188,7 @@ export function render(
         execute(
           method,
           context,
-          args ? args(stack) : env.UNDEFINED
+          args ? args(stack) : constant.UNDEFINED
         )
       }
 
@@ -209,7 +210,7 @@ export function render(
       }
       else {
         const textVnode: any = {
-          isText: env.TRUE,
+          isText: constant.TRUE,
           text,
           context,
           keypath: $scope.$keypath,
@@ -274,7 +275,7 @@ export function render(
       DIRECTIVE_MODEL,
       {
         ns: DIRECTIVE_MODEL,
-        name: env.EMPTY_STRING,
+        name: constant.EMPTY_STRING,
         key: DIRECTIVE_MODEL,
         value: holder.value,
         modifier: holder.keypath,
@@ -350,8 +351,8 @@ export function render(
         value,
         hooks,
         modifier,
-        getter: getter ? createGetter(getter, $stack) : env.UNDEFINED,
-        handler: method ? createMethodListener(method, args, $stack) : env.UNDEFINED,
+        getter: getter ? createGetter(getter, $stack) : constant.UNDEFINED,
+        handler: method ? createMethodListener(method, args, $stack) : constant.UNDEFINED,
       }
     )
 
@@ -362,7 +363,7 @@ export function render(
     const { value, keypath } = holder
 
     // 如果为 null 或 undefined，则不需要 warn
-    if (value != env.NULL) {
+    if (value != constant.NULL) {
       // 数组也算一种对象，要排除掉
       if (is.object(value) && !is.array(value)) {
 
@@ -381,9 +382,9 @@ export function render(
             key,
             {
               ns: DIRECTIVE_BINDING,
-              name: env.EMPTY_STRING,
+              name: constant.EMPTY_STRING,
               key,
-              modifier: keypathUtil.join(keypath, env.RAW_WILDCARD),
+              modifier: keypathUtil.join(keypath, constant.RAW_WILDCARD),
               hooks: directives[DIRECTIVE_BINDING],
             }
           )
@@ -415,7 +416,7 @@ export function render(
     if (attrs) {
       $vnode = vnode
       attrs()
-      $vnode = env.UNDEFINED
+      $vnode = constant.UNDEFINED
     }
 
     // childs 和 slots 不可能同时存在
@@ -432,7 +433,7 @@ export function render(
           vnodeStack.push([])
           slot()
           const vnodes = array.pop(vnodeStack) as VNode[]
-          renderSlots[name] = vnodes.length ? vnodes : env.UNDEFINED
+          renderSlots[name] = vnodes.length ? vnodes : constant.UNDEFINED
         }
       )
       vnode.slots = renderSlots
@@ -474,7 +475,7 @@ export function render(
     runtimeKeypath: string[]
   ) {
     array.unshift(runtimeKeypath, identifier)
-    return array.join(runtimeKeypath, env.RAW_DOT)
+    return array.join(runtimeKeypath, constant.RAW_DOT)
   },
 
   renderExpressionMemberLiteral = function (
@@ -484,11 +485,11 @@ export function render(
     holder: boolean | void
   ) {
     if (isDef(runtimeKeypath)) {
-      staticKeypath = array.join(runtimeKeypath as string[], env.RAW_DOT)
+      staticKeypath = array.join(runtimeKeypath as string[], constant.RAW_DOT)
     }
     const match = object.get(value, staticKeypath as string)
-    globalHolder.keypath = env.UNDEFINED
-    globalHolder.value = match ? match.value : env.UNDEFINED
+    globalHolder.keypath = constant.UNDEFINED
+    globalHolder.value = match ? match.value : constant.UNDEFINED
     return holder ? globalHolder : globalHolder.value
   },
 
@@ -497,9 +498,9 @@ export function render(
     args: any[] | void,
     holder: boolean | void
   ) {
-    globalHolder.keypath = env.UNDEFINED
+    globalHolder.keypath = constant.UNDEFINED
     // 当 holder 为 true, args 为空时，args 会传入 false
-    globalHolder.value = execute(fn, context, args || env.UNDEFINED)
+    globalHolder.value = execute(fn, context, args || constant.UNDEFINED)
     return holder ? globalHolder : globalHolder.value
   },
 
@@ -531,7 +532,7 @@ export function render(
       if (renderedSlots[name]) {
         logger.fatal(`The slot "${string.slice(name, SLOT_DATA_PREFIX.length)}" can't render more than one time.`)
       }
-      renderedSlots[name] = env.TRUE
+      renderedSlots[name] = constant.TRUE
     }
 
   },
@@ -636,8 +637,8 @@ export function render(
           value[i],
           i,
           keypath
-            ? keypathUtil.join(keypath, env.EMPTY_STRING + i)
-            : env.EMPTY_STRING,
+            ? keypathUtil.join(keypath, constant.EMPTY_STRING + i)
+            : constant.EMPTY_STRING,
           index,
           length
         )
@@ -651,7 +652,7 @@ export function render(
           key,
           keypath
             ? keypathUtil.join(keypath, key)
-            : env.EMPTY_STRING,
+            : constant.EMPTY_STRING,
           index
         )
       }
@@ -674,7 +675,7 @@ export function render(
           generate,
           i,
           count++,
-          env.EMPTY_STRING,
+          constant.EMPTY_STRING,
           index
         )
       }
@@ -685,7 +686,7 @@ export function render(
           generate,
           i,
           count++,
-          env.EMPTY_STRING,
+          constant.EMPTY_STRING,
           index
         )
       }
@@ -708,7 +709,7 @@ export function render(
           generate,
           i,
           count++,
-          env.EMPTY_STRING,
+          constant.EMPTY_STRING,
           index
         )
       }
@@ -719,7 +720,7 @@ export function render(
           generate,
           i,
           count++,
-          env.EMPTY_STRING,
+          constant.EMPTY_STRING,
           index
         )
       }

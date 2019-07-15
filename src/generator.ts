@@ -1,6 +1,6 @@
 import {
   Data,
-} from 'yox-common/src/type/type'
+} from 'yox-type/src/type'
 
 import {
   SLOT_DATA_PREFIX,
@@ -11,11 +11,12 @@ import {
   DIRECTIVE_CUSTOM,
 } from 'yox-config/src/config'
 
+import * as constant from 'yox-type/src/constant'
+
 import isDef from 'yox-common/src/function/isDef'
 import isUndef from 'yox-common/src/function/isUndef'
 
 import * as is from 'yox-common/src/util/is'
-import * as env from 'yox-common/src/util/env'
 import * as array from 'yox-common/src/util/array'
 import * as string from 'yox-common/src/util/string'
 import * as object from 'yox-common/src/util/object'
@@ -154,7 +155,7 @@ function stringifyObject(obj: object): string {
 }
 
 function stringifyFunction(result: string | void, arg?: string): string {
-  return `${env.RAW_FUNCTION}(${arg || env.EMPTY_STRING}){${result || env.EMPTY_STRING}}`
+  return `${constant.RAW_FUNCTION}(${arg || constant.EMPTY_STRING}){${result || constant.EMPTY_STRING}}`
 }
 
 function stringifyGroup(code: string): string {
@@ -183,7 +184,7 @@ function stringifyExpressionVnode(expr: ExpressionNode, toString: boolean | void
 }
 
 function stringifyExpressionArg(expr: ExpressionNode): string {
-  return renderExpression(expr, env.FALSE, env.FALSE, ARG_STACK)
+  return renderExpression(expr, constant.FALSE, constant.FALSE, ARG_STACK)
 }
 
 function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[] | void): string | void {
@@ -327,7 +328,7 @@ function getComponentSlots(children: Node[]): string | void {
         if (element.slot) {
           addSlot(
             element.slot,
-            element.tag === env.RAW_TEMPLATE
+            element.tag === constant.RAW_TEMPLATE
               ? element.children
               : [element]
           )
@@ -346,7 +347,7 @@ function getComponentSlots(children: Node[]): string | void {
     function (children, name) {
       // 强制为复杂节点，因为 slot 的子节点不能用字符串拼接的方式来渲染
       result[name] = stringifyFunction(
-        stringifyChildren(children, env.TRUE)
+        stringifyChildren(children, constant.TRUE)
       )
     }
   )
@@ -371,20 +372,20 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
 
   outputSlots: string | void
 
-  if (tag === env.RAW_SLOT) {
+  if (tag === constant.RAW_SLOT) {
     const args = [generator.toString(SLOT_DATA_PREFIX + name)]
     if (children) {
       array.push(
         args,
         stringifyFunction(
-          stringifyChildren(children, env.TRUE)
+          stringifyChildren(children, constant.TRUE)
         )
       )
     }
     return generator.toCall(RENDER_SLOT, args)
   }
 
-  array.push(collectStack, env.FALSE)
+  array.push(collectStack, constant.FALSE)
 
   if (attrs) {
     array.each(
@@ -433,18 +434,18 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
   if (html) {
     data.html = is.string(html)
       ? generator.toString(html)
-      : stringifyExpression(html as ExpressionNode, env.TRUE)
+      : stringifyExpression(html as ExpressionNode, constant.TRUE)
   }
 
   if (isComponent) {
     data.isComponent = generator.TRUE
     if (children) {
-      collectStack[collectStack.length - 1] = env.TRUE
+      collectStack[collectStack.length - 1] = constant.TRUE
       outputSlots = getComponentSlots(children)
     }
   }
   else if (children) {
-    isStringRequired = env.TRUE
+    isStringRequired = constant.TRUE
     collectStack[collectStack.length - 1] = isComplex
     outputChilds = stringifyChildren(children, isComplex)
     if (isComplex) {
@@ -452,7 +453,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
     }
     else {
       data.text = outputChilds
-      outputChilds = env.UNDEFINED
+      outputChilds = constant.UNDEFINED
     }
   }
 
@@ -462,7 +463,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
     stringifyObject(data),
     outputTag,
     array.falsy(outputAttrs)
-      ? env.UNDEFINED
+      ? constant.UNDEFINED
       : stringifyFunction(
           array.join(outputAttrs, generator.COMMA)
         ),
@@ -479,7 +480,7 @@ nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute): string {
       RENDER_BINDING_VNODE,
       [
         generator.toString(node.name),
-        renderExpression(node.expr as ExpressionNode, env.TRUE, env.TRUE)
+        renderExpression(node.expr as ExpressionNode, constant.TRUE, constant.TRUE)
       ]
     )
     : stringifyValue(node.value, node.expr, node.children)
@@ -501,7 +502,7 @@ nodeGenerator[nodeType.PROPERTY] = function (node: Property): string {
       RENDER_BINDING_VNODE,
       [
         generator.toString(node.name),
-        renderExpression(node.expr as ExpressionNode, env.TRUE, env.TRUE),
+        renderExpression(node.expr as ExpressionNode, constant.TRUE, constant.TRUE),
         generator.toString(node.hint)
       ]
     )
@@ -533,7 +534,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
   }
 
   // <div transition="name">
-  if (ns === env.RAW_TRANSITION) {
+  if (ns === constant.RAW_TRANSITION) {
     return generator.toCall(
       RENDER_TRANSITION_VNODE,
       [
@@ -547,7 +548,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
     return generator.toCall(
       RENDER_MODEL_VNODE,
       [
-        renderExpression(expr as ExpressionNode, env.TRUE, env.TRUE)
+        renderExpression(expr as ExpressionNode, constant.TRUE, constant.TRUE)
       ]
     )
   }
@@ -605,8 +606,8 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
       // 取值函数
       // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
       if (expr.type !== exprNodeType.LITERAL) {
-        array.push(args, env.UNDEFINED) // method
-        array.push(args, env.UNDEFINED) // args
+        array.push(args, constant.UNDEFINED) // method
+        array.push(args, constant.UNDEFINED) // args
         array.push(
           args,
           stringifyFunction(
@@ -628,7 +629,7 @@ nodeGenerator[nodeType.SPREAD] = function (node: Spread): string {
   return generator.toCall(
     RENDER_SPREAD_VNODE,
     [
-      renderExpression(node.expr, env.TRUE, node.binding)
+      renderExpression(node.expr, constant.TRUE, node.binding)
     ]
   )
 }
@@ -688,7 +689,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each): string {
           children,
           renderExpression(node.from),
           renderExpression(node.to),
-          node.index ? generator.toString(node.index) : env.UNDEFINED
+          node.index ? generator.toString(node.index) : constant.UNDEFINED
         ]
       )
     }
@@ -698,7 +699,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each): string {
         children,
         renderExpression(node.from),
         renderExpression(node.to),
-        node.index ? generator.toString(node.index) : env.UNDEFINED
+        node.index ? generator.toString(node.index) : constant.UNDEFINED
       ]
     )
   }
@@ -708,8 +709,8 @@ nodeGenerator[nodeType.EACH] = function (node: Each): string {
     RENDER_EACH,
     [
       children,
-      renderExpression(node.from, env.TRUE),
-      node.index ? generator.toString(node.index) : env.UNDEFINED
+      renderExpression(node.from, constant.TRUE),
+      node.index ? generator.toString(node.index) : constant.UNDEFINED
     ]
   )
 

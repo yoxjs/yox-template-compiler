@@ -1,8 +1,9 @@
 import {
   PropertyHint,
-} from 'yox-common/src/type/type'
+} from 'yox-type/src/type'
 
-import * as env from 'yox-common/src/util/env'
+import * as constant from 'yox-type/src/constant'
+
 import * as keypathUtil from 'yox-common/src/util/keypath'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
@@ -27,7 +28,7 @@ import Text from './node/Text'
 export function createAttribute(name: string): Attribute {
   return {
     type: nodeType.ATTRIBUTE,
-    isStatic: env.TRUE,
+    isStatic: constant.TRUE,
     name,
   }
 }
@@ -45,7 +46,7 @@ export function createDirective(name: string, ns: string, modifier?: string): Di
 export function createProperty(name: string, hint: PropertyHint, value?: string | number | boolean, expr?: ExpressionNode, children?: Node[]): Property {
   return {
     type: nodeType.PROPERTY,
-    isStatic: env.TRUE,
+    isStatic: constant.TRUE,
     name,
     hint,
     value,
@@ -61,7 +62,7 @@ export function createEach(from: ExpressionNode, to: ExpressionNode | void, equa
     to,
     equal,
     index,
-    isComplex: env.TRUE,
+    isComplex: constant.TRUE,
   }
 }
 
@@ -72,9 +73,9 @@ export function createElement(tag: string, isSvg: boolean, isStyle: boolean, isC
     isSvg,
     isStyle,
     // 只有 <option> 没有 value 属性时才为 true
-    isOption: env.FALSE,
+    isOption: constant.FALSE,
     isComponent,
-    isStatic: !isComponent && tag !== env.RAW_SLOT,
+    isStatic: !isComponent && tag !== constant.RAW_SLOT,
   }
 }
 
@@ -96,7 +97,7 @@ export function createExpression(expr: ExpressionNode, safe: boolean): Expressio
     type: nodeType.EXPRESSION,
     expr,
     safe,
-    isLeaf: env.TRUE,
+    isLeaf: constant.TRUE,
   }
 }
 
@@ -111,8 +112,8 @@ export function createImport(name: string): Import {
   return {
     type: nodeType.IMPORT,
     name,
-    isComplex: env.TRUE,
-    isLeaf: env.TRUE,
+    isComplex: constant.TRUE,
+    isLeaf: constant.TRUE,
   }
 }
 
@@ -120,7 +121,7 @@ export function createPartial(name: string): Partial {
   return {
     type: nodeType.PARTIAL,
     name,
-    isComplex: env.TRUE,
+    isComplex: constant.TRUE,
   }
 }
 
@@ -129,7 +130,7 @@ export function createSpread(expr: ExpressionNode, binding: boolean): Spread {
     type: nodeType.SPREAD,
     expr,
     binding,
-    isLeaf: env.TRUE,
+    isLeaf: constant.TRUE,
   }
 }
 
@@ -137,7 +138,7 @@ export function createText(text: string): Text {
   return {
     type: nodeType.TEXT,
     text,
-    isStatic: env.TRUE,
-    isLeaf: env.TRUE,
+    isStatic: constant.TRUE,
+    isLeaf: constant.TRUE,
   }
 }

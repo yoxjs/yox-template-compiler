@@ -1,6 +1,6 @@
 import {
   PropertyHint,
-} from 'yox-common/src/type/type'
+} from 'yox-type/src/type'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Branch from './Branch'
