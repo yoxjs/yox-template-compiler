@@ -21,7 +21,6 @@ import {
 
 import {
   YoxInterface,
-  CustomEvent,
 } from 'yox-type/src/yox'
 
 import {
@@ -37,6 +36,7 @@ import isDef from 'yox-common/src/function/isDef'
 import isUndef from 'yox-common/src/function/isUndef'
 import execute from 'yox-common/src/function/execute'
 import toString from 'yox-common/src/function/toString'
+import CustomEvent from 'yox-common/src/util/CustomEvent'
 
 import * as is from 'yox-common/src/util/is'
 import * as array from 'yox-common/src/util/array'
