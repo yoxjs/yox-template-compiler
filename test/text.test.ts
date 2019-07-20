@@ -16,8 +16,55 @@ test('html entity', () => {
   expect(ast[0].type).toBe(nodeType.ELEMENT)
 
   let root = ast[0] as Element
+  expect(root.isComponent).toBe(false)
   expect(root.html).toBe('1&nbsp;2')
   expect(root.children).toBe(undefined)
+
+
+
+  ast = compile(`
+    <Component>1&nbsp;2</Component>
+  `)
+
+  expect(ast.length).toBe(1)
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+
+  root = ast[0] as Element
+  expect(root.isComponent).toBe(true)
+  expect(root.html).toBe(undefined)
+
+
+  ast = compile(`
+    <Component>
+      <template>
+        1&nbsp;2
+      </template>
+    </Component>
+  `)
+
+  expect(ast.length).toBe(1)
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+
+  root = ast[0] as Element
+  let children = root.children
+  expect(Array.isArray(children)).toBe(true)
+  if (children) {
+    expect(children.length).toBe(1)
+    expect(children[0].type).toBe(nodeType.ELEMENT)
+    expect((children[0] as Element).html).toBe(undefined)
+  }
+
+
+  ast = compile(`
+    <slot>1&nbsp;2</slot>
+  `)
+
+  expect(ast.length).toBe(1)
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+
+  root = ast[0] as Element
+  expect(root.isComponent).toBe(false)
+  expect(root.html).toBe(undefined)
 
 
 

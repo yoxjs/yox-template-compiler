@@ -425,7 +425,10 @@ export function compile(content: string): Branch[] {
 
     // 唯独需要在这特殊处理的是 html 实体
     // 但这只是 WEB 平台的特殊逻辑，所以丢给 platform 处理
-    if (setElementText(element, child.text)) {
+    if (!element.isComponent
+      && !helper.specialTags[element.tag]
+      && setElementText(element, child.text)
+    ) {
       element.children = constant.UNDEFINED
     }
 
@@ -433,7 +436,10 @@ export function compile(content: string): Branch[] {
 
   processElementSingleExpression = function (element: Element, child: Expression) {
 
-    if (!element.isComponent && !element.slot && !child.safe) {
+    if (!element.isComponent
+      && !helper.specialTags[element.tag]
+      && !child.safe
+    ) {
       element.html = child.expr
       element.children = constant.UNDEFINED
     }
@@ -1354,7 +1360,10 @@ export function compile(content: string): Branch[] {
         source = string.trim(source)
         const expr = exprCompiler.compile(source)
         if (expr) {
-          return creator.createExpression(expr, blockMode === BLOCK_MODE_SAFE)
+          return creator.createExpression(
+            expr,
+            blockMode === BLOCK_MODE_SAFE
+          )
         }
         if (process.env.NODE_ENV === 'development') {
           fatal(`Invalid expression`)
