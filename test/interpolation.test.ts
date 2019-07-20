@@ -1,10 +1,11 @@
-import { compile } from '../src/compiler'
-import * as nodeType from '../src/nodeType'
+import { compile } from 'yox-template-compiler/src/compiler'
+import * as nodeType from 'yox-template-compiler/src/nodeType'
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
+import ExprNode from 'yox-expression-compiler/src/node/Node'
 
-import Node from '../src/node/Node'
-import Element from '../src/node/Element'
-import Expression from '../src/node/Expression'
+import Node from 'yox-template-compiler/src/node/Node'
+import Element from 'yox-template-compiler/src/node/Element'
+import Expression from 'yox-template-compiler/src/node/Expression'
 
 test('简单插值', () => {
 
@@ -31,8 +32,10 @@ test('危险插值', () => {
   `)
 
   expect(ast[0].children).toBe(undefined)
-  expect((ast[0] as Element).html != null).toBe(true)
 
+  const html = (ast[0] as Element).html
+  expect(typeof html).toBe('object')
+  expect((html as ExprNode).type).toBe(exprNodeType.IDENTIFIER)
 })
 
 test('对象字面量', () => {
