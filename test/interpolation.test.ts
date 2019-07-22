@@ -53,3 +53,77 @@ test('对象字面量', () => {
   expect((children[0] as Expression).expr.type).toBe(exprNodeType.OBJECT)
 
 })
+
+test('error', () => {
+
+  let hasError = false
+
+  try {
+    compile(`
+      <div>
+        11
+        {{{name}}}
+      </div>
+    `)
+  }
+  catch (e) {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+  hasError = false
+
+  try {
+    compile(`
+      <div>
+        {{{name}}}
+        11
+      </div>
+    `)
+  }
+  catch (e) {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+
+  hasError = false
+
+  try {
+    compile(`
+      <div class="{{{name}}}">
+      </div>
+    `)
+  }
+  catch (e) {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+
+
+  hasError = false
+
+  try {
+    compile(`
+      <div>
+        {{#if xx}}
+          {{{name}}}
+        {{/if}}
+      </div>
+    `)
+  }
+  catch (e) {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+})

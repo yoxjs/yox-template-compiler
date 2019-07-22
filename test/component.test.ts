@@ -5,7 +5,7 @@ import Node from 'yox-template-compiler/src/node/Node'
 import Element from 'yox-template-compiler/src/node/Element'
 import Attribute from 'yox-template-compiler/src/node/Attribute'
 
-test('组件元素', () => {
+test('组件名称的识别方式', () => {
 
   let ast = compile('<Dog>')
 

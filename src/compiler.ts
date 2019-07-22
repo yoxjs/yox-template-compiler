@@ -881,9 +881,22 @@ export function compile(content: string): Branch[] {
         //
         // 当 name 属性结束后，条件满足，但此时已不是元素属性层级了
         if (currentElement && currentBranch.type === nodeType.ELEMENT) {
-          const attrs = currentElement.attrs || (currentElement.attrs = [])
+
+          // 属性层级不能使用危险插值
+          if (process.env.NODE_ENV === 'development') {
+            if (type === nodeType.EXPRESSION
+              && !(node as Expression).safe
+            ) {
+              fatal('The dangerous interpolation must be the only child of a HTML element.')
+            }
+          }
+
           // node 没法转型，一堆可能的类型怎么转啊...
-          array.push(attrs, node as any)
+          array.push(
+            currentElement.attrs || (currentElement.attrs = []),
+            node as any
+          )
+
         }
         else {
           const children = currentBranch.children || (currentBranch.children = []),
@@ -897,11 +910,43 @@ export function compile(content: string): Branch[] {
             return
           }
           else {
+
+            if (process.env.NODE_ENV === 'development') {
+              if (lastChild) {
+                // 前后不能有别的 child，危险插值必须独占父元素
+                if (type === nodeType.EXPRESSION
+                  && !(node as Expression).safe
+                ) {
+                  fatal('The dangerous interpolation must be the only child of a HTML element.')
+                }
+                else if (
+                  lastChild.type === nodeType.EXPRESSION
+                  && !(lastChild as Expression).safe
+                ) {
+                  fatal('The dangerous interpolation must be the only child of a HTML element.')
+                }
+              }
+              // 危险插值的父节点必须是 Element
+              else if (currentBranch.type !== nodeType.ELEMENT
+                && type === nodeType.EXPRESSION
+                && !(node as Expression).safe
+              ) {
+                fatal('The dangerous interpolation must be the only child of a HTML element.')
+              }
+            }
+
             array.push(children, node)
           }
         }
       }
       else {
+        if (process.env.NODE_ENV === 'development') {
+          if (type === nodeType.EXPRESSION
+            && !(node as Expression).safe
+          ) {
+            fatal('The dangerous interpolation must be under a HTML element.')
+          }
+        }
         array.push(nodeList, node)
       }
 
@@ -1409,7 +1454,7 @@ export function compile(content: string): Branch[] {
           isCondition = constant.TRUE
         }
         else if (process.env.NODE_ENV === 'development') {
-          fatal(`The "if" block is closing, but it does't opened.`)
+          fatal(`The "if" block is closing, but it's not open yet.`)
         }
       }
 
