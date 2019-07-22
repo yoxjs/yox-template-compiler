@@ -456,11 +456,11 @@ export function render(
 
   renderComponentVnode = function (
     staticTag: string | void,
-    dynamicTag: string | void,
     attrs: Function | void,
     slots: Record<string, Function> | void,
     ref: string | void,
-    key: string | void
+    key: string | void,
+    dynamicTag: string | void
   ) {
 
     let tag: string

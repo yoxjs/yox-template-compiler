@@ -456,13 +456,14 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
   if (isComponent) {
     return generator.toCall(
       RENDER_COMPONENT_VNODE,
+      // 最常用 => 最不常用排序
       [
         staticTag,
-        dynamicTag,
         outputAttrs,
         outputSlots,
         outputRef,
         outputKey,
+        dynamicTag,
       ]
     )
   }
