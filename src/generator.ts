@@ -206,7 +206,7 @@ function stringifyChildren(children: Node[], isComplex: boolean | void): string 
   // 如果是复杂节点的 children，则每个 child 的序列化都是函数调用的形式
   // 因此最后可以拼接为 fn1(), fn2(), fn3() 这样依次调用，而不用再多此一举的使用数组，因为在 renderer 里也用不上这个数组
 
-  // children 大于一个时，才有 join 的可能，单个值 jion 啥啊...
+  // children 大于一个时，才有 join 的可能，单个值 join 啥啊...
   const isJoin = children.length > 1 && !isComplex
 
   array.push(joinStack, isJoin)
