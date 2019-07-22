@@ -126,4 +126,60 @@ test('error', () => {
   expect(hasError).toBe(true)
 
 
+
+
+  hasError = false
+
+  try {
+    compile(`
+      <Dog>
+        {{{name}}}
+      </Dog>
+    `)
+  }
+  catch (e) {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+
+  hasError = false
+
+  try {
+    compile(`
+      <Dog>
+        <template slot="xx">
+          {{{name}}}
+        </template>
+      </Dog>
+    `)
+  }
+  catch (e) {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+
+  hasError = false
+
+  try {
+    compile(`
+      <div>
+        <slot>
+          {{{name}}}
+        </slot>
+      </div>
+    `)
+  }
+  catch (e) {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
 })

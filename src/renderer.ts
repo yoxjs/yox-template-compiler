@@ -48,6 +48,7 @@ import * as keypathUtil from 'yox-common/src/util/keypath'
 import globalHolder from 'yox-common/src/util/holder'
 
 import Observer from 'yox-observer/src/Observer'
+import { eventNames } from 'cluster';
 
 function setPair(target: any, name: string, key: string, value: any) {
   const data = target[name] || (target[name] = {})
@@ -395,22 +396,41 @@ export function render(
 
   },
 
+  renderCommentVnode = function () {
+    return {
+      isComment: constant.TRUE,
+      text: constant.EMPTY_STRING,
+      keypath: $scope.$keypath,
+      context,
+    }
+  },
+
   renderElementVnode = function (
-    vnode: Data,
-    tag: string | void,
+    tag: string,
     attrs: Function | void,
     childs: Function | void,
-    slots: Record<string, Function> | void
+    text: string | void,
+    isStatic: true | void,
+    isOption: true | void,
+    isStyle: true | void,
+    isSvg: true | void,
+    html: string | void,
+    ref: string | void,
+    key: string | void
   ) {
 
-    if (tag) {
-      const componentName = observer.get(tag)
-      if (process.env.NODE_ENV === 'development') {
-        if (!componentName) {
-          logger.warn(`The dynamic component "${tag}" can't be found.`)
-        }
-      }
-      vnode.tag = componentName
+    const vnode: Data = {
+      tag,
+      text,
+      html,
+      isStatic,
+      isOption,
+      isStyle,
+      isSvg,
+      ref,
+      key,
+      context,
+      keypath: $scope.$keypath,
     }
 
     if (attrs) {
@@ -419,13 +439,61 @@ export function render(
       $vnode = constant.UNDEFINED
     }
 
-    // childs 和 slots 不可能同时存在
     if (childs) {
       vnodeStack.push(vnode.children = [])
       childs()
       array.pop(vnodeStack)
     }
-    else if (slots) {
+
+    const vnodeList = array.last(vnodeStack)
+    if (vnodeList) {
+      array.push(vnodeList, vnode)
+    }
+
+    return vnode
+
+  },
+
+  renderComponentVnode = function (
+    staticTag: string | void,
+    dynamicTag: string | void,
+    attrs: Function | void,
+    slots: Record<string, Function> | void,
+    ref: string | void,
+    key: string | void
+  ) {
+
+    let tag: string
+
+    if (dynamicTag) {
+      const componentName = observer.get(dynamicTag)
+      if (process.env.NODE_ENV === 'development') {
+        if (!componentName) {
+          logger.warn(`The dynamic component "${dynamicTag}" can't be found.`)
+        }
+      }
+      tag = componentName
+    }
+    else {
+      tag = staticTag as string
+    }
+
+    const vnode: Data = {
+      tag,
+      ref,
+      key,
+      context,
+      keypath: $scope.$keypath,
+      isComponent: constant.TRUE,
+    }
+
+    if (attrs) {
+      $vnode = vnode
+      attrs()
+      $vnode = constant.UNDEFINED
+    }
+
+    if (slots) {
       const renderSlots = {}
       object.each(
         slots,
@@ -438,9 +506,6 @@ export function render(
       )
       vnode.slots = renderSlots
     }
-
-    vnode.context = context
-    vnode.keypath = $scope.$keypath
 
     const vnodeList = array.last(vnodeStack)
     if (vnodeList) {
@@ -568,7 +633,9 @@ export function render(
           renderEventNameVnode,
           renderDirectiveVnode,
           renderSpreadVnode,
+          renderCommentVnode,
           renderElementVnode,
+          renderComponentVnode,
           renderSlot,
           renderPartial,
           renderImport,
@@ -744,7 +811,9 @@ export function render(
     renderEventNameVnode,
     renderDirectiveVnode,
     renderSpreadVnode,
+    renderCommentVnode,
     renderElementVnode,
+    renderComponentVnode,
     renderSlot,
     renderPartial,
     renderImport,

@@ -1,8 +1,4 @@
 import {
-  Data,
-} from 'yox-type/src/type'
-
-import {
   SLOT_DATA_PREFIX,
   SLOT_NAME_DEFAULT,
   DIRECTIVE_LAZY,
@@ -100,23 +96,27 @@ RENDER_DIRECTIVE_VNODE = 'n',
 
 RENDER_SPREAD_VNODE = 'o',
 
-RENDER_ELEMENT_VNODE = 'p',
+RENDER_COMMENT_VNODE = 'p',
 
-RENDER_SLOT = 'q',
+RENDER_ELEMENT_VNODE = 'q',
 
-RENDER_PARTIAL = 'r',
+RENDER_COMPONENT_VNODE = 'r',
 
-RENDER_IMPORT = 's',
+RENDER_SLOT = 's',
 
-RENDER_EACH = 't',
+RENDER_PARTIAL = 't',
 
-RENDER_RANGE = 'u',
+RENDER_IMPORT = 'u',
 
-RENDER_EQUAL_RANGE = 'v',
+RENDER_EACH = 'v',
 
-TO_STRING = 'w',
+RENDER_RANGE = 'w',
 
-ARG_STACK = 'x'
+RENDER_EQUAL_RANGE = 'x',
+
+TO_STRING = 'y',
+
+ARG_STACK = 'z'
 
 
 // 序列化代码的参数列表
@@ -252,11 +252,8 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
   }
   // 到达最后一个条件，发现第一个 if 语句带有 stub，需创建一个注释标签占位
   else if (stub) {
-    no = renderElement(
-      stringifyObject({
-        isComment: generator.TRUE,
-        text: generator.EMPTY,
-      })
+    no = generator.toCall(
+      RENDER_COMMENT_VNODE
     )
   }
 
@@ -292,13 +289,6 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
 
   return generator.EMPTY
 
-}
-
-function renderElement(data: string, tag: string | void, attrs: string | void, childs: string | void, slots: string | void): string {
-  return generator.toCall(
-    RENDER_ELEMENT_VNODE,
-    [data, tag, attrs, childs, slots]
-  )
 }
 
 function getComponentSlots(children: Node[]): string | void {
@@ -362,15 +352,24 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
 
   let { tag, isComponent, isSvg, isStyle, isOption, isStatic, isComplex, name, ref, key, html, attrs, children } = node,
 
-  data: Data = {},
+  staticTag: string | void,
+  dynamicTag: string | void,
 
-  outputTag: string | void,
+  outputAttrs: string | void,
 
-  outputAttrs: string[] = [],
+  outputText: string | void,
+  outputHTML: string | void,
 
   outputChilds: string | void,
+  outputSlots: string | void,
 
-  outputSlots: string | void
+  outputStatic: string | void,
+  outputOption: string | void,
+  outputStyle: string | void,
+  outputSvg: string | void,
+
+  outputRef: string | void,
+  outputKey: string | void
 
   if (tag === constant.RAW_SLOT) {
     const args = [generator.toString(SLOT_DATA_PREFIX + name)]
@@ -385,90 +384,105 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
     return generator.toCall(RENDER_SLOT, args)
   }
 
+  // 如果以 $ 开头，表示动态组件
+  if (string.codeAt(tag) === 36) {
+    dynamicTag = generator.toString(string.slice(tag, 1))
+  }
+  else {
+    staticTag = generator.toString(tag)
+  }
+
+
+
+
   array.push(collectStack, constant.FALSE)
 
   if (attrs) {
+    const list: string[] = []
     array.each(
       attrs,
       function (attr) {
         array.push(
-          outputAttrs,
+          list,
           nodeGenerator[attr.type](attr)
         )
       }
     )
+    if (list.length) {
+      outputAttrs = stringifyFunction(
+        array.join(list, generator.COMMA)
+      )
+    }
   }
 
-  // 如果以 $ 开头，表示动态组件
-  if (string.codeAt(tag) === 36) {
-    outputTag = generator.toString(string.slice(tag, 1))
-  }
-  else {
-    data.tag = generator.toString(tag)
-  }
-
-  if (isSvg) {
-    data.isSvg = generator.TRUE
-  }
-
-  if (isStyle) {
-    data.isStyle = generator.TRUE
-  }
-
-  if (isOption) {
-    data.isOption = generator.TRUE
-  }
-
-  if (isStatic) {
-    data.isStatic = generator.TRUE
-  }
-
-  if (ref) {
-    data.ref = stringifyValue(ref.value, ref.expr, ref.children)
-  }
-
-  if (key) {
-    data.key = stringifyValue(key.value, key.expr, key.children)
-  }
-
-  if (html) {
-    data.html = is.string(html)
-      ? generator.toString(html)
-      : stringifyExpression(html as ExpressionNode, constant.TRUE)
-  }
-
-  if (isComponent) {
-    data.isComponent = generator.TRUE
-    if (children) {
+  if (children) {
+    if (isComponent) {
       collectStack[collectStack.length - 1] = constant.TRUE
       outputSlots = getComponentSlots(children)
     }
-  }
-  else if (children) {
-    isStringRequired = constant.TRUE
-    collectStack[collectStack.length - 1] = isComplex
-    outputChilds = stringifyChildren(children, isComplex)
-    if (isComplex) {
-      outputChilds = stringifyFunction(outputChilds)
-    }
     else {
-      data.text = outputChilds
-      outputChilds = constant.UNDEFINED
+      isStringRequired = constant.TRUE
+      collectStack[collectStack.length - 1] = isComplex
+      outputChilds = stringifyChildren(children, isComplex)
+      if (isComplex) {
+        outputChilds = stringifyFunction(outputChilds)
+      }
+      else {
+        outputText = outputChilds
+        outputChilds = constant.UNDEFINED
+      }
     }
   }
 
   array.pop(collectStack)
 
-  return renderElement(
-    stringifyObject(data),
-    outputTag,
-    array.falsy(outputAttrs)
-      ? constant.UNDEFINED
-      : stringifyFunction(
-          array.join(outputAttrs, generator.COMMA)
-        ),
-    outputChilds,
-    outputSlots
+
+
+
+  if (html) {
+    outputHTML = is.string(html)
+      ? generator.toString(html as string)
+      : stringifyExpression(html as ExpressionNode, constant.TRUE)
+  }
+
+  outputStatic = isStatic ? generator.TRUE : constant.UNDEFINED
+  outputOption = isOption ? generator.TRUE : constant.UNDEFINED
+  outputStyle = isStyle ? generator.TRUE : constant.UNDEFINED
+  outputSvg = isSvg ? generator.TRUE : constant.UNDEFINED
+
+  outputRef = ref ? stringifyValue(ref.value, ref.expr, ref.children) : constant.UNDEFINED
+  outputKey = key ? stringifyValue(key.value, key.expr, key.children) : constant.UNDEFINED
+
+  if (isComponent) {
+    return generator.toCall(
+      RENDER_COMPONENT_VNODE,
+      [
+        staticTag,
+        dynamicTag,
+        outputAttrs,
+        outputSlots,
+        outputRef,
+        outputKey,
+      ]
+    )
+  }
+
+  return generator.toCall(
+    RENDER_ELEMENT_VNODE,
+    // 最常用 => 最不常用排序
+    [
+      staticTag,
+      outputAttrs,
+      outputChilds,
+      outputText,
+      outputStatic,
+      outputOption,
+      outputStyle,
+      outputSvg,
+      outputHTML,
+      outputRef,
+      outputKey,
+    ]
   )
 
 }
@@ -761,7 +775,9 @@ export function generate(node: Node): string {
       RENDER_EVENT_NAME_VNODE,
       RENDER_DIRECTIVE_VNODE,
       RENDER_SPREAD_VNODE,
+      RENDER_COMMENT_VNODE,
       RENDER_ELEMENT_VNODE,
+      RENDER_COMPONENT_VNODE,
       RENDER_SLOT,
       RENDER_PARTIAL,
       RENDER_IMPORT,

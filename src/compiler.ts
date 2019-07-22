@@ -912,24 +912,25 @@ export function compile(content: string): Branch[] {
           else {
 
             if (process.env.NODE_ENV === 'development') {
-              if (lastChild) {
-                // 前后不能有别的 child，危险插值必须独占父元素
-                if (type === nodeType.EXPRESSION
-                  && !(node as Expression).safe
-                ) {
+              if (type === nodeType.EXPRESSION
+                && !(node as Expression).safe
+              ) {
+                // 前面不能有别的 child，危险插值必须独占父元素
+                if (lastChild) {
                   fatal('The dangerous interpolation must be the only child of a HTML element.')
                 }
-                else if (
-                  lastChild.type === nodeType.EXPRESSION
-                  && !(lastChild as Expression).safe
+                // 危险插值的父节点必须是 html element
+                else if (currentBranch.type !== nodeType.ELEMENT
+                  || (currentBranch as Element).isComponent
+                  || helper.specialTags[(currentBranch as Element).tag]
                 ) {
                   fatal('The dangerous interpolation must be the only child of a HTML element.')
                 }
               }
-              // 危险插值的父节点必须是 Element
-              else if (currentBranch.type !== nodeType.ELEMENT
-                && type === nodeType.EXPRESSION
-                && !(node as Expression).safe
+              // 后面不能有别的 child，危险插值必须独占父元素
+              else if (lastChild
+                && lastChild.type === nodeType.EXPRESSION
+                && !(lastChild as Expression).safe
               ) {
                 fatal('The dangerous interpolation must be the only child of a HTML element.')
               }

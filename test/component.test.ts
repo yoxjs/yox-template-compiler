@@ -7,7 +7,7 @@ import Attribute from 'yox-template-compiler/src/node/Attribute'
 
 test('组件名称的识别方式', () => {
 
-  let ast = compile('<Dog>')
+  let ast = compile('<Dog/>')
 
   expect(ast.length).toBe(1)
 
@@ -15,7 +15,7 @@ test('组件名称的识别方式', () => {
   expect(root.isComponent).toBe(true)
 
 
-  ast = compile('<app-header>')
+  ast = compile('<app-header/>')
 
   expect(ast.length).toBe(1)
 
@@ -26,7 +26,7 @@ test('组件名称的识别方式', () => {
 
 test('属性名驼峰化', () => {
 
-  let ast = compile('<Dog a-b="1">')
+  let ast = compile('<Dog a-b="1"/>')
 
   let root = ast[0] as Element
   let attrs = root.attrs as Node[]
@@ -36,7 +36,7 @@ test('属性名驼峰化', () => {
   expect((attrs[0] as Attribute).name).toBe('aB')
 
 
-  ast = compile('<Dog aB="1">')
+  ast = compile('<Dog aB="1"/>')
 
   root = ast[0] as Element
   attrs = root.attrs as Node[]

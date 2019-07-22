@@ -36,7 +36,7 @@ test('html entity', () => {
 
   ast = compile(`
     <Component>
-      <template>
+      <template slot="xx">
         1&nbsp;2
       </template>
     </Component>
