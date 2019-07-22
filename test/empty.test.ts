@@ -1,7 +1,7 @@
-import { compile } from '../src/compiler'
-import * as nodeType from '../src/nodeType'
+import { compile } from 'yox-template-compiler/src/compiler'
+import * as nodeType from 'yox-template-compiler/src/nodeType'
 
-import Text from '../src/node/Text'
+import Text from 'yox-template-compiler/src/node/Text'
 
 test('空模板', () => {
 

@@ -462,7 +462,7 @@ export function render(
     const myStack = stack || $stack,
     result = findValue(
       myStack,
-      myStack.length - ((offset || 0) + 1),
+      myStack.length - 1 - (offset || 0),
       name,
       lookup,
       depIgnore

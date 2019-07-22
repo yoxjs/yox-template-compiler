@@ -1,11 +1,11 @@
-import { compile } from '../src/compiler'
-import * as nodeType from '../src/nodeType'
+import { compile } from 'yox-template-compiler/src/compiler'
+import * as nodeType from 'yox-template-compiler/src/nodeType'
 
-import Node from '../src/node/Node'
-import If from '../src/node/If'
-import ElseIf from '../src/node/ElseIf'
-import Else from '../src/node/Else'
-import Text from '../src/node/Text'
+import Node from 'yox-template-compiler/src/node/Node'
+import If from 'yox-template-compiler/src/node/If'
+import ElseIf from 'yox-template-compiler/src/node/ElseIf'
+import Else from 'yox-template-compiler/src/node/Else'
+import Text from 'yox-template-compiler/src/node/Text'
 
 test('error', () => {
 

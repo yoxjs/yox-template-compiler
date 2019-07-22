@@ -1,7 +1,7 @@
-import { compile } from '../src/compiler'
-import * as nodeType from '../src/nodeType'
+import { compile } from 'yox-template-compiler/src/compiler'
+import * as nodeType from 'yox-template-compiler/src/nodeType'
 
-import Element from '../src/node/Element'
+import Element from 'yox-template-compiler/src/node/Element'
 
 test('svg', () => {
 

@@ -1,10 +1,10 @@
-import { compile } from '../src/compiler'
-import * as nodeType from '../src/nodeType'
+import { compile } from 'yox-template-compiler/src/compiler'
+import * as nodeType from 'yox-template-compiler/src/nodeType'
 
-import Node from '../src/node/Node'
-import Element from '../src/node/Element'
-import Property from '../src/node/Property'
-import Text from '../src/node/Text'
+import Node from 'yox-template-compiler/src/node/Node'
+import Element from 'yox-template-compiler/src/node/Element'
+import Property from 'yox-template-compiler/src/node/Property'
+import Text from 'yox-template-compiler/src/node/Text'
 
 
 test('匹配开始结束标签', () => {

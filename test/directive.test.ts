@@ -1,12 +1,12 @@
-import { compile } from '../src/compiler'
-import * as nodeType from '../src/nodeType'
+import { compile } from 'yox-template-compiler/src/compiler'
+import * as nodeType from 'yox-template-compiler/src/nodeType'
 import * as config from 'yox-config/src/config'
 
-import Element from '../src/node/Element'
-import Property from '../src/node/Property'
-import Attribute from '../src/node/Attribute'
-import Directive from '../src/node/Directive'
-import Node from '../src/node/Node'
+import Element from 'yox-template-compiler/src/node/Element'
+import Property from 'yox-template-compiler/src/node/Property'
+import Attribute from 'yox-template-compiler/src/node/Attribute'
+import Directive from 'yox-template-compiler/src/node/Directive'
+import Node from 'yox-template-compiler/src/node/Node'
 
 test('自动转型', () => {
 

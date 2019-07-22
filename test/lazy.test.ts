@@ -1,10 +1,10 @@
-import { compile } from '../src/compiler'
-import * as nodeType from '../src/nodeType'
+import { compile } from 'yox-template-compiler/src/compiler'
+import * as nodeType from 'yox-template-compiler/src/nodeType'
 import * as config from 'yox-config/src/config'
 
-import Node from '../src/node/Node'
-import Element from '../src/node/Element'
-import Directive from '../src/node/Directive'
+import Node from 'yox-template-compiler/src/node/Node'
+import Element from 'yox-template-compiler/src/node/Element'
+import Directive from 'yox-template-compiler/src/node/Directive'
 
 test('空模板', () => {
 

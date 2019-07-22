@@ -1,10 +1,10 @@
-import { compile } from '../src/compiler'
-import * as nodeType from '../src/nodeType'
+import { compile } from 'yox-template-compiler/src/compiler'
+import * as nodeType from 'yox-template-compiler/src/nodeType'
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 
-import Node from '../src/node/Node'
-import Each from '../src/node/Each'
-import Element from '../src/node/Element'
+import Node from 'yox-template-compiler/src/node/Node'
+import Each from 'yox-template-compiler/src/node/Each'
+import Element from 'yox-template-compiler/src/node/Element'
 
 test('循环', () => {
 
@@ -22,6 +22,7 @@ test('循环', () => {
   expect((children[0] as Each).from.type).toBe(exprNodeType.IDENTIFIER)
   expect((children[0] as Each).to).toBe(undefined)
   expect((children[0] as Each).equal).not.toBe(true)
+  // index 必须是 undefined，这样序列化后才不会输出这个参数
   expect((children[0] as Each).index).toBe(undefined)
 
 })

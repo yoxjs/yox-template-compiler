@@ -1,10 +1,10 @@
-import { compile } from '../src/compiler'
-import * as nodeType from '../src/nodeType'
+import { compile } from 'yox-template-compiler/src/compiler'
+import * as nodeType from 'yox-template-compiler/src/nodeType'
 import * as config from 'yox-config/src/config'
 
-import Element from '../src/node/Element'
-import Attribute from '../src/node/Attribute'
-import Property from '../src/node/Property'
+import Element from 'yox-template-compiler/src/node/Element'
+import Attribute from 'yox-template-compiler/src/node/Attribute'
+import Property from 'yox-template-compiler/src/node/Property'
 
 test('property', () => {
 

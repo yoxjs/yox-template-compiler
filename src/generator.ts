@@ -689,7 +689,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each): string {
           children,
           renderExpression(node.from),
           renderExpression(node.to),
-          node.index ? generator.toString(node.index) : constant.UNDEFINED
+          generator.toString(node.index)
         ]
       )
     }
@@ -699,7 +699,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each): string {
         children,
         renderExpression(node.from),
         renderExpression(node.to),
-        node.index ? generator.toString(node.index) : constant.UNDEFINED
+        generator.toString(node.index)
       ]
     )
   }
@@ -710,7 +710,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each): string {
     [
       children,
       renderExpression(node.from, constant.TRUE),
-      node.index ? generator.toString(node.index) : constant.UNDEFINED
+      generator.toString(node.index)
     ]
   )
 

@@ -1,4 +1,4 @@
-import { compile } from '../src/compiler'
+import { compile } from 'yox-template-compiler/src/compiler'
 
 test('必须有引号', () => {
 
