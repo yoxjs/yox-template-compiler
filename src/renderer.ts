@@ -209,7 +209,7 @@ export function render(
         (lastVnode.text as string) += text
       }
       else {
-        const textVnode: any = {
+        const textVnode: Data = {
           isText: constant.TRUE,
           text,
           context,
@@ -221,16 +221,16 @@ export function render(
   },
 
   renderAttributeVnode = function (name: string, value: string | void) {
-    if ($vnode.isComponent) {
-      setPair($vnode, 'props', name, value)
-    }
-    else {
-      setPair($vnode, 'nativeAttrs', name, { name, value })
-    }
+    setPair(
+      $vnode,
+      $vnode.isComponent ? 'props' : 'nativeAttrs',
+      name,
+      value
+    )
   },
 
-  renderPropertyVnode = function (name: string, hint: PropertyHint, value: any | void) {
-    setPair($vnode, 'nativeProps', name, { name, value, hint })
+  renderPropertyVnode = function (name: string, value: any) {
+    setPair($vnode, 'nativeProps', name, value)
   },
 
   renderLazyVnode = function (name: string, value: LazyValue) {

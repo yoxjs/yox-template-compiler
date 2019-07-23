@@ -527,7 +527,6 @@ nodeGenerator[nodeType.PROPERTY] = function (node: Property): string {
     RENDER_PROPERTY_VNODE,
     [
       generator.toString(node.name),
-      generator.toString(node.hint),
       value
     ]
   )
