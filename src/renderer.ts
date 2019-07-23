@@ -48,7 +48,6 @@ import * as keypathUtil from 'yox-common/src/util/keypath'
 import globalHolder from 'yox-common/src/util/holder'
 
 import Observer from 'yox-observer/src/Observer'
-import { eventNames } from 'cluster';
 
 function setPair(target: any, name: string, key: string, value: any) {
   const data = target[name] || (target[name] = {})
@@ -363,46 +362,55 @@ export function render(
 
     const { value, keypath } = holder
 
-    // 如果为 null 或 undefined，则不需要 warn
-    if (value != constant.NULL) {
-      // 数组也算一种对象，要排除掉
-      if (is.object(value) && !is.array(value)) {
+    if (is.object(value)) {
 
-        object.each(
-          value,
-          function (value, key) {
-            setPair($vnode, 'props', key, value)
+      // 数组也算一种对象
+      // 延展操作符不支持数组
+      if (process.env.NODE_ENV === 'development') {
+        if (is.array(value)) {
+          logger.fatal(`The spread operator can't be used by an array.`)
+        }
+      }
+
+      for (let key in value) {
+        setPair($vnode, 'props', key, value[key])
+      }
+
+      if (keypath) {
+        const key = keypathUtil.join(DIRECTIVE_BINDING, keypath)
+        setPair(
+          $vnode,
+          KEY_DIRECTIVES,
+          key,
+          {
+            ns: DIRECTIVE_BINDING,
+            name: constant.EMPTY_STRING,
+            key,
+            modifier: keypathUtil.join(keypath, constant.RAW_WILDCARD),
+            hooks: directives[DIRECTIVE_BINDING],
           }
         )
-
-        if (keypath) {
-          const key = keypathUtil.join(DIRECTIVE_BINDING, keypath)
-          setPair(
-            $vnode,
-            KEY_DIRECTIVES,
-            key,
-            {
-              ns: DIRECTIVE_BINDING,
-              name: constant.EMPTY_STRING,
-              key,
-              modifier: keypathUtil.join(keypath, constant.RAW_WILDCARD),
-              hooks: directives[DIRECTIVE_BINDING],
-            }
-          )
-        }
-
       }
+
     }
 
   },
 
+  appendVnode = function (vnode: Data) {
+    const vnodeList = array.last(vnodeStack)
+    if (vnodeList) {
+      array.push(vnodeList, vnode)
+    }
+    return vnode
+  },
+
   renderCommentVnode = function () {
-    return {
+    return appendVnode({
       isComment: constant.TRUE,
       text: constant.EMPTY_STRING,
       keypath: $scope.$keypath,
       context,
-    }
+    })
   },
 
   renderElementVnode = function (
@@ -445,12 +453,7 @@ export function render(
       array.pop(vnodeStack)
     }
 
-    const vnodeList = array.last(vnodeStack)
-    if (vnodeList) {
-      array.push(vnodeList, vnode)
-    }
-
-    return vnode
+    return appendVnode(vnode)
 
   },
 
@@ -465,6 +468,7 @@ export function render(
 
     let tag: string
 
+    // 组件支持动态名称
     if (dynamicTag) {
       const componentName = observer.get(dynamicTag)
       if (process.env.NODE_ENV === 'development') {
@@ -494,25 +498,17 @@ export function render(
     }
 
     if (slots) {
-      const renderSlots = {}
-      object.each(
-        slots,
-        function (slot: Function, name: string) {
-          vnodeStack.push([])
-          slot()
-          const vnodes = array.pop(vnodeStack) as VNode[]
-          renderSlots[name] = vnodes.length ? vnodes : constant.UNDEFINED
-        }
-      )
-      vnode.slots = renderSlots
+      const vnodeSlots = {}
+      for (let name in slots) {
+        vnodeStack.push([])
+        slots[name]()
+        const vnodes = array.pop(vnodeStack) as VNode[]
+        vnodeSlots[name] = vnodes.length ? vnodes : constant.UNDEFINED
+      }
+      vnode.slots = vnodeSlots
     }
 
-    const vnodeList = array.last(vnodeStack)
-    if (vnodeList) {
-      array.push(vnodeList, vnode)
-    }
-
-    return vnode
+    return appendVnode(vnode)
 
   },
 
