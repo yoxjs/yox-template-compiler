@@ -2,8 +2,7 @@ import {
   PropertyHint,
 } from 'yox-type/src/type'
 
-import * as constant from 'yox-type/src/constant'
-
+import * as constant from 'yox-common/src/util/constant'
 import * as keypathUtil from 'yox-common/src/util/keypath'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'

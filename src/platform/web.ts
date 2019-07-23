@@ -4,10 +4,9 @@ import {
   HINT_BOOLEAN,
 } from 'yox-config/src/config'
 
-import * as constant from 'yox-type/src/constant'
-
 import * as array from 'yox-common/src/util/array'
 import * as string from 'yox-common/src/util/string'
+import * as constant from 'yox-common/src/util/constant'
 
 import Element from '../node/Element'
 import Attribute from '../node/Attribute'

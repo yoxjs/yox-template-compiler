@@ -27,14 +27,13 @@ import {
   setElementText,
 } from './platform/web'
 
-import * as constant from 'yox-type/src/constant'
-
 import toNumber from 'yox-common/src/function/toNumber'
 
 import * as is from 'yox-common/src/util/is'
 import * as array from 'yox-common/src/util/array'
 import * as string from 'yox-common/src/util/string'
 import * as logger from 'yox-common/src/util/logger'
+import * as constant from 'yox-common/src/util/constant'
 
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as exprCompiler from 'yox-expression-compiler/src/compiler'
