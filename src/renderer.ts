@@ -574,14 +574,11 @@ export function render(
 
     if (vnodeList) {
       if (vnodes) {
-        array.each(
-          vnodes,
-          function (vnode: VNode) {
-            array.push(vnodeList, vnode)
-            vnode.slot = name
-            vnode.parent = context
-          }
-        )
+        for (let i = 0, length = vnodes.length; i < length; i++) {
+          array.push(vnodeList, vnodes[i])
+          vnodes[i].slot = name
+          vnodes[i].parent = context
+        }
       }
       else if (defaultRender) {
         defaultRender()
