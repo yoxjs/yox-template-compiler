@@ -107,7 +107,7 @@ closeCommentPattern = /-->([\s\S]*?)$/,
 
 // 属性的 name
 // 支持 on-click.namespace="" 或 on-get-out="" 或 xml:xx=""
-attributePattern = /^\s*([-.:\w]+)(['"])?(?:=(['"]))?/,
+attributePattern = /^\s*([-$.:\w]+)(['"])?(?:=(['"]))?/,
 
 // 自闭合标签
 selfClosingTagPattern = /^\s*(\/)?>/

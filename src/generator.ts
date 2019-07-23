@@ -350,7 +350,7 @@ function getComponentSlots(children: Node[]): string | void {
 
 nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
 
-  let { tag, isComponent, isSvg, isStyle, isOption, isStatic, isComplex, name, ref, key, html, attrs, children } = node,
+  let { tag, isComponent, isComplex, ref, key, html, attrs, children } = node,
 
   staticTag: string | void,
   dynamicTag: string | void,
@@ -372,7 +372,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
   outputKey: string | void
 
   if (tag === constant.RAW_SLOT) {
-    const args = [generator.toString(SLOT_DATA_PREFIX + name)]
+    const args = [generator.toString(SLOT_DATA_PREFIX + node.name)]
     if (children) {
       array.push(
         args,
@@ -445,10 +445,10 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
       : stringifyExpression(html as ExpressionNode, constant.TRUE)
   }
 
-  outputStatic = isStatic ? generator.TRUE : constant.UNDEFINED
-  outputOption = isOption ? generator.TRUE : constant.UNDEFINED
-  outputStyle = isStyle ? generator.TRUE : constant.UNDEFINED
-  outputSvg = isSvg ? generator.TRUE : constant.UNDEFINED
+  outputStatic = node.isStatic ? generator.TRUE : constant.UNDEFINED
+  outputOption = node.isOption ? generator.TRUE : constant.UNDEFINED
+  outputStyle = node.isStyle ? generator.TRUE : constant.UNDEFINED
+  outputSvg = node.isSvg ? generator.TRUE : constant.UNDEFINED
 
   outputRef = ref ? stringifyValue(ref.value, ref.expr, ref.children) : constant.UNDEFINED
   outputKey = key ? stringifyValue(key.value, key.expr, key.children) : constant.UNDEFINED

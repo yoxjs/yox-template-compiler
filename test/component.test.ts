@@ -45,4 +45,24 @@ test('属性名驼峰化', () => {
   expect(attrs[0].type).toBe(nodeType.ATTRIBUTE)
   expect((attrs[0] as Attribute).name).toBe('aB')
 
+
+  ast = compile('<Dog $1="1"/>')
+
+  root = ast[0] as Element
+  attrs = root.attrs as Node[]
+
+  expect(attrs.length).toBe(1)
+  expect(attrs[0].type).toBe(nodeType.ATTRIBUTE)
+  expect((attrs[0] as Attribute).name).toBe('$1')
+
+
+  ast = compile('<Dog _1="1"/>')
+
+  root = ast[0] as Element
+  attrs = root.attrs as Node[]
+
+  expect(attrs.length).toBe(1)
+  expect(attrs[0].type).toBe(nodeType.ATTRIBUTE)
+  expect((attrs[0] as Attribute).name).toBe('_1')
+
 })
