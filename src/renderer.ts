@@ -30,8 +30,6 @@ import {
   DIRECTIVE_CUSTOM,
 } from 'yox-config/src/config'
 
-import isDef from 'yox-common/src/function/isDef'
-import isUndef from 'yox-common/src/function/isUndef'
 import execute from 'yox-common/src/function/execute'
 import toString from 'yox-common/src/function/toString'
 import CustomEvent from 'yox-common/src/util/CustomEvent'
@@ -82,17 +80,17 @@ export function render(
     let scope = stack[index], keypath = keypathUtil.join(scope.$keypath, key), value: any = stack, holder = globalHolder
 
     // 如果最后还是取不到值，用回最初的 keypath
-    if (isUndef(defaultKeypath)) {
+    if (defaultKeypath === constant.UNDEFINED) {
       defaultKeypath = keypath
     }
 
     // 如果取的是 scope 上直接有的数据，如 $keypath
-    if (isDef(scope[key])) {
+    if (scope[key] !== constant.UNDEFINED) {
       value = scope[key]
     }
 
     // 如果取的是数组项，则要更进一步
-    else if (isDef(scope.$item)) {
+    else if (scope.$item !== constant.UNDEFINED) {
       scope = scope.$item
 
       // 到这里 scope 可能为空
@@ -103,7 +101,7 @@ export function render(
         value = scope
       }
       // 取 this.xx
-      else if (scope != constant.NULL && isDef(scope[key])) {
+      else if (scope != constant.NULL && scope[key] !== constant.UNDEFINED) {
         value = scope[key]
       }
     }
@@ -544,7 +542,7 @@ export function render(
     runtimeKeypath: string[] | void,
     holder: boolean | void
   ) {
-    if (isDef(runtimeKeypath)) {
+    if (runtimeKeypath !== constant.UNDEFINED) {
       staticKeypath = array.join(runtimeKeypath as string[], constant.RAW_DOT)
     }
     const match = object.get(value, staticKeypath as string)
@@ -659,7 +657,7 @@ export function render(
     $stack = lastStack.concat($scope)
 
     // 避免模板里频繁读取 list.length
-    if (isDef(length)) {
+    if (length !== constant.UNDEFINED) {
       $scope.$length = length
     }
 
