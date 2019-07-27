@@ -27,6 +27,7 @@ import {
   setElementText,
 } from './platform/web'
 
+import toString from 'yox-common/src/function/toString'
 import toNumber from 'yox-common/src/function/toNumber'
 
 import * as is from 'yox-common/src/util/is'
@@ -839,7 +840,7 @@ export function compile(content: string): Branch[] {
       popSelfClosingElementIfNeeded()
     }
 
-    const type = node.type, currentBranch = array.last(nodeStack)
+    let type = node.type, currentBranch = array.last(nodeStack)
 
     // else 系列只是 if 的递进节点，不需要加入 nodeList
     if (type === nodeType.ELSE || type === nodeType.ELSE_IF) {
@@ -898,12 +899,25 @@ export function compile(content: string): Branch[] {
 
         }
         else {
+
           const children = currentBranch.children || (currentBranch.children = []),
           lastChild = array.last(children)
+
+          // 在元素的子节点中，如果表达式是安全插值的字面量，则直接转成字符串
+          if (type === nodeType.EXPRESSION
+            && (node as Expression).safe
+            && (node as Expression).expr.type === exprNodeType.LITERAL
+          ) {
+            node = creator.createText(toString(
+              ((node as Expression).expr as ExpressionLiteral).value
+            ))
+            type = node.type
+          }
+
           // 连续添加文本节点，则直接合并
           if (lastChild
             && lastChild.type === nodeType.TEXT
-            && node.type === nodeType.TEXT
+            && type === nodeType.TEXT
           ) {
             (lastChild as Text).text += (node as Text).text
             return
