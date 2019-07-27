@@ -903,54 +903,68 @@ export function compile(content: string): Branch[] {
           const children = currentBranch.children || (currentBranch.children = []),
           lastChild = array.last(children)
 
-          // 在元素的子节点中，如果表达式是安全插值的字面量，则直接转成字符串
+          // 如果表达式是安全插值的字面量，可以优化成字符串
           if (type === nodeType.EXPRESSION
-            && (node as Expression).safe
-            && (node as Expression).expr.type === exprNodeType.LITERAL
+            // 在元素的子节点中，则直接转成字符串
+            && (!currentElement
+              // 在元素的属性中，如果同级节点大于 0 个（即已经存在一个），则可以转成字符串
+              || (currentAttribute && children.length > 0)
+            )
           ) {
-            node = creator.createText(toString(
-              ((node as Expression).expr as ExpressionLiteral).value
-            ))
-            type = node.type
+            const textNode = toTextNode(node as Expression)
+            if (textNode) {
+              node = textNode
+              type = textNode.type
+            }
           }
 
           // 连续添加文本节点，则直接合并
           if (lastChild
-            && lastChild.type === nodeType.TEXT
             && type === nodeType.TEXT
           ) {
-            (lastChild as Text).text += (node as Text).text
-            return
-          }
-          else {
-
-            if (process.env.NODE_ENV === 'development') {
-              if (type === nodeType.EXPRESSION
-                && !(node as Expression).safe
-              ) {
-                // 前面不能有别的 child，危险插值必须独占父元素
-                if (lastChild) {
-                  fatal('The dangerous interpolation must be the only child of a HTML element.')
-                }
-                // 危险插值的父节点必须是 html element
-                else if (currentBranch.type !== nodeType.ELEMENT
-                  || (currentBranch as Element).isComponent
-                  || helper.specialTags[(currentBranch as Element).tag]
-                ) {
-                  fatal('The dangerous interpolation must be the only child of a HTML element.')
-                }
+            // 合并两个文本节点
+            if (lastChild.type === nodeType.TEXT) {
+              (lastChild as Text).text += (node as Text).text
+              return
+            }
+            // 前一个是字面量的表达式，也可以合并节点
+            if (lastChild.type === nodeType.EXPRESSION) {
+              const textNode = toTextNode(lastChild as Expression)
+              if (textNode) {
+                children[children.length - 1] = textNode
+                textNode.text += (node as Text).text
+                return
               }
-              // 后面不能有别的 child，危险插值必须独占父元素
-              else if (lastChild
-                && lastChild.type === nodeType.EXPRESSION
-                && !(lastChild as Expression).safe
+            }
+          }
+
+          if (process.env.NODE_ENV === 'development') {
+            if (type === nodeType.EXPRESSION
+              && !(node as Expression).safe
+            ) {
+              // 前面不能有别的 child，危险插值必须独占父元素
+              if (lastChild) {
+                fatal('The dangerous interpolation must be the only child of a HTML element.')
+              }
+              // 危险插值的父节点必须是 html element
+              else if (currentBranch.type !== nodeType.ELEMENT
+                || (currentBranch as Element).isComponent
+                || helper.specialTags[(currentBranch as Element).tag]
               ) {
                 fatal('The dangerous interpolation must be the only child of a HTML element.')
               }
             }
-
-            array.push(children, node)
+            // 后面不能有别的 child，危险插值必须独占父元素
+            else if (lastChild
+              && lastChild.type === nodeType.EXPRESSION
+              && !(lastChild as Expression).safe
+            ) {
+              fatal('The dangerous interpolation must be the only child of a HTML element.')
+            }
           }
+
+          array.push(children, node)
+
         }
       }
       else {
@@ -1013,6 +1027,16 @@ export function compile(content: string): Branch[] {
       addChild(
         creator.createText(text)
       )
+    }
+  },
+
+  toTextNode = function (node: Expression) {
+    if (node.safe
+      && node.expr.type === exprNodeType.LITERAL
+    ) {
+      return creator.createText(toString(
+        (node.expr as ExpressionLiteral).value
+      ))
     }
   },
 

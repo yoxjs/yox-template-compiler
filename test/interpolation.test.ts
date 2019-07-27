@@ -7,6 +7,7 @@ import Node from 'yox-template-compiler/src/node/Node'
 import Text from 'yox-template-compiler/src/node/Text'
 import Element from 'yox-template-compiler/src/node/Element'
 import Expression from 'yox-template-compiler/src/node/Expression'
+import Attribute from 'yox-template-compiler/src/node/Attribute'
 
 test('简单插值', () => {
 
@@ -85,6 +86,46 @@ test('插值优化', () => {
   expect(children[0].type).toBe(nodeType.TEXT)
   expect((children[0] as Text).text).toBe("11")
 
+
+
+
+
+  ast = compile(`
+    <Component name="{{true}}"/>
+  `)
+
+  let attrs = (ast[0] as Element).attrs as Node[]
+  expect(attrs.length).toBe(1)
+  expect(attrs[0].type).toBe(nodeType.ATTRIBUTE)
+  expect((attrs[0] as Attribute).children).toBe(undefined)
+  expect((attrs[0] as Attribute).value).toBe(undefined)
+  expect((attrs[0] as Attribute).expr != null).toBe(true)
+
+
+
+  ast = compile(`
+    <Component name="1{{true}}"/>
+  `)
+
+  attrs = (ast[0] as Element).attrs as Node[]
+  expect(attrs.length).toBe(1)
+  expect(attrs[0].type).toBe(nodeType.ATTRIBUTE)
+  expect((attrs[0] as Attribute).children).toBe(undefined)
+  expect((attrs[0] as Attribute).value).toBe('1true')
+  expect((attrs[0] as Attribute).expr).toBe(undefined)
+
+
+  ast = compile(`
+    <Component name="{{true}}1"/>
+  `)
+
+  attrs = (ast[0] as Element).attrs as Node[]
+  expect(attrs.length).toBe(1)
+  expect(attrs[0].type).toBe(nodeType.ATTRIBUTE)
+  expect((attrs[0] as Attribute).children).toBe(undefined)
+  expect((attrs[0] as Attribute).value).toBe('true1')
+  expect((attrs[0] as Attribute).expr).toBe(undefined)
+
 })
 
 test('危险插值', () => {
@@ -160,6 +201,36 @@ test('error', () => {
   try {
     compile(`
       <div class="{{{name}}}">
+      </div>
+    `)
+  }
+  catch (e) {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+  hasError = false
+
+  try {
+    compile(`
+      <div class="1{{{name}}}">
+      </div>
+    `)
+  }
+  catch (e) {
+    hasError = true
+  }
+
+  expect(hasError).toBe(true)
+
+
+  hasError = false
+
+  try {
+    compile(`
+      <div class="{{{name}}}1">
       </div>
     `)
   }
