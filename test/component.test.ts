@@ -66,3 +66,14 @@ test('属性名驼峰化', () => {
   expect((attrs[0] as Attribute).name).toBe('_1')
 
 })
+
+test('动态组件', () => {
+
+  let ast = compile('<$name/>')
+
+  expect(ast.length).toBe(1)
+
+  let root = ast[0] as Element
+  expect(root.isComponent).toBe(true)
+
+})

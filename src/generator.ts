@@ -269,13 +269,16 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
       }
     }
 
+    // 避免出现 a||b&&c 的情况
+    // 应该输出 (a||b)&&c
     if (isUndef(no)) {
-      result = test + generator.AND + yes
+      result = stringifyGroup(test) + generator.AND + yes
     }
     else if (isUndef(yes)) {
-      result = generator.NOT + test + generator.AND + no
+      result = stringifyGroup(generator.NOT + test) + generator.AND + no
     }
     else {
+      // 三元表达式优先级最低，不用再调 stringifyGroup
       result = test + generator.QUESTION + yes + generator.COLON + no
     }
 
