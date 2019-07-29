@@ -157,10 +157,6 @@ function stringifyFunction(result: string | void, arg?: string): string {
   return `${constant.RAW_FUNCTION}(${arg || constant.EMPTY_STRING}){${result || constant.EMPTY_STRING}}`
 }
 
-function stringifyGroup(code: string): string {
-  return `(${code})`
-}
-
 function stringifyExpression(expr: ExpressionNode, toString: boolean | void): string {
   const value = renderExpression(expr)
   return toString
@@ -227,7 +223,7 @@ function stringifyConditionChildren(children: Node[] | void, isComplex: boolean 
   if (children) {
     const result = stringifyChildren(children, isComplex)
     return children.length > 1 && isComplex
-      ? stringifyGroup(result)
+      ? generator.toGroup(result)
       : result
   }
 }
@@ -272,19 +268,19 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
     // 避免出现 a||b&&c 的情况
     // 应该输出 (a||b)&&c
     if (isUndef(no)) {
-      result = stringifyGroup(test) + generator.AND + yes
+      result = generator.toGroup(test) + generator.AND + yes
     }
     else if (isUndef(yes)) {
-      result = stringifyGroup(generator.NOT + test) + generator.AND + no
+      result = generator.toGroup(generator.NOT + test) + generator.AND + no
     }
     else {
-      // 三元表达式优先级最低，不用再调 stringifyGroup
+      // 三元表达式优先级最低，不用再调 generator.toGroup
       result = test + generator.QUESTION + yes + generator.COLON + no
     }
 
     // 如果是连接操作，因为 ?: 优先级最低，因此要加 ()
     return isJoin
-      ? stringifyGroup(result)
+      ? generator.toGroup(result)
       : result
 
   }
