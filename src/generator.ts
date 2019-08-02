@@ -279,8 +279,12 @@ function stringifyIf(node: If | ElseIf, stub: boolean | void) {
       result = generator.toGroup(generator.NOT + test) + generator.AND + no
     }
     else {
-      // 三元表达式优先级最低，不用再调 generator.toGroup
-      result = test + generator.QUESTION + yes + generator.COLON + no
+      // 虽然三元表达式优先级最低，但无法保证表达式内部没有 ,
+      result = generator.toGroup(test)
+        + generator.QUESTION
+        + generator.toGroup(yes as string)
+        + generator.COLON
+        + generator.toGroup(no as string)
     }
 
     // 如果是连接操作，因为 ?: 优先级最低，因此要加 ()
