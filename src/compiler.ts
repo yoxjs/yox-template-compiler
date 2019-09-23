@@ -983,7 +983,9 @@ export function compile(content: string): Branch[] {
         // 方便 virtual dom 进行对比
         // 这个跟 virtual dom 的实现原理密切相关，不加 stub 会有问题
         if (!currentElement) {
-          (node as If).stub = constant.TRUE
+          (node as If).stub =
+          // stub 会在运行时可能创建注释节点，使得父元素变成复杂节点
+          (node as If).isComplex = constant.TRUE
         }
         array.push(ifStack, node)
       }
