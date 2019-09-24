@@ -206,7 +206,9 @@ export function render(
         (lastVnode.text as string) += text
       }
       else {
+        // 注释节点标签名是 '!'，这里区分一下
         const textVnode: Data = {
+          tag: '#',
           isText: constant.TRUE,
           text,
           context,
@@ -402,7 +404,10 @@ export function render(
   },
 
   renderCommentVnode = function () {
+    // 注释节点和文本节点需要有个区分
+    // 如果两者都没有 tag，则 patchVnode 时，会认为两者是 patchable 的
     return appendVnode({
+      tag: '!',
       isComment: constant.TRUE,
       text: constant.EMPTY_STRING,
       keypath: $scope.$keypath,
