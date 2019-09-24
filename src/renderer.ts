@@ -77,7 +77,13 @@ export function render(
 
   findValue = function (stack: any[], index: number, key: string, lookup: boolean, depIgnore?: boolean, defaultKeypath?: string): ValueHolder {
 
-    let scope = stack[index], keypath = keypathUtil.join(scope.$keypath, key), value: any = stack, holder = globalHolder
+    let scope = stack[index],
+
+    keypath = keypathUtil.join(scope.$keypath, key),
+
+    value: any = stack,
+
+    holder = globalHolder
 
     // 如果最后还是取不到值，用回最初的 keypath
     if (defaultKeypath === constant.UNDEFINED) {
@@ -522,14 +528,11 @@ export function render(
     depIgnore?: boolean,
     stack?: any[]
   ) {
-    const myStack = stack || $stack,
-    result = findValue(
-      myStack,
-      myStack.length - 1 - (offset || 0),
-      name,
-      lookup,
-      depIgnore
-    )
+    let myStack = stack || $stack, index = myStack.length - 1
+    if (offset) {
+      index -= offset
+    }
+    let result = findValue(myStack, index, name, lookup, depIgnore)
     return holder ? result : result.value
   },
 
