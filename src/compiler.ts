@@ -462,8 +462,19 @@ export function compile(content: string): Branch[] {
 
     const { text } = child
 
+    // 这里需要严格校验格式，比如 width="100%" 要打印报错信息，提示用户类型错误
     if (prop.hint === HINT_NUMBER) {
-      prop.value = toNumber(text)
+      if (process.env.NODE_ENV === 'development') {
+        if (is.numeric(text)) {
+          prop.value = +text
+        }
+        else {
+          fatal(`The value of "${prop.name}" is not a number: ${text}.`)
+        }
+      }
+      else {
+        prop.value = toNumber(text)
+      }
     }
     else if (prop.hint === HINT_BOOLEAN) {
       prop.value = text === constant.RAW_TRUE || text === prop.name
