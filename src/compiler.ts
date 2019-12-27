@@ -212,18 +212,6 @@ export function compile(content: string): Branch[] {
         if (currentBranch.isStatic && !node.isStatic) {
           currentBranch.isStatic = constant.FALSE
         }
-        if (!currentBranch.isComplex) {
-          if (node.isComplex || isElement) {
-            currentBranch.isComplex = constant.TRUE
-          }
-          // <div {{#if xx}} xx{{/if}}>
-          else if (currentElement
-            && currentElement !== currentBranch
-            && (isAttribute || isProperty || isDirective)
-          ) {
-            currentBranch.isComplex = constant.TRUE
-          }
-        }
       }
 
       if (process.env.NODE_ENV === 'development') {
@@ -1010,10 +998,6 @@ export function compile(content: string): Branch[] {
       if (currentBranch) {
         if (currentBranch.isStatic && !node.isStatic) {
           currentBranch.isStatic = constant.FALSE
-        }
-        // 当前树枝节点是简单节点，一旦加入了一个复杂子节点，当前树枝节点变为复杂节点
-        if (!currentBranch.isComplex && node.isComplex) {
-          currentBranch.isComplex = constant.TRUE
         }
       }
     }
