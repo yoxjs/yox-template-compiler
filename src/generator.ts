@@ -112,9 +112,7 @@ RENDER_RANGE = 'w',
 
 RENDER_EQUAL_RANGE = 'x',
 
-TO_STRING = 'y',
-
-ARG_STACK = 'z'
+ARG_STACK = 'y'
 
 function renderExpression(expr: ExpressionNode, holder?: boolean, depIgnore?: boolean, stack?: string) {
   return exprGenerator.generate(
@@ -149,23 +147,15 @@ function stringifyFunction(result: string | void, arg?: string): string {
   return `${constant.RAW_FUNCTION}(${arg || constant.EMPTY_STRING}){${result || constant.EMPTY_STRING}}`
 }
 
-function stringifyExpression(expr: ExpressionNode, toString: boolean | void): string {
-  const value = renderExpression(expr)
-  return toString
-    ? generator.toCall(
-      TO_STRING,
-      [
-        value
-      ]
-    )
-    : value
+function stringifyExpression(expr: ExpressionNode): string {
+  return renderExpression(expr)
 }
 
-function stringifyExpressionVnode(expr: ExpressionNode, toString: boolean | void): string {
+function stringifyExpressionVnode(expr: ExpressionNode): string {
   return generator.toCall(
     RENDER_TEXT_VNODE,
     [
-      stringifyExpression(expr, toString)
+      stringifyExpression(expr)
     ]
   )
 }
@@ -188,9 +178,9 @@ function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[
     // compiler 会把原始字符串编译成 value
     // compiler 会把单个插值编译成 expr
     // 因此走到这里，一定是多个插值或是单个特殊插值（比如 If)
-    stringStack.push(constant.TRUE)
+    array.push(stringStack, constant.TRUE)
     const result = stringifyChildren(children)
-    stringStack.pop()
+    array.pop(stringStack)
     return result
   }
 }
@@ -216,17 +206,11 @@ function stringifyIf(node: If | ElseIf) {
   let { children, next } = node,
 
   // 是否正在收集子节点
-  isCollecting = array.last(collectStack),
-
-  // 当属性值 children.length > 1 时为 true
-  isStringRequired = array.last(stringStack),
-
-  // 要求字符串时，则每个分支都必须是字符串
-  defaultValue = isStringRequired
-    ? generator.EMPTY
-    // 收集子节点时，必须有一个注释节点，方便 vdom diff
-    : isCollecting
-      ? generator.toCall(RENDER_COMMENT_VNODE)
+  defaultValue = array.last(collectStack)
+    ? generator.toCall(RENDER_COMMENT_VNODE)
+    // 要求是字符串
+    : array.last(stringStack)
+      ? generator.EMPTY
       : generator.UNDEFINED,
 
   test = stringifyExpression(node.expr),
@@ -404,7 +388,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
   if (html) {
     outputHTML = is.string(html)
       ? generator.toString(html as string)
-      : stringifyExpression(html as ExpressionNode, constant.TRUE)
+      : stringifyExpression(html as ExpressionNode)
   }
 
   outputStatic = node.isStatic ? generator.TRUE : constant.UNDEFINED
@@ -630,14 +614,11 @@ nodeGenerator[nodeType.EXPRESSION] = function (node: Expression): string {
   // 强制保留 toString 参数，减少运行时判断参数是否存在
   // 因为还有 stack 参数呢，各种判断真的很累
 
-  const stringify = array.last(collectStack) && !array.last(stringStack)
+  const stringify = array.last(collectStack)
     ? stringifyExpressionVnode
     : stringifyExpression
 
-  return stringify(
-    node.expr,
-    array.last(stringStack)
-  )
+  return stringify(node.expr)
 
 }
 
@@ -745,7 +726,6 @@ export function generate(node: Node): string {
       RENDER_EACH,
       RENDER_RANGE,
       RENDER_EQUAL_RANGE,
-      TO_STRING,
     ], generator.COMMA)
   }
 

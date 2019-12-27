@@ -30,6 +30,7 @@ import {
   DIRECTIVE_CUSTOM,
 } from 'yox-config/src/config'
 
+import isDef from 'yox-common/src/function/isDef'
 import execute from 'yox-common/src/function/execute'
 import toString from 'yox-common/src/function/toString'
 import CustomEvent from 'yox-common/src/util/CustomEvent'
@@ -204,9 +205,10 @@ export function render(
     }
   },
 
-  renderTextVnode = function (text: string) {
+  renderTextVnode = function (value: any) {
     const vnodeList = array.last(vnodeStack)
     if (vnodeList) {
+      const text = toString(value)
       const lastVnode = array.last(vnodeList)
       if (lastVnode && lastVnode.isText) {
         (lastVnode.text as string) += text
@@ -429,14 +431,13 @@ export function render(
     isOption: true | void,
     isStyle: true | void,
     isSvg: true | void,
-    html: string | void,
+    html: any | void,
     ref: string | void,
     key: string | void
   ) {
 
     const vnode: Data = {
       tag,
-      html,
       isStatic,
       isOption,
       isStyle,
@@ -445,6 +446,10 @@ export function render(
       key,
       context,
       keypath: $scope.$keypath,
+    }
+
+    if (isDef(html)) {
+      vnode.html = toString(html)
     }
 
     if (attrs) {
