@@ -147,15 +147,11 @@ function stringifyFunction(result: string | void, arg?: string): string {
   return `${constant.RAW_FUNCTION}(${arg || constant.EMPTY_STRING}){${result || constant.EMPTY_STRING}}`
 }
 
-function stringifyExpression(expr: ExpressionNode): string {
-  return renderExpression(expr)
-}
-
 function stringifyExpressionVnode(expr: ExpressionNode): string {
   return generator.toCall(
     RENDER_TEXT_VNODE,
     [
-      stringifyExpression(expr)
+      renderExpression(expr)
     ]
   )
 }
@@ -170,7 +166,7 @@ function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[
   }
   // 只有一个表达式时，保持原始类型
   if (expr) {
-    return stringifyExpression(expr)
+    return renderExpression(expr)
   }
   // 多个值拼接时，要求是字符串
   if (children) {
@@ -213,8 +209,6 @@ function stringifyIf(node: If | ElseIf) {
       ? generator.EMPTY
       : generator.UNDEFINED,
 
-  test = stringifyExpression(node.expr),
-
   yes: string | void,
 
   no: string | void
@@ -238,7 +232,7 @@ function stringifyIf(node: If | ElseIf) {
 
   // 虽然三元表达式优先级最低，但无法保证表达式内部没有 ,
   // 因此每一个分支都要调用 toGroup
-  return generator.toGroup(test)
+  return generator.toGroup(renderExpression(node.expr))
     + generator.QUESTION
     + generator.toGroup(yes || defaultValue)
     + generator.COLON
@@ -384,11 +378,10 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
 
 
 
-
   if (html) {
     outputHTML = is.string(html)
       ? generator.toString(html as string)
-      : stringifyExpression(html as ExpressionNode)
+      : renderExpression(html as ExpressionNode)
   }
 
   outputStatic = node.isStatic ? generator.TRUE : constant.UNDEFINED
@@ -597,28 +590,22 @@ nodeGenerator[nodeType.TEXT] = function (node: Text): string {
 
   const result = generator.toString(node.text)
 
-  if (array.last(collectStack) && !array.last(stringStack)) {
-    return generator.toCall(
-      RENDER_TEXT_VNODE,
-      [
-        result
-      ]
-    )
-  }
+  return array.last(collectStack)
+    ? generator.toCall(
+        RENDER_TEXT_VNODE,
+        [
+          result
+        ]
+      )
+    : result
 
-  return result
 }
 
 nodeGenerator[nodeType.EXPRESSION] = function (node: Expression): string {
 
-  // 强制保留 toString 参数，减少运行时判断参数是否存在
-  // 因为还有 stack 参数呢，各种判断真的很累
-
-  const stringify = array.last(collectStack)
-    ? stringifyExpressionVnode
-    : stringifyExpression
-
-  return stringify(node.expr)
+  return array.last(collectStack)
+    ? stringifyExpressionVnode(node.expr)
+    : renderExpression(node.expr)
 
 }
 
