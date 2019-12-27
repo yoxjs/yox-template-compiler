@@ -104,9 +104,6 @@ export function createIf(expr: ExpressionNode): If {
   return {
     type: nodeType.IF,
     expr,
-    // if 会产生注释节点，但不能直接加这句，要判断 if 位于元素层级才行
-    // 即 <div>{{#if xx}}xx{{/if}}</div> 才会使得 div 变成 complex 节点
-    // isComplex: constant.TRUE,
   }
 }
 

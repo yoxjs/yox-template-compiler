@@ -8,7 +8,6 @@ import {
 } from 'yox-config/src/config'
 
 import isDef from 'yox-common/src/function/isDef'
-import isUndef from 'yox-common/src/function/isUndef'
 
 import * as is from 'yox-common/src/util/is'
 import * as array from 'yox-common/src/util/array'
@@ -57,11 +56,11 @@ import Spread from './node/Spread'
  *
  */
 
-// 是否要执行 join 操作
-const joinStack: boolean[] = [],
-
 // 是否正在收集子节点
-collectStack: (boolean | void)[] = [],
+const collectStack: (boolean | void)[] = [],
+
+// 是否正在收集字符串类型的值
+stringStack: (boolean | void)[] = [],
 
 nodeGenerator = {},
 
@@ -116,13 +115,6 @@ RENDER_EQUAL_RANGE = 'x',
 TO_STRING = 'y',
 
 ARG_STACK = 'z'
-
-
-// 序列化代码的参数列表
-let codeArgs: string | void,
-
-// 表达式求值是否要求返回字符串类型
-isStringRequired: boolean | void
 
 function renderExpression(expr: ExpressionNode, holder?: boolean, depIgnore?: boolean, stack?: string) {
   return exprGenerator.generate(
@@ -192,109 +184,81 @@ function stringifyValue(value: any, expr: ExpressionNode | void, children: Node[
   }
   // 多个值拼接时，要求是字符串
   if (children) {
-    // 求值时要标识 isStringRequired
-    // 求完后复原
     // 常见的应用场景是序列化 HTML 元素属性值，处理值时要求字符串，在处理属性名这个级别，不要求字符串
-    const oldValue = isStringRequired
-    isStringRequired = children.length > 1
+    // compiler 会把原始字符串编译成 value
+    // compiler 会把单个插值编译成 expr
+    // 因此走到这里，一定是多个插值或是单个特殊插值（比如 If)
+    stringStack.push(constant.TRUE)
     const result = stringifyChildren(children)
-    isStringRequired = oldValue
+    stringStack.pop()
     return result
   }
 }
 
-function stringifyChildren(children: Node[], isComplex: boolean | void): string {
-  // 如果是复杂节点的 children，则每个 child 的序列化都是函数调用的形式
-  // 因此最后可以拼接为 fn1(), fn2(), fn3() 这样依次调用，而不用再多此一举的使用数组，
-  // 因为在 renderer 里也用不上这个数组
+function stringifyChildren(children: Node[]) {
 
-  // children 大于一个时，才有 join 的可能，单个值 join 啥啊...
-  const isJoin = children.length > 1 && !isComplex
-
-  array.push(joinStack, isJoin)
-  const value = array.join(
-    children.map(
-      function (child: Node) {
-        return nodeGenerator[child.type](child)
-      }
-    ),
-    isJoin ? generator.PLUS : generator.COMMA
+  const items = children.map(
+    function (child: Node) {
+      return nodeGenerator[child.type](child)
+    }
   )
-  array.pop(joinStack)
 
-  return value
+  // 字符串拼接涉及表达式的优先级问题，这里先统一成数组，字符串拼接改成 array.join 有利于一致性
+
+  return array.last(stringStack) && items.length > 1
+    ? generator.toArray(items) + `.join(${generator.EMPTY})`
+    : array.join(items, generator.COMMA)
 
 }
 
-function stringifyConditionChildren(children: Node[] | void, isComplex: boolean | void): string | void {
-  if (children) {
-    const result = stringifyChildren(children, isComplex)
-    return children.length > 1 && isComplex
-      ? generator.toGroup(result)
-      : result
-  }
-}
+function stringifyIf(node: If | ElseIf) {
 
-function stringifyIf(node: If | ElseIf, stub: boolean | void) {
+  let { children, next } = node,
 
-  let { children, isComplex, next } = node,
+  // 是否正在收集子节点
+  isCollecting = array.last(collectStack),
+
+  // 当属性值 children.length > 1 时为 true
+  isStringRequired = array.last(stringStack),
+
+  // 要求字符串时，则每个分支都必须是字符串
+  defaultValue = isStringRequired
+    ? generator.EMPTY
+    // 收集子节点时，必须有一个注释节点，方便 vdom diff
+    : isCollecting
+      ? generator.toCall(RENDER_COMMENT_VNODE)
+      : generator.UNDEFINED,
 
   test = stringifyExpression(node.expr),
 
-  yes = stringifyConditionChildren(children, isComplex),
+  yes: string | void,
 
-  no: string | void,
+  no: string | void
 
-  result: string
+  if (children) {
+    yes = stringifyChildren(children)
+  }
 
   if (next) {
-    no = next.type === nodeType.ELSE
-      ? stringifyConditionChildren(next.children, next.isComplex)
-      : stringifyIf(next as ElseIf, stub)
-  }
-  // 到达最后一个条件，发现第一个 if 语句带有 stub，需创建一个注释标签占位
-  else if (stub) {
-    no = generator.toCall(
-      RENDER_COMMENT_VNODE
-    )
+    if (next.type === nodeType.ELSE_IF) {
+      no = stringifyIf(next as ElseIf)
+    }
+    else if (next.children) {
+      no = stringifyChildren(next.children)
+    }
   }
 
-  if (isDef(yes) || isDef(no)) {
-
-    if (isStringRequired) {
-      if (isUndef(yes)) {
-        yes = generator.EMPTY
-      }
-      if (isUndef(no)) {
-        no = generator.EMPTY
-      }
-    }
-
-    // 避免出现 a||b&&c 的情况
-    // 应该输出 (a||b)&&c
-    if (isUndef(no)) {
-      result = generator.toGroup(test) + generator.AND + yes
-    }
-    else if (isUndef(yes)) {
-      result = generator.toGroup(generator.NOT + test) + generator.AND + no
-    }
-    else {
-      // 虽然三元表达式优先级最低，但无法保证表达式内部没有 ,
-      result = generator.toGroup(test)
-        + generator.QUESTION
-        + generator.toGroup(yes as string)
-        + generator.COLON
-        + generator.toGroup(no as string)
-    }
-
-    // 如果是连接操作，因为 ?: 优先级最低，因此要加 ()
-    return array.last(joinStack)
-      ? generator.toGroup(result)
-      : result
-
+  if (!yes && !no) {
+    return defaultValue
   }
 
-  return generator.EMPTY
+  // 虽然三元表达式优先级最低，但无法保证表达式内部没有 ,
+  // 因此每一个分支都要调用 toGroup
+  return generator.toGroup(test)
+    + generator.QUESTION
+    + generator.toGroup(yes || defaultValue)
+    + generator.COLON
+    + generator.toGroup(no || defaultValue)
 
 }
 
@@ -342,9 +306,8 @@ function getComponentSlots(children: Node[]): string | void {
   object.each(
     slots,
     function (children, name) {
-      // 强制为复杂节点，因为 slot 的子节点不能用字符串拼接的方式来渲染
       result[name] = stringifyFunction(
-        stringifyChildren(children, constant.TRUE)
+        stringifyChildren(children)
       )
     }
   )
@@ -357,14 +320,13 @@ function getComponentSlots(children: Node[]): string | void {
 
 nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
 
-  let { tag, isComponent, isComplex, ref, key, html, attrs, children } = node,
+  let { tag, isComponent, ref, key, html, attrs, children } = node,
 
   staticTag: string | void,
   dynamicTag: string | void,
 
   outputAttrs: string | void,
 
-  outputText: string | void,
   outputHTML: string | void,
 
   outputChilds: string | void,
@@ -384,7 +346,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
       array.push(
         args,
         stringifyFunction(
-          stringifyChildren(children, constant.TRUE)
+          stringifyChildren(children)
         )
       )
     }
@@ -423,23 +385,14 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
   }
 
   if (children) {
+    collectStack[collectStack.length - 1] = constant.TRUE
     if (isComponent) {
-      collectStack[collectStack.length - 1] = constant.TRUE
       outputSlots = getComponentSlots(children)
     }
     else {
-      const oldValue = isStringRequired
-      isStringRequired = constant.TRUE
-      collectStack[collectStack.length - 1] = isComplex
-      outputChilds = stringifyChildren(children, isComplex)
-      if (isComplex) {
-        outputChilds = stringifyFunction(outputChilds)
-      }
-      else {
-        outputText = outputChilds
-        outputChilds = constant.UNDEFINED
-      }
-      isStringRequired = oldValue
+      outputChilds = stringifyFunction(
+        stringifyChildren(children)
+      )
     }
   }
 
@@ -484,7 +437,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
       staticTag,
       outputAttrs,
       outputChilds,
-      outputText,
       outputStatic,
       outputOption,
       outputStyle,
@@ -661,7 +613,7 @@ nodeGenerator[nodeType.TEXT] = function (node: Text): string {
 
   const result = generator.toString(node.text)
 
-  if (array.last(collectStack) && !array.last(joinStack)) {
+  if (array.last(collectStack) && !array.last(stringStack)) {
     return generator.toCall(
       RENDER_TEXT_VNODE,
       [
@@ -675,32 +627,29 @@ nodeGenerator[nodeType.TEXT] = function (node: Text): string {
 
 nodeGenerator[nodeType.EXPRESSION] = function (node: Expression): string {
 
-  // 强制保留 isStringRequired 参数，减少运行时判断参数是否存在
+  // 强制保留 toString 参数，减少运行时判断参数是否存在
   // 因为还有 stack 参数呢，各种判断真的很累
 
-  if (array.last(collectStack) && !array.last(joinStack)) {
-    return stringifyExpressionVnode(
-      node.expr,
-      isStringRequired
-    )
-  }
+  const stringify = array.last(collectStack) && !array.last(stringStack)
+    ? stringifyExpressionVnode
+    : stringifyExpression
 
-  return stringifyExpression(
+  return stringify(
     node.expr,
-    isStringRequired
+    array.last(stringStack)
   )
 
 }
 
 nodeGenerator[nodeType.IF] = function (node: If): string {
-  return stringifyIf(node, node.stub)
+  return stringifyIf(node)
 }
 
 nodeGenerator[nodeType.EACH] = function (node: Each): string {
 
   // compiler 保证了 children 一定有值
   const children = stringifyFunction(
-    stringifyChildren(node.children as Node[], node.isComplex)
+    stringifyChildren(node.children as Node[])
   )
 
   // 遍历区间
@@ -747,7 +696,7 @@ nodeGenerator[nodeType.PARTIAL] = function (node: Partial): string {
       generator.toString(node.name),
       // compiler 保证了 children 一定有值
       stringifyFunction(
-        stringifyChildren(node.children as Node[], node.isComplex)
+        stringifyChildren(node.children as Node[])
       )
     ]
   )
@@ -764,6 +713,9 @@ nodeGenerator[nodeType.IMPORT] = function (node: Import): string {
   )
 
 }
+
+// 序列化代码的参数列表
+let codeArgs: string | void
 
 export function generate(node: Node): string {
 

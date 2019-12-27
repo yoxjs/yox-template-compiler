@@ -666,6 +666,9 @@ export function compile(content: string): Branch[] {
 
   checkCondition = function (condition: If | ElseIf | Else) {
 
+    // 这里会去掉没有子节点的空分支
+
+    // 从最后一个节点往前遍历
     let currentNode: any = condition,
 
     prevNode: any,
@@ -675,7 +678,10 @@ export function compile(content: string): Branch[] {
     hasNext: boolean | void
 
     while (constant.TRUE) {
+      // 当前分支有子节点
       if (currentNode.children) {
+        // 从后往前遍历第一次发现非空分支
+        // 此时，可以删掉后面的空分支
         if (!hasNext) {
           if (currentNode.next) {
             delete currentNode.next
@@ -685,7 +691,7 @@ export function compile(content: string): Branch[] {
       }
       prevNode = currentNode.prev
       if (prevNode) {
-        // prev 仅仅用在 checkCondition 函数中
+        // prev 仅在 checkCondition 函数中用作逆向遍历
         // 用完就可以删掉了
         delete currentNode.prev
         currentNode = prevNode
@@ -695,9 +701,10 @@ export function compile(content: string): Branch[] {
       }
     }
 
-    // 每个条件都是空内容，则删掉整个 if
+    // 所有分支都没有子节点，删掉整个 if
     if (!hasChildren) {
       replaceChild(currentNode)
+      return
     }
 
   },
@@ -990,14 +997,6 @@ export function compile(content: string): Branch[] {
       }
 
       if (type === nodeType.IF) {
-        // 只要是 if 节点，并且和 element 同级，就加上 stub
-        // 方便 virtual dom 进行对比
-        // 这个跟 virtual dom 的实现原理密切相关，不加 stub 会有问题
-        if (!currentElement) {
-          (node as If).stub =
-          // stub 会在运行时可能创建注释节点，使得父元素变成复杂节点
-          (node as If).isComplex = constant.TRUE
-        }
         array.push(ifStack, node)
       }
 
@@ -1070,7 +1069,10 @@ export function compile(content: string): Branch[] {
              * </div>
              */
             popSelfClosingElementIfNeeded(tag)
-            popStack(nodeType.ELEMENT, tag)
+
+            // 等到 > 字符才算真正的结束
+            currentElement = popStack(nodeType.ELEMENT, tag) as Element
+
           }
           else {
 
@@ -1096,6 +1098,7 @@ export function compile(content: string): Branch[] {
 
             addChild(node)
             currentElement = node
+
           }
           return match[0]
         }
@@ -1107,6 +1110,7 @@ export function compile(content: string): Branch[] {
       if (match) {
 
         // 处理开始标签的 > 或 />
+        // 处理结束标签的 >
         if (currentElement && !currentAttribute) {
 
           // 自闭合标签
@@ -1115,9 +1119,15 @@ export function compile(content: string): Branch[] {
           }
 
           currentElement = constant.UNDEFINED
+
+          return match[0]
+
         }
-        // 处理结束标签的 >
-        return match[0]
+
+        // 如果只是写了一个 > 字符
+        // 比如 <div>></div>
+        // 则交给其他 parser 处理
+
       }
     },
     // 处理 attribute directive 的 name 部分

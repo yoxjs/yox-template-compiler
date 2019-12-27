@@ -425,7 +425,6 @@ export function render(
     tag: string,
     attrs: Function | void,
     childs: Function | void,
-    text: string | void,
     isStatic: true | void,
     isOption: true | void,
     isStyle: true | void,
@@ -437,7 +436,6 @@ export function render(
 
     const vnode: Data = {
       tag,
-      text,
       html,
       isStatic,
       isOption,

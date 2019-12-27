@@ -10,8 +10,6 @@ export default interface If extends Branch {
 
   expr: ExpressionNode
 
-  stub?: boolean
-
   next?: ElseIf | Else
 
 }
