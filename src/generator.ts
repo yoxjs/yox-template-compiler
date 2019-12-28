@@ -344,6 +344,10 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
 
   array.push(collectStack, constant.FALSE)
 
+  // 在 collectStack 为 false 时取值
+  outputRef = ref ? stringifyValue(ref.value, ref.expr, ref.children) : constant.UNDEFINED
+  outputKey = key ? stringifyValue(key.value, key.expr, key.children) : constant.UNDEFINED
+
   if (attrs) {
     const list: string[] = []
     array.each(
@@ -388,9 +392,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
   outputOption = node.isOption ? generator.TRUE : constant.UNDEFINED
   outputStyle = node.isStyle ? generator.TRUE : constant.UNDEFINED
   outputSvg = node.isSvg ? generator.TRUE : constant.UNDEFINED
-
-  outputRef = ref ? stringifyValue(ref.value, ref.expr, ref.children) : constant.UNDEFINED
-  outputKey = key ? stringifyValue(key.value, key.expr, key.children) : constant.UNDEFINED
 
   if (isComponent) {
     return generator.toCall(

@@ -642,8 +642,7 @@ export function render(
           renderImport,
           renderEach,
           renderRange,
-          renderEqualRange,
-          toString
+          renderEqualRange
         )
       }
       else if (process.env.NODE_ENV === 'development') {
@@ -820,8 +819,7 @@ export function render(
     renderImport,
     renderEach,
     renderRange,
-    renderEqualRange,
-    toString
+    renderEqualRange
   )
 
 }
