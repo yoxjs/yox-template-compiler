@@ -469,29 +469,12 @@ export function render(
   },
 
   renderComponentVnode = function (
-    staticTag: string | void,
+    tag: string,
     attrs: Function | void,
     slots: Record<string, Function> | void,
     ref: string | void,
-    key: string | void,
-    dynamicTag: string | void
+    key: string | void
   ) {
-
-    let tag: string
-
-    // 组件支持动态名称
-    if (dynamicTag) {
-      const componentName = observer.get(dynamicTag)
-      if (process.env.NODE_ENV === 'development') {
-        if (!componentName) {
-          logger.warn(`The dynamic component "${dynamicTag}" can't be found.`)
-        }
-      }
-      tag = componentName
-    }
-    else {
-      tag = staticTag as string
-    }
 
     const vnode: Data = {
       tag,

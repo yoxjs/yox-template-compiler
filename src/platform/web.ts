@@ -8,6 +8,8 @@ import * as array from 'yox-common/src/util/array'
 import * as string from 'yox-common/src/util/string'
 import * as constant from 'yox-common/src/util/constant'
 
+import ExpressionNode from 'yox-expression-compiler/src/node/Node'
+
 import Element from '../node/Element'
 import Attribute from '../node/Attribute'
 import Property from '../node/Property'
@@ -17,7 +19,7 @@ import * as creator from '../creator'
 import * as nodeType from '../nodeType'
 
 // 首字母大写，或中间包含 -
-const componentNamePattern = /^[$A-Z]|-/,
+const componentNamePattern = /^[A-Z]|-/,
 
 // HTML 实体（中间最多 6 位，没见过更长的）
 htmlEntityPattern = /&[#\w\d]{2,6};/,
@@ -106,27 +108,36 @@ export function getAttributeDefaultValue(element: Element, name: string) {
     return constant.TRUE
   }
   // <div data-name checked>
-  else {
-    return string.startsWith(name, 'data-')
-      ? constant.EMPTY_STRING
-      : name
-  }
+  return string.startsWith(name, 'data-')
+    ? constant.EMPTY_STRING
+    : name
 }
 
-export function createElement(tagName: string) {
+export function createElement(staticTag: string, dynamicTag: ExpressionNode | void) {
 
-  let isSvg = array.has(svgTagNames, tagName), isComponent = constant.FALSE
+  let isSvg = constant.FALSE, isStyle = constant.FALSE, isComponent = constant.FALSE
 
-  // 是 svg 就不可能是组件
-  // 加这个判断的原因是，svg 某些标签含有 连字符 和 大写字母，比较蛋疼
-  if (!isSvg && componentNamePattern.test(tagName)) {
+  if (dynamicTag) {
     isComponent = constant.TRUE
+  }
+  else {
+    isSvg = array.has(svgTagNames, staticTag)
+
+    // 是 svg 就不可能是组件
+    // 加这个判断的原因是，svg 某些标签含有 连字符 和 大写字母，比较蛋疼
+    if (!isSvg && componentNamePattern.test(staticTag)) {
+      isComponent = constant.TRUE
+    }
+    else if (staticTag === 'style') {
+      isStyle = constant.TRUE
+    }
   }
 
   return creator.createElement(
-    tagName,
+    staticTag,
+    dynamicTag,
     isSvg,
-    tagName === 'style',
+    isStyle,
     isComponent
   )
 }

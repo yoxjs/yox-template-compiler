@@ -11,7 +11,6 @@ import isDef from 'yox-common/src/function/isDef'
 
 import * as is from 'yox-common/src/util/is'
 import * as array from 'yox-common/src/util/array'
-import * as string from 'yox-common/src/util/string'
 import * as object from 'yox-common/src/util/object'
 import * as constant from 'yox-common/src/util/constant'
 import * as generator from 'yox-common/src/util/generator'
@@ -298,10 +297,9 @@ function getComponentSlots(children: Node[]): string | void {
 
 nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
 
-  let { tag, isComponent, ref, key, html, attrs, children } = node,
+  let { tag, dynamicTag, isComponent, ref, key, html, attrs, children } = node,
 
-  staticTag: string | void,
-  dynamicTag: string | void,
+  outputTag: string | void,
 
   outputAttrs: string | void,
 
@@ -331,13 +329,10 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
     return generator.toCall(RENDER_SLOT, args)
   }
 
-  // 如果以 $ 开头，表示动态组件
-  if (string.codeAt(tag) === 36) {
-    dynamicTag = generator.toString(string.slice(tag, 1))
-  }
-  else {
-    staticTag = generator.toString(tag)
-  }
+  // 如果是动态组件，tag 会是一个标识符表达式
+  outputTag = dynamicTag
+    ? renderExpression(dynamicTag)
+    : generator.toString(tag)
 
 
 
@@ -398,12 +393,11 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
       RENDER_COMPONENT_VNODE,
       // 最常用 => 最不常用排序
       [
-        staticTag,
+        outputTag,
         outputAttrs,
         outputSlots,
         outputRef,
         outputKey,
-        dynamicTag,
       ]
     )
   }
@@ -412,7 +406,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
     RENDER_ELEMENT_VNODE,
     // 最常用 => 最不常用排序
     [
-      staticTag,
+      outputTag,
       outputAttrs,
       outputChilds,
       outputStatic,

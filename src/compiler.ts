@@ -1043,7 +1043,7 @@ export function compile(content: string): Branch[] {
         // 必须以 <tag 开头才能继续
         // 如果 <tag 前面有别的字符，会走进第四个 parser
         if (match && match.index === 0) {
-          const tag = match[2]
+          let tag = match[2]
           if (match[1] === constant.RAW_SLASH) {
             /**
              * 处理可能存在的自闭合元素，如下
@@ -1078,7 +1078,30 @@ export function compile(content: string): Branch[] {
               }
             }
 
-            const node = createElement(tag)
+            let dynamicTag: ExpressionNode | void
+
+            // 如果以 $ 开头，表示动态组件
+            if (string.codeAt(tag) === 36) {
+
+              // 编译成表达式
+              tag = string.slice(tag, 1)
+
+              dynamicTag = exprCompiler.compile(tag)
+              // 表达式必须是标识符类型
+              if (process.env.NODE_ENV === 'development') {
+                if (dynamicTag) {
+                  if (dynamicTag.type !== exprNodeType.IDENTIFIER) {
+                    fatal(`The dynamic component "${tag}" is not a valid identifier.`)
+                  }
+                }
+                else {
+                  fatal(`The dynamic component "${tag}" is not a valid expression.`)
+                }
+              }
+
+            }
+
+            const node = createElement(tag, dynamicTag)
 
             addChild(node)
             currentElement = node

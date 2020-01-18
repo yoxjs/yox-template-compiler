@@ -13,6 +13,8 @@ export default interface Element extends Branch {
 
   tag: string
 
+  dynamicTag: ExpressionNode | void
+
   // 是否是 svg 类族元素
   isSvg: boolean
 

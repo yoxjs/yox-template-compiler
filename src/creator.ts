@@ -64,10 +64,11 @@ export function createEach(from: ExpressionNode, to: ExpressionNode | void, equa
   }
 }
 
-export function createElement(tag: string, isSvg: boolean, isStyle: boolean, isComponent: boolean): Element {
+export function createElement(tag: string, dynamicTag: ExpressionNode | void, isSvg: boolean, isStyle: boolean, isComponent: boolean): Element {
   return {
     type: nodeType.ELEMENT,
     tag,
+    dynamicTag,
     isSvg,
     isStyle,
     // 只有 <option> 没有 value 属性时才为 true
