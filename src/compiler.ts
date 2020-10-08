@@ -1168,15 +1168,15 @@ export function compile(content: string): Branch[] {
                 fatal('The event name is required.')
               }
             }
-            const [directiveName, diectiveModifier, extra] = string.camelize(event).split(constant.RAW_DOT)
+            const parts = string.camelize(event).split(constant.RAW_DOT)
             node = creator.createDirective(
-              directiveName,
+              parts[0],
               DIRECTIVE_EVENT,
-              diectiveModifier
+              parts[1]
             )
             // on-a.b.c
             if (process.env.NODE_ENV === 'development') {
-              if (is.string(extra)) {
+              if (is.string(parts[2])) {
                 fatal('Invalid event namespace.')
               }
             }
@@ -1202,15 +1202,15 @@ export function compile(content: string): Branch[] {
                 fatal('The directive name is required.')
               }
             }
-            const [directiveName, diectiveModifier, extra] = string.camelize(custom).split(constant.RAW_DOT)
+            const parts = string.camelize(custom).split(constant.RAW_DOT)
             node = creator.createDirective(
-              directiveName,
+              parts[0],
               DIRECTIVE_CUSTOM,
-              diectiveModifier
+              parts[1]
             )
             // o-a.b.c
             if (process.env.NODE_ENV === 'development') {
-              if (is.string(extra)) {
+              if (is.string(parts[2])) {
                 fatal('Invalid directive modifier.')
               }
             }

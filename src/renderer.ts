@@ -68,9 +68,11 @@ export function render(
 
   $stack = [ $scope ],
 
-  $vnode: any,
+  currentVnode: any,
 
   vnodeStack: VNode[][] = [],
+
+  slotComponentStack: Data[][] = [],
 
   localPartials: Record<string, Function> = {},
 
@@ -229,25 +231,25 @@ export function render(
 
   renderAttributeVnode = function (name: string, value: string | void) {
     setPair(
-      $vnode,
-      $vnode.isComponent ? 'props' : 'nativeAttrs',
+      currentVnode,
+      currentVnode.isComponent ? 'props' : 'nativeAttrs',
       name,
       value
     )
   },
 
   renderPropertyVnode = function (name: string, value: any) {
-    setPair($vnode, 'nativeProps', name, value)
+    setPair(currentVnode, 'nativeProps', name, value)
   },
 
   renderLazyVnode = function (name: string, value: LazyValue) {
-    setPair($vnode, 'lazy', name, value)
+    setPair(currentVnode, 'lazy', name, value)
   },
 
   renderTransitionVnode = function (name: string) {
-    $vnode.transition = transitions[name]
+    currentVnode.transition = transitions[name]
     if (process.env.NODE_ENV === 'development') {
-      if (!$vnode.transition) {
+      if (!currentVnode.transition) {
         logger.fatal(`The transition "${name}" can't be found.`)
       }
     }
@@ -258,7 +260,7 @@ export function render(
     const key = keypathUtil.join(DIRECTIVE_BINDING, name)
 
     setPair(
-      $vnode,
+      currentVnode,
       KEY_DIRECTIVES,
       key,
       {
@@ -277,7 +279,7 @@ export function render(
 
   renderModelVnode = function (holder: ValueHolder) {
     setPair(
-      $vnode,
+      currentVnode,
       KEY_DIRECTIVES,
       DIRECTIVE_MODEL,
       {
@@ -297,7 +299,7 @@ export function render(
     method: string, args: Function | void
   ) {
     setPair(
-      $vnode,
+      currentVnode,
       KEY_DIRECTIVES,
       key,
       {
@@ -318,7 +320,7 @@ export function render(
     event: string
   ) {
     setPair(
-      $vnode,
+      currentVnode,
       KEY_DIRECTIVES,
       key,
       {
@@ -348,7 +350,7 @@ export function render(
     }
 
     setPair(
-      $vnode,
+      currentVnode,
       KEY_DIRECTIVES,
       key,
       {
@@ -380,13 +382,13 @@ export function render(
       }
 
       for (let key in value) {
-        setPair($vnode, 'props', key, value[key])
+        setPair(currentVnode, 'props', key, value[key])
       }
 
       if (keypath) {
         const key = keypathUtil.join(DIRECTIVE_BINDING, keypath)
         setPair(
-          $vnode,
+          currentVnode,
           KEY_DIRECTIVES,
           key,
           {
@@ -453,9 +455,9 @@ export function render(
     }
 
     if (attrs) {
-      $vnode = vnode
+      currentVnode = vnode
       attrs()
-      $vnode = constant.UNDEFINED
+      currentVnode = constant.UNDEFINED
     }
 
     if (childs) {
@@ -485,19 +487,35 @@ export function render(
       isComponent: constant.TRUE,
     }
 
+    const componentList = array.last(slotComponentStack)
+    if (componentList) {
+      array.push(componentList, vnode)
+    }
+
     if (attrs) {
-      $vnode = vnode
+      currentVnode = vnode
       attrs()
-      $vnode = constant.UNDEFINED
+      currentVnode = constant.UNDEFINED
     }
 
     if (slots) {
       const vnodeSlots = {}
       for (let name in slots) {
         vnodeStack.push([])
+        slotComponentStack.push([])
         slots[name]()
         const vnodes = array.pop(vnodeStack) as VNode[]
-        vnodeSlots[name] = vnodes.length ? vnodes : constant.UNDEFINED
+        const components = array.pop(slotComponentStack) as VNode[]
+        if (vnodes.length) {
+          vnodeSlots[name] = {
+            vnodes,
+            components,
+          }
+        }
+        else {
+          // 必须要有值，用于覆盖旧值
+          vnodeSlots[name] = constant.UNDEFINED
+        }
       }
       vnode.slots = vnodeSlots
     }
@@ -561,14 +579,17 @@ export function render(
 
     const vnodeList = array.last(vnodeStack),
 
-    vnodes = context.get(name)
+    slotProps = context.get(name)
 
     if (vnodeList) {
-      if (vnodes) {
+      if (slotProps) {
+        const { vnodes, components } = slotProps
         for (let i = 0, length = vnodes.length; i < length; i++) {
           array.push(vnodeList, vnodes[i])
           vnodes[i].slot = name
-          vnodes[i].parent = context
+        }
+        for (let i = 0, length = components.length; i < length; i++) {
+          components[i].parent = context
         }
       }
       else if (defaultRender) {
