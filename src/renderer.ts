@@ -169,7 +169,7 @@ export function render(
 
       const method = context[name]
 
-      if (event instanceof CustomEvent) {
+      if (CustomEvent.is(event)) {
 
         let result: any = constant.UNDEFINED
 
