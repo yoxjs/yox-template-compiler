@@ -3,23 +3,6 @@
   "compilerOptions": {
     "composite": true
   },
-  "references": [
-    {
-      "path": "../yox-config"
-    },
-    {
-      "path": "../yox-common"
-    },
-    {
-      "path": "../yox-expression-compiler"
-    },
-    {
-      "path": "../yox-observer"
-    },
-    {
-      "path": "../yox-type"
-    }
-  ],
   "include": [
     "src/**/*.ts"
   ]

@@ -1,5 +1,9 @@
 import {
   SLOT_DATA_PREFIX,
+  DIRECTIVE_BINDING,
+  DIRECTIVE_MODEL,
+  DIRECTIVE_EVENT,
+  DIRECTIVE_CUSTOM,
 } from 'yox-config/src/config'
 
 import {
@@ -22,13 +26,6 @@ import {
 import {
   YoxInterface,
 } from 'yox-type/src/yox'
-
-import {
-  DIRECTIVE_BINDING,
-  DIRECTIVE_MODEL,
-  DIRECTIVE_EVENT,
-  DIRECTIVE_CUSTOM,
-} from 'yox-config/src/config'
 
 import isDef from 'yox-common/src/function/isDef'
 import execute from 'yox-common/src/function/execute'

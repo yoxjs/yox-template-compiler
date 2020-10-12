@@ -7,6 +7,7 @@
     "test": "test"
   },
   "scripts": {
+    "tsc": "tsc",
     "test": "export NODE_ENV=development && jest"
   },
   "repository": {
@@ -20,13 +21,11 @@
     "url": "https://github.com/yoxjs/yox-template-compiler/issues"
   },
   "homepage": "https://github.com/yoxjs/yox-template-compiler#readme",
-  "peerDependencies": {
+  "dependencies": {
     "yox-common": "^0.20.0",
     "yox-config": "^0.3.0",
-    "yox-type": "^0.2.0",
-    "yox-expression-compiler": "^0.18.0"
-  },
-  "devDependencies": {
-    "@types/node": "^14.11.8"
+    "yox-expression-compiler": "^0.18.0",
+    "yox-observer": "^0.19.0",
+    "yox-type": "^0.2.0"
   }
 }
