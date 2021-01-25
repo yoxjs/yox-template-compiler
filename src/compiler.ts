@@ -683,46 +683,50 @@ export function compile(content: string): Branch[] {
 
   },
 
-  checkCondition = function (condition: If | ElseIf | Else) {
+  checkCondition = function (condition: If) {
 
     // 这里会去掉没有子节点的空分支
 
-    // 从最后一个节点往前遍历
     let currentNode: any = condition,
 
-    prevNode: any,
+    nodeList = [],
 
-    hasNext: boolean | void,
+    hasNext = constant.FALSE,
 
-    hasChildren: boolean | void
+    hasChildren = constant.FALSE
 
+    // 转成数组，方便下一步从后往前遍历
     while (constant.TRUE) {
-      // 当前分支有子节点
-      if (currentNode.children) {
-        // 从后往前遍历第一次发现非空分支
-        // 此时，可以删掉后面的空分支
-        if (!hasNext) {
-          if (currentNode.next) {
-            delete currentNode.next
-          }
-        }
-        hasChildren = hasNext = constant.TRUE
-      }
-      prevNode = currentNode.prev
-      if (prevNode) {
-        // prev 仅在 checkCondition 函数中用作逆向遍历
-        // 用完就可以删掉了
-        delete currentNode.prev
-        currentNode = prevNode
+      array.push(nodeList, currentNode)
+      if (currentNode.next) {
+        currentNode = currentNode.next
       }
       else {
         break
       }
     }
 
+    array.each(
+      nodeList,
+      function (node: any) {
+
+        // 当前分支有子节点
+        if (node.children) {
+          // 从后往前遍历第一次发现非空分支
+          // 此时，可以删掉后面的空分支
+          if (!hasNext && node.next) {
+            delete node.next
+          }
+          hasChildren = hasNext = constant.TRUE
+        }
+
+      },
+      constant.TRUE
+    )
+
     // 所有分支都没有子节点，删掉整个 if
     if (!hasChildren) {
-      replaceChild(currentNode)
+      replaceChild(condition)
     }
 
   },
@@ -864,13 +868,12 @@ export function compile(content: string): Branch[] {
         }
       }
 
-      // 方便 checkCondition 逆向遍历
-      (node as any).prev = lastNode
+      const lastType = lastNode.type
 
       // lastNode 只能是 if 或 else if 节点
-      if (lastNode.type === nodeType.ELSE_IF || lastNode.type === nodeType.IF) {
+      if (lastType === nodeType.ELSE_IF || lastType === nodeType.IF) {
         lastNode.next = node
-        popStack(lastNode.type)
+        popStack(lastType)
         array.push(ifStack, node)
       }
       // 上一个节点是 else，又加了一个 else if
@@ -1546,22 +1549,21 @@ export function compile(content: string): Branch[] {
 
       const name = string.slice(code, 1)
 
-      let type = helper.name2Type[name], isCondition = constant.FALSE
+      let type = helper.name2Type[name], ifNode: If | void = constant.UNDEFINED
       if (type === nodeType.IF) {
         const node = array.pop(ifStack)
         if (node) {
           type = node.type
-          isCondition = constant.TRUE
+          ifNode = array.pop(ifList)
         }
         else if (process.env.NODE_ENV === 'development') {
           fatal(`The "if" block is closing, but it's not open yet.`)
         }
       }
 
-      const node: any = popStack(type)
-      if (node && isCondition) {
-        console.log(node)
-        checkCondition(node)
+      popStack(type)
+      if (ifNode) {
+        checkCondition(ifNode)
       }
     }
     else {
