@@ -27,6 +27,60 @@ test('循环', () => {
 
 })
 
+test('循环 else', () => {
+
+  let ast = compile(`
+    <div>
+      {{#each x}}
+        111
+      {{else}}
+        222
+      {{/each}}
+    </div>
+  `)
+
+  let children = (ast[0] as Element).children as Node[]
+  let next = (children[0] as Each).next
+
+  expect(next).not.toBe(undefined)
+  if (next) {
+    expect(next.type).toBe(nodeType.ELSE)
+    expect(next.children).not.toBe(undefined)
+    expect((next.children as Node[]).length).toBe(1)
+  }
+
+})
+
+test('循环 else 空分支', () => {
+
+  let ast = compile(`
+    <div>
+      {{#each x}}
+        111
+      {{else}}
+
+      {{/each}}
+    </div>
+  `)
+
+  let children = (ast[0] as Element).children as Node[]
+
+  expect((children[0] as Each).next).toBe(undefined)
+
+  ast = compile(`
+    <div>
+      {{#each x}}
+
+      {{else}}
+
+      {{/each}}
+    </div>
+  `)
+
+  expect((ast[0] as Element).children).toBe(undefined)
+
+})
+
 test('循环 + 下标', () => {
 
   let ast = compile(`

@@ -1,5 +1,6 @@
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Branch from './Branch'
+import Else from './Else'
 
 /**
  * each 节点
@@ -17,5 +18,7 @@ export default interface Each extends Branch {
   equal: boolean
 
   index: string | void
+
+  next?: Else
 
 }

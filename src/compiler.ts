@@ -54,6 +54,7 @@ import * as nodeType from './nodeType'
 import If from './node/If'
 import ElseIf from './node/ElseIf'
 import Else from './node/Else'
+import Each from './node/Each'
 import Node from './node/Node'
 import Branch from './node/Branch'
 import Text from './node/Text'
@@ -251,8 +252,11 @@ export function compile(content: string): Branch[] {
   // 持有 if/elseif/else 节点
   ifStack: (If | ElseIf | Else)[] = [],
 
+  // 持有 each 节点，方便 each/else 出栈时，获取到 each 节点
+  eachList: Each[] = [],
+
   // 持有 each/else 节点
-  // eachStack: Node[] = [],
+  eachStack: (Each | Else)[] = [],
 
   currentElement: Element | void,
 
@@ -683,7 +687,7 @@ export function compile(content: string): Branch[] {
 
   },
 
-  checkCondition = function (condition: If) {
+  checkCondition = function (condition: If | Each) {
 
     // 这里会去掉没有子节点的空分支
 
@@ -855,36 +859,70 @@ export function compile(content: string): Branch[] {
       popSelfClosingElementIfNeeded()
     }
 
-    let type = node.type, currentBranch = array.last(nodeStack)
+    let type = node.type,
 
-    // else 系列只是 if 的递进节点，不需要加入 nodeList
-    if (type === nodeType.ELSE || type === nodeType.ELSE_IF) {
+    currentBranch = array.last(nodeStack),
 
-      const lastNode: any = array.pop(ifStack)
+    lastIfBranch: (If | void) = constant.UNDEFINED,
 
-      if (process.env.NODE_ENV === 'development') {
-        if (!lastNode) {
-          fatal('The "if" block is required.')
+    lastElseIfBranch: (ElseIf | void) = constant.UNDEFINED,
+
+    lastEachBranch: (Each | void) = constant.UNDEFINED
+
+    if (type === nodeType.ELSE_IF) {
+
+      const lastNode = array.pop(ifStack)
+
+      if (lastNode) {
+        // lastNode 只能是 if 或 else if 节点
+        if (lastNode.type === nodeType.IF) {
+          lastIfBranch = lastNode as If
         }
-      }
-
-      const lastType = lastNode.type
-
-      // lastNode 只能是 if 或 else if 节点
-      if (lastType === nodeType.ELSE_IF || lastType === nodeType.IF) {
-        lastNode.next = node
-        popStack(lastType)
-        array.push(ifStack, node)
-      }
-      // 上一个节点是 else，又加了一个 else if
-      else if (type === nodeType.ELSE_IF) {
-        if (process.env.NODE_ENV === 'development') {
+        else if (lastNode.type === nodeType.ELSE_IF) {
+          lastElseIfBranch = lastNode as ElseIf
+        }
+        // 上一个节点是 else，又加了一个 else if
+        else if (process.env.NODE_ENV === 'development') {
           fatal('The "else" block must not be followed by an "else if" block.')
         }
       }
-      // 上一个节点是 else，又加了一个 else
       else if (process.env.NODE_ENV === 'development') {
-        fatal(`The "else" block can't appear more than once in a conditional statement.`)
+        fatal('The "if" block is required.')
+      }
+
+    }
+    else if (type === nodeType.ELSE) {
+
+      const lastIfNode = array.pop(ifStack),
+
+      lastEachNode = array.pop(eachStack)
+
+      if (lastIfNode && currentBranch === lastIfNode) {
+        // lastIfNode 只能是 if 或 else if 节点
+        if (lastIfNode.type === nodeType.IF) {
+          lastIfBranch = lastIfNode as If
+        }
+        else if (lastIfNode.type === nodeType.ELSE_IF) {
+          lastElseIfBranch = lastIfNode as ElseIf
+        }
+        // 上一个节点是 else，又加了一个 else
+        else if (process.env.NODE_ENV === 'development') {
+          fatal(`The "else" block can't appear more than once in a conditional statement.`)
+        }
+      }
+      else if (lastEachNode && currentBranch === lastEachNode) {
+        // lastEachNode 只能是 each 节点
+        if (lastEachNode.type === nodeType.EACH) {
+          lastEachBranch = lastEachNode as Each
+        }
+        // 上一个节点是 else，又加了一个 else
+        else if (process.env.NODE_ENV === 'development') {
+          fatal(`The "else" block can't appear more than once in a conditional statement.`)
+        }
+      }
+      else if (process.env.NODE_ENV === 'development') {
+        // 只有 else 没有对应的 if 或 each，则提示缺少 if，毕竟 if 用的更多
+        fatal('The "if" block is required.')
       }
 
     }
@@ -1012,6 +1050,30 @@ export function compile(content: string): Branch[] {
 
     }
 
+    if (type === nodeType.IF) {
+      array.push(ifList, node)
+      array.push(ifStack, node)
+    }
+    else if (type === nodeType.EACH) {
+      array.push(eachList, node)
+      array.push(eachStack, node)
+    }
+    else if (lastIfBranch) {
+      lastIfBranch.next = node
+      array.push(ifStack, node)
+      popStack(lastIfBranch.type)
+    }
+    else if (lastElseIfBranch) {
+      lastElseIfBranch.next = node
+      array.push(ifStack, node)
+      popStack(lastElseIfBranch.type)
+    }
+    else if (lastEachBranch) {
+      lastEachBranch.next = node
+      array.push(eachStack, node)
+      popStack(lastEachBranch.type)
+    }
+
     if (node.isLeaf) {
       // 当前树枝节点如果是静态的，一旦加入了一个非静态子节点，改变当前树枝节点的 isStatic
       // 这里不处理树枝节点的进栈，因为当树枝节点出栈时，还有一次处理机会，那时它的 isStatic 已确定下来，不会再变
@@ -1023,11 +1085,6 @@ export function compile(content: string): Branch[] {
     }
     else {
       array.push(nodeStack, node)
-    }
-
-    if (type === nodeType.IF) {
-      array.push(ifList, node)
-      array.push(ifStack, node)
     }
 
   },
@@ -1549,7 +1606,7 @@ export function compile(content: string): Branch[] {
 
       const name = string.slice(code, 1)
 
-      let type = helper.name2Type[name], ifNode: If | void = constant.UNDEFINED
+      let type = helper.name2Type[name], ifNode: If | void = constant.UNDEFINED, eachNode: Each | void = constant.UNDEFINED
       if (type === nodeType.IF) {
         const node = array.pop(ifStack)
         if (node) {
@@ -1560,11 +1617,25 @@ export function compile(content: string): Branch[] {
           fatal(`The "if" block is closing, but it's not open yet.`)
         }
       }
+      else if (type === nodeType.EACH) {
+        const node = array.pop(eachStack)
+        if (node) {
+          type = node.type
+          eachNode = array.pop(eachList)
+        }
+        else if (process.env.NODE_ENV === 'development') {
+          fatal(`The "each" block is closing, but it's not open yet.`)
+        }
+      }
 
       popStack(type)
       if (ifNode) {
         checkCondition(ifNode)
       }
+      else if (eachNode) {
+        checkCondition(eachNode)
+      }
+
     }
     else {
       // 开始下一个 block 或表达式
