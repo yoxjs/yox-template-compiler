@@ -31,6 +31,28 @@ test('空模板', () => {
   expect((attrs[0] as Directive).expr != null).toBe(true)
   expect((attrs[0] as Directive).value).toBe(100)
 
+  ast = compile(`
+    <div lazy-a></div>
+  `)
+
+  attrs = (ast[0] as Element).attrs as Node[]
+  expect(attrs[0].type).toBe(nodeType.DIRECTIVE)
+  expect((attrs[0] as Directive).ns).toBe(config.DIRECTIVE_LAZY)
+  expect((attrs[0] as Directive).name).toBe('a')
+  expect((attrs[0] as Directive).expr).toBe(undefined)
+  expect((attrs[0] as Directive).value).toBe(true)
+
+  ast = compile(`
+    <div lazy-a="100"></div>
+  `)
+
+  attrs = (ast[0] as Element).attrs as Node[]
+  expect(attrs[0].type).toBe(nodeType.DIRECTIVE)
+  expect((attrs[0] as Directive).ns).toBe(config.DIRECTIVE_LAZY)
+  expect((attrs[0] as Directive).name).toBe('a')
+  expect((attrs[0] as Directive).expr != null).toBe(true)
+  expect((attrs[0] as Directive).value).toBe(100)
+
 })
 
 test('error', () => {

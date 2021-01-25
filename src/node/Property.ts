@@ -12,6 +12,9 @@ export default interface Property extends Branch {
 
   name: string
 
+  // 命名空间，跟 Attribute 保持一致
+  ns: string | void
+
   hint: PropertyHint
 
   value?: string | number | boolean

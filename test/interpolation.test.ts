@@ -4,7 +4,6 @@ import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import ExprNode from 'yox-expression-compiler/src/node/Node'
 
 import Node from 'yox-template-compiler/src/node/Node'
-import Text from 'yox-template-compiler/src/node/Text'
 import Element from 'yox-template-compiler/src/node/Element'
 import Expression from 'yox-template-compiler/src/node/Expression'
 import Attribute from 'yox-template-compiler/src/node/Attribute'
@@ -34,9 +33,9 @@ test('插值优化', () => {
   `)
 
   let children = ast[0].children as Node[]
-  expect(children.length).toBe(1)
-  expect(children[0].type).toBe(nodeType.TEXT)
-  expect((children[0] as Text).text).toBe("1-1")
+  expect(children).toBe(undefined)
+  expect((ast[0] as Element).html).toBe(undefined)
+  expect((ast[0] as Element).text).toBe("1-1")
 
 
   ast = compile(`
@@ -46,9 +45,9 @@ test('插值优化', () => {
   `)
 
   children = ast[0].children as Node[]
-  expect(children.length).toBe(1)
-  expect(children[0].type).toBe(nodeType.TEXT)
-  expect((children[0] as Text).text).toBe("121")
+  expect(children).toBe(undefined)
+  expect((ast[0] as Element).html).toBe(undefined)
+  expect((ast[0] as Element).text).toBe("121")
 
 
   ast = compile(`
@@ -58,9 +57,9 @@ test('插值优化', () => {
   `)
 
   children = ast[0].children as Node[]
-  expect(children.length).toBe(1)
-  expect(children[0].type).toBe(nodeType.TEXT)
-  expect((children[0] as Text).text).toBe("1true1")
+  expect(children).toBe(undefined)
+  expect((ast[0] as Element).html).toBe(undefined)
+  expect((ast[0] as Element).text).toBe("1true1")
 
 
   ast = compile(`
@@ -70,9 +69,9 @@ test('插值优化', () => {
   `)
 
   children = ast[0].children as Node[]
-  expect(children.length).toBe(1)
-  expect(children[0].type).toBe(nodeType.TEXT)
-  expect((children[0] as Text).text).toBe("11")
+  expect(children).toBe(undefined)
+  expect((ast[0] as Element).html).toBe(undefined)
+  expect((ast[0] as Element).text).toBe("11")
 
 
   ast = compile(`
@@ -82,12 +81,19 @@ test('插值优化', () => {
   `)
 
   children = ast[0].children as Node[]
-  expect(children.length).toBe(1)
-  expect(children[0].type).toBe(nodeType.TEXT)
-  expect((children[0] as Text).text).toBe("11")
+  expect(children).toBe(undefined)
+  expect((ast[0] as Element).html).toBe(undefined)
+  expect((ast[0] as Element).text).toBe("11")
 
 
+  ast = compile(`
+    <div>
+      1{{a}}1
+    </div>
+  `)
 
+  children = ast[0].children as Node[]
+  expect(children.length).toBe(3)
 
 
   ast = compile(`

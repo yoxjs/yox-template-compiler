@@ -134,7 +134,7 @@ function stringifyObject(obj: object): string {
       if (isDef(value)) {
         array.push(
           fields,
-          generator.toString(key) + generator.COLON + value
+          generator.toPair(key, value)
         )
       }
     }
@@ -231,11 +231,11 @@ function stringifyIf(node: If | ElseIf) {
 
   // 虽然三元表达式优先级最低，但无法保证表达式内部没有 ,
   // 因此每一个分支都要调用 toGroup
-  return generator.toGroup(renderExpression(node.expr))
-    + generator.QUESTION
-    + generator.toGroup(yes || defaultValue)
-    + generator.COLON
-    + generator.toGroup(no || defaultValue)
+  return generator.toTernary(
+    renderExpression(node.expr),
+    yes || defaultValue,
+    no || defaultValue
+  )
 
 }
 

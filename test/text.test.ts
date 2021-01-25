@@ -4,7 +4,6 @@ import * as nodeType from 'yox-template-compiler/src/nodeType'
 import Node from 'yox-template-compiler/src/node/Node'
 import Element from 'yox-template-compiler/src/node/Element'
 import Attribute from 'yox-template-compiler/src/node/Attribute'
-import Text from 'yox-template-compiler/src/node/Text'
 
 test('html entity', () => {
 
@@ -100,13 +99,14 @@ test('文本换行', () => {
   expect(root.tag).toBe('div')
   expect(root.isComponent).toBe(false)
   expect(root.isSvg).toBe(false)
-  expect(root.isComplex).not.toBe(true)
   expect(root.isStatic).toBe(true)
+  expect(root.html).toBe(undefined)
+  expect(root.text).toBe('5\n      6')
 
   let attrs = root.attrs as Node[]
   let children = root.children as Node[]
   expect(attrs.length).toBe(4)
-  expect(children.length).toBe(1)
+  expect(children).toBe(undefined)
 
   expect(attrs[0].type).toBe(nodeType.ATTRIBUTE)
   expect((attrs[0] as Attribute).name).toBe('a')
@@ -123,8 +123,5 @@ test('文本换行', () => {
   expect(attrs[3].type).toBe(nodeType.ATTRIBUTE)
   expect((attrs[3] as Attribute).name).toBe('d')
   expect((attrs[3] as Attribute).value).toBe('4')
-
-  expect(children[0].type).toBe(nodeType.TEXT)
-  expect((children[0] as Text).text).toBe('5\n      6')
 
 })

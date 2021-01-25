@@ -1,9 +1,11 @@
 import { compile } from 'yox-template-compiler/src/compiler'
 import * as nodeType from 'yox-template-compiler/src/nodeType'
+import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 
 import Node from 'yox-template-compiler/src/node/Node'
 import Element from 'yox-template-compiler/src/node/Element'
 import Property from 'yox-template-compiler/src/node/Property'
+import Expression from 'yox-template-compiler/src/node/Expression'
 import Text from 'yox-template-compiler/src/node/Text'
 
 
@@ -70,8 +72,10 @@ test('简单的标签组合', () => {
 
     expect(children[1].type).toBe(nodeType.ELEMENT)
     expect((children[1] as Element).tag).toBe('span')
-    expect(((children[1] as Element).children as any[]).length).toBe(1)
+    expect((children[1] as Element).children).toBe(undefined)
     expect((children[1] as Element).attrs).toBe(undefined)
+    expect((children[1] as Element).html).toBe(undefined)
+    expect((children[1] as Element).text).toBe('456')
 
     expect(children[2].type).toBe(nodeType.TEXT)
     expect((children[2] as Text).text).toBe('789')
@@ -222,66 +226,6 @@ test('空的 template', () => {
   expect(ast[0].children).toBe(undefined)
 })
 
-test('复杂元素和简单元素', () => {
-
-  let ast = compile('<div></div>')
-
-  expect(ast[0].isComplex).not.toBe(true)
-
-  ast = compile('<span id="xx">{{x}}</span>')
-
-  expect(ast[0].isComplex).not.toBe(true)
-
-  let attrs = (ast[0] as Element).attrs
-  expect(attrs != null).toBe(true)
-  if (attrs) {
-    expect(attrs[0].isComplex).not.toBe(true)
-  }
-
-
-  ast = compile('<span id="x{{x}}x"></span>')
-
-  expect(ast[0].isComplex).not.toBe(true)
-
-  attrs = (ast[0] as Element).attrs
-  expect(attrs != null).toBe(true)
-  if (attrs) {
-    expect(attrs[0].isComplex).not.toBe(true)
-  }
-
-
-  ast = compile('<span id="x{{x}}x{{#if x}}1{{else}}2{{/if}}"></span>')
-
-  expect(ast[0].isComplex).not.toBe(true)
-
-  attrs = (ast[0] as Element).attrs
-  expect(attrs != null).toBe(true)
-  if (attrs) {
-    expect(attrs[0].isComplex).not.toBe(true)
-  }
-
-
-  ast = compile('<span>x{{x}}x{{#if x}}1{{else}}2{{/if}}</span>')
-  expect(ast[0].isComplex).not.toBe(true)
-
-
-  ast = compile('<span>x{{x}}x{{#if x}}<input>{{else}}2{{/if}}</span>')
-  expect(ast[0].isComplex).toBe(true)
-
-
-  ast = compile('<span>x{{x}}x{{#each a}}123{{/each}}</span>')
-  expect(ast[0].isComplex).toBe(true)
-
-
-  ast = compile('<span>x{{x}}x{{#partial a}}123{{/partial}}</span>')
-  expect(ast[0].isComplex).toBe(true)
-
-  ast = compile('<span>{{> a}}</span>')
-  expect(ast[0].isComplex).toBe(true)
-
-})
-
-
 test('静态元素', () => {
 
   let ast = compile('<div><span id="xx">1123</span></div>')
@@ -408,6 +352,79 @@ test('自闭合标签', () => {
 
 })
 
+test('元素内容的字面量合并', () => {
+
+  let ast = compile('<div>{{1}}2{{a}}</div>')
+
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+  expect((ast[0] as Element).tag).toBe('div')
+
+  let children = (ast[0] as Element).children as Node[]
+  expect(children.length).toBe(2)
+  expect(children[0].type).toBe(nodeType.TEXT)
+  expect((children[0] as Text).text).toBe('12')
+
+  expect(children[1].type).toBe(nodeType.EXPRESSION)
+  expect((children[1] as Expression).expr.type).toBe(exprNodeType.IDENTIFIER)
+
+})
+
+test('元素只有一个文本子节点', () => {
+
+  let ast = compile('<div>123</div>')
+
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+  expect((ast[0] as Element).tag).toBe('div')
+
+  expect((ast[0] as Element).text).toBe('123')
+  expect((ast[0] as Element).html).toBe(undefined)
+  expect((ast[0] as Element).children).toBe(undefined)
+
+  ast = compile('<div>1&nbsp;2</div>')
+
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+  expect((ast[0] as Element).tag).toBe('div')
+
+  expect((ast[0] as Element).html).toBe('1&nbsp;2')
+  expect((ast[0] as Element).text).toBe(undefined)
+  expect((ast[0] as Element).children).toBe(undefined)
+
+})
+
+test('元素只有一个表达式子节点', () => {
+
+  let ast = compile('<div>{{a}}</div>')
+
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+  expect((ast[0] as Element).tag).toBe('div')
+  expect((ast[0] as Element).text).toBe(undefined)
+  expect((ast[0] as Element).html).toBe(undefined)
+
+  let children = (ast[0] as Element).children as Node[]
+  expect(children.length).toBe(1)
+  expect(children[0].type).toBe(nodeType.EXPRESSION)
+
+
+  ast = compile('<div>{{{a}}}</div>')
+
+  expect(ast.length).toBe(1)
+
+  expect(ast[0].type).toBe(nodeType.ELEMENT)
+  expect((ast[0] as Element).tag).toBe('div')
+  expect((ast[0] as Element).text).toBe(undefined)
+  expect(typeof (ast[0] as Element).html).toBe('object')
+  // expect((ast[0] as Element).html.type).toBe(exprNodeType.IDENTIFIER)
+
+
+})
 
 test('支持多个根元素', () => {
 

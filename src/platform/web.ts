@@ -1,8 +1,14 @@
 import {
+  PureObject,
+} from 'yox-type/src/type'
+
+import {
   HINT_STRING,
   HINT_NUMBER,
   HINT_BOOLEAN,
 } from 'yox-config/src/config'
+
+import createPureObject from 'yox-common/src/function/createPureObject'
 
 import * as array from 'yox-common/src/util/array'
 import * as string from 'yox-common/src/util/string'
@@ -10,6 +16,7 @@ import * as constant from 'yox-common/src/util/constant'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 
+import Node from '../node/Node'
 import Element from '../node/Element'
 import Attribute from '../node/Attribute'
 import Property from '../node/Property'
@@ -18,6 +25,17 @@ import * as helper from '../helper'
 import * as creator from '../creator'
 import * as nodeType from '../nodeType'
 
+function split2Map(str: string): PureObject {
+  const obj = createPureObject()
+  array.each(
+    str.split(','),
+    function (item) {
+      obj.set(item, constant.TRUE)
+    }
+  )
+  return obj
+}
+
 // 首字母大写，或中间包含 -
 const componentNamePattern = /^[A-Z]|-/,
 
@@ -25,20 +43,20 @@ const componentNamePattern = /^[A-Z]|-/,
 htmlEntityPattern = /&[#\w\d]{2,6};/,
 
 // 常见的自闭合标签
-selfClosingTagNames = 'area,base,embed,track,source,param,input,col,img,br,hr'.split(','),
+selfClosingTagNames = split2Map('area,base,embed,track,source,param,input,col,img,br,hr'),
 
 // 常见的 svg 标签
-svgTagNames = 'svg,g,defs,desc,metadata,symbol,use,image,path,rect,circle,line,ellipse,polyline,polygon,text,tspan,tref,textpath,marker,pattern,clippath,mask,filter,cursor,view,animate,font,font-face,glyph,missing-glyph,foreignObject'.split(','),
+svgTagNames = split2Map('svg,g,defs,desc,metadata,symbol,use,image,path,rect,circle,line,ellipse,polyline,polygon,text,tspan,tref,textpath,marker,pattern,clippath,mask,filter,cursor,view,animate,font,font-face,glyph,missing-glyph,foreignObject'),
 
 // 常见的字符串类型的属性
 // 注意：autocomplete,autocapitalize 不是布尔类型
-stringProperyNames = 'id,class,name,value,for,accesskey,title,style,src,type,href,target,alt,placeholder,preload,poster,wrap,accept,pattern,dir,autocomplete,autocapitalize'.split(','),
+stringPropertyNames = split2Map('id,class,name,value,for,accesskey,title,style,src,type,href,target,alt,placeholder,preload,poster,wrap,accept,pattern,dir,autocomplete,autocapitalize'),
 
 // 常见的数字类型的属性
-numberProperyNames = 'min,minlength,max,maxlength,step,width,height,size,rows,cols,tabindex'.split(','),
+numberPropertyNames = split2Map('min,minlength,max,maxlength,step,width,height,size,rows,cols,tabindex'),
 
 // 常见的布尔类型的属性
-booleanProperyNames = 'disabled,checked,required,multiple,readonly,autofocus,autoplay,controls,loop,muted,novalidate,draggable,hidden,spellcheck'.split(','),
+booleanPropertyNames = split2Map('disabled,checked,required,multiple,readonly,autofocus,autoplay,controls,loop,muted,novalidate,draggable,hidden,spellcheck'),
 
 // 某些属性 attribute name 和 property name 不同
 attr2Prop = {}
@@ -55,15 +73,16 @@ attr2Prop['minlength'] = 'minLength'
 attr2Prop['maxlength'] = 'maxLength'
 
 export function isSelfClosing(tagName: string) {
-  return array.has(selfClosingTagNames, tagName)
+  return selfClosingTagNames.get(tagName) !== constant.UNDEFINED
 }
 
-export function createAttribute(element: Element, name: string): Attribute | Property {
+export function createAttribute(element: Element, name: string, ns: string | void): Attribute | Property {
 
   // 组件用驼峰格式
   if (element.isComponent) {
     return creator.createAttribute(
-      string.camelize(name)
+      string.camelize(name),
+      ns
     )
   }
   // 原生 dom 属性
@@ -74,30 +93,33 @@ export function createAttribute(element: Element, name: string): Attribute | Pro
 
     // <slot> 、<template> 或 svg 中的属性不用识别为 property
     if (helper.specialTags[element.tag] || element.isSvg) {
-      return creator.createAttribute(name)
+      return creator.createAttribute(name, ns)
     }
     // 尝试识别成 property
-    else if (array.has(stringProperyNames, lowerName)) {
+    else if (stringPropertyNames.get(lowerName)) {
       return creator.createProperty(
         attr2Prop[lowerName] || lowerName,
-        HINT_STRING
+        ns,
+        HINT_STRING,
       )
     }
-    else if (array.has(numberProperyNames, lowerName)) {
+    else if (numberPropertyNames.get(lowerName)) {
       return creator.createProperty(
         attr2Prop[lowerName] || lowerName,
+        ns,
         HINT_NUMBER
       )
     }
-    else if (array.has(booleanProperyNames, lowerName)) {
+    else if (booleanPropertyNames.get(lowerName)) {
       return creator.createProperty(
         attr2Prop[lowerName] || lowerName,
+        ns,
         HINT_BOOLEAN
       )
     }
 
     // 没辙，还是个 attribute
-    return creator.createAttribute(name)
+    return creator.createAttribute(name, ns)
 
   }
 }
@@ -113,6 +135,17 @@ export function getAttributeDefaultValue(element: Element, name: string) {
     : name
 }
 
+export function isNativeElement(node: Node) {
+  if (node.type !== nodeType.ELEMENT) {
+    return constant.FALSE
+  }
+  const element = node as Element
+  if (element.isComponent) {
+    return constant.FALSE
+  }
+  return helper.specialTags[element.tag] === constant.UNDEFINED
+}
+
 export function createElement(staticTag: string, dynamicTag: ExpressionNode | void) {
 
   let isSvg = constant.FALSE, isStyle = constant.FALSE, isComponent = constant.FALSE
@@ -121,7 +154,7 @@ export function createElement(staticTag: string, dynamicTag: ExpressionNode | vo
     isComponent = constant.TRUE
   }
   else {
-    isSvg = array.has(svgTagNames, staticTag)
+    isSvg = svgTagNames.get(staticTag) !== constant.UNDEFINED
 
     // 是 svg 就不可能是组件
     // 加这个判断的原因是，svg 某些标签含有 连字符 和 大写字母，比较蛋疼
@@ -172,7 +205,7 @@ export function compatElement(element: Element) {
   if (element.isStyle && !hasType) {
     array.push(
       element.attrs || (element.attrs = []),
-      creator.createProperty('type', HINT_STRING, 'text/css')
+      creator.createProperty('type', constant.UNDEFINED, HINT_STRING, 'text/css')
     )
   }
   // 低版本 IE 需要给 option 标签强制加 value
@@ -185,6 +218,14 @@ export function compatElement(element: Element) {
 export function setElementText(element: Element, text: string) {
   if (htmlEntityPattern.test(text)) {
     element.html = text
-    return constant.TRUE
   }
+  else {
+    element.text = text
+  }
+  return constant.TRUE
+}
+
+export function setElementHtml(element: Element, expr: ExpressionNode) {
+  element.html = expr
+  return constant.TRUE
 }

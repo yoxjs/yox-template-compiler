@@ -23,6 +23,9 @@ test('property', () => {
       autofocus="false"
       muted="1"
       for="xx"
+      data-literal1="{{true}}1"
+      data-literal2="{{true}}1{{2}}"
+      data-literal3="{{1}}{{2}}"
     ></div>
   `)
 
@@ -38,7 +41,7 @@ test('property', () => {
   expect(root.children).toBe(undefined)
 
   if (attrs) {
-    expect(attrs.length).toBe(9)
+    expect(attrs.length).toBe(12)
 
     expect(attrs[0].type).toBe(nodeType.ATTRIBUTE)
     expect((attrs[0] as Attribute).name).toBe('data-index')
@@ -93,6 +96,21 @@ test('property', () => {
     expect((attrs[8] as Property).hint).toBe(config.HINT_STRING)
     expect((attrs[8] as Property).value).toBe('xx')
     expect((attrs[8] as Property).children).toBe(undefined)
+
+    expect(attrs[9].type).toBe(nodeType.ATTRIBUTE)
+    expect((attrs[9] as Attribute).name).toBe('data-literal1')
+    expect((attrs[9] as Attribute).value).toBe('true1')
+    expect((attrs[9] as Attribute).children).toBe(undefined)
+
+    expect(attrs[10].type).toBe(nodeType.ATTRIBUTE)
+    expect((attrs[10] as Attribute).name).toBe('data-literal2')
+    expect((attrs[10] as Attribute).value).toBe('true12')
+    expect((attrs[10] as Attribute).children).toBe(undefined)
+
+    expect(attrs[11].type).toBe(nodeType.ATTRIBUTE)
+    expect((attrs[11] as Attribute).name).toBe('data-literal3')
+    expect((attrs[11] as Attribute).value).toBe('12')
+    expect((attrs[11] as Attribute).children).toBe(undefined)
 
   }
 

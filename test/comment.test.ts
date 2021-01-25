@@ -4,7 +4,6 @@ import * as nodeType from 'yox-template-compiler/src/nodeType'
 import Node from 'yox-template-compiler/src/node/Node'
 import Element from 'yox-template-compiler/src/node/Element'
 import Property from 'yox-template-compiler/src/node/Property'
-import Text from 'yox-template-compiler/src/node/Text'
 
 test('HTML 注释', () => {
 
@@ -29,6 +28,8 @@ test('HTML 注释', () => {
   let attrs = root.attrs as Node[]
 
   expect(root.children).toBe(undefined)
+  expect(root.html).toBe(undefined)
+  expect(root.text).toBe(undefined)
   expect(attrs.length).toBe(1)
   expect(attrs[0].type).toBe(nodeType.PROPERTY)
   expect((attrs[0] as Property).value).toBe('<!-- xxx -->')
@@ -43,11 +44,12 @@ test('HTML 注释 - 地狱模式1', () => {
     </div>
   `)
 
-  let children = (ast[0] as Element).children as Node[]
+  let root = ast[0] as Element
 
-  expect(children.length).toBe(1)
-  expect(children[0].type).toBe(nodeType.TEXT)
-  expect((children[0] as Text).text).toBe('22')
+  expect(root.attrs).toBe(undefined)
+  expect(root.children).toBe(undefined)
+  expect(root.html).toBe(undefined)
+  expect(root.text).toBe('22')
 
 
   ast = compile(`
@@ -56,7 +58,12 @@ test('HTML 注释 - 地狱模式1', () => {
     </div>
   `)
 
-  expect((ast[0] as Element).children).toBe(undefined)
+  root = ast[0] as Element
+
+  expect(root.attrs).toBe(undefined)
+  expect(root.children).toBe(undefined)
+  expect(root.html).toBe(undefined)
+  expect(root.text).toBe(undefined)
 
 })
 
@@ -68,11 +75,12 @@ test('HTML 注释 - 地狱模式2', () => {
     </div>
   `)
 
-  let children = (ast[0] as Element).children as Node[]
+  let root = ast[0] as Element
 
-  expect(children.length).toBe(1)
-  expect(children[0].type).toBe(nodeType.TEXT)
-  expect((children[0] as Text).text).toBe('22')
+  expect(root.attrs).toBe(undefined)
+  expect(root.children).toBe(undefined)
+  expect(root.html).toBe(undefined)
+  expect(root.text).toBe('22')
 
 })
 
@@ -84,11 +92,12 @@ test('HTML 注释 - 地狱模式3', () => {
     </div>
   `)
 
-  let children = (ast[0] as Element).children as Node[]
+  let root = ast[0] as Element
 
-  expect(children.length).toBe(1)
-  expect(children[0].type).toBe(nodeType.TEXT)
-  expect((children[0] as Text).text).toBe('22')
+  expect(root.attrs).toBe(undefined)
+  expect(root.children).toBe(undefined)
+  expect(root.html).toBe(undefined)
+  expect(root.text).toBe('22')
 
 })
 
@@ -123,6 +132,8 @@ test('Mustache 注释', () => {
 
   expect(root.attrs).toBe(undefined)
   expect(root.children).toBe(undefined)
+  expect(root.html).toBe(undefined)
+  expect(root.text).toBe(undefined)
 
 })
 
@@ -142,10 +153,11 @@ test('Mustache 注释 - 地狱模式', () => {
     </div>
   `)
 
-  let children = (ast[0] as Element).children as Node[]
+  let root = ast[0] as Element
 
-  expect(children.length).toBe(1)
-  expect(children[0].type).toBe(nodeType.TEXT)
-  expect((children[0] as Text).text).toBe('12')
+  expect(root.attrs).toBe(undefined)
+  expect(root.children).toBe(undefined)
+  expect(root.html).toBe(undefined)
+  expect(root.text).toBe('12')
 
 })

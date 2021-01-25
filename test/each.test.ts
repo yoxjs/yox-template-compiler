@@ -31,7 +31,7 @@ test('循环 + 下标', () => {
 
   let ast = compile(`
     <div>
-      {{#each x:index}}
+      {{#each x : index}}
         111
       {{/each}}
     </div>
@@ -51,7 +51,7 @@ test('循环区间 =>', () => {
 
   let ast = compile(`
     <div>
-      {{#each x => y:index}}
+      {{#each x => y : index}}
         111
       {{/each}}
     </div>
@@ -71,7 +71,7 @@ test('循环区间 ->', () => {
 
   let ast = compile(`
     <div>
-      {{#each x -> y:index}}
+      {{#each x -> y : index}}
         111
       {{/each}}
     </div>

@@ -24,11 +24,12 @@ import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Text from './node/Text'
 
-export function createAttribute(name: string): Attribute {
+export function createAttribute(name: string, ns: string | void): Attribute {
   return {
     type: nodeType.ATTRIBUTE,
     isStatic: constant.TRUE,
     name,
+    ns,
   }
 }
 
@@ -42,11 +43,12 @@ export function createDirective(name: string, ns: string, modifier?: string): Di
   }
 }
 
-export function createProperty(name: string, hint: PropertyHint, value?: string | number | boolean, expr?: ExpressionNode, children?: Node[]): Property {
+export function createProperty(name: string, ns: string | void, hint: PropertyHint, value?: string | number | boolean, expr?: ExpressionNode, children?: Node[]): Property {
   return {
     type: nodeType.PROPERTY,
     isStatic: constant.TRUE,
     name,
+    ns,
     hint,
     value,
     expr,
@@ -61,6 +63,7 @@ export function createEach(from: ExpressionNode, to: ExpressionNode | void, equa
     to,
     equal,
     index,
+    isVirtual: constant.TRUE,
   }
 }
 
@@ -71,9 +74,9 @@ export function createElement(tag: string, dynamicTag: ExpressionNode | void, is
     dynamicTag,
     isSvg,
     isStyle,
+    isComponent,
     // 只有 <option> 没有 value 属性时才为 true
     isOption: constant.FALSE,
-    isComponent,
     isStatic: !isComponent && tag !== constant.RAW_SLOT,
   }
 }
@@ -81,6 +84,7 @@ export function createElement(tag: string, dynamicTag: ExpressionNode | void, is
 export function createElse(): Else {
   return {
     type: nodeType.ELSE,
+    isVirtual: constant.TRUE,
   }
 }
 
@@ -88,6 +92,7 @@ export function createElseIf(expr: ExpressionNode): ElseIf {
   return {
     type: nodeType.ELSE_IF,
     expr,
+    isVirtual: constant.TRUE,
   }
 }
 
@@ -104,6 +109,7 @@ export function createIf(expr: ExpressionNode): If {
   return {
     type: nodeType.IF,
     expr,
+    isVirtual: constant.TRUE,
   }
 }
 
@@ -119,6 +125,7 @@ export function createPartial(name: string): Partial {
   return {
     type: nodeType.PARTIAL,
     name,
+    isVirtual: constant.TRUE,
   }
 }
 

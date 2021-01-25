@@ -20,13 +20,16 @@ import {
 
 import {
   isSelfClosing,
+  isNativeElement,
   createAttribute,
   getAttributeDefaultValue,
   createElement,
   compatElement,
   setElementText,
+  setElementHtml,
 } from './platform/web'
 
+import isDef from 'yox-common/src/function/isDef'
 import toString from 'yox-common/src/function/toString'
 import toNumber from 'yox-common/src/function/toNumber'
 
@@ -54,8 +57,6 @@ import Else from './node/Else'
 import Node from './node/Node'
 import Branch from './node/Branch'
 import Text from './node/Text'
-import Each from './node/Each'
-import Partial from './node/Partial'
 import Element from './node/Element'
 import Attribute from './node/Attribute'
 import Directive from './node/Directive'
@@ -71,11 +72,32 @@ BLOCK_MODE_SAFE = 2,
 // {{{ x }}}
 BLOCK_MODE_UNSAFE = 3,
 
+// 左安全定界符
+leftSafeDelimiter = '{{',
+
+// 右安全定界符
+rightSafeDelimiter = '}}',
+
+// 左危险定界符：leftSafeDelimiter + leftSafeDelimiter 的最后一个字符
+leftUnsafeFlag = string.charAt(leftSafeDelimiter, leftSafeDelimiter.length - 1),
+
+// 右危险定界符：rightSafeDelimiter 的第一个字符 + rightSafeDelimiter
+rightUnsafeFlag = string.charAt(rightSafeDelimiter),
+
 // 缓存编译正则
 patternCache = {},
 
 // 指令分隔符，如 on-click 和 lazy-click
 directiveSeparator = '-',
+
+// on-
+directiveOnSeparator = DIRECTIVE_ON + directiveSeparator,
+
+// lazy-
+directiveLazySeparator = DIRECTIVE_LAZY + directiveSeparator,
+
+// o-
+directiveCustomSeparator = DIRECTIVE_CUSTOM + directiveSeparator,
 
 // 调用的方法
 methodPattern = /^[_$a-z]([\w]+)?$/,
@@ -107,7 +129,11 @@ closeCommentPattern = /-->([\s\S]*?)$/,
 
 // 属性的 name
 // 支持 on-click.namespace="" 或 on-get-out="" 或 xml:xx=""
-attributePattern = /^\s*([-$.:\w]+)(['"])?(?:=(['"]))?/,
+attributePattern = /^\s*([-$.:\w]+)(?:=(['"]))?/,
+
+// 未结束的属性
+// 比如 <div class="11 name="xxx"> 解析完 class 后，还剩一个 xxx"
+notEndAttributePattern = /^[!=]*['"]/,
 
 // 自闭合标签
 selfClosingTagPattern = /^\s*(\/)?>/
@@ -119,14 +145,114 @@ function slicePrefix(str: string, prefix: string): string {
   return string.trim(string.slice(str, prefix.length))
 }
 
+function toTextNode(node: Expression) {
+  if (node.safe
+    && node.expr.type === exprNodeType.LITERAL
+  ) {
+    return creator.createText(toString(
+      (node.expr as ExpressionLiteral).value
+    ))
+  }
+}
+
+function isDangerousInterpolation(node: Node | void) {
+  return node
+    && node.type === nodeType.EXPRESSION
+    && !(node as Expression).safe
+}
+
+function isSpecialAttr(element: Element, attr: Attribute) {
+  return helper.specialAttrs[attr.name]
+    || element.tag === constant.RAW_SLOT && attr.name === constant.RAW_NAME
+}
+
+function removeComment(children: Node[]) {
+
+  // 类似 <!-- xx {{name}} yy {{age}} zz --> 这样的注释里包含插值
+  // 按照目前的解析逻辑，是根据定界符进行模板分拆
+  // 一旦出现插值，children 长度必然大于 1
+
+  let openIndex = constant.MINUS_ONE,
+
+  openText = constant.EMPTY_STRING,
+
+  closeIndex = constant.MINUS_ONE,
+
+  closeText = constant.EMPTY_STRING
+
+  array.each(
+    children,
+    function (child, index) {
+      if (child.type === nodeType.TEXT) {
+        // 有了结束 index，这里的任务是配对开始 index
+        if (closeIndex >= 0) {
+          openText = (child as Text).text
+          // 处理 <!-- <!-- 这样有多个的情况
+          while (openCommentPattern.test(openText)) {
+            openText = RegExp.$1
+            openIndex = index
+          }
+
+          if (openIndex >= 0) {
+            // openIndex 肯定小于 closeIndex，因为完整的注释在解析过程中会被干掉
+            // 只有包含插值的注释才会走进这里
+
+            let startIndex = openIndex, endIndex = closeIndex
+
+            // 现在要确定开始和结束的文本节点，是否包含正常文本
+            if (openText) {
+              (children[openIndex] as Text).text = openText
+              startIndex++
+            }
+            if (closeText) {
+              // 合并开始和结束文本，如 1<!-- {{x}}{{y}} -->2
+              // 这里要把 1 和 2 两个文本节点合并成一个
+              if (openText) {
+                (children[openIndex] as Text).text += closeText
+              }
+              else {
+                (children[closeIndex] as Text).text = closeText
+                endIndex--
+              }
+            }
+
+            children.splice(startIndex, endIndex - startIndex + 1)
+
+            // 重置，再继续寻找结束 index
+            openIndex = closeIndex = constant.MINUS_ONE
+          }
+        }
+        else {
+          // 从后往前遍历
+          // 一旦发现能匹配 --> 就可以断定这是注释的结束 index
+          // 剩下的就是找开始 index
+          closeText = (child as Text).text
+          // 处理 --> --> 这样有多个的情况
+          while (closeCommentPattern.test(closeText)) {
+            closeText = RegExp.$1
+            closeIndex = index
+          }
+        }
+      }
+    },
+    constant.TRUE
+  )
+}
+
 export function compile(content: string): Branch[] {
 
   let nodeList: Branch[] = [],
 
   nodeStack: Branch[] = [],
 
+  // 持有 if 节点，方便 if/elseif/else 出栈时，获取到 if 节点
+  ifList: If[] = [],
+
   // 持有 if/elseif/else 节点
-  ifStack: Node[] = [],
+  ifStack: (If | ElseIf | Else)[] = [],
+
+  // 持有 each/else 节点
+  // eachStack: Node[] = [],
 
   currentElement: Element | void,
 
@@ -156,7 +282,7 @@ export function compile(content: string): Branch[] {
 
   code: string,
 
-  startQuote: string | void,
+  attributeStartQuote: string | void,
 
   fatal = function (msg: string) {
     if (process.env.NODE_ENV === 'development') {
@@ -178,11 +304,11 @@ export function compile(content: string): Branch[] {
   popSelfClosingElementIfNeeded = function (popingTagName?: string) {
     const lastNode = array.last(nodeStack)
     if (lastNode && lastNode.type === nodeType.ELEMENT) {
-      const element = lastNode as Element
-      if (element.tag !== popingTagName
-        && isSelfClosing(element.tag)
+      const lastElement = lastNode as Element
+      if (lastElement.tag !== popingTagName
+        && isSelfClosing(lastElement.tag)
       ) {
-        popStack(element.type, element.tag)
+        popStack(lastElement.type, lastElement.tag)
       }
     }
   },
@@ -191,217 +317,133 @@ export function compile(content: string): Branch[] {
 
     const node = array.pop(nodeStack)
 
-    if (node && node.type === type) {
+    // 出栈节点类型不匹配
+    if (process.env.NODE_ENV === 'development') {
+      if (!node || node.type !== type) {
+        fatal(`The type of poping node is not expected.`)
+      }
+    }
 
-      const { children } = node,
+    const branchNode = node as Branch,
+
+    isElement = type === nodeType.ELEMENT,
+
+    isAttribute = type === nodeType.ATTRIBUTE,
+
+    isProperty = type === nodeType.PROPERTY,
+
+    isDirective = type === nodeType.DIRECTIVE,
+
+    parentBranchNode = array.last(nodeStack)
+
+    if (process.env.NODE_ENV === 'development') {
+      if (isElement
+        && tagName
+        && (branchNode as Element).tag !== tagName
+      ) {
+        fatal(`End tag is "${tagName}"，but start tag is "${(branchNode as Element).tag}".`)
+      }
+    }
+
+    // 当 branchNode 出栈时，它的 isStatic 就彻底固定下来，不会再变了
+    // 这时如果它不是静态节点，则父节点也不是静态节点
+    if (parentBranchNode
+      && parentBranchNode.isStatic
+      && !branchNode.isStatic
+    ) {
+      parentBranchNode.isStatic = constant.FALSE
+    }
+
+    let { children } = branchNode
+
+    // 先处理 children.length 大于 1 的情况，因为这里会有一些优化，导致最后的 children.length 不一定大于 0
+    if (children && children.length > 1) {
+
+      // 元素层级
+      if (!currentElement) {
+        removeComment(children)
+        if (!children.length) {
+          children = branchNode.children = constant.UNDEFINED
+        }
+      }
+
+    }
+
+    // 除了 helper.specialAttrs 里指定的特殊属性，attrs 里的任何节点都不能单独拎出来赋给 element
+    // 因为 attrs 可能存在 if，所以每个 attr 最终都不一定会存在
+    if (children) {
 
       // 优化单个子节点
-      child = children && children.length === 1 && children[0],
+      // 减少运行时的负担
+      const onlyChild = children.length === 1 && children[0]
 
-      isElement = type === nodeType.ELEMENT,
-
-      isAttribute = type === nodeType.ATTRIBUTE,
-
-      isProperty = type === nodeType.PROPERTY,
-
-      isDirective = type === nodeType.DIRECTIVE
-
-      const currentBranch = array.last(nodeStack)
-
-      if (currentBranch) {
-        if (currentBranch.isStatic && !node.isStatic) {
-          currentBranch.isStatic = constant.FALSE
-        }
-      }
-
-      if (process.env.NODE_ENV === 'development') {
-        if (isElement) {
-          const element = node as Element
-          if (tagName && element.tag !== tagName) {
-            fatal(`End tag is "${tagName}"，but start tag is "${element.tag}".`)
-          }
-        }
-      }
-
-      // 除了 helper.specialAttrs 里指定的特殊属性，attrs 里的任何节点都不能单独拎出来赋给 element
-      // 因为 attrs 可能存在 if，所以每个 attr 最终都不一定会存在
-      if (child) {
-
-        switch (child.type) {
+      if (onlyChild) {
+        switch (onlyChild.type) {
 
           case nodeType.TEXT:
-            // 属性的值如果是纯文本，直接获取文本值
-            // 减少渲染时的遍历
             if (isElement) {
-              processElementSingleText(node as Element, child as Text)
+              processElementSingleText(branchNode as Element, onlyChild as Text)
             }
             else if (isAttribute) {
-              processAttributeSingleText(node as Attribute, child as Text)
+              processAttributeSingleText(branchNode as Attribute, onlyChild as Text)
             }
             else if (isProperty) {
-              processPropertySingleText(node as Property, child as Text)
+              processPropertySingleText(branchNode as Property, onlyChild as Text)
             }
             else if (isDirective) {
-              processDirectiveSingleText(node as Directive, child as Text)
+              processDirectiveSingleText(branchNode as Directive, onlyChild as Text)
             }
             break
 
           case nodeType.EXPRESSION:
             if (isElement) {
-              processElementSingleExpression(node as Element, child as Expression)
+              processElementSingleExpression(branchNode as Element, onlyChild as Expression)
             }
             else if (isAttribute) {
-              processAttributeSingleExpression(node as Attribute, child as Expression)
+              processAttributeSingleExpression(branchNode as Attribute, onlyChild as Expression)
             }
             else if (isProperty) {
-              processPropertySingleExpression(node as Property, child as Expression)
+              processPropertySingleExpression(branchNode as Property, onlyChild as Expression)
             }
             else if (isDirective) {
-              processDirectiveSingleExpression(node as Directive, child as Expression)
+              processDirectiveSingleExpression(branchNode as Directive, onlyChild as Expression)
             }
             break
 
         }
       }
-      // 大于 1 个子节点，即有插值或 if 写法
-      else if (children) {
-
-        if (isDirective) {
-          processDirectiveMultiChildren()
-        }
-        // 元素层级
-        else if (!currentElement) {
-          removeComment(children)
-          if (!children.length) {
-            node.children = constant.UNDEFINED
-          }
-        }
-
-      }
-      // 0 个子节点
-      else if (currentElement) {
-        if (isAttribute) {
-          processAttributeEmptyChildren(currentElement, node as Attribute)
-        }
-        else if (isProperty) {
-          processPropertyEmptyChildren(currentElement, node as Property)
-        }
-        else if (isDirective) {
-          processDirectiveEmptyChildren(currentElement, node as Directive)
-        }
-      }
-
-      if (type === nodeType.EACH) {
-        checkEach(node as Each)
-      }
-      else if (type === nodeType.PARTIAL) {
-        checkPartial(node as Partial)
-      }
-      else if (isElement) {
-        checkElement(node as Element)
-      }
-      else if (currentElement) {
-        if (isAttribute) {
-          if (isSpecialAttr(currentElement, node as Attribute)) {
-            bindSpecialAttr(currentElement, node as Attribute)
-          }
-        }
-        else if (isDirective) {
-          checkDirective(currentElement, node as Directive)
-        }
-      }
-
-      return node
 
     }
-
-    // 出栈节点类型不匹配
-    if (process.env.NODE_ENV === 'development') {
-      fatal(`The type of poping node is not expected.`)
+    // 0 个子节点
+    else if (currentElement) {
+      if (isAttribute) {
+        processAttributeEmptyChildren(currentElement, branchNode as Attribute)
+      }
+      else if (isProperty) {
+        processPropertyEmptyChildren(currentElement, branchNode as Property)
+      }
+      else if (isDirective) {
+        processDirectiveEmptyChildren(currentElement, branchNode as Directive)
+      }
     }
-  },
 
-  removeComment = function (children: Node[]) {
+    if (branchNode.isVirtual && !branchNode.children) {
+      replaceChild(branchNode)
+    }
 
-    // 类似 <!-- xx {{name}} yy {{age}} zz --> 这样的注释里包含插值
-    // 按照目前的解析逻辑，是根据定界符进行模板分拆
-    // 一旦出现插值，children 长度必然大于 1
-
-    let openIndex = constant.MINUS_ONE,
-
-    openText = constant.EMPTY_STRING,
-
-    closeIndex = constant.MINUS_ONE,
-
-    closeText = constant.EMPTY_STRING
-
-    array.each(
-      children,
-      function (child, index) {
-        if (child.type === nodeType.TEXT) {
-          // 有了结束 index，这里的任务是配对开始 index
-          if (closeIndex >= 0) {
-            openText = (child as Text).text
-            // 处理 <!-- <!-- 这样有多个的情况
-            while (openCommentPattern.test(openText)) {
-              openText = RegExp.$1
-              openIndex = index
-            }
-
-            if (openIndex >= 0) {
-              // openIndex 肯定小于 closeIndex，因为完整的注释在解析过程中会被干掉
-              // 只有包含插值的注释才会走进这里
-
-              let startIndex = openIndex, endIndex = closeIndex
-
-              // 现在要确定开始和结束的文本节点，是否包含正常文本
-              if (openText) {
-                (children[openIndex] as Text).text = openText
-                startIndex++
-              }
-              if (closeText) {
-                // 合并开始和结束文本，如 1<!-- {{x}}{{y}} -->2
-                // 这里要把 1 和 2 两个文本节点合并成一个
-                if (openText) {
-                  (children[openIndex] as Text).text += closeText
-                }
-                else {
-                  (children[closeIndex] as Text).text = closeText
-                  endIndex--
-                }
-              }
-
-              children.splice(startIndex, endIndex - startIndex + 1)
-
-              // 重置，再继续寻找结束 index
-              openIndex = closeIndex = constant.MINUS_ONE
-            }
-          }
-          else {
-            // 从后往前遍历
-            // 一旦发现能匹配 --> 就可以断定这是注释的结束 index
-            // 剩下的就是找开始 index
-            closeText = (child as Text).text
-            // 处理 --> --> 这样有多个的情况
-            while (closeCommentPattern.test(closeText)) {
-              closeText = RegExp.$1
-              closeIndex = index
-            }
-          }
+    if (isElement) {
+      checkElement(branchNode as Element)
+    }
+    else if (currentElement) {
+      if (isAttribute) {
+        if (isSpecialAttr(currentElement, branchNode as Attribute)) {
+          bindSpecialAttr(currentElement, branchNode as Attribute)
         }
-      },
-      constant.TRUE
-    )
-  },
-
-  processDirectiveMultiChildren = function () {
-    // 不支持 on-click="1{{xx}}2" 或是 on-click="1{{#if x}}x{{else}}y{{/if}}2"
-    // 1. 很难做性能优化
-    // 2. 全局搜索不到事件名，不利于代码维护
-    // 3. 不利于编译成静态函数
-    if (process.env.NODE_ENV === 'development') {
-      fatal('For performance, "{{" and "}}" are not allowed in directive value.')
+      }
     }
+
+    return branchNode
+
   },
 
   processElementSingleText = function (element: Element, child: Text) {
@@ -413,8 +455,7 @@ export function compile(content: string): Branch[] {
 
     // 唯独需要在这特殊处理的是 html 实体
     // 但这只是 WEB 平台的特殊逻辑，所以丢给 platform 处理
-    if (!element.isComponent
-      && !helper.specialTags[element.tag]
+    if (isNativeElement(element)
       && setElementText(element, child.text)
     ) {
       element.children = constant.UNDEFINED
@@ -424,11 +465,10 @@ export function compile(content: string): Branch[] {
 
   processElementSingleExpression = function (element: Element, child: Expression) {
 
-    if (!element.isComponent
-      && !helper.specialTags[element.tag]
+    if (isNativeElement(element)
       && !child.safe
+      && setElementHtml(element, child.expr)
     ) {
-      element.html = child.expr
       element.children = constant.UNDEFINED
     }
 
@@ -450,23 +490,20 @@ export function compile(content: string): Branch[] {
 
     const { text } = child
 
-    // 这里需要严格校验格式，比如 width="100%" 要打印报错信息，提示用户类型错误
+    // 数字类型需要严格校验格式，比如 width="100%" 要打印报错信息，提示用户类型错误
     if (prop.hint === HINT_NUMBER) {
       if (process.env.NODE_ENV === 'development') {
-        if (is.numeric(text)) {
-          prop.value = +text
-        }
-        else {
+        if (!is.numeric(text)) {
           fatal(`The value of "${prop.name}" is not a number: ${text}.`)
         }
       }
-      else {
-        prop.value = toNumber(text)
-      }
+      prop.value = toNumber(text)
     }
+    // 布尔类型的属性，只有值为 true 或 属性名 才表示 true
     else if (prop.hint === HINT_BOOLEAN) {
       prop.value = text === constant.RAW_TRUE || text === prop.name
     }
+    // 字符串类型的属性，保持原样即可
     else {
       prop.value = text
     }
@@ -535,20 +572,20 @@ export function compile(content: string): Branch[] {
 
   processDirectiveSingleText = function (directive: Directive, child: Text) {
 
-    let { text } = child,
+    let { ns } = directive, { text } = child,
 
     // model="xx" model="this.x" 值只能是标识符或 Member
-    isModel = directive.ns === DIRECTIVE_MODEL,
+    isModel = ns === DIRECTIVE_MODEL,
 
     // lazy 的值必须是大于 0 的数字
-    isLazy = directive.ns === DIRECTIVE_LAZY,
+    isLazy = ns === DIRECTIVE_LAZY,
 
     // 校验事件名称
     // 且命名空间不能用 native
-    isEvent = directive.ns === DIRECTIVE_EVENT,
+    isEvent = ns === DIRECTIVE_EVENT,
 
     // 自定义指令运行不合法的表达式
-    isCustom = directive.ns === DIRECTIVE_CUSTOM,
+    isCustom = ns === DIRECTIVE_CUSTOM,
 
     // 指令的值是纯文本，可以预编译表达式，提升性能
     expr: ExpressionNode | void,
@@ -579,7 +616,7 @@ export function compile(content: string): Branch[] {
 
         // 如果指令表达式是函数调用，则只能调用方法（难道还有别的可以调用的吗？）
         else if (expr.type === exprNodeType.CALL) {
-          let methodName = (expr as ExpressionCall).name
+          const methodName = (expr as ExpressionCall).name
           if (methodName.type !== exprNodeType.IDENTIFIER) {
             fatal('Invalid method name.')
           }
@@ -632,10 +669,8 @@ export function compile(content: string): Branch[] {
     else {
       // 自定义指令支持错误的表达式
       // 反正是自定义的规则，爱怎么写就怎么写
-      if (process.env.NODE_ENV === 'development') {
-        if (!isCustom) {
-          throw error
-        }
+      if (!isCustom) {
+        throw error
       }
       directive.value = text
     }
@@ -645,10 +680,6 @@ export function compile(content: string): Branch[] {
   },
 
   processDirectiveSingleExpression = function (directive: Directive, child: Expression) {
-
-    if (process.env.NODE_ENV === 'development') {
-      fatal('For performance, "{{" and "}}" are not allowed in directive value.')
-    }
 
   },
 
@@ -661,9 +692,9 @@ export function compile(content: string): Branch[] {
 
     prevNode: any,
 
-    hasChildren: boolean | void,
+    hasNext: boolean | void,
 
-    hasNext: boolean | void
+    hasChildren: boolean | void
 
     while (constant.TRUE) {
       // 当前分支有子节点
@@ -692,28 +723,17 @@ export function compile(content: string): Branch[] {
     // 所有分支都没有子节点，删掉整个 if
     if (!hasChildren) {
       replaceChild(currentNode)
-      return
     }
 
-  },
-
-  checkEach = function (each: Each) {
-    // 没内容就干掉
-    if (!each.children) {
-      replaceChild(each)
-    }
-  },
-
-  checkPartial = function (partial: Partial) {
-    // 没内容就干掉
-    if (!partial.children) {
-      replaceChild(partial)
-    }
   },
 
   checkElement = function (element: Element) {
 
-    const { tag, slot } = element, isTemplate = tag === constant.RAW_TEMPLATE
+    const { tag, slot } = element,
+
+    isTemplate = tag === constant.RAW_TEMPLATE,
+
+    isSlot = tag === constant.RAW_SLOT
 
     if (process.env.NODE_ENV === 'development') {
       if (isTemplate) {
@@ -733,35 +753,25 @@ export function compile(content: string): Branch[] {
     }
 
     // 没有子节点，则意味着这个插槽没任何意义
-    if (isTemplate && slot && !element.children) {
+    if (isTemplate && !element.children) {
       replaceChild(element)
     }
     // <slot /> 如果没写 name，自动加上默认名称
-    else if (tag === constant.RAW_SLOT && !element.name) {
+    else if (isSlot && !element.name) {
       element.name = SLOT_NAME_DEFAULT
     }
+    // 处理浏览器兼容问题
     else {
       compatElement(element)
     }
 
   },
 
-  checkDirective = function (element: Element, directive: Directive) {
-    if (process.env.NODE_ENV === 'development') {
-      // model 不能写在 if 里，影响节点的静态结构
-      if (directive.ns === DIRECTIVE_MODEL) {
-        if (array.last(nodeStack) !== element) {
-          fatal(`The "model" can't be used in an if block.`)
-        }
-      }
-    }
-  },
-
   bindSpecialAttr = function (element: Element, attr: Attribute) {
 
     const { name, value } = attr,
 
-    // 这三个属性值要求是字符串
+    // 这 2 个属性值要求是字符串
     isStringValueRequired = name === constant.RAW_NAME || name === constant.RAW_SLOT
 
     if (process.env.NODE_ENV === 'development') {
@@ -781,11 +791,6 @@ export function compile(content: string): Branch[] {
     element[name] = isStringValueRequired ? value : attr
     replaceChild(attr)
 
-  },
-
-  isSpecialAttr = function (element: Element, attr: Attribute): boolean {
-    return helper.specialAttrs[attr.name]
-      || element.tag === constant.RAW_SLOT && attr.name === constant.RAW_NAME
   },
 
   replaceChild = function (oldNode: Node, newNode?: Node) {
@@ -853,28 +858,30 @@ export function compile(content: string): Branch[] {
 
       const lastNode: any = array.pop(ifStack)
 
-      if (lastNode) {
-
-        // 方便 checkCondition 逆向遍历
-        (node as any).prev = lastNode
-
-        // lastNode 只能是 if 或 else if 节点
-        if (lastNode.type === nodeType.ELSE_IF || lastNode.type === nodeType.IF) {
-          lastNode.next = node
-          popStack(lastNode.type)
-          array.push(ifStack, node)
-        }
-        else if (type === nodeType.ELSE_IF) {
-          if (process.env.NODE_ENV === 'development') {
-            fatal('The "else" block must not be followed by an "else if" block.')
-          }
-        }
-        else if (process.env.NODE_ENV === 'development') {
-          fatal(`The "else" block can't appear more than once in a conditional statement.`)
+      if (process.env.NODE_ENV === 'development') {
+        if (!lastNode) {
+          fatal('The "if" block is required.')
         }
       }
+
+      // 方便 checkCondition 逆向遍历
+      (node as any).prev = lastNode
+
+      // lastNode 只能是 if 或 else if 节点
+      if (lastNode.type === nodeType.ELSE_IF || lastNode.type === nodeType.IF) {
+        lastNode.next = node
+        popStack(lastNode.type)
+        array.push(ifStack, node)
+      }
+      // 上一个节点是 else，又加了一个 else if
+      else if (type === nodeType.ELSE_IF) {
+        if (process.env.NODE_ENV === 'development') {
+          fatal('The "else" block must not be followed by an "else if" block.')
+        }
+      }
+      // 上一个节点是 else，又加了一个 else
       else if (process.env.NODE_ENV === 'development') {
-        fatal('The "if" block is required.')
+        fatal(`The "else" block can't appear more than once in a conditional statement.`)
       }
 
     }
@@ -890,9 +897,7 @@ export function compile(content: string): Branch[] {
 
           // 属性层级不能使用危险插值
           if (process.env.NODE_ENV === 'development') {
-            if (type === nodeType.EXPRESSION
-              && !(node as Expression).safe
-            ) {
+            if (isDangerousInterpolation(node)) {
               fatal('The dangerous interpolation must be the only child of a HTML element.')
             }
           }
@@ -906,6 +911,31 @@ export function compile(content: string): Branch[] {
         }
         else {
 
+          // 这个分支用于收集 children
+
+          if (process.env.NODE_ENV === 'development') {
+
+            // 指令的值只支持字面量，不支持插值
+            if (currentAttribute
+              && currentAttribute.type === nodeType.DIRECTIVE
+              && type !== nodeType.TEXT
+            ) {
+              // 不支持 on-click="1{{xx}}2" 或是 on-click="1{{#if x}}x{{else}}y{{/if}}2"
+              // 1. 很难做性能优化
+              // 2. 全局搜索不到事件名，不利于代码维护
+              // 3. 不利于编译成静态函数
+              fatal(`For performance, "${leftSafeDelimiter}" and "${rightSafeDelimiter}" are not allowed in directive value.`)
+            }
+             // model 指令不能写在 if 里，影响节点的静态结构
+            else if (type === nodeType.DIRECTIVE
+              && (node as Directive).ns === DIRECTIVE_MODEL
+              && currentBranch !== currentElement
+            ) {
+              fatal(`The "model" can't be used in an if block.`)
+            }
+
+          }
+
           const children = currentBranch.children || (currentBranch.children = []),
           lastChild = array.last(children)
 
@@ -913,7 +943,7 @@ export function compile(content: string): Branch[] {
           if (type === nodeType.EXPRESSION
             // 在元素的子节点中，则直接转成字符串
             && (!currentElement
-              // 在元素的属性中，如果同级节点大于 0 个（即已经存在一个），则可以转成字符串
+              // 在元素的属性中，如果同级节点大于 0 个（即至少存在一个），则可以转成字符串
               || (currentAttribute && children.length > 0)
             )
           ) {
@@ -934,6 +964,7 @@ export function compile(content: string): Branch[] {
               return
             }
             // 前一个是字面量的表达式，也可以合并节点
+            // 比如 attr="{{true}}1"，先插入了一个 true 字面量表达式，然后再插入一个文本时，可以合并
             if (lastChild.type === nodeType.EXPRESSION) {
               const textNode = toTextNode(lastChild as Expression)
               if (textNode) {
@@ -944,27 +975,21 @@ export function compile(content: string): Branch[] {
             }
           }
 
+          // 危险插值，必须独占一个 html 元素
+          // <div>{{{html}}}</div>
           if (process.env.NODE_ENV === 'development') {
-            if (type === nodeType.EXPRESSION
-              && !(node as Expression).safe
-            ) {
+            if (isDangerousInterpolation(node)) {
               // 前面不能有别的 child，危险插值必须独占父元素
               if (lastChild) {
                 fatal('The dangerous interpolation must be the only child of a HTML element.')
               }
               // 危险插值的父节点必须是 html element
-              else if (currentBranch.type !== nodeType.ELEMENT
-                || (currentBranch as Element).isComponent
-                || helper.specialTags[(currentBranch as Element).tag]
-              ) {
+              else if (!isNativeElement(currentBranch)) {
                 fatal('The dangerous interpolation must be the only child of a HTML element.')
               }
             }
             // 后面不能有别的 child，危险插值必须独占父元素
-            else if (lastChild
-              && lastChild.type === nodeType.EXPRESSION
-              && !(lastChild as Expression).safe
-            ) {
+            else if (isDangerousInterpolation(lastChild)) {
               fatal('The dangerous interpolation must be the only child of a HTML element.')
             }
           }
@@ -975,22 +1000,14 @@ export function compile(content: string): Branch[] {
       }
       else {
         if (process.env.NODE_ENV === 'development') {
-          if (type === nodeType.EXPRESSION
-            && !(node as Expression).safe
-          ) {
+          if (isDangerousInterpolation(node)) {
             fatal('The dangerous interpolation must be under a HTML element.')
           }
         }
         array.push(nodeList, node)
       }
 
-      if (type === nodeType.IF) {
-        array.push(ifStack, node)
-      }
-
     }
-
-
 
     if (node.isLeaf) {
       // 当前树枝节点如果是静态的，一旦加入了一个非静态子节点，改变当前树枝节点的 isStatic
@@ -1003,6 +1020,11 @@ export function compile(content: string): Branch[] {
     }
     else {
       array.push(nodeStack, node)
+    }
+
+    if (type === nodeType.IF) {
+      array.push(ifList, node)
+      array.push(ifStack, node)
     }
 
   },
@@ -1026,16 +1048,6 @@ export function compile(content: string): Branch[] {
     }
   },
 
-  toTextNode = function (node: Expression) {
-    if (node.safe
-      && node.expr.type === exprNodeType.LITERAL
-    ) {
-      return creator.createText(toString(
-        (node.expr as ExpressionLiteral).value
-      ))
-    }
-  },
-
   htmlParsers = [
     function (content: string): string | void {
       if (!currentElement) {
@@ -1044,6 +1056,7 @@ export function compile(content: string): Branch[] {
         // 如果 <tag 前面有别的字符，会走进第四个 parser
         if (match && match.index === 0) {
           let tag = match[2]
+          // 结束标签
           if (match[1] === constant.RAW_SLASH) {
             /**
              * 处理可能存在的自闭合元素，如下
@@ -1058,6 +1071,7 @@ export function compile(content: string): Branch[] {
             currentElement = popStack(nodeType.ELEMENT, tag) as Element
 
           }
+          // 开始标签
           else {
 
             /**
@@ -1081,7 +1095,7 @@ export function compile(content: string): Branch[] {
             let dynamicTag: ExpressionNode | void
 
             // 如果以 $ 开头，表示动态组件
-            if (string.codeAt(tag) === 36) {
+            if (string.charAt(tag) === constant.RAW_DOLLAR) {
 
               // 编译成表达式
               tag = string.slice(tag, 1)
@@ -1141,16 +1155,16 @@ export function compile(content: string): Branch[] {
     function (content: string): string | void {
       // 当前在 element 层级
       if (currentElement && !currentAttribute) {
+
+        if (process.env.NODE_ENV === 'development') {
+          const match = content.match(notEndAttributePattern)
+          if (match) {
+            fatal(`The previous attribute is not end.`)
+          }
+        }
+
         const match = content.match(attributePattern)
         if (match) {
-
-          // <div class="11 name="xxx"></div>
-          // 这里会匹配上 xxx"，match[2] 就是那个引号
-          if (process.env.NODE_ENV === 'development') {
-            if (match[2]) {
-              fatal(`The previous attribute is not end.`)
-            }
-          }
 
           let node: Attribute | Directive | Property, name = match[1]
 
@@ -1161,8 +1175,8 @@ export function compile(content: string): Branch[] {
             )
           }
           // 这里要用 on- 判断前缀，否则 on 太容易重名了
-          else if (string.startsWith(name, DIRECTIVE_ON + directiveSeparator)) {
-            let event = slicePrefix(name, DIRECTIVE_ON + directiveSeparator)
+          else if (string.startsWith(name, directiveOnSeparator)) {
+            const event = slicePrefix(name, directiveOnSeparator)
             if (process.env.NODE_ENV === 'development') {
               if (!event) {
                 fatal('The event name is required.')
@@ -1176,7 +1190,7 @@ export function compile(content: string): Branch[] {
             )
             // on-a.b.c
             if (process.env.NODE_ENV === 'development') {
-              if (is.string(parts[2])) {
+              if (parts.length > 2) {
                 fatal('Invalid event namespace.')
               }
             }
@@ -1184,19 +1198,27 @@ export function compile(content: string): Branch[] {
           // 当一个元素绑定了多个事件时，可分别指定每个事件的 lazy
           // 当只有一个事件时，可简写成 lazy
           // <div on-click="xx" lazy-click
-          else if (string.startsWith(name, DIRECTIVE_LAZY)) {
-            let lazy = slicePrefix(name, DIRECTIVE_LAZY)
-            if (string.startsWith(lazy, directiveSeparator)) {
-              lazy = slicePrefix(lazy, directiveSeparator)
-            }
+          else if (name === DIRECTIVE_LAZY) {
             node = creator.createDirective(
-              lazy ? string.camelize(lazy) : constant.EMPTY_STRING,
+              constant.EMPTY_STRING,
               DIRECTIVE_LAZY
             )
           }
-          // 这里要用 o- 判断前缀，否则 o 太容易重名了
-          else if (string.startsWith(name, DIRECTIVE_CUSTOM + directiveSeparator)) {
-            const custom = slicePrefix(name, DIRECTIVE_CUSTOM + directiveSeparator)
+          else if (string.startsWith(name, directiveLazySeparator)) {
+            const lazy = slicePrefix(name, directiveLazySeparator)
+            if (process.env.NODE_ENV === 'development') {
+              if (!lazy) {
+                fatal('The lazy name is required.')
+              }
+            }
+            node = creator.createDirective(
+              string.camelize(lazy),
+              DIRECTIVE_LAZY
+            )
+          }
+          // 自定义指令
+          else if (string.startsWith(name, directiveCustomSeparator)) {
+            const custom = slicePrefix(name, directiveCustomSeparator)
             if (process.env.NODE_ENV === 'development') {
               if (!custom) {
                 fatal('The directive name is required.')
@@ -1210,22 +1232,34 @@ export function compile(content: string): Branch[] {
             )
             // o-a.b.c
             if (process.env.NODE_ENV === 'development') {
-              if (is.string(parts[2])) {
+              if (parts.length > 2) {
                 fatal('Invalid directive modifier.')
               }
             }
           }
           else {
-            node = createAttribute(currentElement, name)
+            // 处理类似 xml:name="value" 的命名空间
+            const parts = name.split(':')
+            node = parts.length === 2
+              ? createAttribute(
+                  currentElement,
+                  parts[1],
+                  parts[0]
+                )
+              : createAttribute(
+                  currentElement,
+                  name,
+                  constant.UNDEFINED
+                )
           }
 
           addChild(node)
 
           // 这里先记下，下一个 handler 要匹配结束引号
-          startQuote = match[3]
+          attributeStartQuote = match[2]
 
           // 有属性值才需要设置 currentAttribute，便于后续收集属性值
-          if (startQuote) {
+          if (attributeStartQuote) {
             currentAttribute = node
           }
           else {
@@ -1241,18 +1275,16 @@ export function compile(content: string): Branch[] {
       let text: string | void, match: RegExpMatchArray | null
 
       // 处理 attribute directive 的 value 部分
-      if (currentAttribute && startQuote) {
+      if (currentAttribute && attributeStartQuote) {
 
-        match = content.match(patternCache[startQuote] || (patternCache[startQuote] = new RegExp(startQuote)))
+        match = content.match(patternCache[attributeStartQuote] || (patternCache[attributeStartQuote] = new RegExp(attributeStartQuote)))
 
         // 有结束引号
         if (match) {
           text = string.slice(content, 0, match.index)
           addTextChild(text as string)
 
-          text += startQuote
-
-          // attribute directive 结束了
+          // 收集 value 到此结束
           // 此时如果一个值都没收集到，需设置一个空字符串
           // 否则无法区分 <div a b=""> 中的 a 和 b
           if (!currentAttribute.children) {
@@ -1261,19 +1293,17 @@ export function compile(content: string): Branch[] {
             )
           }
 
+          text += attributeStartQuote
+
           popStack(currentAttribute.type)
           currentAttribute = constant.UNDEFINED
 
         }
         // 没有结束引号，整段匹配
-        // 如 id="1{{x}}2" 中的 1
-        else if (blockMode !== BLOCK_MODE_NONE) {
+        // 比如 <div name="1{{a}}2"> 中的 1
+        else {
           text = content
           addTextChild(text)
-        }
-        // 没找到结束引号
-        else if (process.env.NODE_ENV === 'development') {
-          fatal(`Unterminated quoted string in "${currentAttribute.name}".`)
         }
 
       }
@@ -1285,17 +1315,12 @@ export function compile(content: string): Branch[] {
         // 获取 <tag 前面的字符
         match = content.match(tagPattern)
 
-        // 元素层级的注释都要删掉
-        if (match) {
-          text = string.slice(content, 0, match.index)
-          if (text) {
-            addTextChild(
-              text.replace(commentPattern, constant.EMPTY_STRING)
-            )
-          }
-        }
-        else {
-          text = content
+        text = match
+          ? string.slice(content, 0, match.index)
+          : content
+
+        // 元素层级的 HTML 注释都要删掉
+        if (text) {
           addTextChild(
             text.replace(commentPattern, constant.EMPTY_STRING)
           )
@@ -1329,41 +1354,48 @@ export function compile(content: string): Branch[] {
         }
         source = slicePrefix(source, SYNTAX_EACH)
         const terms = source.replace(/\s+/g, constant.EMPTY_STRING).split(':')
-        if (terms[0]) {
-          const literal = string.trim(terms[0]),
 
-          index = terms[1] ? string.trim(terms[1]) : constant.UNDEFINED,
-
-          match = literal.match(rangePattern)
-
-          if (match) {
-            const parts = literal.split(rangePattern),
-            from = exprCompiler.compile(parts[0]),
-            to = exprCompiler.compile(parts[2])
-            if (from && to) {
-              return creator.createEach(
-                from,
-                to,
-                string.trim(match[1]) === '=>',
-                index
-              )
-            }
-          }
-          else {
-            const expr = exprCompiler.compile(literal)
-            if (expr) {
-              return creator.createEach(
-                expr,
-                constant.UNDEFINED,
-                constant.FALSE,
-                index
-              )
-            }
+        if (process.env.NODE_ENV === 'development') {
+          if (!terms[0] || (terms.length === 2 && !terms[1])) {
+            fatal(`Invalid each`)
           }
         }
+
+        const literal = terms[0],
+
+        index = terms[1] || constant.UNDEFINED,
+
+        match = literal.match(rangePattern)
+
+        if (match) {
+          const parts = literal.split(rangePattern),
+          from = exprCompiler.compile(parts[0]),
+          to = exprCompiler.compile(parts[2])
+          if (from && to) {
+            return creator.createEach(
+              from,
+              to,
+              match[1] === '=>',
+              index
+            )
+          }
+        }
+        else {
+          const expr = exprCompiler.compile(literal)
+          if (expr) {
+            return creator.createEach(
+              expr,
+              constant.UNDEFINED,
+              constant.FALSE,
+              index
+            )
+          }
+        }
+
         if (process.env.NODE_ENV === 'development') {
           fatal(`Invalid each`)
         }
+
       }
     },
     // {{#import name}}
@@ -1371,16 +1403,16 @@ export function compile(content: string): Branch[] {
       if (string.startsWith(source, SYNTAX_IMPORT)) {
         source = slicePrefix(source, SYNTAX_IMPORT)
         if (source) {
-          if (!currentElement) {
-            return creator.createImport(source)
+          if (process.env.NODE_ENV === 'development') {
+            if (currentElement) {
+              fatal(
+                currentAttribute
+                  ? `The "import" block can't be appear in an attribute value.`
+                  : `The "import" block can't be appear in attribute level.`
+              )
+            }
           }
-          else if (process.env.NODE_ENV === 'development') {
-            fatal(
-              currentAttribute
-                ? `The "import" block can't be appear in an attribute value.`
-                : `The "import" block can't be appear in attribute level.`
-            )
-          }
+          return creator.createImport(source)
         }
         if (process.env.NODE_ENV === 'development') {
           fatal(`Invalid import`)
@@ -1392,16 +1424,16 @@ export function compile(content: string): Branch[] {
       if (string.startsWith(source, SYNTAX_PARTIAL)) {
         source = slicePrefix(source, SYNTAX_PARTIAL)
         if (source) {
-          if (!currentElement) {
-            return creator.createPartial(source)
+          if (process.env.NODE_ENV === 'development') {
+            if (currentElement) {
+              fatal(
+                currentAttribute
+                  ? `The "partial" block can't be appear in an attribute value.`
+                  : `The "partial" block can't be appear in attribute level.`
+              )
+            }
           }
-          else if (process.env.NODE_ENV === 'development') {
-            fatal(
-              currentAttribute
-                ? `The "partial" block can't be appear in an attribute value.`
-                : `The "partial" block can't be appear in attribute level.`
-            )
-          }
+          return creator.createPartial(source)
         }
         if (process.env.NODE_ENV === 'development') {
           fatal(`Invalid partial`)
@@ -1528,6 +1560,7 @@ export function compile(content: string): Branch[] {
 
       const node: any = popStack(type)
       if (node && isCondition) {
+        console.log(node)
         checkCondition(node)
       }
     }
@@ -1550,42 +1583,34 @@ export function compile(content: string): Branch[] {
 
     // 确定开始和结束定界符能否配对成功，即 {{ 对 }}，{{{ 对 }}}
     // 这里不能动 openBlockIndex 和 closeBlockIndex，因为等下要用他俩 slice
-    index = closeBlockIndex + 2
+    index = closeBlockIndex + rightSafeDelimiter.length
 
     // 这里要用 <=，因为很可能到头了
     if (index <= length) {
 
-      if (index < length && string.charAt(content, index) === '}') {
+      if (index < length && string.charAt(content, index) === rightUnsafeFlag) {
         if (blockMode === BLOCK_MODE_UNSAFE) {
           nextIndex = index + 1
         }
-        else {
-          fatal(`{{ and }}} is not a pair.`)
+        else if (process.env.NODE_ENV === 'development') {
+          fatal(`${leftSafeDelimiter} and ${rightUnsafeFlag}${rightSafeDelimiter} is not a pair.`)
         }
       }
       else {
         if (blockMode === BLOCK_MODE_SAFE) {
           nextIndex = index
         }
-        else {
-          fatal(`{{{ and }} is not a pair.`)
+        else if (process.env.NODE_ENV === 'development') {
+          fatal(`${leftSafeDelimiter}${leftUnsafeFlag} and ${rightSafeDelimiter} is not a pair.`)
         }
       }
 
       array.pop(blockStack)
 
-      // }} 左侧的位置
+      // 结束定界符左侧的位置
       addIndex(closeBlockIndex)
 
-      openBlockIndex = string.indexOf(content, '{{', nextIndex)
-      closeBlockIndex = string.indexOf(content, '}}', nextIndex)
-
-      // 如果碰到连续的结束定界符，继续 close
-      if (closeBlockIndex >= nextIndex
-        && (openBlockIndex < 0 || closeBlockIndex < openBlockIndex)
-      ) {
-        return closeBlock()
-      }
+      // 此时 nextIndex 位于结束定界符的右侧
 
     }
     else {
@@ -1606,27 +1631,45 @@ export function compile(content: string): Branch[] {
   // 这里把流程设计为先标记切片的位置，标记过程中丢弃无效的 block
   // 最后处理有效的 block
   while (constant.TRUE) {
-    addIndex(nextIndex)
-    openBlockIndex = string.indexOf(content, '{{', nextIndex)
-    if (openBlockIndex >= nextIndex) {
 
+    // 当前内容位置
+    addIndex(nextIndex)
+
+    // 寻找下一个开始定界符和结束定界符
+    openBlockIndex = string.indexOf(content, leftSafeDelimiter, nextIndex)
+    closeBlockIndex = string.indexOf(content, rightSafeDelimiter, nextIndex)
+
+    // 如果是连续的结束定界符，比如 {{！{{xx}} }}
+    // 需要调用 closeBlock
+    if (closeBlockIndex >= nextIndex
+      && (openBlockIndex < 0 || closeBlockIndex < openBlockIndex)
+    ) {
+      if (closeBlock()) {
+        break
+      }
+    }
+    // 解析下一个 block
+    else if (openBlockIndex >= nextIndex) {
+
+      // 当前为安全插值模式
       blockMode = BLOCK_MODE_SAFE
 
-      // {{ 左侧的位置
+      // 开始定界符左侧的位置
       addIndex(openBlockIndex)
 
-      // 跳过 {{
-      openBlockIndex += 2
+      // 跳过开始定界符
+      openBlockIndex += leftSafeDelimiter.length
 
-      // {{ 后面总得有内容吧
+      // 开始定界符后面总得有内容吧
       if (openBlockIndex < length) {
-        if (string.charAt(content, openBlockIndex) === '{') {
+        // 判断是否为危险插值模式
+        if (string.charAt(content, openBlockIndex) === leftUnsafeFlag) {
           blockMode = BLOCK_MODE_UNSAFE
           openBlockIndex++
         }
-        // {{ 右侧的位置
+        // 开始定界符右侧的位置
         addIndex(openBlockIndex)
-        // block 是否安全
+        // block 模式
         addIndex(blockMode)
 
         // 打开一个 block 就入栈一个
@@ -1634,11 +1677,14 @@ export function compile(content: string): Branch[] {
 
         if (openBlockIndex < length) {
 
-          closeBlockIndex = string.indexOf(content, '}}', openBlockIndex)
+          // 结束定界符左侧的位置
+          closeBlockIndex = string.indexOf(content, rightSafeDelimiter, openBlockIndex)
 
           if (closeBlockIndex >= openBlockIndex) {
-            // 注释可以嵌套，如 {{！  {{xx}} {{! {{xx}} }}  }}
-            nextIndex = string.indexOf(content, '{{', openBlockIndex)
+            nextIndex = string.indexOf(content, leftSafeDelimiter, openBlockIndex)
+            // 判断结束定界符是否能匹配开始定界符
+            // 因为支持 mustache 注释，而注释又能嵌套，如 {{！  {{xx}} {{! {{xx}} }}  }}
+            // 当 {{ 和 }} 中间还有 {{ 时，则表示无法匹配，需要靠下一次循环再次解析
             if (nextIndex < 0 || closeBlockIndex < nextIndex) {
               if (closeBlock()) {
                 break
@@ -1665,22 +1711,28 @@ export function compile(content: string): Branch[] {
     }
   }
 
+  // 开始处理有效 block 之前，重置 blockMode
+  blockMode = BLOCK_MODE_NONE
+
   for (let i = 0, length = indexList.length; i < length; i += 5) {
+    // 每个单元有 5 个 index
+    // [当前内容位置，下一个开始定界符的左侧, 下一个开始定界符的右侧, block 模式, 下一个结束定界符的左侧]
     index = indexList[i]
 
-    // {{ 左侧的位置
+    // 开始定界符左侧的位置
     openBlockIndex = indexList[i + 1]
-    if (openBlockIndex) {
+    // 如果 openBlockIndex 存在，则后续 3 个 index 都存在
+    if (isDef(openBlockIndex)) {
+
       parseHtml(
         string.slice(content, index, openBlockIndex)
       )
-    }
 
-    // {{ 右侧的位置
-    openBlockIndex = indexList[i + 2]
-    blockMode = indexList[i + 3]
-    closeBlockIndex = indexList[i + 4]
-    if (closeBlockIndex) {
+      // 开始定界符右侧的位置
+      openBlockIndex = indexList[i + 2]
+      blockMode = indexList[i + 3]
+      // 结束定界符左侧的位置
+      closeBlockIndex = indexList[i + 4]
 
       code = string.trim(
         string.slice(content, openBlockIndex, closeBlockIndex)

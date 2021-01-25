@@ -8,6 +8,10 @@ export default interface Attribute extends Branch {
 
   name: string
 
+  // 命名空间
+  // 如 xml:name，ns 是 xml
+  ns: string | void
+
   expr?: ExpressionNode
 
   value?: any
