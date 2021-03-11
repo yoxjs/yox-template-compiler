@@ -13,6 +13,7 @@ import {
   DIRECTIVE_EVENT,
   DIRECTIVE_LAZY,
   DIRECTIVE_MODEL,
+  DIRECTIVE_TRANSITION,
   DIRECTIVE_CUSTOM,
   SLOT_NAME_DEFAULT,
   MODIFER_NATIVE,
@@ -403,14 +404,8 @@ export function compile(content: string): Branch[] {
             if (isElement) {
               processElementSingleExpression(branchNode as Element, onlyChild as Expression)
             }
-            else if (isAttribute) {
-              processAttributeSingleExpression(branchNode as Attribute, onlyChild as Expression)
-            }
-            else if (isProperty) {
-              processPropertySingleExpression(branchNode as Property, onlyChild as Expression)
-            }
-            else if (isDirective) {
-              processDirectiveSingleExpression(branchNode as Directive, onlyChild as Expression)
+            else if (isAttribute || isProperty || isDirective) {
+              processAttributeSingleExpression(branchNode as any, onlyChild as Expression)
             }
             break
 
@@ -464,11 +459,12 @@ export function compile(content: string): Branch[] {
 
   processElementSingleExpression = function (element: Element, child: Expression) {
 
-    if (isNativeElement(element)
-      && !child.safe
-      && setElementHtml(element, child.expr)
-    ) {
-      element.children = constant.UNDEFINED
+    if (isNativeElement(element)) {
+      if (child.safe && setElementText(element, child.expr)
+        || !child.safe && setElementHtml(element, child.expr)
+      ) {
+        element.children = constant.UNDEFINED
+      }
     }
 
   },
@@ -511,22 +507,6 @@ export function compile(content: string): Branch[] {
 
   },
 
-  processPropertySingleExpression = function (prop: Property, child: Expression) {
-
-    const { expr } = child
-
-    prop.expr = expr
-    prop.children = constant.UNDEFINED
-
-    // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
-    // <div class="{{className}}">
-
-    if (expr.type === exprNodeType.IDENTIFIER) {
-      prop.binding = constant.TRUE
-    }
-
-  },
-
   processAttributeEmptyChildren = function (element: Element, attr: Attribute) {
 
     if (isSpecialAttr(element, attr)) {
@@ -547,19 +527,18 @@ export function compile(content: string): Branch[] {
 
   },
 
-  processAttributeSingleExpression = function (attr: Attribute, child: Expression) {
+  processAttributeSingleExpression = function (attr: Attribute | Property | Directive, child: Expression) {
 
     const { expr } = child
 
-    attr.expr = expr
-    attr.children = constant.UNDEFINED
-
-    // 对于有静态路径的表达式，可转为单向绑定指令，可实现精确更新视图，如下
-    // <div class="{{className}}">
-
-    if (expr.type === exprNodeType.IDENTIFIER) {
-      attr.binding = constant.TRUE
+    if (expr.type === exprNodeType.LITERAL) {
+      attr.value = (expr as ExpressionLiteral).value
     }
+    else {
+      attr.expr = expr
+    }
+
+    attr.children = constant.UNDEFINED
 
   },
 
@@ -675,10 +654,6 @@ export function compile(content: string): Branch[] {
     }
 
     directive.children = constant.UNDEFINED
-
-  },
-
-  processDirectiveSingleExpression = function (directive: Directive, child: Expression) {
 
   },
 
@@ -1223,7 +1198,7 @@ export function compile(content: string): Branch[] {
 
           let node: Attribute | Directive | Property, name = match[1]
 
-          if (name === DIRECTIVE_MODEL || name === constant.RAW_TRANSITION) {
+          if (name === DIRECTIVE_MODEL || name === DIRECTIVE_TRANSITION) {
             node = creator.createDirective(
               constant.EMPTY_STRING,
               name
@@ -1540,10 +1515,7 @@ export function compile(content: string): Branch[] {
         const expr = exprCompiler.compile(source)
         if (expr) {
           if (currentElement && currentElement.isComponent) {
-            return creator.createSpread(
-              expr,
-              expr.type === exprNodeType.IDENTIFIER
-            )
+            return creator.createSpread(expr)
           }
           else if (process.env.NODE_ENV === 'development') {
             fatal(`The spread can only be used by a component.`)

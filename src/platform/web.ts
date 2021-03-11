@@ -10,6 +10,7 @@ import {
 
 import createPureObject from 'yox-common/src/function/createPureObject'
 
+import * as is from 'yox-common/src/util/is'
 import * as array from 'yox-common/src/util/array'
 import * as string from 'yox-common/src/util/string'
 import * as constant from 'yox-common/src/util/constant'
@@ -215,12 +216,17 @@ export function compatElement(element: Element) {
 
 }
 
-export function setElementText(element: Element, text: string) {
-  if (htmlEntityPattern.test(text)) {
-    element.html = text
+export function setElementText(element: Element, text: ExpressionNode | string) {
+  if (is.string(text)) {
+    if (htmlEntityPattern.test(text as string)) {
+      element.html = text as string
+    }
+    else {
+      element.text = text as string
+    }
   }
   else {
-    element.text = text
+    element.text = text as ExpressionNode
   }
   return constant.TRUE
 }

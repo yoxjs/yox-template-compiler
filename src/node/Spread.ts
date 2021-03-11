@@ -8,6 +8,4 @@ export default interface Spread extends Node {
 
   expr: ExpressionNode
 
-  binding?: boolean
-
 }

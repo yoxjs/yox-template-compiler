@@ -1,3 +1,7 @@
+import {
+  SLOT_NAME_DEFAULT,
+} from 'yox-config/src/config'
+
 import { compile } from 'yox-template-compiler/src/compiler'
 import * as nodeType from 'yox-template-compiler/src/nodeType'
 
@@ -64,6 +68,23 @@ test('属性名驼峰化', () => {
   expect(attrs.length).toBe(1)
   expect(attrs[0].type).toBe(nodeType.ATTRIBUTE)
   expect((attrs[0] as Attribute).name).toBe('_1')
+
+})
+
+test('组件默认 slot', () => {
+
+  let ast = compile(`
+    <div>
+      <slot>11</slot>
+    </div>
+  `)
+
+  expect(ast.length).toBe(1)
+
+  let root = ast[0] as Element
+  let children = root.children as Node[]
+  expect(children).not.toBe(undefined)
+  expect((children[0] as Element).name).toBe(SLOT_NAME_DEFAULT)
 
 })
 

@@ -16,6 +16,4 @@ export default interface Attribute extends Branch {
 
   value?: any
 
-  binding?: boolean
-
 }

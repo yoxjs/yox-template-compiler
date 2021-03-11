@@ -21,6 +21,4 @@ export default interface Property extends Branch {
 
   expr?: ExpressionNode
 
-  binding?: boolean
-
 }

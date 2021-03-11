@@ -20,6 +20,8 @@ test('property', () => {
       xml2:number="4"
       custom1
       custom2=""
+      custom3="{{3}}"
+      readonly="{{true}}"
     >
       5
     </div>
@@ -39,7 +41,7 @@ test('property', () => {
   expect(text).toBe('5')
 
   if (attrs) {
-    expect(attrs.length).toBe(10)
+    expect(attrs.length).toBe(12)
 
     expect(attrs[0].type).toBe(nodeType.PROPERTY)
     expect((attrs[0] as Property).name).toBe('id')
@@ -89,6 +91,15 @@ test('property', () => {
     expect(attrs[9].type).toBe(nodeType.ATTRIBUTE)
     expect((attrs[9] as Attribute).name).toBe('custom2')
     expect((attrs[9] as Attribute).value).toBe('')
+
+    expect(attrs[10].type).toBe(nodeType.ATTRIBUTE)
+    expect((attrs[10] as Attribute).name).toBe('custom3')
+    expect((attrs[10] as Attribute).value).toBe(3)
+
+    expect(attrs[11].type).toBe(nodeType.PROPERTY)
+    expect((attrs[11] as Property).name).toBe('readOnly')
+    expect((attrs[11] as Property).hint).toBe(config.HINT_BOOLEAN)
+    expect((attrs[11] as Property).value).toBe(true)
   }
 
 

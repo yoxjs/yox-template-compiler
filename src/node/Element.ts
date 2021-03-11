@@ -43,8 +43,9 @@ export default interface Element extends Branch {
   // <div>&nbsp;</div>
   html?: ExpressionNode | string
 
+  // <div>{{xx}}</div>
   // <div>123</div>
-  text?: string
+  text?: ExpressionNode | string
 
   attrs?: (Attribute | Property | Directive | If | Spread)[]
 

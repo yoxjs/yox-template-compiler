@@ -1,6 +1,4 @@
 import {
-  SLOT_DATA_PREFIX,
-  DIRECTIVE_BINDING,
   DIRECTIVE_MODEL,
   DIRECTIVE_EVENT,
   DIRECTIVE_CUSTOM,
@@ -11,7 +9,6 @@ import {
   Listener,
   LazyValue,
   ValueHolder,
-  PropertyHint,
 } from 'yox-type/src/type'
 
 import {
@@ -35,7 +32,6 @@ import CustomEvent from 'yox-common/src/util/CustomEvent'
 import * as is from 'yox-common/src/util/is'
 import * as array from 'yox-common/src/util/array'
 import * as object from 'yox-common/src/util/object'
-import * as string from 'yox-common/src/util/string'
 import * as logger from 'yox-common/src/util/logger'
 import * as constant from 'yox-common/src/util/constant'
 import * as keypathUtil from 'yox-common/src/util/keypath'
@@ -44,12 +40,11 @@ import globalHolder from 'yox-common/src/util/holder'
 
 import Observer from 'yox-observer/src/Observer'
 
-function setPair(target: any, name: string, key: string, value: any) {
-  const data = target[name] || (target[name] = {})
-  data[key] = value
-}
+import * as field from './field'
 
-const KEY_DIRECTIVES = 'directives'
+const TAG_TEXT = '#',
+
+TAG_COMMENT = '!'
 
 export function render(
   context: YoxInterface,
@@ -65,17 +60,9 @@ export function render(
 
   $stack = [ $scope ],
 
-  currentVnode: any,
-
-  vnodeStack: VNode[][] = [],
-
-  slotComponentStack: Data[][] = [],
-
   localPartials: Record<string, Function> = {},
 
-  renderedSlots: Record<string, true> = {},
-
-  findValue = function (stack: any[], index: number, key: string, lookup: boolean, depIgnore?: boolean, defaultKeypath?: string): ValueHolder {
+  findValue = function (stack: any[], index: number, key: string, lookup: boolean, defaultKeypath?: string): ValueHolder {
 
     let scope = stack[index],
 
@@ -114,14 +101,14 @@ export function render(
 
     if (value === stack) {
       // 正常取数据
-      value = observer.get(keypath, stack, depIgnore)
+      value = observer.get(keypath, stack)
       if (value === stack) {
 
         if (lookup && index > 0) {
           if (process.env.NODE_ENV === 'development') {
             logger.debug(`The data "${keypath}" can't be found in the current context, start looking up.`)
           }
-          return findValue(stack, index - 1, key, lookup, depIgnore, defaultKeypath)
+          return findValue(stack, index - 1, key, lookup, defaultKeypath)
         }
 
         // 到头了，最后尝试过滤器
@@ -205,81 +192,65 @@ export function render(
   },
 
   renderTextVnode = function (value: any) {
-    const vnodeList = array.last(vnodeStack)
-    if (vnodeList) {
-      const text = toString(value)
-      const lastVnode = array.last(vnodeList)
-      if (lastVnode && lastVnode.isText) {
-        (lastVnode.text as string) += text
-      }
-      else {
-        // 注释节点标签名是 '!'，这里区分一下
-        const textVnode: Data = {
-          tag: '#',
-          isText: constant.TRUE,
-          text,
-          context,
-          keypath: $scope.$keypath,
-        }
-        array.push(vnodeList, textVnode)
-      }
+    return {
+      tag: TAG_TEXT,
+      isText: constant.TRUE,
+      text: value,
+      context,
+      keypath: $scope.$keypath,
     }
   },
 
-  renderAttributeVnode = function (name: string, value: string | void) {
-    setPair(
-      currentVnode,
-      currentVnode.isComponent ? 'props' : 'nativeAttrs',
+  renderNativeAttribute = function (name: string, value: string | void) {
+    return {
+      key: field.NATIVE_ATTRIBUTES,
       name,
-      value
-    )
+      value,
+    }
   },
 
-  renderPropertyVnode = function (name: string, value: any) {
-    setPair(currentVnode, 'nativeProps', name, value)
+  renderNativeProperty = function (name: string, value: any) {
+    return {
+      key: field.NATIVE_PROPERTIES,
+      name,
+      value,
+    }
   },
 
-  renderLazyVnode = function (name: string, value: LazyValue) {
-    setPair(currentVnode, 'lazy', name, value)
+  renderProperty = function (name: string, value: string | void) {
+    return {
+      key: field.PROPERTIES,
+      name,
+      value,
+    }
   },
 
-  renderTransitionVnode = function (name: string) {
-    currentVnode.transition = transitions[name]
+  renderLazy = function (name: string, value: LazyValue) {
+    return {
+      key: field.LAZY,
+      name,
+      value,
+    }
+  },
+
+  renderTransition = function (name: string) {
+    const transition = transitions[name]
     if (process.env.NODE_ENV === 'development') {
-      if (!currentVnode.transition) {
+      if (!transition) {
         logger.fatal(`The transition "${name}" can't be found.`)
       }
     }
+    return {
+      key: field.TRANSITION,
+      value: transition,
+    }
   },
 
-  renderBindingVnode = function (name: string, holder: ValueHolder, hint?: PropertyHint): any {
-
-    const key = keypathUtil.join(DIRECTIVE_BINDING, name)
-
-    setPair(
-      currentVnode,
-      KEY_DIRECTIVES,
-      key,
-      {
-        ns: DIRECTIVE_BINDING,
-        name,
-        key,
-        modifier: holder.keypath,
-        hooks: directives[DIRECTIVE_BINDING],
-        hint,
-      }
-    )
-
-    return holder.value
-
-  },
-
-  renderModelVnode = function (holder: ValueHolder) {
-    setPair(
-      currentVnode,
-      KEY_DIRECTIVES,
-      DIRECTIVE_MODEL,
-      {
+  renderModel = function (holder: ValueHolder) {
+    return {
+      key: field.DIRECTIVES,
+      name: DIRECTIVE_MODEL,
+      value: {
         ns: DIRECTIVE_MODEL,
         name: constant.EMPTY_STRING,
         key: DIRECTIVE_MODEL,
@@ -287,19 +258,18 @@ export function render(
         modifier: holder.keypath,
         hooks: directives[DIRECTIVE_MODEL]
       }
-    )
+    }
   },
 
-  renderEventMethodVnode = function (
+  renderEventMethod = function (
     name: string, key: string,
     modifier: string, value: string,
     method: string, args: Function | void
   ) {
-    setPair(
-      currentVnode,
-      KEY_DIRECTIVES,
-      key,
-      {
+    return {
+      key: field.DIRECTIVES,
+      name: key,
+      value: {
         ns: DIRECTIVE_EVENT,
         name,
         key,
@@ -308,19 +278,18 @@ export function render(
         hooks: directives[DIRECTIVE_EVENT],
         handler: createMethodListener(method, args, $stack),
       }
-    )
+    }
   },
 
-  renderEventNameVnode = function (
+  renderEventName = function (
     name: string, key: string,
     modifier: string, value: string,
     event: string
   ) {
-    setPair(
-      currentVnode,
-      KEY_DIRECTIVES,
-      key,
-      {
+    return {
+      key: field.DIRECTIVES,
+      name: key,
+      value: {
         ns: DIRECTIVE_EVENT,
         name,
         key,
@@ -329,10 +298,10 @@ export function render(
         hooks: directives[DIRECTIVE_EVENT],
         handler: createEventListener(event),
       }
-    )
+    }
   },
 
-  renderDirectiveVnode = function (
+  renderDirective = function (
     name: string, key: string,
     modifier: string, value: string,
     method: string | void, args: Function | void, getter: Function | void
@@ -346,11 +315,10 @@ export function render(
       }
     }
 
-    setPair(
-      currentVnode,
-      KEY_DIRECTIVES,
-      key,
-      {
+    return {
+      key: field.DIRECTIVES,
+      name: key,
+      value: {
         ns: DIRECTIVE_CUSTOM,
         name,
         key,
@@ -360,13 +328,11 @@ export function render(
         getter: getter ? createGetter(getter, $stack) : constant.UNDEFINED,
         handler: method ? createMethodListener(method, args, $stack) : constant.UNDEFINED,
       }
-    )
+    }
 
   },
 
-  renderSpreadVnode = function (holder: ValueHolder) {
-
-    const { value, keypath } = holder
+  renderSpreadVnode = function (value: any) {
 
     if (is.object(value)) {
 
@@ -378,146 +344,135 @@ export function render(
         }
       }
 
+      const result: any[] = []
+
       for (let key in value) {
-        setPair(currentVnode, 'props', key, value[key])
+        result.push({
+          key: field.PROPERTIES,
+          name: key,
+          value: value[key],
+        })
       }
 
-      if (keypath) {
-        const key = keypathUtil.join(DIRECTIVE_BINDING, keypath)
-        setPair(
-          currentVnode,
-          KEY_DIRECTIVES,
-          key,
-          {
-            ns: DIRECTIVE_BINDING,
-            name: constant.EMPTY_STRING,
-            key,
-            modifier: keypathUtil.join(keypath, constant.RAW_WILDCARD),
-            hooks: directives[DIRECTIVE_BINDING],
-          }
-        )
-      }
+      return result
 
     }
 
-  },
-
-  appendVnode = function (vnode: Data) {
-    const vnodeList = array.last(vnodeStack)
-    if (vnodeList) {
-      array.push(vnodeList, vnode)
-    }
-    return vnode
   },
 
   renderCommentVnode = function () {
     // 注释节点和文本节点需要有个区分
     // 如果两者都没有 tag，则 patchVnode 时，会认为两者是 patchable 的
-    return appendVnode({
-      tag: '!',
+    return {
+      tag: TAG_COMMENT,
       isComment: constant.TRUE,
       text: constant.EMPTY_STRING,
       keypath: $scope.$keypath,
       context,
-    })
+    }
+  },
+
+  flattenArray = function (array: any[], handler: (item: any) => void) {
+    for (let i = 0, length = array.length; i < length; i++) {
+      const item = array[i]
+      if (is.array(item)) {
+        flattenArray(item, handler)
+      }
+      else if (isDef(item)) {
+        handler(item)
+      }
+    }
+  },
+
+  normalizeAttributes = function (data: Data, attrs: any[]) {
+    flattenArray(
+      attrs,
+      function (item) {
+        const { key, name, value } = item
+        if (data[key]) {
+          data[key][name] = value
+        }
+        else {
+          if (name) {
+            const map = {}
+            map[name] = value
+            data[key] = map
+          }
+          else {
+            data[key] = value
+          }
+        }
+      }
+    )
+  },
+
+  normalizeChildren = function (result: any[], childs: any[]) {
+    flattenArray(
+      childs,
+      function (item) {
+        // item 只能是 vnode
+        if (item.isText) {
+          const lastChild = array.last(result)
+          if (lastChild && lastChild.isText) {
+            lastChild.text += item.text
+            return
+          }
+        }
+        result.push(item)
+      }
+    )
   },
 
   renderElementVnode = function (
-    tag: string,
-    attrs: Function | void,
-    childs: Function | void,
-    isStatic: true | void,
-    isOption: true | void,
-    isStyle: true | void,
-    isSvg: true | void,
-    html: any | void,
-    ref: string | void,
-    key: string | void
+    data: Data,
+    attrs: any[] | void,
+    childs: any[] | void
   ) {
 
-    const vnode: Data = {
-      tag,
-      isStatic,
-      isOption,
-      isStyle,
-      isSvg,
-      ref,
-      key,
-      context,
-      keypath: $scope.$keypath,
-    }
-
-    if (isDef(html)) {
-      vnode.html = toString(html)
-    }
+    data.context = context
+    data.keypath = $scope.$keypath
 
     if (attrs) {
-      currentVnode = vnode
-      attrs()
-      currentVnode = constant.UNDEFINED
+      normalizeAttributes(data, attrs)
     }
 
     if (childs) {
-      vnodeStack.push(vnode.children = [])
-      childs()
-      array.pop(vnodeStack)
+      const children: any[] = []
+      normalizeChildren(children, childs)
+      data.children = children
     }
 
-    return appendVnode(vnode)
+    return data
 
   },
 
   renderComponentVnode = function (
-    tag: string,
-    attrs: Function | void,
-    slots: Record<string, Function> | void,
-    ref: string | void,
-    key: string | void
+    data: Data,
+    attrs: any[] | void,
+    slots: Data | void
   ) {
 
-    const vnode: Data = {
-      tag,
-      ref,
-      key,
-      context,
-      keypath: $scope.$keypath,
-      isComponent: constant.TRUE,
-    }
-
-    const componentList = array.last(slotComponentStack)
-    if (componentList) {
-      array.push(componentList, vnode)
-    }
+    data.context = context
+    data.keypath = $scope.$keypath
 
     if (attrs) {
-      currentVnode = vnode
-      attrs()
-      currentVnode = constant.UNDEFINED
+      normalizeAttributes(data, attrs)
     }
 
     if (slots) {
-      const vnodeSlots = {}
+      const vnodeMap = {}
       for (let name in slots) {
-        vnodeStack.push([])
-        slotComponentStack.push([])
-        slots[name]()
-        const vnodes = array.pop(vnodeStack) as VNode[]
-        const components = array.pop(slotComponentStack) as VNode[]
-        if (vnodes.length) {
-          vnodeSlots[name] = {
-            vnodes,
-            components,
-          }
-        }
-        else {
-          // 必须要有值，用于覆盖旧值
-          vnodeSlots[name] = constant.UNDEFINED
-        }
+        const children: any[] = []
+        normalizeChildren(children, slots[name])
+        // 就算是 undefined 也必须有值，用于覆盖旧值
+        vnodeMap[name] = children.length
+          ? children
+          : constant.UNDEFINED
       }
-      vnode.slots = vnodeSlots
+      data.slots = vnodeMap
     }
 
-    return appendVnode(vnode)
+    return data
 
   },
 
@@ -526,14 +481,13 @@ export function render(
     lookup: boolean,
     offset?: number,
     holder?: boolean,
-    depIgnore?: boolean,
     stack?: any[]
   ) {
     let myStack = stack || $stack, index = myStack.length - 1
     if (offset) {
       index -= offset
     }
-    let result = findValue(myStack, index, name, lookup, depIgnore)
+    let result = findValue(myStack, index, name, lookup)
     return holder ? result : result.value
   },
 
@@ -572,34 +526,22 @@ export function render(
   },
 
   // <slot name="xx"/>
-  renderSlot = function (name: string, defaultRender?: Function) {
+  renderSlot = function (name: string, render?: Function) {
 
-    const vnodeList = array.last(vnodeStack),
-
-    slotProps = context.get(name)
-
-    if (vnodeList) {
-      if (slotProps) {
-        const { vnodes, components } = slotProps
-        for (let i = 0, length = vnodes.length; i < length; i++) {
-          array.push(vnodeList, vnodes[i])
-          vnodes[i].slot = name
+    const vnodes = context.get(name)
+    if (vnodes) {
+      array.each(
+        vnodes,
+        function (vnode: VNode) {
+          vnode.slot = name
+          vnode.parent = context
         }
-        for (let i = 0, length = components.length; i < length; i++) {
-          components[i].parent = context
-        }
-      }
-      else if (defaultRender) {
-        defaultRender()
-      }
+      )
+      return vnodes
     }
 
-    // 不能重复输出相同名称的 slot
-    if (process.env.NODE_ENV === 'development') {
-      if (renderedSlots[name]) {
-        logger.fatal(`The slot "${string.slice(name, SLOT_DATA_PREFIX.length)}" can't render more than one time.`)
-      }
-      renderedSlots[name] = constant.TRUE
+    if (render) {
+      return render()
     }
 
   },
@@ -614,46 +556,19 @@ export function render(
   // {{> name}}
   renderImport = function (name: string) {
     if (localPartials[name]) {
-      localPartials[name]()
+      return localPartials[name]()
     }
-    else {
-      const partial = partials[name]
-      if (partial) {
-        partial(
-          renderExpressionIdentifier,
-          renderExpressionMemberKeypath,
-          renderExpressionMemberLiteral,
-          renderExpressionCall,
-          renderTextVnode,
-          renderAttributeVnode,
-          renderPropertyVnode,
-          renderLazyVnode,
-          renderTransitionVnode,
-          renderBindingVnode,
-          renderModelVnode,
-          renderEventMethodVnode,
-          renderEventNameVnode,
-          renderDirectiveVnode,
-          renderSpreadVnode,
-          renderCommentVnode,
-          renderElementVnode,
-          renderComponentVnode,
-          renderSlot,
-          renderPartial,
-          renderImport,
-          renderEach,
-          renderRange,
-          renderEqualRange
-        )
-      }
-      else if (process.env.NODE_ENV === 'development') {
+    const partial = partials[name]
+    if (process.env.NODE_ENV === 'development') {
+      if (!partial) {
         logger.fatal(`The partial "${name}" can't be found.`)
       }
     }
+    return renderTemplate(partial)
   },
 
   eachHandler = function (
-    generate: Function,
+    render: Function,
     item: any,
     key: string | number,
     keypath: string,
@@ -683,144 +598,159 @@ export function render(
       $scope.$item = item
     }
 
-    generate()
+    const result = render()
 
     $scope = lastScope
     $stack = lastStack
 
+    return result
+
   },
 
   renderEach = function (
-    generate: Function,
+    render: Function,
     holder: ValueHolder,
     index: string | void
   ) {
 
-    const { keypath, value } = holder
+    const { keypath, value } = holder, result: any[] = []
 
     if (is.array(value)) {
       for (let i = 0, length = value.length; i < length; i++) {
-        eachHandler(
-          generate,
-          value[i],
-          i,
-          keypath
-            ? keypathUtil.join(keypath, constant.EMPTY_STRING + i)
-            : constant.EMPTY_STRING,
-          index,
-          length
+        result.push(
+          eachHandler(
+            render,
+            value[i],
+            i,
+            keypath
+              ? keypathUtil.join(keypath, constant.EMPTY_STRING + i)
+              : constant.EMPTY_STRING,
+            index,
+            length
+          )
         )
       }
     }
     else if (is.object(value)) {
       for (let key in value) {
-        eachHandler(
-          generate,
-          value[key],
-          key,
-          keypath
-            ? keypathUtil.join(keypath, key)
-            : constant.EMPTY_STRING,
-          index
+        result.push(
+          eachHandler(
+            render,
+            value[key],
+            key,
+            keypath
+              ? keypathUtil.join(keypath, key)
+              : constant.EMPTY_STRING,
+            index
+          )
         )
       }
     }
+
+    return result
 
   },
 
   renderRange = function (
-    generate: Function,
+    render: Function,
     from: number,
     to: number,
+    equal: boolean,
     index: string | void
   ) {
 
-    let count = 0
+    let count = 0, result: any[] = []
 
     if (from < to) {
-      for (let i = from; i < to; i++) {
-        eachHandler(
-          generate,
-          i,
-          count++,
-          constant.EMPTY_STRING,
-          index
-        )
+      if (equal) {
+        for (let i = from; i <= to; i++) {
+          result.push(
+            eachHandler(
+              render,
+              i,
+              count++,
+              constant.EMPTY_STRING,
+              index
+            )
+          )
+        }
+      }
+      else {
+        for (let i = from; i < to; i++) {
+          result.push(
+            eachHandler(
+              render,
+              i,
+              count++,
+              constant.EMPTY_STRING,
+              index
+            )
+          )
+        }
       }
     }
     else {
-      for (let i = from; i > to; i--) {
-        eachHandler(
-          generate,
-          i,
-          count++,
-          constant.EMPTY_STRING,
-          index
-        )
+      if (equal) {
+        for (let i = from; i >= to; i--) {
+          result.push(
+            eachHandler(
+              render,
+              i,
+              count++,
+              constant.EMPTY_STRING,
+              index
+            )
+          )
+        }
+      }
+      else {
+        for (let i = from; i > to; i--) {
+          result.push(
+            eachHandler(
+              render,
+              i,
+              count++,
+              constant.EMPTY_STRING,
+              index
+            )
+          )
+        }
       }
     }
+
+    return result
 
   },
 
-  renderEqualRange = function (
-    generate: Function,
-    from: number,
-    to: number,
-    index: string | void
-  ) {
-
-    let count = 0
-
-    if (from < to) {
-      for (let i = from; i <= to; i++) {
-        eachHandler(
-          generate,
-          i,
-          count++,
-          constant.EMPTY_STRING,
-          index
-        )
-      }
-    }
-    else {
-      for (let i = from; i >= to; i--) {
-        eachHandler(
-          generate,
-          i,
-          count++,
-          constant.EMPTY_STRING,
-          index
-        )
-      }
-    }
-
+  renderTemplate = function (render) {
+    return render(
+      renderExpressionIdentifier,
+      renderExpressionMemberKeypath,
+      renderExpressionMemberLiteral,
+      renderExpressionCall,
+      renderTextVnode,
+      renderNativeAttribute,
+      renderNativeProperty,
+      renderProperty,
+      renderLazy,
+      renderTransition,
+      renderModel,
+      renderEventMethod,
+      renderEventName,
+      renderDirective,
+      renderSpreadVnode,
+      renderCommentVnode,
+      renderElementVnode,
+      renderComponentVnode,
+      renderSlot,
+      renderPartial,
+      renderImport,
+      renderEach,
+      renderRange,
+      toString,
+    )
   }
 
-  return template(
-    renderExpressionIdentifier,
-    renderExpressionMemberKeypath,
-    renderExpressionMemberLiteral,
-    renderExpressionCall,
-    renderTextVnode,
-    renderAttributeVnode,
-    renderPropertyVnode,
-    renderLazyVnode,
-    renderTransitionVnode,
-    renderBindingVnode,
-    renderModelVnode,
-    renderEventMethodVnode,
-    renderEventNameVnode,
-    renderDirectiveVnode,
-    renderSpreadVnode,
-    renderCommentVnode,
-    renderElementVnode,
-    renderComponentVnode,
-    renderSlot,
-    renderPartial,
-    renderImport,
-    renderEach,
-    renderRange,
-    renderEqualRange
-  )
+  return renderTemplate(template)
 
 }

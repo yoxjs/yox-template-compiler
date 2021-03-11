@@ -6,6 +6,7 @@ import * as constant from 'yox-common/src/util/constant'
 import * as keypathUtil from 'yox-common/src/util/keypath'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
+import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 
 import * as nodeType from './nodeType'
 
@@ -102,6 +103,7 @@ export function createExpression(expr: ExpressionNode, safe: boolean): Expressio
     expr,
     safe,
     isLeaf: constant.TRUE,
+    isStatic: expr.type === exprNodeType.LITERAL,
   }
 }
 
@@ -129,11 +131,10 @@ export function createPartial(name: string): Partial {
   }
 }
 
-export function createSpread(expr: ExpressionNode, binding: boolean): Spread {
+export function createSpread(expr: ExpressionNode): Spread {
   return {
     type: nodeType.SPREAD,
     expr,
-    binding,
     isLeaf: constant.TRUE,
   }
 }

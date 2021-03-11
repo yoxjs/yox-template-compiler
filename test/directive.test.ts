@@ -3,8 +3,6 @@ import * as nodeType from 'yox-template-compiler/src/nodeType'
 import * as config from 'yox-config/src/config'
 
 import Element from 'yox-template-compiler/src/node/Element'
-import Property from 'yox-template-compiler/src/node/Property'
-import Attribute from 'yox-template-compiler/src/node/Attribute'
 import Directive from 'yox-template-compiler/src/node/Directive'
 import Node from 'yox-template-compiler/src/node/Node'
 
@@ -107,43 +105,6 @@ test('默认值', () => {
 
 })
 
-
-test('binding', () => {
-
-  let ast = compile(`
-    <div id="{{id}}" class="{{a.b.c}}" name="{{a + b}}" title="1" data-xx="{{id}}"></div>
-  `)
-
-  expect(ast.length).toBe(1)
-
-  let root = ast[0] as Element
-  let attrs = root.attrs as Node[]
-
-  expect(attrs.length).toBe(5)
-  expect(root.children).toBe(undefined)
-
-  expect(attrs[0].type).toBe(nodeType.PROPERTY)
-  expect((attrs[0] as Property).name).toBe('id')
-  expect((attrs[0] as Property).binding).toBe(true)
-
-  expect(attrs[1].type).toBe(nodeType.PROPERTY)
-  expect((attrs[1] as Property).name).toBe('className')
-  expect((attrs[1] as Property).binding).toBe(true)
-
-  expect(attrs[2].type).toBe(nodeType.PROPERTY)
-  expect((attrs[2] as Property).name).toBe('name')
-  expect((attrs[2] as Property).binding).toBe(undefined)
-
-  expect(attrs[3].type).toBe(nodeType.PROPERTY)
-  expect((attrs[3] as Property).name).toBe('title')
-  expect((attrs[3] as Property).binding).toBe(undefined)
-
-
-  expect(attrs[4].type).toBe(nodeType.ATTRIBUTE)
-  expect((attrs[4] as Attribute).name).toBe('data-xx')
-  expect((attrs[4] as Attribute).binding).toBe(true)
-
-})
 
 test('error', () => {
 

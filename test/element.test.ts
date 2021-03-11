@@ -405,12 +405,9 @@ test('元素只有一个表达式子节点', () => {
 
   expect(ast[0].type).toBe(nodeType.ELEMENT)
   expect((ast[0] as Element).tag).toBe('div')
-  expect((ast[0] as Element).text).toBe(undefined)
+  expect(typeof (ast[0] as Element).text).toBe('object')
   expect((ast[0] as Element).html).toBe(undefined)
-
-  let children = (ast[0] as Element).children as Node[]
-  expect(children.length).toBe(1)
-  expect(children[0].type).toBe(nodeType.EXPRESSION)
+  expect((ast[0] as Element).children).toBe(undefined)
 
 
   ast = compile('<div>{{{a}}}</div>')
