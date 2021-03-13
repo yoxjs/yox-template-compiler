@@ -71,7 +71,11 @@ RENDER_LAZY = 'renderLazy',
 
 RENDER_TRANSITION = 'renderTransition',
 
+GET_TRANSITION = 'getTransition',
+
 RENDER_MODEL = 'renderModel',
+
+GET_MODEL = 'getModel',
 
 RENDER_EVENT_METHOD = 'renderEventMethod',
 
@@ -99,7 +103,9 @@ RENDER_RANGE = 'renderRange',
 
 TO_STRING = 'toString',
 
-ARG_STACK = 'argStack'
+ARG_STACK = 'argStack',
+
+RAW_METHOD = 'method'
 
 function stringifyExpression(expr: ExpressionNode) {
   return exprGenerator.generate(
@@ -136,7 +142,7 @@ function stringifyExpressionArg(expr: ExpressionNode) {
 
 function stringifyAttributeValue(value: any, expr: ExpressionNode | void, children: Node[] | void) {
   if (isDef(value)) {
-    return new generator.GPrimitive(value)
+    return generator.toPrimitive(value)
   }
   // 只有一个表达式时，保持原始类型
   if (expr) {
@@ -260,7 +266,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     // slot 不可能有 html、text 属性
     // 因此 slot 的子节点只存在于 children 中
     const args: generator.GBase[] = [
-      new generator.GPrimitive(SLOT_DATA_PREFIX + node.name)
+      generator.toPrimitive(SLOT_DATA_PREFIX + node.name)
     ]
     if (children) {
       array.push(
@@ -281,7 +287,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     'tag',
     dynamicTag
         ? stringifyExpression(dynamicTag)
-        : new generator.GPrimitive(tag)
+        : generator.toPrimitive(tag)
   )
 
   array.push(vnodeStack, constant.FALSE)
@@ -304,7 +310,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     data.set(
       'html',
       is.string(html)
-          ? new generator.GPrimitive(html as string)
+          ? generator.toPrimitive(html as string)
           : new generator.GCall(
               TO_STRING,
               [
@@ -317,7 +323,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     data.set(
       'text',
       is.string(text)
-          ? new generator.GPrimitive(text as string)
+          ? generator.toPrimitive(text as string)
           : new generator.GCall(
               TO_STRING,
               [
@@ -339,8 +345,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
     lazy = new generator.GObject(),
 
-    transtion: string = constant.EMPTY_STRING,
-
     dynamicAttrs: any[] = []
 
     array.each(
@@ -361,7 +365,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
               value
             )
           }
-          return
         }
         else if (attr.type === nodeType.PROPERTY) {
           const propertyNode = attr as Property, value = stringifyAttributeValue(propertyNode.value, propertyNode.expr, propertyNode.children)
@@ -369,32 +372,60 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
             propertyNode.name,
             value
           )
-          return
         }
         else if (attr.type === nodeType.DIRECTIVE) {
-          const { ns, name, value } = attr as Directive
-          if (isDef(value)) {
-            if (ns === DIRECTIVE_LAZY) {
+          const directiveNode = attr as Directive
+          switch (directiveNode.ns) {
+            case DIRECTIVE_LAZY:
               lazy.set(
-                name,
-                new generator.GPrimitive(value)
+                directiveNode.name,
+                getLazyValue(directiveNode)
               )
-            }
-            // transition 必须要运行时才知道 value 是什么函数
-            // 编译时只知道 value 对应的函数名称，而不是运行时需要的函数
-            else if (ns !== DIRECTIVE_TRANSITION) {
+              break
+
+            case DIRECTIVE_TRANSITION:
+              data.set(
+                field.TRANSITION,
+                new generator.GCall(
+                  GET_TRANSITION,
+                  [
+                    getTransitionValue(directiveNode)
+                  ]
+                )
+              )
+              break
+
+            case DIRECTIVE_MODEL:
               directives.set(
-                name,
-                new generator.GPrimitive(value)
+                DIRECTIVE_MODEL,
+                new generator.GCall(
+                  GET_MODEL,
+                  [
+                    getModelValue(directiveNode)
+                  ]
+                )
               )
-            }
-            return
+              break
+
+            default:
+              const params = getDirectiveValue(directiveNode)
+              directives.set(
+                directiveNode.key,
+                new generator.GCall(
+                  getDirectiveRender(directiveNode, params),
+                  [
+                    params
+                  ]
+                )
+              )
           }
         }
-        array.push(
-          dynamicAttrs,
-          attr
-        )
+        else {
+          array.push(
+            dynamicAttrs,
+            attr
+          )
+        }
       }
     )
 
@@ -426,12 +457,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       data.set(
         field.LAZY,
         lazy
-      )
-    }
-    if (transtion) {
-      data.set(
-        field.TRANSITION,
-        new generator.GPrimitive(transtion)
       )
     }
     if (dynamicAttrs.length) {
@@ -476,7 +501,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   array.pop(vnodeStack)
   array.pop(componentStack)
 
-  // 减少一次运行时赋值
   if (isComponent) {
     data.set(
       'isComponent',
@@ -539,7 +563,7 @@ nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
       ? RENDER_PROPERTY
       : RENDER_NATIVE_ATTRIBUTE,
     [
-      new generator.GPrimitive(node.name),
+      generator.toPrimitive(node.name),
       value
     ]
   )
@@ -553,55 +577,45 @@ nodeGenerator[nodeType.PROPERTY] = function (node: Property) {
   return new generator.GCall(
     RENDER_NATIVE_PROPERTY,
     [
-      new generator.GPrimitive(node.name),
+      generator.toPrimitive(node.name),
       value
     ]
   )
 
 }
 
-nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
+function getLazyValue(node: Directive) {
+  return generator.toPrimitive(node.value)
+}
 
-  const { ns, name, key, value, expr, modifier } = node
+function getTransitionValue(node: Directive) {
+  return generator.toPrimitive(node.value)
+}
 
-  if (ns === DIRECTIVE_LAZY) {
-    return new generator.GCall(
-      RENDER_LAZY,
-      [
-        new generator.GPrimitive(name),
-        new generator.GPrimitive(value)
-      ]
-    )
-  }
+function getModelValue(node: Directive) {
+  return stringifyExpressionHolder(node.expr as ExpressionNode)
+}
 
-  // <div transition="name">
-  if (ns === DIRECTIVE_TRANSITION) {
-    return new generator.GCall(
-      RENDER_TRANSITION,
-      [
-        new generator.GPrimitive(value)
-      ]
-    )
-  }
+function getDirectiveValue(node: Directive) {
 
-  // <input model="id">
-  if (ns === DIRECTIVE_MODEL) {
-    return new generator.GCall(
-      RENDER_MODEL,
-      [
-        stringifyExpressionHolder(expr as ExpressionNode)
-      ]
-    )
-  }
+  const params = new generator.GObject()
 
-  let renderName = RENDER_DIRECTIVE,
-
-  args: generator.GBase[] = [
-    new generator.GPrimitive(name),
-    new generator.GPrimitive(key),
-    new generator.GPrimitive(modifier),
-    new generator.GPrimitive(value),
-  ]
+  params.set(
+    'name',
+    generator.toPrimitive(node.name)
+  )
+  params.set(
+    'key',
+    generator.toPrimitive(node.key)
+  )
+  params.set(
+    'modifier',
+    generator.toPrimitive(node.modifier)
+  )
+  params.set(
+    'value',
+    generator.toPrimitive(node.value)
+  )
 
   // 尽可能把表达式编译成函数，这样对外界最友好
   //
@@ -610,25 +624,26 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
   // 比如 o-tap="method()" 或 o-log="{'id': '11'}"
   // 前者会编译成 handler（调用方法），后者会编译成 getter（取值）
 
+  const { expr } = node
   if (expr) {
 
     // 如果表达式明确是在调用方法，则序列化成 method + args 的形式
     if (expr.type === exprNodeType.CALL) {
-      if (ns === DIRECTIVE_EVENT) {
-        renderName = RENDER_EVENT_METHOD
-      }
+
+      const callNode = expr as ExpressionCall
       // compiler 保证了函数调用的 name 是标识符
-      array.push(
-        args,
-        new generator.GPrimitive(((expr as ExpressionCall).name as ExpressionIdentifier).name)
+      params.set(
+        RAW_METHOD,
+        generator.toPrimitive((callNode.name as ExpressionIdentifier).name)
       )
+
       // 为了实现运行时动态收集参数，这里序列化成函数
-      if (!array.falsy((expr as ExpressionCall).args)) {
+      if (!array.falsy(callNode.args)) {
         // args 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
-        array.push(
-          args,
+        params.set(
+          'args',
           new generator.GAnonymousFunction(
-            new generator.GArray((expr as ExpressionCall).args.map(stringifyExpressionArg)),
+            new generator.GArray(callNode.args.map(stringifyExpressionArg)),
             [
               new generator.GRaw(ARG_STACK)
             ]
@@ -637,21 +652,20 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
       }
     }
     // 不是调用方法，就是事件转换
-    else if (ns === DIRECTIVE_EVENT) {
-      renderName = RENDER_EVENT_NAME
-      array.push(
-        args,
-        new generator.GPrimitive(expr.raw)
+    else if (node.ns === DIRECTIVE_EVENT) {
+      params.set(
+        'event',
+        generator.toPrimitive(expr.raw)
       )
     }
-    else if (ns === DIRECTIVE_CUSTOM) {
+    // 自定义指令
+    else if (node.ns === DIRECTIVE_CUSTOM) {
 
       // 取值函数
       // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
       if (expr.type !== exprNodeType.LITERAL) {
-        args.push(
-          generator.GRAW_UNDEFINED, // method
-          generator.GRAW_UNDEFINED, // args
+        params.set(
+          'getter',
           new generator.GAnonymousFunction(
             stringifyExpressionArg(expr),
             [
@@ -665,10 +679,57 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
 
   }
 
-  return new generator.GCall(
-    renderName,
-    args
-  )
+  return params
+
+}
+
+function getDirectiveRender(node: Directive, params: generator.GObject) {
+  return node.ns === DIRECTIVE_EVENT
+  ? params.has(RAW_METHOD)
+    ? RENDER_EVENT_METHOD
+    : RENDER_EVENT_NAME
+  : RENDER_DIRECTIVE
+}
+
+nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
+
+  switch (node.ns) {
+    case DIRECTIVE_LAZY:
+      return new generator.GCall(
+        RENDER_LAZY,
+        [
+          generator.toPrimitive(node.name),
+          getLazyValue(node)
+        ]
+      )
+
+    // <div transition="name">
+    case DIRECTIVE_TRANSITION:
+      return new generator.GCall(
+        RENDER_TRANSITION,
+        [
+          getTransitionValue(node)
+        ]
+      )
+
+    // <input model="id">
+    case DIRECTIVE_MODEL:
+      return new generator.GCall(
+        RENDER_MODEL,
+        [
+          getModelValue(node)
+        ]
+      )
+
+    default:
+      const params = getDirectiveValue(node)
+      return new generator.GCall(
+        getDirectiveRender(node, params),
+        [
+          params
+        ]
+      )
+  }
 
 }
 
@@ -683,7 +744,7 @@ nodeGenerator[nodeType.SPREAD] = function (node: Spread) {
 
 nodeGenerator[nodeType.TEXT] = function (node: Text) {
 
-  const result = new generator.GPrimitive(node.text)
+  const result = generator.toPrimitive(node.text)
 
   return array.last(vnodeStack)
     ? new generator.GCall(
@@ -754,7 +815,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
     stringifyNodesToArray(node.children as Node[])
   ),
 
-  index = new generator.GPrimitive(node.index)
+  index = generator.toPrimitive(node.index)
 
   // 遍历区间
   if (node.to) {
@@ -764,7 +825,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
         children,
         stringifyExpression(node.from),
         stringifyExpression(node.to),
-        new generator.GPrimitive(node.equal),
+        generator.toPrimitive(node.equal),
         index
       ]
     )
@@ -787,7 +848,7 @@ nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
   return new generator.GCall(
     RENDER_PARTIAL,
     [
-      new generator.GPrimitive(node.name),
+      generator.toPrimitive(node.name),
       new generator.GAnonymousFunction(
         stringifyNodesToArray(node.children as Node[])
       )
@@ -801,7 +862,7 @@ nodeGenerator[nodeType.IMPORT] = function (node: Import) {
   return new generator.GCall(
     RENDER_IMPORT,
     [
-      new generator.GPrimitive(node.name)
+      generator.toPrimitive(node.name)
     ]
   )
 
@@ -821,7 +882,9 @@ export function generate(node: Node): string {
       RENDER_PROPERTY,
       RENDER_LAZY,
       RENDER_TRANSITION,
+      GET_TRANSITION,
       RENDER_MODEL,
+      GET_MODEL,
       RENDER_EVENT_METHOD,
       RENDER_EVENT_NAME,
       RENDER_DIRECTIVE,

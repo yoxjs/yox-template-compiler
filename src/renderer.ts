@@ -234,82 +234,76 @@ export function render(
   },
 
   renderTransition = function (name: string) {
+    return {
+      key: field.TRANSITION,
+      value: getTransition(name),
+    }
+  },
+
+  getTransition = function (name: string) {
     const transition = transitions[name]
     if (process.env.NODE_ENV === 'development') {
       if (!transition) {
         logger.fatal(`The transition "${name}" can't be found.`)
       }
     }
-    return {
-      key: field.TRANSITION,
-      value: transition,
-    }
+    return transition
   },
 
   renderModel = function (holder: ValueHolder) {
     return {
       key: field.DIRECTIVES,
       name: DIRECTIVE_MODEL,
-      value: {
-        ns: DIRECTIVE_MODEL,
-        name: constant.EMPTY_STRING,
-        key: DIRECTIVE_MODEL,
-        value: holder.value,
-        modifier: holder.keypath,
-        hooks: directives[DIRECTIVE_MODEL]
-      }
+      value: getModel(holder),
     }
   },
 
-  renderEventMethod = function (
-    name: string, key: string,
-    modifier: string, value: string,
-    method: string, args: Function | void
-  ) {
+  getModel = function (holder: ValueHolder) {
+    return {
+      ns: DIRECTIVE_MODEL,
+      name: constant.EMPTY_STRING,
+      key: DIRECTIVE_MODEL,
+      value: holder.value,
+      modifier: holder.keypath,
+      hooks: directives[DIRECTIVE_MODEL]
+    }
+  },
+
+  renderEventMethod = function (params: Data) {
     return {
       key: field.DIRECTIVES,
-      name: key,
+      name: params.key,
       value: {
         ns: DIRECTIVE_EVENT,
-        name,
-        key,
-        value,
-        modifier,
+        name: params.name,
+        key: params.key,
+        value: params.value,
+        modifier: params.modifier,
         hooks: directives[DIRECTIVE_EVENT],
-        handler: createMethodListener(method, args, $stack),
+        handler: createMethodListener(params.method, params.args, $stack),
       }
     }
   },
 
-  renderEventName = function (
-    name: string, key: string,
-    modifier: string, value: string,
-    event: string
-  ) {
+  renderEventName = function (params: Data) {
     return {
       key: field.DIRECTIVES,
-      name: key,
+      name: params.key,
       value: {
         ns: DIRECTIVE_EVENT,
-        name,
-        key,
-        value,
-        modifier,
+        name: params.name,
+        key: params.key,
+        value: params.value,
+        modifier: params.modifier,
         hooks: directives[DIRECTIVE_EVENT],
-        handler: createEventListener(event),
+        handler: createEventListener(params.event),
       }
     }
   },
 
-  renderDirective = function (
-    name: string, key: string,
-    modifier: string, value: string,
-    method: string | void,
-    args: Function | void,
-    getter: Function | void
-  ) {
+  renderDirective = function (params: Data) {
 
-    const hooks = directives[name]
+    const hooks = directives[params.name]
 
     if (process.env.NODE_ENV === 'development') {
       if (!hooks) {
@@ -319,16 +313,16 @@ export function render(
 
     return {
       key: field.DIRECTIVES,
-      name: key,
+      name: params.key,
       value: {
         ns: DIRECTIVE_CUSTOM,
-        name,
-        key,
-        value,
+        name: params.name,
+        key: params.key,
+        value: 1,
         hooks,
-        modifier,
-        getter: getter ? createGetter(getter, $stack) : constant.UNDEFINED,
-        handler: method ? createMethodListener(method, args, $stack) : constant.UNDEFINED,
+        modifier: params.modifier,
+        getter: params.getter ? createGetter(params.getter, $stack) : constant.UNDEFINED,
+        handler: params.method ? createMethodListener(params.method, params.args, $stack) : constant.UNDEFINED,
       }
     }
 
@@ -736,7 +730,9 @@ export function render(
       renderProperty,
       renderLazy,
       renderTransition,
+      getTransition,
       renderModel,
+      getModel,
       renderEventMethod,
       renderEventName,
       renderDirective,

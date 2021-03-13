@@ -16,6 +16,12 @@ test('event', () => {
   </div>
   `
 
+  tpl1 = `
+  <div on-click="post()" on-mouseover="hover" o-log="name" o-ga="send(1)" transition="aa" model="value"{{#if a}} on-mouseup="xx"{{/if}}>
+
+  </div>
+  `
+
   // tpl1 = `
   // <div>
   //   <CheckboxGroup>
