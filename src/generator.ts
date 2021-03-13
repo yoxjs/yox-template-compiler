@@ -136,7 +136,7 @@ function stringifyExpressionArg(expr: ExpressionNode) {
 
 function stringifyAttributeValue(value: any, expr: ExpressionNode | void, children: Node[] | void) {
   if (isDef(value)) {
-    return generator.toString(value)
+    return new generator.GPrimitive(value)
   }
   // 只有一个表达式时，保持原始类型
   if (expr) {
@@ -149,37 +149,48 @@ function stringifyAttributeValue(value: any, expr: ExpressionNode | void, childr
     // compiler 会把单个插值编译成 expr
     // 因此走到这里，一定是多个插值或是单个特殊插值（比如 If)
     array.push(stringStack, constant.TRUE)
-    const result = stringifyNodesToString(children)
+    const result = stringifyNodesToStringIfNeeded(children)
     array.pop(stringStack)
     return result
   }
+  return generator.GRAW_UNDEFINED
 }
 
-function stringifyNodesToStringArray(nodes: Node[]): string[] {
-  return nodes.map(
+function stringifyNodesToArray(nodes: Node[]) {
+  return new generator.GArray(
+    nodes.map(
+      function (node) {
+        return nodeGenerator[node.type](node)
+      }
+    )
+  )
+}
+
+function stringifyNodesToStringIfNeeded(children: Node[]) {
+
+  const result = children.map(
     function (node) {
       return nodeGenerator[node.type](node)
     }
   )
-}
 
-function stringifyNodesToString(children: Node[]) {
+  // 字符串拼接涉及表达式的优先级问题，改成 array.join 有利于一致性
+  if (array.last(stringStack)) {
+    return children.length === 1
+      ? result[0]
+      : new generator.GArray(
+          result,
+          constant.TRUE
+        )
+  }
 
-  const nodes = stringifyNodesToStringArray(children),
-
-  result = generator.toArray(nodes)
-
-  // 字符串拼接涉及表达式的优先级问题，这里先统一成数组，字符串拼接改成 array.join 有利于一致性
-
-  return array.last(stringStack) && nodes.length > 1
-    ? result + `.join(${generator.EMPTY})`
-    : result
+  return new generator.GArray(result)
 
 }
 
 function getComponentSlots(children: Node[]) {
 
-  const result = new generator.GeneratorObject(),
+  const result = new generator.GObject(),
 
   slots: Record<string, Node[]> = {},
 
@@ -222,50 +233,47 @@ function getComponentSlots(children: Node[]) {
   object.each(
     slots,
     function (children: Node[], name: string) {
-
       result.set(
         name,
-          generator.toArray(
-            stringifyNodesToStringArray(children)
-          )
+        stringifyNodesToArray(children)
       )
-
     }
   )
 
-  if (result.isNotEmpty()) {
-    return result.toString()
-  }
+  return result.isNotEmpty()
+    ? result
+    : generator.GRAW_UNDEFINED
 
 }
 
-nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
+nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   let { tag, dynamicTag, isComponent, ref, key, html, text, attrs, children } = node,
 
-  data = new generator.GeneratorObject(),
+  data = new generator.GObject(),
 
-  outputRef: string | void,
-  outputKey: string | void,
-  outputAttrs: string | void,
-  outputChildren: string | void,
-  outputSlots: string | void
+  outputAttrs: generator.GBase = generator.GRAW_UNDEFINED,
+  outputChildren: generator.GBase = generator.GRAW_UNDEFINED,
+  outputSlots: generator.GBase = generator.GRAW_UNDEFINED
 
   if (tag === constant.RAW_SLOT) {
     // slot 不可能有 html、text 属性
     // 因此 slot 的子节点只存在于 children 中
-    const args = [generator.toString(SLOT_DATA_PREFIX + node.name)]
+    const args: generator.GBase[] = [
+      new generator.GPrimitive(SLOT_DATA_PREFIX + node.name)
+    ]
     if (children) {
       array.push(
         args,
-        generator.toFunction(
-          generator.toArray(
-            stringifyNodesToStringArray(children)
-          )
+        new generator.GAnonymousFunction(
+          stringifyNodesToArray(children)
         )
       )
     }
-    return generator.toCall(RENDER_SLOT, args)
+    return new generator.GCall(
+      RENDER_SLOT,
+      args
+    )
   }
 
   // 如果是动态组件，tag 会是一个标识符表达式
@@ -273,7 +281,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
     'tag',
     dynamicTag
         ? stringifyExpression(dynamicTag)
-        : generator.toString(tag)
+        : new generator.GPrimitive(tag)
   )
 
   array.push(vnodeStack, constant.FALSE)
@@ -281,29 +289,23 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
 
   // 在 vnodeStack 为 false 时取值
   if (ref) {
-    outputRef = stringifyAttributeValue(ref.value, ref.expr, ref.children)
-    if (outputRef) {
-      data.set(
-        'ref',
-        outputRef
-      )
-    }
+    data.set(
+      'ref',
+      stringifyAttributeValue(ref.value, ref.expr, ref.children)
+    )
   }
   if (key) {
-    outputKey = stringifyAttributeValue(key.value, key.expr, key.children)
-    if (outputKey) {
-      data.set(
-        'key',
-        outputKey
-      )
-    }
+    data.set(
+      'key',
+      stringifyAttributeValue(key.value, key.expr, key.children)
+    )
   }
   if (html) {
     data.set(
       'html',
       is.string(html)
-          ? generator.toString(html as string)
-          : generator.toCall(
+          ? new generator.GPrimitive(html as string)
+          : new generator.GCall(
               TO_STRING,
               [
                 stringifyExpression(html as ExpressionNode)
@@ -315,8 +317,8 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
     data.set(
       'text',
       is.string(text)
-          ? generator.toString(text as string)
-          : generator.toCall(
+          ? new generator.GPrimitive(text as string)
+          : new generator.GCall(
               TO_STRING,
               [
                 stringifyExpression(text as ExpressionNode)
@@ -327,15 +329,15 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
 
   if (attrs) {
     // 先收集静态属性
-    let nativeAttributes = new generator.GeneratorObject(),
+    let nativeAttributes = new generator.GObject(),
 
-    nativeProperties = new generator.GeneratorObject(),
+    nativeProperties = new generator.GObject(),
 
-    properties = new generator.GeneratorObject(),
+    properties = new generator.GObject(),
 
-    directives = new generator.GeneratorObject(),
+    directives = new generator.GObject(),
 
-    lazy = new generator.GeneratorObject(),
+    lazy = new generator.GObject(),
 
     transtion: string = constant.EMPTY_STRING,
 
@@ -346,32 +348,28 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
       function (attr) {
 
         if (attr.type === nodeType.ATTRIBUTE) {
-          const { name, value } = attr as Attribute
-          if (isDef(value)) {
-            if (isComponent) {
-              properties.set(
-                name,
-                generator.toString(value)
-              )
-            }
-            else {
-              nativeAttributes.set(
-                name,
-                generator.toString(value)
-              )
-            }
-            return
+          const attributeNode = attr as Attribute, value = stringifyAttributeValue(attributeNode.value, attributeNode.expr, attributeNode.children)
+          if (isComponent) {
+            properties.set(
+              attributeNode.name,
+              value
+            )
           }
+          else {
+            nativeAttributes.set(
+              attributeNode.name,
+              value
+            )
+          }
+          return
         }
         else if (attr.type === nodeType.PROPERTY) {
-          const { name, value } = attr as Property
-          if (isDef(value)) {
-            nativeProperties.set(
-              name,
-              generator.toString(value)
-            )
-            return
-          }
+          const propertyNode = attr as Property, value = stringifyAttributeValue(propertyNode.value, propertyNode.expr, propertyNode.children)
+          nativeProperties.set(
+            propertyNode.name,
+            value
+          )
+          return
         }
         else if (attr.type === nodeType.DIRECTIVE) {
           const { ns, name, value } = attr as Directive
@@ -379,7 +377,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
             if (ns === DIRECTIVE_LAZY) {
               lazy.set(
                 name,
-                generator.toString(value)
+                new generator.GPrimitive(value)
               )
             }
             // transition 必须要运行时才知道 value 是什么函数
@@ -387,7 +385,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
             else if (ns !== DIRECTIVE_TRANSITION) {
               directives.set(
                 name,
-                generator.toString(value)
+                new generator.GPrimitive(value)
               )
             }
             return
@@ -403,43 +401,41 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
     if (nativeAttributes.isNotEmpty()) {
       data.set(
         field.NATIVE_ATTRIBUTES,
-        nativeAttributes.toString()
+        nativeAttributes
       )
     }
     if (nativeProperties.isNotEmpty()) {
       data.set(
         field.NATIVE_PROPERTIES,
-        nativeProperties.toString()
+        nativeProperties
       )
     }
     if (properties.isNotEmpty()) {
       data.set(
         field.PROPERTIES,
-        properties.toString()
+        properties
       )
     }
     if (directives.isNotEmpty()) {
       data.set(
         field.DIRECTIVES,
-        directives.toString()
+        directives
       )
     }
     if (lazy.isNotEmpty()) {
       data.set(
         field.LAZY,
-        lazy.toString()
+        lazy
       )
     }
     if (transtion) {
       data.set(
         field.TRANSITION,
-        generator.toString(transtion)
+        new generator.GPrimitive(transtion)
       )
     }
     if (dynamicAttrs.length) {
-      outputAttrs = generator.toArray(
-        stringifyNodesToStringArray(dynamicAttrs)
-      )
+      outputAttrs = stringifyNodesToArray(dynamicAttrs)
     }
   }
 
@@ -450,25 +446,28 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
     }
     else {
 
-      let isStatic = constant.TRUE
+      let isStatic = constant.TRUE, newChildren = new generator.GArray()
 
-      outputChildren = generator.toArray(
-        children.map(
-          function (node) {
-            if (!node.isStatic) {
-              isStatic = constant.FALSE
-            }
-            return nodeGenerator[node.type](node)
+      array.each(
+        children,
+        function (node) {
+          if (!node.isStatic) {
+            isStatic = constant.FALSE
           }
-        )
+          newChildren.push(
+            nodeGenerator[node.type](node)
+          )
+        }
       )
 
       if (isStatic) {
         data.set(
           field.CHILDREN,
-          outputChildren
+          newChildren
         )
-        outputChildren = generator.UNDEFINED
+      }
+      else {
+        outputChildren = newChildren
       }
 
     }
@@ -481,49 +480,49 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
   if (isComponent) {
     data.set(
       'isComponent',
-      generator.TRUE
+      generator.GRAW_TRUE
     )
   }
   if (node.isStatic) {
     data.set(
       'isStatic',
-      generator.TRUE
+      generator.GRAW_TRUE
     )
   }
   if (node.isOption) {
     data.set(
       'isOption',
-      generator.TRUE
+      generator.GRAW_TRUE
     )
   }
   if (node.isStyle) {
     data.set(
       'isStyle',
-      generator.TRUE
+      generator.GRAW_TRUE
     )
   }
   if (node.isSvg) {
     data.set(
       'isSvg',
-      generator.TRUE
+      generator.GRAW_TRUE
     )
   }
 
   if (isComponent) {
-    return generator.toCall(
+    return new generator.GCall(
       RENDER_COMPONENT_VNODE,
       [
-        data.toString(),
+        data,
         outputAttrs,
         outputSlots,
       ]
     )
   }
 
-  return generator.toCall(
+  return new generator.GCall(
     RENDER_ELEMENT_VNODE,
     [
-      data.toString(),
+      data,
       outputAttrs,
       outputChildren,
     ]
@@ -531,63 +530,63 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element): string {
 
 }
 
-nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute): string {
+nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
 
   const value = stringifyAttributeValue(node.value, node.expr, node.children)
 
-  return generator.toCall(
+  return new generator.GCall(
     array.last(componentStack)
       ? RENDER_PROPERTY
       : RENDER_NATIVE_ATTRIBUTE,
     [
-      generator.toString(node.name),
+      new generator.GPrimitive(node.name),
       value
     ]
   )
 
 }
 
-nodeGenerator[nodeType.PROPERTY] = function (node: Property): string {
+nodeGenerator[nodeType.PROPERTY] = function (node: Property) {
 
   const value = stringifyAttributeValue(node.value, node.expr, node.children)
 
-  return generator.toCall(
+  return new generator.GCall(
     RENDER_NATIVE_PROPERTY,
     [
-      generator.toString(node.name),
+      new generator.GPrimitive(node.name),
       value
     ]
   )
 
 }
 
-nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
+nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
 
   const { ns, name, key, value, expr, modifier } = node
 
   if (ns === DIRECTIVE_LAZY) {
-    return generator.toCall(
+    return new generator.GCall(
       RENDER_LAZY,
       [
-        generator.toString(name),
-        generator.toString(value)
+        new generator.GPrimitive(name),
+        new generator.GPrimitive(value)
       ]
     )
   }
 
   // <div transition="name">
   if (ns === DIRECTIVE_TRANSITION) {
-    return generator.toCall(
+    return new generator.GCall(
       RENDER_TRANSITION,
       [
-        generator.toString(value)
+        new generator.GPrimitive(value)
       ]
     )
   }
 
   // <input model="id">
   if (ns === DIRECTIVE_MODEL) {
-    return generator.toCall(
+    return new generator.GCall(
       RENDER_MODEL,
       [
         stringifyExpressionHolder(expr as ExpressionNode)
@@ -597,11 +596,11 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
 
   let renderName = RENDER_DIRECTIVE,
 
-  args: (string | undefined)[] = [
-    generator.toString(name),
-    generator.toString(key),
-    generator.toString(modifier),
-    generator.toString(value),
+  args: generator.GBase[] = [
+    new generator.GPrimitive(name),
+    new generator.GPrimitive(key),
+    new generator.GPrimitive(modifier),
+    new generator.GPrimitive(value),
   ]
 
   // 尽可能把表达式编译成函数，这样对外界最友好
@@ -621,16 +620,18 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
       // compiler 保证了函数调用的 name 是标识符
       array.push(
         args,
-        generator.toString(((expr as ExpressionCall).name as ExpressionIdentifier).name)
+        new generator.GPrimitive(((expr as ExpressionCall).name as ExpressionIdentifier).name)
       )
       // 为了实现运行时动态收集参数，这里序列化成函数
       if (!array.falsy((expr as ExpressionCall).args)) {
         // args 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
         array.push(
           args,
-          generator.toFunction(
-            generator.toArray((expr as ExpressionCall).args.map(stringifyExpressionArg)),
-            [ARG_STACK]
+          new generator.GAnonymousFunction(
+            new generator.GArray((expr as ExpressionCall).args.map(stringifyExpressionArg)),
+            [
+              new generator.GRaw(ARG_STACK)
+            ]
           )
         )
       }
@@ -640,7 +641,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
       renderName = RENDER_EVENT_NAME
       array.push(
         args,
-        generator.toString(expr.raw)
+        new generator.GPrimitive(expr.raw)
       )
     }
     else if (ns === DIRECTIVE_CUSTOM) {
@@ -649,11 +650,13 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
       // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
       if (expr.type !== exprNodeType.LITERAL) {
         args.push(
-          constant.UNDEFINED,  // method
-          constant.UNDEFINED,  // args
-          generator.toFunction(
+          generator.GRAW_UNDEFINED, // method
+          generator.GRAW_UNDEFINED, // args
+          new generator.GAnonymousFunction(
             stringifyExpressionArg(expr),
-            [ARG_STACK]
+            [
+              new generator.GRaw(ARG_STACK)
+            ]
           )
         )
       }
@@ -662,12 +665,15 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive): string {
 
   }
 
-  return generator.toCall(renderName, args)
+  return new generator.GCall(
+    renderName,
+    args
+  )
 
 }
 
-nodeGenerator[nodeType.SPREAD] = function (node: Spread): string {
-  return generator.toCall(
+nodeGenerator[nodeType.SPREAD] = function (node: Spread) {
+  return new generator.GCall(
     RENDER_SPREAD,
     [
       stringifyExpression(node.expr)
@@ -675,12 +681,12 @@ nodeGenerator[nodeType.SPREAD] = function (node: Spread): string {
   )
 }
 
-nodeGenerator[nodeType.TEXT] = function (node: Text): string {
+nodeGenerator[nodeType.TEXT] = function (node: Text) {
 
-  const result = generator.toString(node.text)
+  const result = new generator.GPrimitive(node.text)
 
   return array.last(vnodeStack)
-    ? generator.toCall(
+    ? new generator.GCall(
         RENDER_TEXT_VNODE,
         [
           result
@@ -690,15 +696,15 @@ nodeGenerator[nodeType.TEXT] = function (node: Text): string {
 
 }
 
-nodeGenerator[nodeType.EXPRESSION] = function (node: Expression): string {
+nodeGenerator[nodeType.EXPRESSION] = function (node: Expression) {
 
   const result = stringifyExpression(node.expr)
 
   return array.last(vnodeStack)
-    ? generator.toCall(
+    ? new generator.GCall(
         RENDER_TEXT_VNODE,
         [
-          generator.toCall(
+          new generator.GCall(
             TO_STRING,
             [
               result
@@ -711,61 +717,61 @@ nodeGenerator[nodeType.EXPRESSION] = function (node: Expression): string {
 }
 
 nodeGenerator[nodeType.IF] =
-nodeGenerator[nodeType.ELSE_IF] = function (node: If | ElseIf): string {
+nodeGenerator[nodeType.ELSE_IF] = function (node: If | ElseIf) {
 
   const { children, next } = node,
 
   defaultValue = array.last(vnodeStack)
-    ? generator.toCall(RENDER_COMMENT_VNODE)
-    : generator.UNDEFINED
+    ? new generator.GCall(RENDER_COMMENT_VNODE)
+    : generator.GRAW_UNDEFINED
 
-  return generator.toTernary(
+  return new generator.GTernary(
     stringifyExpression(node.expr),
-    (children && stringifyNodesToString(children)) || defaultValue,
+    (children && stringifyNodesToStringIfNeeded(children)) || defaultValue,
     next ? nodeGenerator[next.type](next) : defaultValue
   )
 
 }
 
-nodeGenerator[nodeType.ELSE] = function (node: Else): string {
+nodeGenerator[nodeType.ELSE] = function (node: Else) {
 
   const { children } = node,
 
   defaultValue = array.last(vnodeStack)
-    ? generator.toCall(RENDER_COMMENT_VNODE)
-    : generator.UNDEFINED
+    ? new generator.GCall(RENDER_COMMENT_VNODE)
+    : generator.GRAW_UNDEFINED
 
   return children
-    ? stringifyNodesToString(children)
+    ? stringifyNodesToStringIfNeeded(children)
     : defaultValue
 
 }
 
-nodeGenerator[nodeType.EACH] = function (node: Each): string {
+nodeGenerator[nodeType.EACH] = function (node: Each) {
 
   // compiler 保证了 children 一定有值
-  const children = generator.toFunction(
-    stringifyNodesToString(node.children as Node[])
+  const children = new generator.GAnonymousFunction(
+    stringifyNodesToArray(node.children as Node[])
   ),
 
-  index = generator.toString(node.index)
+  index = new generator.GPrimitive(node.index)
 
   // 遍历区间
   if (node.to) {
-    return generator.toCall(
+    return new generator.GCall(
       RENDER_RANGE,
       [
         children,
         stringifyExpression(node.from),
         stringifyExpression(node.to),
-        generator.toString(node.equal),
+        new generator.GPrimitive(node.equal),
         index
       ]
     )
   }
 
   // 遍历数组和对象
-  return generator.toCall(
+  return new generator.GCall(
     RENDER_EACH,
     [
       children,
@@ -776,35 +782,33 @@ nodeGenerator[nodeType.EACH] = function (node: Each): string {
 
 }
 
-nodeGenerator[nodeType.PARTIAL] = function (node: Partial): string {
+nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
 
-  return generator.toCall(
+  return new generator.GCall(
     RENDER_PARTIAL,
     [
-      generator.toString(node.name),
-      generator.toFunction(
-        generator.toArray(
-          stringifyNodesToStringArray(node.children as Node[])
-        )
+      new generator.GPrimitive(node.name),
+      new generator.GAnonymousFunction(
+        stringifyNodesToArray(node.children as Node[])
       )
     ]
   )
 
 }
 
-nodeGenerator[nodeType.IMPORT] = function (node: Import): string {
+nodeGenerator[nodeType.IMPORT] = function (node: Import) {
 
-  return generator.toCall(
+  return new generator.GCall(
     RENDER_IMPORT,
     [
-      generator.toString(node.name)
+      new generator.GPrimitive(node.name)
     ]
   )
 
 }
 
 export function generate(node: Node): string {
-  return generator.toFinalFunction(
+  return generator.generate(
     nodeGenerator[node.type](node),
     [
       RENDER_EXPRESSION_IDENTIFIER,

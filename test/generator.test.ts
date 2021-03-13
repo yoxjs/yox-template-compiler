@@ -8,10 +8,11 @@ test('event', () => {
   // `
 
   let tpl1 = `
-  <div id="{{11}}" class="{{true}}" width="{{44}}" disabled="{{true}}" data-xx lazy lazy-xx="10">
+  <div id="{{11}}" class="{{true}}" width="{{44}}" disabled="{{true}}" data-xx lazy lazy-xx="10" a="{{a}}x{{b}}" b="1{{#if c}}2{{else if d}}3{{c}}{{/if}}4"{{#if e}} c="1"{{/if}}>
     123
     <span>123</span>
     45{{a}}
+    {{ {a:1,b:2} }}
   </div>
   `
 

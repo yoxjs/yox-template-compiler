@@ -191,7 +191,7 @@ export function render(
     }
   },
 
-  renderTextVnode = function (value: any) {
+  renderTextVnode = function (value: string) {
     return {
       tag: TAG_TEXT,
       isText: constant.TRUE,
@@ -304,7 +304,9 @@ export function render(
   renderDirective = function (
     name: string, key: string,
     modifier: string, value: string,
-    method: string | void, args: Function | void, getter: Function | void
+    method: string | void,
+    args: Function | void,
+    getter: Function | void
   ) {
 
     const hooks = directives[name]
