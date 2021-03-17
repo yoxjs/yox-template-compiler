@@ -133,22 +133,22 @@ export function render(
 
   },
 
-  createEventListener = function (type: string): Listener {
-    return function (event: CustomEvent, data?: Data) {
-      // 事件名称相同的情况，只可能是监听 DOM 事件，比如写一个 Button 组件
-      // <button on-click="click"> 纯粹的封装了一个原生 click 事件
-      if (type !== event.type) {
-        event = new CustomEvent(type, event)
+  createEventListener = function (type: string, ns?: string): Listener {
+    return function (event: CustomEvent, data?: Data, isNative?: boolean) {
+      if (type !== event.type || ns !== event.ns) {
+        event = new CustomEvent(
+          type,
+          isNative
+            ? event.originalEvent
+            : event
+        )
+        event.ns = ns
       }
       context.fire(event, data)
     }
   },
 
-  createMethodListener = function (
-    name: string,
-    args: Function | void,
-    stack: any[]
-  ): Listener {
+  createMethodListener = function (name: string, args: Function | void, stack: any[]): Listener {
     return function (event: CustomEvent, data?: Data) {
 
       const method = context[name]
@@ -261,11 +261,11 @@ export function render(
   getModel = function (holder: ValueHolder) {
     return {
       ns: DIRECTIVE_MODEL,
-      name: constant.EMPTY_STRING,
       key: DIRECTIVE_MODEL,
+      name: constant.EMPTY_STRING,
       value: holder.value,
       modifier: holder.keypath,
-      hooks: directives[DIRECTIVE_MODEL]
+      hooks: directives[DIRECTIVE_MODEL],
     }
   },
 
@@ -273,15 +273,18 @@ export function render(
     return {
       key: field.DIRECTIVES,
       name: params.key,
-      value: {
-        ns: DIRECTIVE_EVENT,
-        name: params.name,
-        key: params.key,
-        value: params.value,
-        modifier: params.modifier,
-        hooks: directives[DIRECTIVE_EVENT],
-        handler: createMethodListener(params.method, params.args, $stack),
-      }
+      value: getEventMethod(params),
+    }
+  },
+
+  getEventMethod = function (params: Data) {
+    return {
+      ns: DIRECTIVE_EVENT,
+      key: params.key,
+      name: params.name,
+      modifier: params.modifier,
+      hooks: directives[DIRECTIVE_EVENT],
+      handler: createMethodListener(params.method, params.args, $stack),
     }
   },
 
@@ -289,41 +292,48 @@ export function render(
     return {
       key: field.DIRECTIVES,
       name: params.key,
-      value: {
-        ns: DIRECTIVE_EVENT,
-        name: params.name,
-        key: params.key,
-        value: params.value,
-        modifier: params.modifier,
-        hooks: directives[DIRECTIVE_EVENT],
-        handler: createEventListener(params.event),
-      }
+      value: getEventName(params),
+    }
+  },
+
+  getEventName = function (params: Data) {
+    return {
+      ns: DIRECTIVE_EVENT,
+      key: params.key,
+      name: params.name,
+      modifier: params.modifier,
+      hooks: directives[DIRECTIVE_EVENT],
+      handler: createEventListener(params.type, params.ns),
     }
   },
 
   renderDirective = function (params: Data) {
+    return {
+      key: field.DIRECTIVES,
+      name: params.key,
+      value: getDirective(params),
+    }
+  },
+
+  getDirective = function (params: Data) {
 
     const hooks = directives[params.name]
 
     if (process.env.NODE_ENV === 'development') {
       if (!hooks) {
-        logger.fatal(`The directive ${name} can't be found.`)
+        logger.fatal(`The directive "${params.name}" can't be found.`)
       }
     }
 
     return {
-      key: field.DIRECTIVES,
-      name: params.key,
-      value: {
-        ns: DIRECTIVE_CUSTOM,
-        name: params.name,
-        key: params.key,
-        value: 1,
-        hooks,
-        modifier: params.modifier,
-        getter: params.getter ? createGetter(params.getter, $stack) : constant.UNDEFINED,
-        handler: params.method ? createMethodListener(params.method, params.args, $stack) : constant.UNDEFINED,
-      }
+      ns: DIRECTIVE_CUSTOM,
+      key: params.key,
+      name: params.name,
+      value: params.value,
+      modifier: params.modifier,
+      hooks,
+      getter: params.getter ? createGetter(params.getter, $stack) : constant.UNDEFINED,
+      handler: params.method ? createMethodListener(params.method, params.args, $stack) : constant.UNDEFINED,
     }
 
   },
@@ -734,8 +744,11 @@ export function render(
       renderModel,
       getModel,
       renderEventMethod,
+      getEventMethod,
       renderEventName,
+      getEventName,
       renderDirective,
+      getDirective,
       renderSpreadVnode,
       renderCommentVnode,
       renderElementVnode,

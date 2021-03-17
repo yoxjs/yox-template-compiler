@@ -79,9 +79,15 @@ GET_MODEL = 'getModel',
 
 RENDER_EVENT_METHOD = 'renderEventMethod',
 
+GET_EVENT_METHOD = 'getEventMethod',
+
 RENDER_EVENT_NAME = 'renderEventName',
 
+GET_EVENT_NAME = 'getEventName',
+
 RENDER_DIRECTIVE = 'renderDirective',
+
+GET_DIRECTIVE = 'getDirective',
 
 RENDER_SPREAD = 'renderSpread',
 
@@ -412,7 +418,11 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
               directives.set(
                 directiveNode.key,
                 generator.toCall(
-                  getDirectiveRender(directiveNode, params),
+                  directiveNode.ns === DIRECTIVE_EVENT
+                    ? params.has(RAW_METHOD)
+                      ? GET_EVENT_METHOD
+                      : GET_EVENT_NAME
+                    : GET_DIRECTIVE,
                   [
                     params
                   ]
@@ -653,9 +663,14 @@ function getDirectiveValue(node: Directive) {
     }
     // 不是调用方法，就是事件转换
     else if (node.ns === DIRECTIVE_EVENT) {
+      const parts = expr.raw.split(constant.RAW_DOT)
       params.set(
-        'event',
-        generator.toPrimitive(expr.raw)
+        'type',
+        generator.toPrimitive(parts[0])
+      )
+      params.set(
+        'ns',
+        generator.toPrimitive(parts[1])
       )
     }
     // 自定义指令
@@ -725,7 +740,11 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
     default:
       const params = getDirectiveValue(node)
       return generator.toCall(
-        getDirectiveRender(node, params),
+        node.ns === DIRECTIVE_EVENT
+          ? params.has(RAW_METHOD)
+            ? RENDER_EVENT_METHOD
+            : RENDER_EVENT_NAME
+          : RENDER_DIRECTIVE,
         [
           params
         ]
@@ -887,8 +906,11 @@ export function generate(node: Node): string {
       RENDER_MODEL,
       GET_MODEL,
       RENDER_EVENT_METHOD,
+      GET_EVENT_METHOD,
       RENDER_EVENT_NAME,
+      GET_EVENT_NAME,
       RENDER_DIRECTIVE,
+      GET_DIRECTIVE,
       RENDER_SPREAD,
       RENDER_COMMENT_VNODE,
       RENDER_ELEMENT_VNODE,
