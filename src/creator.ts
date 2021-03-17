@@ -39,7 +39,8 @@ export function createDirective(name: string, ns: string, modifier?: string): Di
     type: nodeType.DIRECTIVE,
     ns,
     name,
-    key: keypathUtil.join(ns, name),
+    // 避免出现 . 结尾，用 $ 好看些
+    key: [ns, name, modifier || constant.RAW_DOLLAR].join(constant.RAW_DOT),
     modifier,
   }
 }
