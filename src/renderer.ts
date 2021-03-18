@@ -133,8 +133,14 @@ export function render(
 
   },
 
-  createEventNameListener = function (type: string, ns?: string): Listener {
+  createEventNameListener = function (isComponent: boolean, type: string, ns?: string): Listener {
     return function (event: CustomEvent, data?: Data, isNative?: boolean) {
+
+      // 监听组件事件不用处理父组件传下来的事件
+      if (isComponent && event.phase === CustomEvent.PHASE_DOWNWARD) {
+        return
+      }
+
       if (type !== event.type || ns !== event.ns) {
         event = new CustomEvent(
           type,
@@ -145,49 +151,55 @@ export function render(
         event.ns = ns
       }
       context.fire(event, data)
+
     }
   },
 
-  createEventMethodListener = function (name: string, args: Function | void, stack: any[]): Listener {
+  createEventMethodListener = function (isComponent: boolean, name: string, args: Function | void, stack: any[]): Listener {
     return function (event: CustomEvent, data?: Data) {
+
+      // 监听组件事件不用处理父组件传下来的事件
+      if (isComponent && event.phase === CustomEvent.PHASE_DOWNWARD) {
+        return
+      }
 
       const method = context[name]
 
-      if (CustomEvent.is(event)) {
-
-        let result: any = constant.UNDEFINED
-
-        if (args) {
-          const scope = array.last(stack)
-          if (scope) {
-            scope.$event = event
-            scope.$data = data
-            result = execute(method, context, args(stack))
-            scope.$event =
-            scope.$data = constant.UNDEFINED
-          }
+      if (args) {
+        const scope = array.last(stack)
+        if (scope) {
+          scope.$event = event
+          scope.$data = data
+          const result = execute(method, context, args(stack))
+          scope.$event =
+          scope.$data = constant.UNDEFINED
+          return result
         }
-        else {
-          result = execute(method, context, data ? [event, data] : event)
-        }
-
-        return result
-
       }
       else {
-        execute(
+        return execute(
           method,
           context,
-          args ? args(stack) : constant.UNDEFINED
+          data ? [event, data] : event
         )
       }
 
     }
   },
 
-  createGetter = function (getter: Function, stack: any[]): () => any {
+  createDirectiveGetter = function (getter: Function, stack: any[]): () => any {
     return function () {
       return getter(stack)
+    }
+  },
+
+  createDirectiveHandler = function (name: string, args: Function | void, stack: any[]) {
+    return function () {
+      execute(
+        context[name],
+        context,
+        args ? args(stack) : constant.UNDEFINED
+      )
     }
   },
 
@@ -284,7 +296,7 @@ export function render(
       name: params.from,
       ns: params.fromNs,
       isNative: params.isNative,
-      listener: createEventMethodListener(params.method, params.args, $stack),
+      listener: createEventMethodListener(params.isComponent, params.method, params.args, $stack),
     }
   },
 
@@ -303,7 +315,7 @@ export function render(
       name: params.from,
       ns: params.fromNs,
       isNative: params.isNative,
-      listener: createEventNameListener(params.to, params.toNs),
+      listener: createEventNameListener(params.isComponent, params.to, params.toNs),
     }
   },
 
@@ -332,8 +344,8 @@ export function render(
       value: params.value,
       modifier: params.modifier,
       hooks,
-      getter: params.getter ? createGetter(params.getter, $stack) : constant.UNDEFINED,
-      handler: params.method ? createEventMethodListener(params.method, params.args, $stack) : constant.UNDEFINED,
+      getter: params.getter ? createDirectiveGetter(params.getter, $stack) : constant.UNDEFINED,
+      handler: params.method ? createDirectiveHandler(params.method, params.args, $stack) : constant.UNDEFINED,
     }
 
   },

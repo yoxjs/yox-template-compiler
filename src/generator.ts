@@ -667,13 +667,25 @@ function getEventValue(node: Directive) {
     generator.toPrimitive(node.name)
   )
 
-  if (array.last(componentStack)
-    && node.modifier === MODIFER_NATIVE
-  ) {
-    params.set(
-      'isNative',
-      generator.toPrimitive(constant.TRUE)
-    )
+  if (array.last(componentStack)) {
+    if (node.modifier === MODIFER_NATIVE) {
+      params.set(
+        'isNative',
+        generator.toPrimitive(constant.TRUE)
+      )
+    }
+    else {
+      params.set(
+        'isComponent',
+        generator.toPrimitive(constant.TRUE)
+      )
+      // 组件事件要用 component.on(type, options) 进行监听
+      // 为了保证 options.ns 是字符串类型，这里需确保 fromNs 是字符串
+      params.set(
+        'fromNs',
+        generator.toPrimitive(node.modifier || constant.EMPTY_STRING)
+      )
+    }
   }
   else {
     params.set(
@@ -681,7 +693,6 @@ function getEventValue(node: Directive) {
       generator.toPrimitive(node.modifier)
     )
   }
-
 
   // 事件的 expr 必须是表达式
   const expr = node.expr as ExpressionNode
