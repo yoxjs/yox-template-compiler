@@ -1,7 +1,9 @@
 import {
   DIRECTIVE_MODEL,
-  DIRECTIVE_EVENT,
   DIRECTIVE_CUSTOM,
+  MAGIC_VAR_EVENT,
+  MAGIC_VAR_DATA,
+  MAGIC_VAR_LENGTH,
 } from 'yox-config/src/config'
 
 import {
@@ -155,7 +157,7 @@ export function render(
     }
   },
 
-  createEventMethodListener = function (isComponent: boolean, name: string, args: Function | void, stack: any[]): Listener {
+  createEventMethodListener = function (isComponent: boolean, hasMagic: boolean, name: string, args: Function | void, stack: any[]): Listener {
     return function (event: CustomEvent, data?: Data) {
 
       // 监听组件事件不用处理父组件传下来的事件
@@ -166,23 +168,23 @@ export function render(
       const method = context[name]
 
       if (args) {
-        const scope = array.last(stack)
-        if (scope) {
-          scope.$event = event
-          scope.$data = data
+        if (hasMagic) {
+          const scope = array.last(stack)
+          scope[MAGIC_VAR_EVENT] = event
+          scope[MAGIC_VAR_DATA] = data
           const result = execute(method, context, args(stack))
-          scope.$event =
-          scope.$data = constant.UNDEFINED
+          scope[MAGIC_VAR_EVENT] =
+          scope[MAGIC_VAR_DATA] = constant.UNDEFINED
           return result
         }
+        return execute(method, context, args(stack))
       }
-      else {
-        return execute(
-          method,
-          context,
-          data ? [event, data] : event
-        )
-      }
+
+      return execute(
+        method,
+        context,
+        data ? [event, data] : event
+      )
 
     }
   },
@@ -296,7 +298,7 @@ export function render(
       name: params.from,
       ns: params.fromNs,
       isNative: params.isNative,
-      listener: createEventMethodListener(params.isComponent, params.method, params.args, $stack),
+      listener: createEventMethodListener(params.isComponent, params.hasMagic, params.method, params.args, $stack),
     }
   },
 
@@ -602,7 +604,7 @@ export function render(
 
     // 避免模板里频繁读取 list.length
     if (length !== constant.UNDEFINED) {
-      $scope.$length = length
+      $scope[MAGIC_VAR_LENGTH] = length
     }
 
     // 业务层是否写了 expr:index

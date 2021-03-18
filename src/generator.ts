@@ -5,8 +5,9 @@ import {
   DIRECTIVE_MODEL,
   DIRECTIVE_EVENT,
   DIRECTIVE_TRANSITION,
-  DIRECTIVE_CUSTOM,
   MODIFER_NATIVE,
+  MAGIC_VAR_EVENT,
+  MAGIC_VAR_DATA,
 } from 'yox-config/src/config'
 
 import isDef from 'yox-common/src/function/isDef'
@@ -14,6 +15,7 @@ import isDef from 'yox-common/src/function/isDef'
 import * as is from 'yox-common/src/util/is'
 import * as array from 'yox-common/src/util/array'
 import * as object from 'yox-common/src/util/object'
+import * as string from 'yox-common/src/util/string'
 import * as constant from 'yox-common/src/util/constant'
 import * as generator from 'yox-common/src/util/generator'
 import * as keypathUtil from 'yox-common/src/util/keypath'
@@ -695,13 +697,19 @@ function getEventValue(node: Directive) {
   }
 
   // 事件的 expr 必须是表达式
-  const expr = node.expr as ExpressionNode
+  const expr = node.expr as ExpressionNode, { raw } = expr
 
   if (expr.type === exprNodeType.CALL) {
     addCallInfo(params, expr as ExpressionCall)
+    if (string.has(raw, MAGIC_VAR_EVENT) || string.has(raw, MAGIC_VAR_DATA)) {
+      params.set(
+        'hasMagic',
+        generator.toPrimitive(constant.TRUE)
+      )
+    }
   }
   else {
-    const parts = expr.raw.split(constant.RAW_DOT)
+    const parts = raw.split(constant.RAW_DOT)
     params.set(
       'to',
       generator.toPrimitive(parts[0])
