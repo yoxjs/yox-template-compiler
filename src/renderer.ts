@@ -4,6 +4,7 @@ import {
   MAGIC_VAR_EVENT,
   MAGIC_VAR_DATA,
   MAGIC_VAR_LENGTH,
+  MAGIC_VAR_KEYPATH,
 } from 'yox-config/src/config'
 
 import {
@@ -58,7 +59,7 @@ export function render(
   transitions: Record<string, TransitionHooks>
 ) {
 
-  let $scope: Data = { $keypath: constant.EMPTY_STRING },
+  let $scope: Data = { },
 
   $stack = [ $scope ],
 
@@ -68,7 +69,7 @@ export function render(
 
     let scope = stack[index],
 
-    keypath = keypathUtil.join(scope.$keypath, key),
+    keypath = keypathUtil.join(scope[MAGIC_VAR_KEYPATH], key),
 
     value: any = stack,
 
@@ -211,7 +212,7 @@ export function render(
       isText: constant.TRUE,
       text: value,
       context,
-      keypath: $scope.$keypath,
+      keypath: $scope[MAGIC_VAR_KEYPATH],
     }
   },
 
@@ -387,7 +388,7 @@ export function render(
       tag: TAG_COMMENT,
       isComment: constant.TRUE,
       text: constant.EMPTY_STRING,
-      keypath: $scope.$keypath,
+      keypath: $scope[MAGIC_VAR_KEYPATH],
       context,
     }
   },
@@ -450,7 +451,7 @@ export function render(
   ) {
 
     data.context = context
-    data.keypath = $scope.$keypath
+    data.keypath = $scope[MAGIC_VAR_KEYPATH]
 
     if (attrs) {
       normalizeAttributes(data, attrs)
@@ -473,7 +474,7 @@ export function render(
   ) {
 
     data.context = context
-    data.keypath = $scope.$keypath
+    data.keypath = $scope[MAGIC_VAR_KEYPATH]
 
     if (attrs) {
       normalizeAttributes(data, attrs)
@@ -599,8 +600,10 @@ export function render(
     const lastScope = $scope, lastStack = $stack
 
     // each 会改变 keypath
-    $scope = { $keypath: keypath }
+    $scope = { }
     $stack = lastStack.concat($scope)
+
+    $scope[MAGIC_VAR_KEYPATH] = keypath
 
     // 避免模板里频繁读取 list.length
     if (length !== constant.UNDEFINED) {
@@ -775,6 +778,8 @@ export function render(
       toString,
     )
   }
+
+  $scope[MAGIC_VAR_KEYPATH] = constant.EMPTY_STRING
 
   return renderTemplate(template)
 
