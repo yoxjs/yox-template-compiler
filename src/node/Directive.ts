@@ -10,8 +10,6 @@ export default interface Directive extends Branch {
 
   name: string
 
-  key: string
-
   // 修饰符
   modifier?: string
 

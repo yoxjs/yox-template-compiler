@@ -6,6 +6,8 @@ export const PROPERTIES = 'props'
 
 export const DIRECTIVES = 'directives'
 
+export const EVENTS = 'events'
+
 // // 在组件上监听的 dom 事件
 // export const NATIVE_ON = 'nativeOn'
 

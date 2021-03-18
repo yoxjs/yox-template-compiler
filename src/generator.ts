@@ -6,6 +6,7 @@ import {
   DIRECTIVE_EVENT,
   DIRECTIVE_TRANSITION,
   DIRECTIVE_CUSTOM,
+  MODIFER_NATIVE,
 } from 'yox-config/src/config'
 
 import isDef from 'yox-common/src/function/isDef'
@@ -15,6 +16,7 @@ import * as array from 'yox-common/src/util/array'
 import * as object from 'yox-common/src/util/object'
 import * as constant from 'yox-common/src/util/constant'
 import * as generator from 'yox-common/src/util/generator'
+import * as keypathUtil from 'yox-common/src/util/keypath'
 
 import * as exprGenerator from 'yox-expression-compiler/src/generator'
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
@@ -349,6 +351,8 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
     directives = generator.toObject(),
 
+    events = generator.toObject(),
+
     lazy = generator.toObject(),
 
     dynamicAttrs: any[] = []
@@ -413,18 +417,28 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
               )
               break
 
-            default:
-              const params = getDirectiveValue(directiveNode)
-              directives.set(
-                directiveNode.key,
+            case DIRECTIVE_EVENT:
+              const params = getEventValue(directiveNode)
+              events.set(
+                getDirectiveKey(directiveNode),
                 generator.toCall(
-                  directiveNode.ns === DIRECTIVE_EVENT
-                    ? params.has(RAW_METHOD)
-                      ? GET_EVENT_METHOD
-                      : GET_EVENT_NAME
-                    : GET_DIRECTIVE,
+                  params.has(RAW_METHOD)
+                    ? GET_EVENT_METHOD
+                    : GET_EVENT_NAME,
                   [
                     params
+                  ]
+                )
+              )
+              break
+
+            default:
+              directives.set(
+                getDirectiveKey(directiveNode),
+                generator.toCall(
+                  GET_DIRECTIVE,
+                  [
+                    getDirectiveValue(directiveNode)
                   ]
                 )
               )
@@ -461,6 +475,12 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       data.set(
         field.DIRECTIVES,
         directives
+      )
+    }
+    if (events.isNotEmpty()) {
+      data.set(
+        field.EVENTS,
+        events
       )
     }
     if (lazy.isNotEmpty()) {
@@ -606,17 +626,100 @@ function getModelValue(node: Directive) {
   return stringifyExpressionHolder(node.expr as ExpressionNode)
 }
 
+function addCallInfo(params: any, call: ExpressionCall) {
+
+  // compiler 保证了函数调用的 name 是标识符
+  params.set(
+    RAW_METHOD,
+    generator.toPrimitive((call.name as ExpressionIdentifier).name)
+  )
+
+  // 为了实现运行时动态收集参数，这里序列化成函数
+  if (!array.falsy(call.args)) {
+    // args 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
+    params.set(
+      'args',
+      generator.toAnonymousFunction(
+        generator.toArray(call.args.map(stringifyExpressionArg)),
+        [
+          generator.toRaw(ARG_STACK)
+        ]
+      )
+    )
+  }
+
+}
+
+function getEventValue(node: Directive) {
+
+  const params = generator.toObject()
+
+  params.set(
+    'key',
+    generator.toPrimitive(getDirectiveKey(node))
+  )
+  params.set(
+    'value',
+    generator.toPrimitive(node.value)
+  )
+  params.set(
+    'from',
+    generator.toPrimitive(node.name)
+  )
+
+  if (array.last(componentStack)
+    && node.modifier === MODIFER_NATIVE
+  ) {
+    params.set(
+      'isNative',
+      generator.toPrimitive(constant.TRUE)
+    )
+  }
+  else {
+    params.set(
+      'fromNs',
+      generator.toPrimitive(node.modifier)
+    )
+  }
+
+
+  // 事件的 expr 必须是表达式
+  const expr = node.expr as ExpressionNode
+
+  if (expr.type === exprNodeType.CALL) {
+    addCallInfo(params, expr as ExpressionCall)
+  }
+  else {
+    const parts = expr.raw.split(constant.RAW_DOT)
+    params.set(
+      'to',
+      generator.toPrimitive(parts[0])
+    )
+    params.set(
+      'toNs',
+      generator.toPrimitive(parts[1])
+    )
+  }
+
+  return params
+
+}
+
+function getDirectiveKey(node: Directive) {
+  return keypathUtil.join(node.name, node.modifier || constant.EMPTY_STRING)
+}
+
 function getDirectiveValue(node: Directive) {
 
   const params = generator.toObject()
 
   params.set(
-    'name',
-    generator.toPrimitive(node.name)
+    'key',
+    generator.toPrimitive(getDirectiveKey(node))
   )
   params.set(
-    'key',
-    generator.toPrimitive(node.key)
+    'name',
+    generator.toPrimitive(node.name)
   )
   params.set(
     'modifier',
@@ -635,46 +738,14 @@ function getDirectiveValue(node: Directive) {
   // 前者会编译成 handler（调用方法），后者会编译成 getter（取值）
 
   const { expr } = node
+
   if (expr) {
 
     // 如果表达式明确是在调用方法，则序列化成 method + args 的形式
     if (expr.type === exprNodeType.CALL) {
-
-      const callNode = expr as ExpressionCall
-      // compiler 保证了函数调用的 name 是标识符
-      params.set(
-        RAW_METHOD,
-        generator.toPrimitive((callNode.name as ExpressionIdentifier).name)
-      )
-
-      // 为了实现运行时动态收集参数，这里序列化成函数
-      if (!array.falsy(callNode.args)) {
-        // args 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
-        params.set(
-          'args',
-          generator.toAnonymousFunction(
-            generator.toArray(callNode.args.map(stringifyExpressionArg)),
-            [
-              generator.toRaw(ARG_STACK)
-            ]
-          )
-        )
-      }
+      addCallInfo(params, expr as ExpressionCall)
     }
-    // 不是调用方法，就是事件转换
-    else if (node.ns === DIRECTIVE_EVENT) {
-      const parts = expr.raw.split(constant.RAW_DOT)
-      params.set(
-        'type',
-        generator.toPrimitive(parts[0])
-      )
-      params.set(
-        'ns',
-        generator.toPrimitive(parts[1])
-      )
-    }
-    // 自定义指令
-    else if (node.ns === DIRECTIVE_CUSTOM) {
+    else {
 
       // 取值函数
       // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
@@ -696,15 +767,6 @@ function getDirectiveValue(node: Directive) {
 
   return params
 
-}
-
-// params 是 generator.GObject，为了避免 export 它，这里把类型改成 any
-function getDirectiveRender(node: Directive, params: any) {
-  return node.ns === DIRECTIVE_EVENT
-    ? params.has(RAW_METHOD)
-      ? RENDER_EVENT_METHOD
-      : RENDER_EVENT_NAME
-    : RENDER_DIRECTIVE
 }
 
 nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
@@ -737,16 +799,23 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
         ]
       )
 
-    default:
-      const params = getDirectiveValue(node)
+    // <div on-click="name">
+    case DIRECTIVE_EVENT:
+      const params = getEventValue(node)
       return generator.toCall(
-        node.ns === DIRECTIVE_EVENT
-          ? params.has(RAW_METHOD)
-            ? RENDER_EVENT_METHOD
-            : RENDER_EVENT_NAME
-          : RENDER_DIRECTIVE,
+        params.has(RAW_METHOD)
+          ? RENDER_EVENT_METHOD
+          : RENDER_EVENT_NAME,
         [
           params
+        ]
+      )
+
+    default:
+      return generator.toCall(
+        RENDER_DIRECTIVE,
+        [
+          getDirectiveValue(node)
         ]
       )
   }

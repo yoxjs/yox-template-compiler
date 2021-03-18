@@ -133,7 +133,7 @@ export function render(
 
   },
 
-  createEventListener = function (type: string, ns?: string): Listener {
+  createEventNameListener = function (type: string, ns?: string): Listener {
     return function (event: CustomEvent, data?: Data, isNative?: boolean) {
       if (type !== event.type || ns !== event.ns) {
         event = new CustomEvent(
@@ -148,7 +148,7 @@ export function render(
     }
   },
 
-  createMethodListener = function (name: string, args: Function | void, stack: any[]): Listener {
+  createEventMethodListener = function (name: string, args: Function | void, stack: any[]): Listener {
     return function (event: CustomEvent, data?: Data) {
 
       const method = context[name]
@@ -271,7 +271,7 @@ export function render(
 
   renderEventMethod = function (params: Data) {
     return {
-      key: field.DIRECTIVES,
+      key: field.EVENTS,
       name: params.key,
       value: getEventMethod(params),
     }
@@ -279,18 +279,18 @@ export function render(
 
   getEventMethod = function (params: Data) {
     return {
-      ns: DIRECTIVE_EVENT,
       key: params.key,
-      name: params.name,
-      modifier: params.modifier,
-      hooks: directives[DIRECTIVE_EVENT],
-      handler: createMethodListener(params.method, params.args, $stack),
+      value: params.value,
+      name: params.from,
+      ns: params.fromNs,
+      isNative: params.isNative,
+      listener: createEventMethodListener(params.method, params.args, $stack),
     }
   },
 
   renderEventName = function (params: Data) {
     return {
-      key: field.DIRECTIVES,
+      key: field.EVENTS,
       name: params.key,
       value: getEventName(params),
     }
@@ -298,12 +298,12 @@ export function render(
 
   getEventName = function (params: Data) {
     return {
-      ns: DIRECTIVE_EVENT,
       key: params.key,
-      name: params.name,
-      modifier: params.modifier,
-      hooks: directives[DIRECTIVE_EVENT],
-      handler: createEventListener(params.type, params.ns),
+      value: params.value,
+      name: params.from,
+      ns: params.fromNs,
+      isNative: params.isNative,
+      listener: createEventNameListener(params.to, params.toNs),
     }
   },
 
@@ -333,7 +333,7 @@ export function render(
       modifier: params.modifier,
       hooks,
       getter: params.getter ? createGetter(params.getter, $stack) : constant.UNDEFINED,
-      handler: params.method ? createMethodListener(params.method, params.args, $stack) : constant.UNDEFINED,
+      handler: params.method ? createEventMethodListener(params.method, params.args, $stack) : constant.UNDEFINED,
     }
 
   },
