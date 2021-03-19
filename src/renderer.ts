@@ -63,7 +63,7 @@ export function render(
 
   $stack = [ $scope ],
 
-  localPartials: Record<string, Function> = {},
+  localPartials: Record<string, Function> = { },
 
   findValue = function (stack: any[], index: number, key: string, lookup: boolean, defaultKeypath?: string): ValueHolder {
 
@@ -589,6 +589,7 @@ export function render(
   },
 
   eachHandler = function (
+    result: any[],
     render: Function,
     item: any,
     key: string | number,
@@ -621,12 +622,12 @@ export function render(
       $scope.$item = item
     }
 
-    const result = render()
+    result.push(
+      render()
+    )
 
     $scope = lastScope
     $stack = lastStack
-
-    return result
 
   },
 
@@ -640,32 +641,30 @@ export function render(
 
     if (is.array(value)) {
       for (let i = 0, length = value.length; i < length; i++) {
-        result.push(
-          eachHandler(
-            render,
-            value[i],
-            i,
-            keypath
-              ? keypathUtil.join(keypath, constant.EMPTY_STRING + i)
-              : constant.EMPTY_STRING,
-            index,
-            length
-          )
+        eachHandler(
+          result,
+          render,
+          value[i],
+          i,
+          keypath
+            ? keypathUtil.join(keypath, constant.EMPTY_STRING + i)
+            : constant.EMPTY_STRING,
+          index,
+          length
         )
       }
     }
     else if (is.object(value)) {
       for (let key in value) {
-        result.push(
-          eachHandler(
-            render,
-            value[key],
-            key,
-            keypath
-              ? keypathUtil.join(keypath, key)
-              : constant.EMPTY_STRING,
-            index
-          )
+        eachHandler(
+          result,
+          render,
+          value[key],
+          key,
+          keypath
+            ? keypathUtil.join(keypath, key)
+            : constant.EMPTY_STRING,
+          index
         )
       }
     }
@@ -687,27 +686,25 @@ export function render(
     if (from < to) {
       if (equal) {
         for (let i = from; i <= to; i++) {
-          result.push(
-            eachHandler(
-              render,
-              i,
-              count++,
-              constant.EMPTY_STRING,
-              index
-            )
+          eachHandler(
+            result,
+            render,
+            i,
+            count++,
+            constant.EMPTY_STRING,
+            index
           )
         }
       }
       else {
         for (let i = from; i < to; i++) {
-          result.push(
-            eachHandler(
-              render,
-              i,
-              count++,
-              constant.EMPTY_STRING,
-              index
-            )
+          eachHandler(
+            result,
+            render,
+            i,
+            count++,
+            constant.EMPTY_STRING,
+            index
           )
         }
       }
@@ -715,27 +712,25 @@ export function render(
     else {
       if (equal) {
         for (let i = from; i >= to; i--) {
-          result.push(
-            eachHandler(
-              render,
-              i,
-              count++,
-              constant.EMPTY_STRING,
-              index
-            )
+          eachHandler(
+            result,
+            render,
+            i,
+            count++,
+            constant.EMPTY_STRING,
+            index
           )
         }
       }
       else {
         for (let i = from; i > to; i--) {
-          result.push(
-            eachHandler(
-              render,
-              i,
-              count++,
-              constant.EMPTY_STRING,
-              index
-            )
+          eachHandler(
+            result,
+            render,
+            i,
+            count++,
+            constant.EMPTY_STRING,
+            index
           )
         }
       }
