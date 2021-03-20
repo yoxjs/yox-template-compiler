@@ -593,9 +593,9 @@ export function render(
     result: any[],
     render: Function,
     item: any,
-    key: string | number,
+    indexKey: string | void,
+    indexValue: string | number,
     keypath: string,
-    index: string | void,
     length: number | void
   ) {
 
@@ -619,8 +619,8 @@ export function render(
     }
 
     // 业务层是否写了 expr:index
-    if (index) {
-      $scope[index] = key
+    if (indexKey) {
+      $scope[indexKey] = indexValue
     }
 
     result.push(
@@ -646,11 +646,11 @@ export function render(
           result,
           render,
           value[i],
+          index,
           i,
           keypath
             ? keypathUtil.join(keypath, constant.EMPTY_STRING + i)
             : constant.EMPTY_STRING,
-          index,
           length
         )
       }
@@ -661,11 +661,11 @@ export function render(
           result,
           render,
           value[key],
+          index,
           key,
           keypath
             ? keypathUtil.join(keypath, key)
-            : constant.EMPTY_STRING,
-          index
+            : constant.EMPTY_STRING
         )
       }
     }
@@ -682,18 +682,20 @@ export function render(
     index: string | void
   ) {
 
-    let count = 0, result: any[] = []
+    let count = 0, length = 0, result: any[] = []
 
     if (from < to) {
+      length = to - from
       if (equal) {
         for (let i = from; i <= to; i++) {
           eachHandler(
             result,
             render,
             i,
+            index,
             count++,
             constant.EMPTY_STRING,
-            index
+            length
           )
         }
       }
@@ -703,23 +705,26 @@ export function render(
             result,
             render,
             i,
+            index,
             count++,
             constant.EMPTY_STRING,
-            index
+            length
           )
         }
       }
     }
     else {
+      length = from - to
       if (equal) {
         for (let i = from; i >= to; i--) {
           eachHandler(
             result,
             render,
             i,
+            index,
             count++,
             constant.EMPTY_STRING,
-            index
+            length
           )
         }
       }
@@ -729,9 +734,10 @@ export function render(
             result,
             render,
             i,
+            index,
             count++,
             constant.EMPTY_STRING,
-            index
+            length
           )
         }
       }
