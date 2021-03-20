@@ -63,8 +63,6 @@ RENDER_EXPRESSION_MEMBER_LITERAL = 'renderExpressionMemberLiteral',
 
 RENDER_EXPRESSION_CALL = 'renderExpressionCall',
 
-RENDER_TEXT_VNODE = 'renderTextVnode',
-
 RENDER_NATIVE_ATTRIBUTE = 'renderNativeAttribute',
 
 RENDER_NATIVE_PROPERTY = 'renderNativeProperty',
@@ -94,6 +92,8 @@ RENDER_DIRECTIVE = 'renderDirective',
 GET_DIRECTIVE = 'getDirective',
 
 RENDER_SPREAD = 'renderSpread',
+
+RENDER_TEXT_VNODE = 'renderTextVnode',
 
 RENDER_COMMENT_VNODE = 'renderCommentVnode',
 
@@ -984,7 +984,6 @@ export function generate(node: Node): string {
       RENDER_EXPRESSION_MEMBER_KEYPATH,
       RENDER_EXPRESSION_MEMBER_LITERAL,
       RENDER_EXPRESSION_CALL,
-      RENDER_TEXT_VNODE,
       RENDER_NATIVE_ATTRIBUTE,
       RENDER_NATIVE_PROPERTY,
       RENDER_PROPERTY,
@@ -1000,6 +999,7 @@ export function generate(node: Node): string {
       RENDER_DIRECTIVE,
       GET_DIRECTIVE,
       RENDER_SPREAD,
+      RENDER_TEXT_VNODE,
       RENDER_COMMENT_VNODE,
       RENDER_ELEMENT_VNODE,
       RENDER_COMPONENT_VNODE,

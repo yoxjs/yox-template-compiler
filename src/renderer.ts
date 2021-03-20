@@ -5,6 +5,7 @@ import {
   MAGIC_VAR_DATA,
   MAGIC_VAR_LENGTH,
   MAGIC_VAR_KEYPATH,
+  MAGIC_VAR_ITEM,
 } from 'yox-config/src/config'
 
 import {
@@ -86,8 +87,8 @@ export function render(
     }
 
     // 如果取的是数组项，则要更进一步
-    else if (scope.$item !== constant.UNDEFINED) {
-      scope = scope.$item
+    else if (scope[MAGIC_VAR_ITEM] !== constant.UNDEFINED) {
+      scope = scope[MAGIC_VAR_ITEM]
 
       // 到这里 scope 可能为空
       // 比如 new Array(10) 然后遍历这个数组，每一项肯定是空
@@ -203,16 +204,6 @@ export function render(
         context,
         args ? args(stack) : constant.UNDEFINED
       )
-    }
-  },
-
-  renderTextVnode = function (value: string) {
-    return {
-      tag: TAG_TEXT,
-      isText: constant.TRUE,
-      text: value,
-      context,
-      keypath: $scope[MAGIC_VAR_KEYPATH],
     }
   },
 
@@ -353,7 +344,7 @@ export function render(
 
   },
 
-  renderSpreadVnode = function (value: any) {
+  renderSpread = function (value: any) {
 
     if (is.object(value)) {
 
@@ -379,6 +370,16 @@ export function render(
 
     }
 
+  },
+
+  renderTextVnode = function (value: string) {
+    return {
+      tag: TAG_TEXT,
+      isText: constant.TRUE,
+      text: value,
+      context,
+      keypath: $scope[MAGIC_VAR_KEYPATH],
+    }
   },
 
   renderCommentVnode = function () {
@@ -606,6 +607,12 @@ export function render(
 
     $scope[MAGIC_VAR_KEYPATH] = keypath
 
+    // 无法通过 context.get($keypath + key) 读取到数据的场景（比如遍历 range）
+    // 必须把 item 写到 scope
+    if (!keypath) {
+      $scope[MAGIC_VAR_ITEM] = item
+    }
+
     // 避免模板里频繁读取 list.length
     if (length !== constant.UNDEFINED) {
       $scope[MAGIC_VAR_LENGTH] = length
@@ -614,12 +621,6 @@ export function render(
     // 业务层是否写了 expr:index
     if (index) {
       $scope[index] = key
-    }
-
-    // 无法通过 context.get($keypath + key) 读取到数据的场景
-    // 必须把 item 写到 scope
-    if (!keypath) {
-      $scope.$item = item
     }
 
     result.push(
@@ -746,7 +747,6 @@ export function render(
       renderExpressionMemberKeypath,
       renderExpressionMemberLiteral,
       renderExpressionCall,
-      renderTextVnode,
       renderNativeAttribute,
       renderNativeProperty,
       renderProperty,
@@ -761,7 +761,8 @@ export function render(
       getEventName,
       renderDirective,
       getDirective,
-      renderSpreadVnode,
+      renderSpread,
+      renderTextVnode,
       renderCommentVnode,
       renderElementVnode,
       renderComponentVnode,

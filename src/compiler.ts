@@ -15,6 +15,11 @@ import {
   DIRECTIVE_MODEL,
   DIRECTIVE_TRANSITION,
   DIRECTIVE_CUSTOM,
+  MAGIC_VAR_EVENT,
+  MAGIC_VAR_DATA,
+  MAGIC_VAR_KEYPATH,
+  MAGIC_VAR_LENGTH,
+  MAGIC_VAR_ITEM,
   SLOT_NAME_DEFAULT,
   MODIFER_NATIVE,
 } from 'yox-config/src/config'
@@ -1396,6 +1401,17 @@ export function compile(content: string): Branch[] {
         index = terms[1] || constant.UNDEFINED,
 
         match = literal.match(rangePattern)
+
+        if (process.env.NODE_ENV === 'development') {
+          if (index === MAGIC_VAR_EVENT
+            || index === MAGIC_VAR_DATA
+            || index === MAGIC_VAR_KEYPATH
+            || index === MAGIC_VAR_LENGTH
+            || index === MAGIC_VAR_ITEM
+          ) {
+            fatal(`The each index can't be "${index}".`)
+          }
+        }
 
         if (match) {
           const parts = literal.split(rangePattern),
