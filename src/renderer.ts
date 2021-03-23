@@ -1,11 +1,8 @@
 import {
   DIRECTIVE_MODEL,
   DIRECTIVE_CUSTOM,
-  MAGIC_VAR_EVENT,
-  MAGIC_VAR_DATA,
-  MAGIC_VAR_LENGTH,
   MAGIC_VAR_KEYPATH,
-  MAGIC_VAR_ITEM,
+  MAGIC_VAR_LENGTH,
 } from 'yox-config/src/config'
 
 import {
@@ -86,23 +83,6 @@ export function render(
       value = scope[key]
     }
 
-    // 如果取的是数组项，则要更进一步
-    else if (scope[MAGIC_VAR_ITEM] !== constant.UNDEFINED) {
-      scope = scope[MAGIC_VAR_ITEM]
-
-      // 到这里 scope 可能为空
-      // 比如 new Array(10) 然后遍历这个数组，每一项肯定是空
-
-      // 取 this
-      if (key === constant.EMPTY_STRING) {
-        value = scope
-      }
-      // 取 this.xx
-      else if (scope != constant.NULL && scope[key] !== constant.UNDEFINED) {
-        value = scope[key]
-      }
-    }
-
     if (value === stack) {
       // 正常取数据
       value = observer.get(keypath, stack)
@@ -159,7 +139,7 @@ export function render(
     }
   },
 
-  createEventMethodListener = function (isComponent: boolean, hasMagic: boolean, name: string, args: Function | void, stack: any[]): Listener {
+  createEventMethodListener = function (isComponent: boolean, name: string, args: Function | void, stack: any[]): Listener {
     return function (event: CustomEvent, data?: Data) {
 
       // 监听组件事件不用处理父组件传下来的事件
@@ -167,25 +147,24 @@ export function render(
         return
       }
 
-      const method = context[name]
+      let methodArgs: any
 
       if (args) {
-        if (hasMagic) {
-          const scope = array.last(stack)
-          scope[MAGIC_VAR_EVENT] = event
-          scope[MAGIC_VAR_DATA] = data
-          const result = execute(method, context, args(stack))
-          scope[MAGIC_VAR_EVENT] =
-          scope[MAGIC_VAR_DATA] = constant.UNDEFINED
-          return result
+        const scope = array.last(stack)
+        methodArgs = args(stack, event, data)
+        // 1 个或 0 个参数可优化调用方式，即 method.call 或直接调用函数
+        if (methodArgs.length < 2) {
+          methodArgs = methodArgs[0]
         }
-        return execute(method, context, args(stack))
+      }
+      else {
+        methodArgs = data ? [event, data] : event
       }
 
       return execute(
-        method,
+        context[name],
         context,
-        data ? [event, data] : event
+        methodArgs
       )
 
     }
@@ -199,10 +178,21 @@ export function render(
 
   createDirectiveHandler = function (name: string, args: Function | void, stack: any[]) {
     return function () {
+
+      let methodArgs: any = constant.UNDEFINED
+
+      if (args) {
+        methodArgs = args(stack)
+        // 1 个或 0 个参数可优化调用方式，即 method.call 或直接调用函数
+        if (methodArgs.length < 2) {
+          methodArgs = methodArgs[0]
+        }
+      }
+
       execute(
         context[name],
         context,
-        args ? args(stack) : constant.UNDEFINED
+        methodArgs
       )
     }
   },
@@ -290,7 +280,7 @@ export function render(
       name: params.from,
       ns: params.fromNs,
       isNative: params.isNative,
-      listener: createEventMethodListener(params.isComponent, params.hasMagic, params.method, params.args, $stack),
+      listener: createEventMethodListener(params.isComponent, params.method, params.args, $stack),
     }
   },
 
@@ -517,20 +507,16 @@ export function render(
     identifier: string,
     runtimeKeypath: string[]
   ) {
-    array.unshift(runtimeKeypath, identifier)
-    return array.join(runtimeKeypath, constant.RAW_DOT)
+    runtimeKeypath.unshift(identifier)
+    return runtimeKeypath.join(constant.RAW_DOT)
   },
 
   renderExpressionMemberLiteral = function (
     value: any,
-    staticKeypath: string | void,
-    runtimeKeypath: string[] | void,
+    keypath: string,
     holder: boolean | void
   ) {
-    if (runtimeKeypath !== constant.UNDEFINED) {
-      staticKeypath = array.join(runtimeKeypath as string[], constant.RAW_DOT)
-    }
-    const match = object.get(value, staticKeypath as string)
+    const match = object.get(value, keypath)
     globalHolder.keypath = constant.UNDEFINED
     globalHolder.value = match ? match.value : constant.UNDEFINED
     return holder ? globalHolder : globalHolder.value
@@ -589,83 +575,42 @@ export function render(
     return renderTemplate(partial)
   },
 
-  eachHandler = function (
-    result: any[],
-    render: Function,
-    item: any,
-    indexKey: string | void,
-    indexValue: string | number,
-    keypath: string,
-    length: number | void
-  ) {
-
-    const lastScope = $scope, lastStack = $stack
-
-    // each 会改变 keypath
-    $scope = { }
-    $stack = lastStack.concat($scope)
-
-    $scope[MAGIC_VAR_KEYPATH] = keypath
-
-    // 无法通过 context.get($keypath + key) 读取到数据的场景（比如遍历 range）
-    // 必须把 item 写到 scope
-    if (!keypath) {
-      $scope[MAGIC_VAR_ITEM] = item
-    }
-
-    // 避免模板里频繁读取 list.length
-    if (length !== constant.UNDEFINED) {
-      $scope[MAGIC_VAR_LENGTH] = length
-    }
-
-    // 业务层是否写了 expr:index
-    if (indexKey) {
-      $scope[indexKey] = indexValue
-    }
-
-    result.push(
-      render()
-    )
-
-    $scope = lastScope
-    $stack = lastStack
-
-  },
-
   renderEach = function (
     render: Function,
-    holder: ValueHolder,
-    index: string | void
+    holder: ValueHolder
   ) {
 
     const { keypath, value } = holder, result: any[] = []
 
     if (is.array(value)) {
       for (let i = 0, length = value.length; i < length; i++) {
-        eachHandler(
-          result,
-          render,
-          value[i],
-          index,
-          i,
-          keypath
-            ? keypathUtil.join(keypath, constant.EMPTY_STRING + i)
-            : constant.EMPTY_STRING,
-          length
+        result.push(
+          render(
+            keypath
+              ? keypathUtil.join(keypath, constant.EMPTY_STRING + i)
+              : constant.EMPTY_STRING,
+            length,
+            keypath
+              ? constant.UNDEFINED
+              : value[i],
+            i
+          )
         )
       }
     }
     else if (is.object(value)) {
       for (let key in value) {
-        eachHandler(
-          result,
-          render,
-          value[key],
-          index,
-          key,
-          keypath
-            ? keypathUtil.join(keypath, key)
-            : constant.EMPTY_STRING
+        result.push(
+          render(
+            keypath
+              ? keypathUtil.join(keypath, key)
+              : constant.EMPTY_STRING,
+            constant.UNDEFINED,
+            keypath
+              ? constant.UNDEFINED
+              : value[key],
+            key
+          )
         )
       }
     }
@@ -678,8 +623,7 @@ export function render(
     render: Function,
     from: number,
     to: number,
-    equal: boolean,
-    index: string | void
+    equal: boolean
   ) {
 
     let count = 0, length = 0, result: any[] = []
@@ -688,27 +632,25 @@ export function render(
       length = to - from
       if (equal) {
         for (let i = from; i <= to; i++) {
-          eachHandler(
-            result,
-            render,
-            i,
-            index,
-            count++,
-            constant.EMPTY_STRING,
-            length
+          result.push(
+            render(
+              constant.EMPTY_STRING,
+              length,
+              i,
+              count++
+            )
           )
         }
       }
       else {
         for (let i = from; i < to; i++) {
-          eachHandler(
-            result,
-            render,
-            i,
-            index,
-            count++,
-            constant.EMPTY_STRING,
-            length
+          result.push(
+            render(
+              constant.EMPTY_STRING,
+              length,
+              i,
+              count++
+            )
           )
         }
       }
@@ -717,27 +659,25 @@ export function render(
       length = from - to
       if (equal) {
         for (let i = from; i >= to; i--) {
-          eachHandler(
-            result,
-            render,
-            i,
-            index,
-            count++,
-            constant.EMPTY_STRING,
-            length
+          result.push(
+            render(
+              constant.EMPTY_STRING,
+              length,
+              i,
+              count++
+            )
           )
         }
       }
       else {
         for (let i = from; i > to; i--) {
-          eachHandler(
-            result,
-            render,
-            i,
-            index,
-            count++,
-            constant.EMPTY_STRING,
-            length
+          result.push(
+            render(
+              constant.EMPTY_STRING,
+              length,
+              i,
+              count++
+            )
           )
         }
       }
@@ -748,6 +688,7 @@ export function render(
   },
 
   renderTemplate = function (render) {
+    const scope = array.last($stack)
     return render(
       renderExpressionIdentifier,
       renderExpressionMemberKeypath,
@@ -778,6 +719,7 @@ export function render(
       renderEach,
       renderRange,
       toString,
+      scope[MAGIC_VAR_KEYPATH]
     )
   }
 

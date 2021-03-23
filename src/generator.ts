@@ -6,8 +6,11 @@ import {
   DIRECTIVE_EVENT,
   DIRECTIVE_TRANSITION,
   MODIFER_NATIVE,
+  MAGIC_VAR_KEYPATH,
+  MAGIC_VAR_LENGTH,
   MAGIC_VAR_EVENT,
   MAGIC_VAR_DATA,
+  MAGIC_VAR_ITEM,
 } from 'yox-config/src/config'
 
 import isDef from 'yox-common/src/function/isDef'
@@ -15,7 +18,6 @@ import isDef from 'yox-common/src/function/isDef'
 import * as is from 'yox-common/src/util/is'
 import * as array from 'yox-common/src/util/array'
 import * as object from 'yox-common/src/util/object'
-import * as string from 'yox-common/src/util/string'
 import * as constant from 'yox-common/src/util/constant'
 import * as generator from 'yox-common/src/util/generator'
 import * as keypathUtil from 'yox-common/src/util/keypath'
@@ -45,15 +47,20 @@ import Expression from './node/Expression'
 import Text from './node/Text'
 
 // 是否正在收集虚拟节点
-const vnodeStack: boolean[] = [constant.TRUE],
+const vnodeStack: boolean[] = [ constant.TRUE ],
 
 // 是否正在处理组件节点
-componentStack: boolean[] = [],
+componentStack: boolean[] = [ ],
+
+// 是否正在处理特殊 each，包括 遍历 range 和 遍历数组字面量和对象字面量
+specialEachStack: boolean[] = [ ],
 
 // 是否正在收集字符串类型的值
-stringStack: boolean[] = [],
+stringStack: boolean[] = [ ],
 
-nodeGenerator = {},
+magicVariables: string[] = [ MAGIC_VAR_KEYPATH, MAGIC_VAR_LENGTH, MAGIC_VAR_EVENT, MAGIC_VAR_DATA ],
+
+nodeGenerator = { },
 
 RENDER_EXPRESSION_IDENTIFIER = 'renderExpressionIdentifier',
 
@@ -117,9 +124,24 @@ ARG_STACK = 'argStack',
 
 RAW_METHOD = 'method'
 
+function transformIdentifier(node: ExpressionIdentifier) {
+  // 魔法变量，直接转换
+  if (array.has(magicVariables, node.name)) {
+    return generator.toRaw(node.name)
+  }
+  // 把 this 转成 $item，方便直接读取
+  // 避免不必要的查找，提升性能
+  if (array.last(specialEachStack) && node.lookup === constant.FALSE && node.offset === 0) {
+    return node.name === constant.EMPTY_STRING
+      ? generator.toRaw(MAGIC_VAR_ITEM)
+      : generator.toRaw(MAGIC_VAR_ITEM + '.' + node.name)
+  }
+}
+
 function stringifyExpression(expr: ExpressionNode) {
   return exprGenerator.generate(
     expr,
+    transformIdentifier,
     RENDER_EXPRESSION_IDENTIFIER,
     RENDER_EXPRESSION_MEMBER_KEYPATH,
     RENDER_EXPRESSION_MEMBER_LITERAL,
@@ -130,6 +152,7 @@ function stringifyExpression(expr: ExpressionNode) {
 function stringifyExpressionHolder(expr: ExpressionNode) {
   return exprGenerator.generate(
     expr,
+    transformIdentifier,
     RENDER_EXPRESSION_IDENTIFIER,
     RENDER_EXPRESSION_MEMBER_KEYPATH,
     RENDER_EXPRESSION_MEMBER_LITERAL,
@@ -141,6 +164,7 @@ function stringifyExpressionHolder(expr: ExpressionNode) {
 function stringifyExpressionArg(expr: ExpressionNode) {
   return exprGenerator.generate(
     expr,
+    transformIdentifier,
     RENDER_EXPRESSION_IDENTIFIER,
     RENDER_EXPRESSION_MEMBER_KEYPATH,
     RENDER_EXPRESSION_MEMBER_LITERAL,
@@ -196,7 +220,7 @@ function stringifyNodesToStringIfNeeded(children: Node[]) {
       ? result[0]
       : generator.toArray(
           result,
-          constant.TRUE
+          generator.EMPTY
         )
   }
 
@@ -628,30 +652,6 @@ function getModelValue(node: Directive) {
   return stringifyExpressionHolder(node.expr as ExpressionNode)
 }
 
-function addCallInfo(params: any, call: ExpressionCall) {
-
-  // compiler 保证了函数调用的 name 是标识符
-  params.set(
-    RAW_METHOD,
-    generator.toPrimitive((call.name as ExpressionIdentifier).name)
-  )
-
-  // 为了实现运行时动态收集参数，这里序列化成函数
-  if (!array.falsy(call.args)) {
-    // args 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
-    params.set(
-      'args',
-      generator.toAnonymousFunction(
-        generator.toArray(call.args.map(stringifyExpressionArg)),
-        [
-          generator.toRaw(ARG_STACK)
-        ]
-      )
-    )
-  }
-
-}
-
 function getEventValue(node: Directive) {
 
   const params = generator.toObject()
@@ -700,13 +700,31 @@ function getEventValue(node: Directive) {
   const expr = node.expr as ExpressionNode, { raw } = expr
 
   if (expr.type === exprNodeType.CALL) {
-    addCallInfo(params, expr as ExpressionCall)
-    if (string.has(raw, MAGIC_VAR_EVENT) || string.has(raw, MAGIC_VAR_DATA)) {
+
+    const callNode = expr as ExpressionCall
+
+    // compiler 保证了函数调用的 name 是标识符
+    params.set(
+      RAW_METHOD,
+      generator.toPrimitive((callNode.name as ExpressionIdentifier).name)
+    )
+
+    // 为了实现运行时动态收集参数，这里序列化成函数
+    if (!array.falsy(callNode.args)) {
+      // args 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
       params.set(
-        'hasMagic',
-        generator.toPrimitive(constant.TRUE)
+        'args',
+        generator.toAnonymousFunction(
+          generator.toArray(callNode.args.map(stringifyExpressionArg)),
+          [
+            generator.toRaw(ARG_STACK),
+            generator.toRaw(MAGIC_VAR_EVENT),
+            generator.toRaw(MAGIC_VAR_DATA),
+          ]
+        )
       )
     }
+
   }
   else {
     const parts = raw.split(constant.RAW_DOT)
@@ -762,7 +780,29 @@ function getDirectiveValue(node: Directive) {
 
     // 如果表达式明确是在调用方法，则序列化成 method + args 的形式
     if (expr.type === exprNodeType.CALL) {
-      addCallInfo(params, expr as ExpressionCall)
+
+      const callNode = expr as ExpressionCall
+
+      // compiler 保证了函数调用的 name 是标识符
+      params.set(
+        RAW_METHOD,
+        generator.toPrimitive((callNode.name as ExpressionIdentifier).name)
+      )
+
+      // 为了实现运行时动态收集参数，这里序列化成函数
+      if (!array.falsy(callNode.args)) {
+        // args 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
+        params.set(
+          'args',
+          generator.toAnonymousFunction(
+            generator.toArray(callNode.args.map(stringifyExpressionArg)),
+            [
+              generator.toRaw(ARG_STACK),
+            ]
+          )
+        )
+      }
+
     }
     else {
 
@@ -918,25 +958,67 @@ nodeGenerator[nodeType.ELSE] = function (node: Else) {
 
 nodeGenerator[nodeType.EACH] = function (node: Each) {
 
+  const { index, from, to, equal, } = node,
+
+  isSpecial = to || from.type === exprNodeType.ARRAY || from.type === exprNodeType.OBJECT,
+
+  args = [
+    generator.toRaw(MAGIC_VAR_KEYPATH),
+    generator.toRaw(MAGIC_VAR_LENGTH),
+    generator.toRaw(MAGIC_VAR_ITEM),
+  ]
+
+  if (index) {
+    array.push(
+      args,
+      generator.toRaw(index)
+    )
+    array.push(
+      magicVariables,
+      index
+    )
+  }
+
+  if (isSpecial) {
+    array.push(
+      specialEachStack,
+      constant.TRUE
+    )
+  }
+
   // compiler 保证了 children 一定有值
   const children = generator.toAnonymousFunction(
-    stringifyNodesToArray(node.children as Node[])
-  ),
+    stringifyNodesToArray(node.children as Node[]),
+    args
+  )
 
-  index = generator.toPrimitive(node.index)
+  if (index) {
+    array.pop(
+      magicVariables
+    )
+  }
+
+  if (isSpecial) {
+    array.pop(
+      specialEachStack
+    )
+  }
 
   // 遍历区间
-  if (node.to) {
+  if (to) {
+
+    const rangeArgs = [
+      children,
+      stringifyExpression(from),
+      stringifyExpression(to),
+      generator.toPrimitive(equal)
+    ]
+
     return generator.toCall(
       RENDER_RANGE,
-      [
-        children,
-        stringifyExpression(node.from),
-        stringifyExpression(node.to),
-        generator.toPrimitive(node.equal),
-        index
-      ]
+      rangeArgs
     )
+
   }
 
   // 遍历数组和对象
@@ -944,8 +1026,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
     RENDER_EACH,
     [
       children,
-      stringifyExpressionHolder(node.from),
-      index
+      stringifyExpressionHolder(from)
     ]
   )
 
@@ -1009,6 +1090,7 @@ export function generate(node: Node): string {
       RENDER_EACH,
       RENDER_RANGE,
       TO_STRING,
+      MAGIC_VAR_KEYPATH,
     ]
   )
 }

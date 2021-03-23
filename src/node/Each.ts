@@ -15,7 +15,7 @@ export default interface Each extends Branch {
 
   to: ExpressionNode | void
 
-  equal: boolean
+  equal: true | void
 
   index: string | void
 

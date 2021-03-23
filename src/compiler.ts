@@ -15,10 +15,10 @@ import {
   DIRECTIVE_MODEL,
   DIRECTIVE_TRANSITION,
   DIRECTIVE_CUSTOM,
-  MAGIC_VAR_EVENT,
-  MAGIC_VAR_DATA,
   MAGIC_VAR_KEYPATH,
   MAGIC_VAR_LENGTH,
+  MAGIC_VAR_EVENT,
+  MAGIC_VAR_DATA,
   MAGIC_VAR_ITEM,
   SLOT_NAME_DEFAULT,
   MODIFER_NATIVE,
@@ -1403,11 +1403,11 @@ export function compile(content: string): Branch[] {
         match = literal.match(rangePattern)
 
         if (process.env.NODE_ENV === 'development') {
-          if (index === MAGIC_VAR_EVENT
-            || index === MAGIC_VAR_DATA
-            || index === MAGIC_VAR_KEYPATH
+          if (index === MAGIC_VAR_KEYPATH
             || index === MAGIC_VAR_LENGTH
             || index === MAGIC_VAR_ITEM
+            || index === MAGIC_VAR_EVENT
+            || index === MAGIC_VAR_DATA
           ) {
             fatal(`The each index can't be "${index}".`)
           }

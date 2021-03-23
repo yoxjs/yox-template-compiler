@@ -17,8 +17,53 @@ test('event', () => {
   `
 
   tpl1 = `
-  <div on-click="post($event, 1, 3)">
+  <div on-click="post($event, a, 3)" o-xxx="post($keypath, $length, a, 1)">
+    {{$keypath}}
+  </div>
+  `
 
+  tpl1 = `
+  <div>
+    {{$keypath}}
+    <ul>
+      {{#each list:outerIndex}}
+        <li>
+          {{$keypath}} + {{outerIndex}}
+
+          {{#each this:innerIndex}}
+            {{outerIndex}} + {{innerIndex}}
+          {{/each}}
+        </li>
+      {{/each}}
+    </ul>
+  </div>
+  `
+
+  tpl1 = `
+  <div>
+  {{#each list:outerIndex}}
+    {{this}} {{outerIndex}}
+    <div on-click="post(this, $event, $data)"></div>
+
+    {{#each 1->5:index}}
+      {{this}} {{index}} {{outerIndex}}
+      <div on-click="post(this, $event, $data)"></div>
+    {{/each}}
+
+    {{#each ['11', '111', '1111']:index}}
+      {{this}} {{this.a.b}} {{index}} {{outerIndex}}
+      <div on-click="post(this, $event, $data)"></div>
+    {{/each}}
+  {{/each}}
+  </div>
+  `
+
+  tpl1 = `
+  <div>
+  {{#each ['11', '111', '1111']:index}}
+    {{this[length]}}
+    {{this[length].a}}
+  {{/each}}
   </div>
   `
 

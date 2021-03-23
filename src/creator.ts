@@ -60,7 +60,7 @@ export function createEach(from: ExpressionNode, to: ExpressionNode | void, equa
     type: nodeType.EACH,
     from,
     to,
-    equal,
+    equal: equal || constant.UNDEFINED,
     index,
     isVirtual: constant.TRUE,
   }
