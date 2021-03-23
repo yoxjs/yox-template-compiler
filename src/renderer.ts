@@ -63,7 +63,7 @@ export function render(
 
   localPartials: Record<string, Function> = { },
 
-  findValue = function (stack: any[], index: number, key: string, lookup: boolean, defaultKeypath?: string): ValueHolder {
+  findValue = function (stack: any[], index: number, key: string, lookup: boolean, call: boolean, defaultKeypath?: string): ValueHolder {
 
     let baseKeypath = stack[index],
 
@@ -86,19 +86,22 @@ export function render(
         if (process.env.NODE_ENV === 'development') {
           logger.debug(`The data "${keypath}" can't be found in the current context, start looking up.`)
         }
-        return findValue(stack, index - 1, key, lookup, defaultKeypath)
+        return findValue(stack, index - 1, key, lookup, call, defaultKeypath)
       }
 
-      // 到头了，最后尝试过滤器
-      const result = object.get(filters, key)
-      if (result) {
-        holder = result
-        holder.keypath = key
+      // 到头了，如果是函数调用，则最后尝试过滤器
+      if (call) {
+        const result = object.get(filters, key)
+        if (result) {
+          holder = result
+          holder.keypath = key
+          return holder
+        }
       }
-      else {
-        holder.value = constant.UNDEFINED
-        holder.keypath = defaultKeypath
-      }
+
+      holder.value = constant.UNDEFINED
+      holder.keypath = defaultKeypath
+
       return holder
 
     }
@@ -482,17 +485,16 @@ export function render(
 
   renderExpressionIdentifier = function (
     name: string,
-    lookup: boolean,
-    offset?: number,
-    holder?: boolean,
-    stack?: any[]
+    options: Data
   ) {
-    let myStack = stack || keypathStack, index = myStack.length - 1
-    if (offset) {
-      index -= offset
-    }
-    let result = findValue(myStack, index, name, lookup)
+
+    const { call, lookup, offset, holder, stack } = options || constant.EMPTY_OBJECT,
+    myStack = stack || keypathStack,
+    index = myStack.length - 1,
+    result = findValue(myStack, offset ? index - offset : index, name, lookup, call)
+
     return holder ? result : result.value
+
   },
 
   renderExpressionMemberLiteral = function (
