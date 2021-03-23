@@ -3,7 +3,6 @@ import {
 } from 'yox-type/src/type'
 
 import * as constant from 'yox-common/src/util/constant'
-import * as keypathUtil from 'yox-common/src/util/keypath'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
