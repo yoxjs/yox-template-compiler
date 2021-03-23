@@ -57,17 +57,17 @@ export function render(
   transitions: Record<string, TransitionHooks>
 ) {
 
-  let $scope: Data = { },
+  let currentKeypath = constant.EMPTY_STRING,
 
-  $stack = [ $scope ],
+  keypathStack = [ currentKeypath ],
 
   localPartials: Record<string, Function> = { },
 
   findValue = function (stack: any[], index: number, key: string, lookup: boolean, defaultKeypath?: string): ValueHolder {
 
-    let scope = stack[index],
+    let baseKeypath = stack[index],
 
-    keypath = keypathUtil.join(scope[MAGIC_VAR_KEYPATH], key),
+    keypath = keypathUtil.join(baseKeypath, key),
 
     value: any = stack,
 
@@ -78,36 +78,29 @@ export function render(
       defaultKeypath = keypath
     }
 
-    // 如果取的是 scope 上直接有的数据，如 $keypath
-    if (scope[key] !== constant.UNDEFINED) {
-      value = scope[key]
-    }
-
+    // 正常取数据
+    value = observer.get(keypath, stack)
     if (value === stack) {
-      // 正常取数据
-      value = observer.get(keypath, stack)
-      if (value === stack) {
 
-        if (lookup && index > 0) {
-          if (process.env.NODE_ENV === 'development') {
-            logger.debug(`The data "${keypath}" can't be found in the current context, start looking up.`)
-          }
-          return findValue(stack, index - 1, key, lookup, defaultKeypath)
+      if (lookup && index > 0) {
+        if (process.env.NODE_ENV === 'development') {
+          logger.debug(`The data "${keypath}" can't be found in the current context, start looking up.`)
         }
-
-        // 到头了，最后尝试过滤器
-        const result = object.get(filters, key)
-        if (result) {
-          holder = result
-          holder.keypath = key
-        }
-        else {
-          holder.value = constant.UNDEFINED
-          holder.keypath = defaultKeypath
-        }
-        return holder
-
+        return findValue(stack, index - 1, key, lookup, defaultKeypath)
       }
+
+      // 到头了，最后尝试过滤器
+      const result = object.get(filters, key)
+      if (result) {
+        holder = result
+        holder.keypath = key
+      }
+      else {
+        holder.value = constant.UNDEFINED
+        holder.keypath = defaultKeypath
+      }
+      return holder
+
     }
 
     holder.value = value
@@ -150,7 +143,6 @@ export function render(
       let methodArgs: any
 
       if (args) {
-        const scope = array.last(stack)
         methodArgs = args(stack, event, data)
         // 1 个或 0 个参数可优化调用方式，即 method.call 或直接调用函数
         if (methodArgs.length < 2) {
@@ -280,7 +272,7 @@ export function render(
       name: params.from,
       ns: params.fromNs,
       isNative: params.isNative,
-      listener: createEventMethodListener(params.isComponent, params.method, params.args, $stack),
+      listener: createEventMethodListener(params.isComponent, params.method, params.args, keypathStack),
     }
   },
 
@@ -328,8 +320,8 @@ export function render(
       value: params.value,
       modifier: params.modifier,
       hooks,
-      getter: params.getter ? createDirectiveGetter(params.getter, $stack) : constant.UNDEFINED,
-      handler: params.method ? createDirectiveHandler(params.method, params.args, $stack) : constant.UNDEFINED,
+      getter: params.getter ? createDirectiveGetter(params.getter, keypathStack) : constant.UNDEFINED,
+      handler: params.method ? createDirectiveHandler(params.method, params.args, keypathStack) : constant.UNDEFINED,
     }
 
   },
@@ -368,7 +360,7 @@ export function render(
       isText: constant.TRUE,
       text: value,
       context,
-      keypath: $scope[MAGIC_VAR_KEYPATH],
+      keypath: currentKeypath,
     }
   },
 
@@ -379,7 +371,7 @@ export function render(
       tag: TAG_COMMENT,
       isComment: constant.TRUE,
       text: constant.EMPTY_STRING,
-      keypath: $scope[MAGIC_VAR_KEYPATH],
+      keypath: currentKeypath,
       context,
     }
   },
@@ -442,7 +434,7 @@ export function render(
   ) {
 
     data.context = context
-    data.keypath = $scope[MAGIC_VAR_KEYPATH]
+    data.keypath = currentKeypath
 
     if (attrs) {
       normalizeAttributes(data, attrs)
@@ -465,7 +457,7 @@ export function render(
   ) {
 
     data.context = context
-    data.keypath = $scope[MAGIC_VAR_KEYPATH]
+    data.keypath = currentKeypath
 
     if (attrs) {
       normalizeAttributes(data, attrs)
@@ -495,20 +487,12 @@ export function render(
     holder?: boolean,
     stack?: any[]
   ) {
-    let myStack = stack || $stack, index = myStack.length - 1
+    let myStack = stack || keypathStack, index = myStack.length - 1
     if (offset) {
       index -= offset
     }
     let result = findValue(myStack, index, name, lookup)
     return holder ? result : result.value
-  },
-
-  renderExpressionMemberKeypath = function (
-    identifier: string,
-    runtimeKeypath: string[]
-  ) {
-    runtimeKeypath.unshift(identifier)
-    return runtimeKeypath.join(constant.RAW_DOT)
   },
 
   renderExpressionMemberLiteral = function (
@@ -580,17 +564,22 @@ export function render(
     holder: ValueHolder
   ) {
 
-    const { keypath, value } = holder, result: any[] = []
+    let { keypath, value } = holder, result: any[] = [],
+
+    needKeypath = !!keypath, oldKeypathStack = keypathStack, oldCurrentKeypath = currentKeypath
 
     if (is.array(value)) {
       for (let i = 0, length = value.length; i < length; i++) {
+        if (needKeypath) {
+          // keypath 和 i 都不可能为空，因此直接拼接比较快
+          currentKeypath = keypath + constant.RAW_DOT + i
+          keypathStack = oldKeypathStack.concat(currentKeypath)
+        }
         result.push(
           render(
-            keypath
-              ? keypathUtil.join(keypath, constant.EMPTY_STRING + i)
-              : constant.EMPTY_STRING,
+            currentKeypath || constant.EMPTY_STRING,
             length,
-            keypath
+            needKeypath
               ? constant.UNDEFINED
               : value[i],
             i
@@ -600,19 +589,27 @@ export function render(
     }
     else if (is.object(value)) {
       for (let key in value) {
+        if (needKeypath) {
+          // key 可能是空字符串，因此用 keypathUtil.join
+          currentKeypath = keypathUtil.join(keypath as string, key)
+          keypathStack = oldKeypathStack.concat(currentKeypath)
+        }
         result.push(
           render(
-            keypath
-              ? keypathUtil.join(keypath, key)
-              : constant.EMPTY_STRING,
+            currentKeypath || constant.EMPTY_STRING,
             constant.UNDEFINED,
-            keypath
+            needKeypath
               ? constant.UNDEFINED
               : value[key],
             key
           )
         )
       }
+    }
+
+    if (currentKeypath !== oldCurrentKeypath) {
+      currentKeypath = oldCurrentKeypath
+      keypathStack = oldKeypathStack
     }
 
     return result
@@ -634,7 +631,7 @@ export function render(
         for (let i = from; i <= to; i++) {
           result.push(
             render(
-              constant.EMPTY_STRING,
+              currentKeypath,
               length,
               i,
               count++
@@ -646,7 +643,7 @@ export function render(
         for (let i = from; i < to; i++) {
           result.push(
             render(
-              constant.EMPTY_STRING,
+              currentKeypath,
               length,
               i,
               count++
@@ -661,7 +658,7 @@ export function render(
         for (let i = from; i >= to; i--) {
           result.push(
             render(
-              constant.EMPTY_STRING,
+              currentKeypath,
               length,
               i,
               count++
@@ -673,7 +670,7 @@ export function render(
         for (let i = from; i > to; i--) {
           result.push(
             render(
-              constant.EMPTY_STRING,
+              currentKeypath,
               length,
               i,
               count++
@@ -688,10 +685,8 @@ export function render(
   },
 
   renderTemplate = function (render) {
-    const scope = array.last($stack)
     return render(
       renderExpressionIdentifier,
-      renderExpressionMemberKeypath,
       renderExpressionMemberLiteral,
       renderExpressionCall,
       renderNativeAttribute,
@@ -719,11 +714,9 @@ export function render(
       renderEach,
       renderRange,
       toString,
-      scope[MAGIC_VAR_KEYPATH]
+      array.last(keypathStack)
     )
   }
-
-  $scope[MAGIC_VAR_KEYPATH] = constant.EMPTY_STRING
 
   return renderTemplate(template)
 

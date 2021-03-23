@@ -60,6 +60,7 @@ test('event', () => {
 
   tpl1 = `
   <div>
+  {{a[b]}}
   {{#each ['11', '111', '1111']:index}}
     {{this[length]}}
     {{this[length].a}}

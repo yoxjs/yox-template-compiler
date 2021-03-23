@@ -64,8 +64,6 @@ nodeGenerator = { },
 
 RENDER_EXPRESSION_IDENTIFIER = 'renderExpressionIdentifier',
 
-RENDER_EXPRESSION_MEMBER_KEYPATH = 'renderExpressionMemberKeypath',
-
 RENDER_EXPRESSION_MEMBER_LITERAL = 'renderExpressionMemberLiteral',
 
 RENDER_EXPRESSION_CALL = 'renderExpressionCall',
@@ -143,7 +141,6 @@ function stringifyExpression(expr: ExpressionNode) {
     expr,
     transformIdentifier,
     RENDER_EXPRESSION_IDENTIFIER,
-    RENDER_EXPRESSION_MEMBER_KEYPATH,
     RENDER_EXPRESSION_MEMBER_LITERAL,
     RENDER_EXPRESSION_CALL
   )
@@ -154,7 +151,6 @@ function stringifyExpressionHolder(expr: ExpressionNode) {
     expr,
     transformIdentifier,
     RENDER_EXPRESSION_IDENTIFIER,
-    RENDER_EXPRESSION_MEMBER_KEYPATH,
     RENDER_EXPRESSION_MEMBER_LITERAL,
     RENDER_EXPRESSION_CALL,
     constant.TRUE
@@ -166,7 +162,6 @@ function stringifyExpressionArg(expr: ExpressionNode) {
     expr,
     transformIdentifier,
     RENDER_EXPRESSION_IDENTIFIER,
-    RENDER_EXPRESSION_MEMBER_KEYPATH,
     RENDER_EXPRESSION_MEMBER_LITERAL,
     RENDER_EXPRESSION_CALL,
     constant.FALSE,
@@ -220,7 +215,7 @@ function stringifyNodesToStringIfNeeded(children: Node[]) {
       ? result[0]
       : generator.toArray(
           result,
-          generator.EMPTY
+          generator.JOIN_EMPTY
         )
   }
 
@@ -1062,7 +1057,6 @@ export function generate(node: Node): string {
     nodeGenerator[node.type](node),
     [
       RENDER_EXPRESSION_IDENTIFIER,
-      RENDER_EXPRESSION_MEMBER_KEYPATH,
       RENDER_EXPRESSION_MEMBER_LITERAL,
       RENDER_EXPRESSION_CALL,
       RENDER_NATIVE_ATTRIBUTE,
