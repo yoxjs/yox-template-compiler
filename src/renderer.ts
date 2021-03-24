@@ -109,267 +109,6 @@ export function render(
 
   },
 
-  createEventNameListener = function (isComponent: boolean, type: string, ns?: string): Listener {
-    return function (event: CustomEvent, data?: Data, isNative?: boolean) {
-
-      // 监听组件事件不用处理父组件传下来的事件
-      if (isComponent && event.phase === CustomEvent.PHASE_DOWNWARD) {
-        return
-      }
-
-      if (type !== event.type || ns !== event.ns) {
-        event = new CustomEvent(
-          type,
-          isNative
-            ? event.originalEvent
-            : event
-        )
-        event.ns = ns
-      }
-      context.fire(event, data)
-
-    }
-  },
-
-  createEventMethodListener = function (isComponent: boolean, name: string, args: Function | void, stack: any[]): Listener {
-    return function (event: CustomEvent, data?: Data) {
-
-      // 监听组件事件不用处理父组件传下来的事件
-      if (isComponent && event.phase === CustomEvent.PHASE_DOWNWARD) {
-        return
-      }
-
-      let methodArgs: any
-
-      if (args) {
-        methodArgs = args(stack, event, data)
-        // 1 个或 0 个参数可优化调用方式，即 method.call 或直接调用函数
-        if (methodArgs.length < 2) {
-          methodArgs = methodArgs[0]
-        }
-      }
-      else {
-        methodArgs = data ? [event, data] : event
-      }
-
-      return execute(
-        context[name],
-        context,
-        methodArgs
-      )
-
-    }
-  },
-
-  createDirectiveGetter = function (getter: Function, stack: any[]): () => any {
-    return function () {
-      return getter(stack)
-    }
-  },
-
-  createDirectiveHandler = function (name: string, args: Function | void, stack: any[]) {
-    return function () {
-
-      let methodArgs: any = constant.UNDEFINED
-
-      if (args) {
-        methodArgs = args(stack)
-        // 1 个或 0 个参数可优化调用方式，即 method.call 或直接调用函数
-        if (methodArgs.length < 2) {
-          methodArgs = methodArgs[0]
-        }
-      }
-
-      execute(
-        context[name],
-        context,
-        methodArgs
-      )
-    }
-  },
-
-  renderNativeAttribute = function (name: string, value: string | void) {
-    return {
-      key: field.NATIVE_ATTRIBUTES,
-      name,
-      value,
-    }
-  },
-
-  renderNativeProperty = function (name: string, value: any) {
-    return {
-      key: field.NATIVE_PROPERTIES,
-      name,
-      value,
-    }
-  },
-
-  renderProperty = function (name: string, value: string | void) {
-    return {
-      key: field.PROPERTIES,
-      name,
-      value,
-    }
-  },
-
-  renderLazy = function (name: string, value: LazyValue) {
-    return {
-      key: field.LAZY,
-      name,
-      value,
-    }
-  },
-
-  renderTransition = function (name: string) {
-    return {
-      key: field.TRANSITION,
-      value: getTransition(name),
-    }
-  },
-
-  getTransition = function (name: string) {
-    const transition = transitions[name]
-    if (process.env.NODE_ENV === 'development') {
-      if (!transition) {
-        logger.fatal(`The transition "${name}" can't be found.`)
-      }
-    }
-    return transition
-  },
-
-  renderModel = function (holder: ValueHolder) {
-    return {
-      key: field.MODEL,
-      value: getModel(holder),
-    }
-  },
-
-  getModel = function (holder: ValueHolder) {
-    return {
-      value: holder.value,
-      keypath: holder.keypath,
-    }
-  },
-
-  renderEventMethod = function (params: Data) {
-    return {
-      key: field.EVENTS,
-      name: params.key,
-      value: getEventMethod(params),
-    }
-  },
-
-  getEventMethod = function (params: Data) {
-    return {
-      key: params.key,
-      value: params.value,
-      name: params.from,
-      ns: params.fromNs,
-      isNative: params.isNative,
-      listener: createEventMethodListener(params.isComponent, params.method, params.args, keypathStack),
-    }
-  },
-
-  renderEventName = function (params: Data) {
-    return {
-      key: field.EVENTS,
-      name: params.key,
-      value: getEventName(params),
-    }
-  },
-
-  getEventName = function (params: Data) {
-    return {
-      key: params.key,
-      value: params.value,
-      name: params.from,
-      ns: params.fromNs,
-      isNative: params.isNative,
-      listener: createEventNameListener(params.isComponent, params.to, params.toNs),
-    }
-  },
-
-  renderDirective = function (params: Data) {
-    return {
-      key: field.DIRECTIVES,
-      name: params.key,
-      value: getDirective(params),
-    }
-  },
-
-  getDirective = function (params: Data) {
-
-    const hooks = directives[params.name]
-
-    if (process.env.NODE_ENV === 'development') {
-      if (!hooks) {
-        logger.fatal(`The directive "${params.name}" can't be found.`)
-      }
-    }
-
-    return {
-      ns: DIRECTIVE_CUSTOM,
-      key: params.key,
-      name: params.name,
-      value: params.value,
-      modifier: params.modifier,
-      hooks,
-      getter: params.getter ? createDirectiveGetter(params.getter, keypathStack) : constant.UNDEFINED,
-      handler: params.method ? createDirectiveHandler(params.method, params.args, keypathStack) : constant.UNDEFINED,
-    }
-
-  },
-
-  renderSpread = function (value: any) {
-
-    if (is.object(value)) {
-
-      // 数组也算一种对象
-      // 延展操作符不支持数组
-      if (process.env.NODE_ENV === 'development') {
-        if (is.array(value)) {
-          logger.fatal(`The spread operator can't be used by an array.`)
-        }
-      }
-
-      const result: any[] = []
-
-      for (let key in value) {
-        result.push({
-          key: field.PROPERTIES,
-          name: key,
-          value: value[key],
-        })
-      }
-
-      return result
-
-    }
-
-  },
-
-  renderTextVnode = function (value: string) {
-    return {
-      tag: TAG_TEXT,
-      isText: constant.TRUE,
-      text: value,
-      context,
-      keypath: currentKeypath,
-    }
-  },
-
-  renderCommentVnode = function () {
-    // 注释节点和文本节点需要有个区分
-    // 如果两者都没有 tag，则 patchVnode 时，会认为两者是 patchable 的
-    return {
-      tag: TAG_COMMENT,
-      isComment: constant.TRUE,
-      text: constant.EMPTY_STRING,
-      keypath: currentKeypath,
-      context,
-    }
-  },
-
   flattenArray = function (array: any[], handler: (item: any) => void) {
     for (let i = 0, length = array.length; i < length; i++) {
       const item = array[i]
@@ -474,44 +213,265 @@ export function render(
 
   },
 
-  renderExpressionIdentifier = function (params: Data) {
+  renderNativeAttribute = function (name: string, value: string | void) {
+    return {
+      key: field.NATIVE_ATTRIBUTES,
+      name,
+      value,
+    }
+  },
 
-    const myStack = params.stack || keypathStack,
+  renderNativeProperty = function (name: string, value: any) {
+    return {
+      key: field.NATIVE_PROPERTIES,
+      name,
+      value,
+    }
+  },
 
-    index = myStack.length - 1,
+  renderProperty = function (name: string, value: string | void) {
+    return {
+      key: field.PROPERTIES,
+      name,
+      value,
+    }
+  },
 
-    result = findValue(
-      myStack,
-      params.root ? 0 : (params.offset ? index - params.offset : index),
-      params.keypath,
-      params.lookup,
-      params.call
-    )
+  renderLazy = function (name: string, value: LazyValue) {
+    return {
+      key: field.LAZY,
+      name,
+      value,
+    }
+  },
 
-    return params.holder ? result : result.value
+  renderTransition = function (name: string) {
+    return {
+      key: field.TRANSITION,
+      value: getTransition(name),
+    }
+  },
+
+  getTransition = function (name: string) {
+    const transition = transitions[name]
+    if (process.env.NODE_ENV === 'development') {
+      if (!transition) {
+        logger.fatal(`The transition "${name}" can't be found.`)
+      }
+    }
+    return transition
+  },
+
+  renderModel = function (holder: ValueHolder) {
+    return {
+      key: field.MODEL,
+      value: getModel(holder),
+    }
+  },
+
+  getModel = function (holder: ValueHolder) {
+    return {
+      value: holder.value,
+      keypath: holder.keypath,
+    }
+  },
+
+  createEventNameListener = function (isComponent: boolean, type: string, ns?: string): Listener {
+    return function (event: CustomEvent, data?: Data, isNative?: boolean) {
+
+      // 监听组件事件不用处理父组件传下来的事件
+      if (isComponent && event.phase === CustomEvent.PHASE_DOWNWARD) {
+        return
+      }
+
+      if (type !== event.type || ns !== event.ns) {
+        event = new CustomEvent(
+          type,
+          isNative
+            ? event.originalEvent
+            : event
+        )
+        event.ns = ns
+      }
+      context.fire(event, data)
+
+    }
+  },
+
+  createEventMethodListener = function (isComponent: boolean, name: string, args: Function | void, stack: any[]): Listener {
+    return function (event: CustomEvent, data?: Data) {
+
+      // 监听组件事件不用处理父组件传下来的事件
+      if (isComponent && event.phase === CustomEvent.PHASE_DOWNWARD) {
+        return
+      }
+
+      let methodArgs: any
+
+      if (args) {
+        methodArgs = args(stack, event, data)
+        // 1 个或 0 个参数可优化调用方式，即 method.call 或直接调用函数
+        if (methodArgs.length < 2) {
+          methodArgs = methodArgs[0]
+        }
+      }
+      else {
+        methodArgs = data ? [event, data] : event
+      }
+
+      return execute(
+        context[name],
+        context,
+        methodArgs
+      )
+
+    }
+  },
+
+  renderEventMethod = function (params: Data) {
+    return {
+      key: field.EVENTS,
+      name: params.key,
+      value: getEventMethod(params),
+    }
+  },
+
+  getEventMethod = function (params: Data) {
+    return {
+      key: params.key,
+      value: params.value,
+      name: params.from,
+      ns: params.fromNs,
+      isNative: params.isNative,
+      listener: createEventMethodListener(params.isComponent, params.method, params.args, keypathStack),
+    }
+  },
+
+  renderEventName = function (params: Data) {
+    return {
+      key: field.EVENTS,
+      name: params.key,
+      value: getEventName(params),
+    }
+  },
+
+  getEventName = function (params: Data) {
+    return {
+      key: params.key,
+      value: params.value,
+      name: params.from,
+      ns: params.fromNs,
+      isNative: params.isNative,
+      listener: createEventNameListener(params.isComponent, params.to, params.toNs),
+    }
+  },
+
+  createDirectiveGetter = function (getter: Function, stack: any[]): () => any {
+    return function () {
+      return getter(stack)
+    }
+  },
+
+  createDirectiveHandler = function (name: string, args: Function | void, stack: any[]) {
+    return function () {
+
+      let methodArgs: any = constant.UNDEFINED
+
+      if (args) {
+        methodArgs = args(stack)
+        // 1 个或 0 个参数可优化调用方式，即 method.call 或直接调用函数
+        if (methodArgs.length < 2) {
+          methodArgs = methodArgs[0]
+        }
+      }
+
+      execute(
+        context[name],
+        context,
+        methodArgs
+      )
+    }
+  },
+
+  renderDirective = function (params: Data) {
+    return {
+      key: field.DIRECTIVES,
+      name: params.key,
+      value: getDirective(params),
+    }
+  },
+
+  getDirective = function (params: Data) {
+
+    const hooks = directives[params.name]
+
+    if (process.env.NODE_ENV === 'development') {
+      if (!hooks) {
+        logger.fatal(`The directive "${params.name}" can't be found.`)
+      }
+    }
+
+    return {
+      ns: DIRECTIVE_CUSTOM,
+      key: params.key,
+      name: params.name,
+      value: params.value,
+      modifier: params.modifier,
+      hooks,
+      getter: params.getter ? createDirectiveGetter(params.getter, keypathStack) : constant.UNDEFINED,
+      handler: params.method ? createDirectiveHandler(params.method, params.args, keypathStack) : constant.UNDEFINED,
+    }
 
   },
 
-  renderExpressionMemberLiteral = function (
-    value: any,
-    keypath: string,
-    holder: boolean | void
-  ) {
-    const match = object.get(value, keypath)
-    globalHolder.keypath = constant.UNDEFINED
-    globalHolder.value = match ? match.value : constant.UNDEFINED
-    return holder ? globalHolder : globalHolder.value
+  renderSpread = function (value: any) {
+
+    if (is.object(value)) {
+
+      // 数组也算一种对象
+      // 延展操作符不支持数组
+      if (process.env.NODE_ENV === 'development') {
+        if (is.array(value)) {
+          logger.fatal(`The spread operator can't be used by an array.`)
+        }
+      }
+
+      const result: any[] = []
+
+      for (let key in value) {
+        result.push({
+          key: field.PROPERTIES,
+          name: key,
+          value: value[key],
+        })
+      }
+
+      return result
+
+    }
+
   },
 
-  renderExpressionCall = function (
-    fn: Function | void,
-    args: any[] | void,
-    holder: boolean | void
-  ) {
-    globalHolder.keypath = constant.UNDEFINED
-    // 当 holder 为 true, args 为空时，args 会传入 false
-    globalHolder.value = execute(fn, context, args || constant.UNDEFINED)
-    return holder ? globalHolder : globalHolder.value
+  renderTextVnode = function (value: string) {
+    return {
+      tag: TAG_TEXT,
+      isText: constant.TRUE,
+      text: value,
+      context,
+      keypath: currentKeypath,
+    }
+  },
+
+  renderCommentVnode = function () {
+    // 注释节点和文本节点需要有个区分
+    // 如果两者都没有 tag，则 patchVnode 时，会认为两者是 patchable 的
+    return {
+      tag: TAG_COMMENT,
+      isComment: constant.TRUE,
+      text: constant.EMPTY_STRING,
+      keypath: currentKeypath,
+      context,
+    }
   },
 
   // <slot name="xx"/>
@@ -693,11 +653,50 @@ export function render(
 
   },
 
+  renderExpressionIdentifier = function (params: Data) {
+
+    const myStack = params.stack || keypathStack,
+
+    index = myStack.length - 1,
+
+    result = findValue(
+      myStack,
+      params.root ? 0 : (params.offset ? index - params.offset : index),
+      params.keypath,
+      params.lookup,
+      params.call
+    )
+
+    return params.holder ? result : result.value
+
+  },
+
+  renderExpressionMemberLiteral = function (
+    value: any,
+    keypath: string,
+    holder: boolean | void
+  ) {
+    const match = object.get(value, keypath)
+    globalHolder.keypath = constant.UNDEFINED
+    globalHolder.value = match ? match.value : constant.UNDEFINED
+    return holder ? globalHolder : globalHolder.value
+  },
+
+  renderExpressionCall = function (
+    fn: Function | void,
+    args: any[] | void,
+    holder: boolean | void
+  ) {
+    globalHolder.keypath = constant.UNDEFINED
+    // 当 holder 为 true, args 为空时，args 会传入 false
+    globalHolder.value = execute(fn, context, args || constant.UNDEFINED)
+    return holder ? globalHolder : globalHolder.value
+  },
+
   renderTemplate = function (render) {
     return render(
-      renderExpressionIdentifier,
-      renderExpressionMemberLiteral,
-      renderExpressionCall,
+      renderElementVnode,
+      renderComponentVnode,
       renderNativeAttribute,
       renderNativeProperty,
       renderProperty,
@@ -715,13 +714,14 @@ export function render(
       renderSpread,
       renderTextVnode,
       renderCommentVnode,
-      renderElementVnode,
-      renderComponentVnode,
       renderSlot,
       renderPartial,
       renderImport,
       renderEach,
       renderRange,
+      renderExpressionIdentifier,
+      renderExpressionMemberLiteral,
+      renderExpressionCall,
       toString,
       array.last(keypathStack)
     )

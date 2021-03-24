@@ -62,11 +62,9 @@ magicVariables: string[] = [ MAGIC_VAR_KEYPATH, MAGIC_VAR_LENGTH, MAGIC_VAR_EVEN
 
 nodeGenerator = { },
 
-RENDER_EXPRESSION_IDENTIFIER = 'renderExpressionIdentifier',
+RENDER_ELEMENT_VNODE = 'renderElementVnode',
 
-RENDER_EXPRESSION_MEMBER_LITERAL = 'renderExpressionMemberLiteral',
-
-RENDER_EXPRESSION_CALL = 'renderExpressionCall',
+RENDER_COMPONENT_VNODE = 'renderComponentVnode',
 
 RENDER_NATIVE_ATTRIBUTE = 'renderNativeAttribute',
 
@@ -102,10 +100,6 @@ RENDER_TEXT_VNODE = 'renderTextVnode',
 
 RENDER_COMMENT_VNODE = 'renderCommentVnode',
 
-RENDER_ELEMENT_VNODE = 'renderElementVnode',
-
-RENDER_COMPONENT_VNODE = 'renderComponentVnode',
-
 RENDER_SLOT = 'renderSlot',
 
 RENDER_PARTIAL = 'renderPartial',
@@ -115,6 +109,12 @@ RENDER_IMPORT = 'renderImport',
 RENDER_EACH = 'renderEach',
 
 RENDER_RANGE = 'renderRange',
+
+RENDER_EXPRESSION_IDENTIFIER = 'renderExpressionIdentifier',
+
+RENDER_EXPRESSION_MEMBER_LITERAL = 'renderExpressionMemberLiteral',
+
+RENDER_EXPRESSION_CALL = 'renderExpressionCall',
 
 TO_STRING = 'toString',
 
@@ -1067,9 +1067,8 @@ export function generate(node: Node): string {
   return generator.generate(
     nodeGenerator[node.type](node),
     [
-      RENDER_EXPRESSION_IDENTIFIER,
-      RENDER_EXPRESSION_MEMBER_LITERAL,
-      RENDER_EXPRESSION_CALL,
+      RENDER_ELEMENT_VNODE,
+      RENDER_COMPONENT_VNODE,
       RENDER_NATIVE_ATTRIBUTE,
       RENDER_NATIVE_PROPERTY,
       RENDER_PROPERTY,
@@ -1087,13 +1086,14 @@ export function generate(node: Node): string {
       RENDER_SPREAD,
       RENDER_TEXT_VNODE,
       RENDER_COMMENT_VNODE,
-      RENDER_ELEMENT_VNODE,
-      RENDER_COMPONENT_VNODE,
       RENDER_SLOT,
       RENDER_PARTIAL,
       RENDER_IMPORT,
       RENDER_EACH,
       RENDER_RANGE,
+      RENDER_EXPRESSION_IDENTIFIER,
+      RENDER_EXPRESSION_MEMBER_LITERAL,
+      RENDER_EXPRESSION_CALL,
       TO_STRING,
       MAGIC_VAR_KEYPATH,
     ]
