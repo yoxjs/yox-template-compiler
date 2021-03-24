@@ -431,8 +431,8 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
               break
 
             case DIRECTIVE_MODEL:
-              directives.set(
-                DIRECTIVE_MODEL,
+              data.set(
+                field.MODEL,
                 generator.toCall(
                   GET_MODEL,
                   [

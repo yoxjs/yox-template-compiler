@@ -8,6 +8,8 @@ export const DIRECTIVES = 'directives'
 
 export const EVENTS = 'events'
 
+export const MODEL = 'model'
+
 export const LAZY = 'lazy'
 
 export const TRANSITION = 'transition'

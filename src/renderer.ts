@@ -239,20 +239,15 @@ export function render(
 
   renderModel = function (holder: ValueHolder) {
     return {
-      key: field.DIRECTIVES,
-      name: DIRECTIVE_MODEL,
+      key: field.MODEL,
       value: getModel(holder),
     }
   },
 
   getModel = function (holder: ValueHolder) {
     return {
-      ns: DIRECTIVE_MODEL,
-      key: DIRECTIVE_MODEL,
-      name: constant.EMPTY_STRING,
       value: holder.value,
-      modifier: holder.keypath,
-      hooks: directives[DIRECTIVE_MODEL],
+      keypath: holder.keypath,
     }
   },
 

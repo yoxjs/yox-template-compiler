@@ -60,10 +60,7 @@ test('event', () => {
 
   tpl1 = `
   <div>
-  {{format(1)}}
-  {{a.format(1)}}
-  {{this.format(1)}}
-  {{a}}
+    <input  model="xx" />
   </div>
   `
 
