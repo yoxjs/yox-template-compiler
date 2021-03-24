@@ -21,7 +21,7 @@ test('循环', () => {
   expect(children[0].type).toBe(nodeType.EACH)
   expect((children[0] as Each).from.type).toBe(exprNodeType.IDENTIFIER)
   expect((children[0] as Each).to).toBe(undefined)
-  expect((children[0] as Each).equal).not.toBe(true)
+  expect((children[0] as Each).equal).toBe(undefined)
   // index 必须是 undefined，这样序列化后才不会输出这个参数
   expect((children[0] as Each).index).toBe(undefined)
 
@@ -96,7 +96,7 @@ test('循环 + 下标', () => {
   expect(children[0].type).toBe(nodeType.EACH)
   expect((children[0] as Each).from.type).toBe(exprNodeType.IDENTIFIER)
   expect((children[0] as Each).to).toBe(undefined)
-  expect((children[0] as Each).equal).not.toBe(true)
+  expect((children[0] as Each).equal).toBe(undefined)
   expect((children[0] as Each).index).toBe('index')
 
 })
@@ -167,7 +167,7 @@ test('循环数组字面量', () => {
 
   let ast = compile(`
     <div>
-      {{#each [{id:1}, {id:2}]:index}}
+      {{#each [{id:1}, {id:2}] : index}}
         1
       {{/each}}
     </div>
@@ -179,7 +179,25 @@ test('循环数组字面量', () => {
   expect(children[0].type).toBe(nodeType.EACH)
   expect((children[0] as Each).from.type).toBe(exprNodeType.ARRAY)
   expect((children[0] as Each).to).toBe(undefined)
-  expect((children[0] as Each).equal).not.toBe(true)
+  expect((children[0] as Each).equal).toBe(undefined)
   expect((children[0] as Each).index).toBe('index')
+
+
+  ast = compile(`
+    <div>
+      {{#each [{id:1}, {id:2}]}}
+        1
+      {{/each}}
+    </div>
+  `)
+
+  children = (ast[0] as Element).children as Node[]
+
+  expect(children.length).toBe(1)
+  expect(children[0].type).toBe(nodeType.EACH)
+  expect((children[0] as Each).from.type).toBe(exprNodeType.ARRAY)
+  expect((children[0] as Each).to).toBe(undefined)
+  expect((children[0] as Each).equal).toBe(undefined)
+  expect((children[0] as Each).index).toBe(undefined)
 
 })

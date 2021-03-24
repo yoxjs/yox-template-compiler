@@ -106,6 +106,9 @@ directiveLazySeparator = DIRECTIVE_LAZY + directiveSeparator,
 // o-
 directiveCustomSeparator = DIRECTIVE_CUSTOM + directiveSeparator,
 
+// 解析 each 的 index
+eachIndexPattern = /\s*:\s*([_$a-z]+)$/,
+
 // 调用的方法
 methodPattern = /^[_$a-z]([\w]+)?$/,
 
@@ -1387,16 +1390,13 @@ export function compile(content: string): Branch[] {
             )
           }
         }
-        source = slicePrefix(source, SYNTAX_EACH).replace(/\s+/g, constant.EMPTY_STRING)
+        source = string.trim(slicePrefix(source, SYNTAX_EACH))
 
-        // 这里不能用 split(':') 直接一分为二
-        // 因为如果遍历对象是个数组嵌套对象的字面量，里面也会包含 :
-        let literal = source, index: string | void = constant.UNDEFINED
+        let literal = source, index: string | void = constant.UNDEFINED, match = source.match(eachIndexPattern)
 
-        const colonIndex = string.lastIndexOf(source, ':')
-        if (colonIndex > 0) {
-          literal = string.slice(source, 0, colonIndex)
-          index = string.slice(source, colonIndex + 1)
+        if (match) {
+          index = match[1]
+          literal = string.slice(source, 0, -1 * match[0].length)
         }
 
         if (process.env.NODE_ENV === 'development') {
@@ -1413,7 +1413,7 @@ export function compile(content: string): Branch[] {
           }
         }
 
-        const match = literal.match(rangePattern)
+        match = literal.match(rangePattern)
         if (match) {
           const parts = literal.split(rangePattern),
           from = exprCompiler.compile(parts[0]),
