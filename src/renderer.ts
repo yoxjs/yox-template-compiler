@@ -69,9 +69,7 @@ export function render(
 
     keypath = keypathUtil.join(baseKeypath, key),
 
-    value: any = stack,
-
-    holder = globalHolder
+    value: any = stack
 
     // 如果最后还是取不到值，用回最初的 keypath
     if (defaultKeypath === constant.UNDEFINED) {
@@ -93,23 +91,21 @@ export function render(
       if (call) {
         const result = object.get(filters, key)
         if (result) {
-          holder = result
-          holder.keypath = key
-          return holder
+          result.keypath = key
+          return result
         }
       }
 
-      holder.value = constant.UNDEFINED
-      holder.keypath = defaultKeypath
-
-      return holder
+      globalHolder.value = constant.UNDEFINED
+      globalHolder.keypath = defaultKeypath
 
     }
+    else {
+      globalHolder.value = value
+      globalHolder.keypath = keypath
+    }
 
-    holder.value = value
-    holder.keypath = keypath
-
-    return holder
+    return globalHolder
 
   },
 
@@ -485,21 +481,19 @@ export function render(
 
   renderExpressionIdentifier = function (params: Data) {
 
-    const { keypath, call, root, lookup, offset, holder, stack } = params || constant.EMPTY_OBJECT,
-
-    myStack = stack || keypathStack,
+    const myStack = params.stack || keypathStack,
 
     index = myStack.length - 1,
 
     result = findValue(
       myStack,
-      root ? 0 : (offset ? index - offset : index),
-      keypath,
-      lookup,
-      call
+      params.root ? 0 : (params.offset ? index - params.offset : index),
+      params.keypath,
+      params.lookup,
+      params.call
     )
 
-    return holder ? result : result.value
+    return params.holder ? result : result.value
 
   },
 
