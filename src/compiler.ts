@@ -1387,22 +1387,22 @@ export function compile(content: string): Branch[] {
             )
           }
         }
-        source = slicePrefix(source, SYNTAX_EACH)
-        const terms = source.replace(/\s+/g, constant.EMPTY_STRING).split(':')
+        source = slicePrefix(source, SYNTAX_EACH).replace(/\s+/g, constant.EMPTY_STRING)
 
-        if (process.env.NODE_ENV === 'development') {
-          if (!terms[0] || (terms.length === 2 && !terms[1])) {
-            fatal(`Invalid each`)
-          }
+        // 这里不能用 split(':') 直接一分为二
+        // 因为如果遍历对象是个数组嵌套对象的字面量，里面也会包含 :
+        let literal = source, index: string | void = constant.UNDEFINED
+
+        const colonIndex = string.lastIndexOf(source, ':')
+        if (colonIndex > 0) {
+          literal = string.slice(source, 0, colonIndex)
+          index = string.slice(source, colonIndex + 1)
         }
 
-        const literal = terms[0],
-
-        index = terms[1] || constant.UNDEFINED,
-
-        match = literal.match(rangePattern)
-
         if (process.env.NODE_ENV === 'development') {
+          if (!literal || index === constant.EMPTY_STRING) {
+            fatal(`Invalid each`)
+          }
           if (index === MAGIC_VAR_KEYPATH
             || index === MAGIC_VAR_LENGTH
             || index === MAGIC_VAR_ITEM
@@ -1413,6 +1413,7 @@ export function compile(content: string): Branch[] {
           }
         }
 
+        const match = literal.match(rangePattern)
         if (match) {
           const parts = literal.split(rangePattern),
           from = exprCompiler.compile(parts[0]),

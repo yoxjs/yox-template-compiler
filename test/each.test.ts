@@ -136,7 +136,7 @@ test('循环区间 ->', () => {
   expect(children[0].type).toBe(nodeType.EACH)
   expect((children[0] as Each).from.type).toBe(exprNodeType.IDENTIFIER)
   expect((children[0] as Each).from.type).toBe(exprNodeType.IDENTIFIER)
-  expect((children[0] as Each).equal).toBe(false)
+  expect((children[0] as Each).equal).toBe(undefined)
   expect((children[0] as Each).index).toBe('index')
 
 })
@@ -160,5 +160,26 @@ test('空循环', () => {
   }
 
   expect(hasError).toBe(false)
+
+})
+
+test('循环数组字面量', () => {
+
+  let ast = compile(`
+    <div>
+      {{#each [{id:1}, {id:2}]:index}}
+        1
+      {{/each}}
+    </div>
+  `)
+
+  let children = (ast[0] as Element).children as Node[]
+
+  expect(children.length).toBe(1)
+  expect(children[0].type).toBe(nodeType.EACH)
+  expect((children[0] as Each).from.type).toBe(exprNodeType.ARRAY)
+  expect((children[0] as Each).to).toBe(undefined)
+  expect((children[0] as Each).equal).not.toBe(true)
+  expect((children[0] as Each).index).toBe('index')
 
 })
