@@ -129,7 +129,11 @@ function transformIdentifier(node: ExpressionIdentifier) {
   }
   // 把 this 转成 $item，方便直接读取
   // 避免不必要的查找，提升性能
-  if (array.last(specialEachStack) && node.lookup === constant.FALSE && node.offset === 0) {
+  if (array.last(specialEachStack)
+    && node.root === constant.FALSE
+    && node.lookup === constant.FALSE
+    && node.offset === 0
+  ) {
     return node.name === constant.EMPTY_STRING
       ? generator.toRaw(MAGIC_VAR_ITEM)
       : generator.toRaw(MAGIC_VAR_ITEM + '.' + node.name)
@@ -953,7 +957,7 @@ nodeGenerator[nodeType.ELSE] = function (node: Else) {
 
 nodeGenerator[nodeType.EACH] = function (node: Each) {
 
-  const { index, from, to, equal, } = node,
+  const { index, from, to, equal, next } = node,
 
   isSpecial = to || from.type === exprNodeType.ARRAY || from.type === exprNodeType.OBJECT,
 
@@ -982,7 +986,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   }
 
   // compiler 保证了 children 一定有值
-  const children = generator.toAnonymousFunction(
+  const renderChildren = generator.toAnonymousFunction(
     stringifyNodesToArray(node.children as Node[]),
     args
   )
@@ -999,19 +1003,25 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
     )
   }
 
+  // compiler 保证了 children 一定有值
+  const renderElse = next
+    ? generator.toAnonymousFunction(
+        stringifyNodesToArray(next.children as Node[])
+      )
+    : generator.toPrimitive(constant.UNDEFINED)
+
   // 遍历区间
   if (to) {
 
-    const rangeArgs = [
-      children,
-      stringifyExpression(from),
-      stringifyExpression(to),
-      generator.toPrimitive(equal)
-    ]
-
     return generator.toCall(
       RENDER_RANGE,
-      rangeArgs
+      [
+        stringifyExpression(from),
+        stringifyExpression(to),
+        generator.toPrimitive(equal),
+        renderChildren,
+        renderElse,
+      ]
     )
 
   }
@@ -1020,8 +1030,9 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   return generator.toCall(
     RENDER_EACH,
     [
-      children,
-      stringifyExpressionHolder(from)
+      stringifyExpressionHolder(from),
+      renderChildren,
+      renderElse,
     ]
   )
 

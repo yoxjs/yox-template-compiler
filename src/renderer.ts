@@ -483,15 +483,21 @@ export function render(
 
   },
 
-  renderExpressionIdentifier = function (
-    name: string,
-    options: Data
-  ) {
+  renderExpressionIdentifier = function (params: Data) {
 
-    const { call, lookup, offset, holder, stack } = options || constant.EMPTY_OBJECT,
+    const { keypath, call, root, lookup, offset, holder, stack } = params || constant.EMPTY_OBJECT,
+
     myStack = stack || keypathStack,
+
     index = myStack.length - 1,
-    result = findValue(myStack, offset ? index - offset : index, name, lookup, call)
+
+    result = findValue(
+      myStack,
+      root ? 0 : (offset ? index - offset : index),
+      keypath,
+      lookup,
+      call
+    )
 
     return holder ? result : result.value
 
@@ -562,8 +568,9 @@ export function render(
   },
 
   renderEach = function (
-    render: Function,
-    holder: ValueHolder
+    holder: ValueHolder,
+    renderChildren: Function,
+    renderElse?: Function
   ) {
 
     let { keypath, value } = holder, result: any[] = [],
@@ -578,7 +585,7 @@ export function render(
           keypathStack = oldKeypathStack.concat(currentKeypath)
         }
         result.push(
-          render(
+          renderChildren(
             currentKeypath || constant.EMPTY_STRING,
             length,
             needKeypath
@@ -597,7 +604,7 @@ export function render(
           keypathStack = oldKeypathStack.concat(currentKeypath)
         }
         result.push(
-          render(
+          renderChildren(
             currentKeypath || constant.EMPTY_STRING,
             constant.UNDEFINED,
             needKeypath
@@ -609,9 +616,15 @@ export function render(
       }
     }
 
-    if (currentKeypath !== oldCurrentKeypath) {
+    // 这里不能用 currentKeypath !== oldCurrentKeypath
+    // 因为对象的 key 如果是空字符串，新旧 keypath 会相同
+    if (keypathStack !== oldKeypathStack) {
       currentKeypath = oldCurrentKeypath
       keypathStack = oldKeypathStack
+    }
+
+    if (renderElse && result.length === 0) {
+      result = renderElse()
     }
 
     return result
@@ -619,10 +632,11 @@ export function render(
   },
 
   renderRange = function (
-    render: Function,
     from: number,
     to: number,
-    equal: boolean
+    equal: boolean,
+    renderChildren: Function,
+    renderElse?: Function
   ) {
 
     let count = 0, length = 0, result: any[] = []
@@ -632,7 +646,7 @@ export function render(
       if (equal) {
         for (let i = from; i <= to; i++) {
           result.push(
-            render(
+            renderChildren(
               currentKeypath,
               length,
               i,
@@ -644,7 +658,7 @@ export function render(
       else {
         for (let i = from; i < to; i++) {
           result.push(
-            render(
+            renderChildren(
               currentKeypath,
               length,
               i,
@@ -659,7 +673,7 @@ export function render(
       if (equal) {
         for (let i = from; i >= to; i--) {
           result.push(
-            render(
+            renderChildren(
               currentKeypath,
               length,
               i,
@@ -671,7 +685,7 @@ export function render(
       else {
         for (let i = from; i > to; i--) {
           result.push(
-            render(
+            renderChildren(
               currentKeypath,
               length,
               i,
@@ -680,6 +694,10 @@ export function render(
           )
         }
       }
+    }
+
+    if (renderElse && length === 0) {
+      result = renderElse()
     }
 
     return result
