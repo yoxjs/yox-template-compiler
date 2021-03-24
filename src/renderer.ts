@@ -69,7 +69,7 @@ export function render(
 
     keypath = keypathUtil.join(baseKeypath, key),
 
-    value: any = stack
+    value: any = constant.UNDEFINED
 
     // 如果最后还是取不到值，用回最初的 keypath
     if (defaultKeypath === constant.UNDEFINED) {
