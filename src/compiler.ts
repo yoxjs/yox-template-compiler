@@ -22,6 +22,7 @@ import {
   MAGIC_VAR_ITEM,
   SLOT_NAME_DEFAULT,
   MODIFER_NATIVE,
+  PUBLIC_CONFIG,
 } from 'yox-config/src/config'
 
 import {
@@ -78,18 +79,6 @@ BLOCK_MODE_SAFE = 2,
 
 // {{{ x }}}
 BLOCK_MODE_UNSAFE = 3,
-
-// 左安全定界符
-leftSafeDelimiter = '{{',
-
-// 右安全定界符
-rightSafeDelimiter = '}}',
-
-// 左危险定界符：leftSafeDelimiter + leftSafeDelimiter 的最后一个字符
-leftUnsafeFlag = string.charAt(leftSafeDelimiter, leftSafeDelimiter.length - 1),
-
-// 右危险定界符：rightSafeDelimiter 的第一个字符 + rightSafeDelimiter
-rightUnsafeFlag = string.charAt(rightSafeDelimiter),
 
 // 缓存编译正则
 patternCache = {},
@@ -251,7 +240,17 @@ function removeComment(children: Node[]) {
 
 export function compile(content: string): Branch[] {
 
-  let nodeList: Branch[] = [],
+  // 左安全定界符
+  let leftSafeDelimiter = string.repeat(PUBLIC_CONFIG.leftDelimiter, 2),
+
+  // 右安全定界符
+  rightSafeDelimiter = string.repeat(PUBLIC_CONFIG.rightDelimiter, 2),
+
+  leftUnsafeFlag = PUBLIC_CONFIG.leftDelimiter,
+
+  rightUnsafeFlag = PUBLIC_CONFIG.rightDelimiter,
+
+  nodeList: Branch[] = [],
 
   nodeStack: Branch[] = [],
 

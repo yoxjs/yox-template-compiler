@@ -636,7 +636,7 @@ export function render(
     result = findValue(
       stack,
       params.root ? 0 : (params.offset ? index - params.offset : index),
-      params.keypath,
+      params.name,
       params.lookup,
       params.call
     )
@@ -695,8 +695,8 @@ export function render(
       renderExpressionIdentifier,
       renderExpressionMemberLiteral,
       renderExpressionCall,
-      toString,
-      currentKeypath
+      currentKeypath,
+      toString
     )
   }
 

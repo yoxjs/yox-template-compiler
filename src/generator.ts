@@ -11,6 +11,7 @@ import {
   MAGIC_VAR_EVENT,
   MAGIC_VAR_DATA,
   MAGIC_VAR_ITEM,
+  PUBLIC_CONFIG,
 } from 'yox-config/src/config'
 
 import isDef from 'yox-common/src/function/isDef'
@@ -62,70 +63,184 @@ magicVariables: string[] = [ MAGIC_VAR_KEYPATH, MAGIC_VAR_LENGTH, MAGIC_VAR_EVEN
 
 nodeGenerator = { },
 
-RENDER_ELEMENT_VNODE = 'renderElementVnode',
-
-RENDER_COMPONENT_VNODE = 'renderComponentVnode',
-
-RENDER_NATIVE_ATTRIBUTE = 'renderNativeAttribute',
-
-RENDER_NATIVE_PROPERTY = 'renderNativeProperty',
-
-RENDER_PROPERTY = 'renderProperty',
-
-RENDER_LAZY = 'renderLazy',
-
-RENDER_TRANSITION = 'renderTransition',
-
-GET_TRANSITION = 'getTransition',
-
-RENDER_MODEL = 'renderModel',
-
-GET_MODEL = 'getModel',
-
-RENDER_EVENT_METHOD = 'renderEventMethod',
-
-GET_EVENT_METHOD = 'getEventMethod',
-
-RENDER_EVENT_NAME = 'renderEventName',
-
-GET_EVENT_NAME = 'getEventName',
-
-RENDER_DIRECTIVE = 'renderDirective',
-
-GET_DIRECTIVE = 'getDirective',
-
-RENDER_SPREAD = 'renderSpread',
-
-RENDER_TEXT_VNODE = 'renderTextVnode',
-
-RENDER_COMMENT_VNODE = 'renderCommentVnode',
-
-RENDER_SLOT = 'renderSlot',
-
-RENDER_PARTIAL = 'renderPartial',
-
-RENDER_IMPORT = 'renderImport',
-
-RENDER_EACH = 'renderEach',
-
-RENDER_RANGE = 'renderRange',
-
-RENDER_EXPRESSION_IDENTIFIER = 'renderExpressionIdentifier',
-
-RENDER_EXPRESSION_MEMBER_LITERAL = 'renderExpressionMemberLiteral',
-
-RENDER_EXPRESSION_CALL = 'renderExpressionCall',
-
-TO_STRING = 'toString',
-
-ARG_STACK = 'argStack',
-
 RAW_METHOD = 'method'
 
+
+// 下面这些值需要根据外部配置才能确定
+let isUglify = constant.UNDEFINED,
+
+RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
+
+RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
+
+RENDER_NATIVE_ATTRIBUTE = constant.EMPTY_STRING,
+
+RENDER_NATIVE_PROPERTY = constant.EMPTY_STRING,
+
+RENDER_PROPERTY = constant.EMPTY_STRING,
+
+RENDER_LAZY = constant.EMPTY_STRING,
+
+RENDER_TRANSITION = constant.EMPTY_STRING,
+
+GET_TRANSITION = constant.EMPTY_STRING,
+
+RENDER_MODEL = constant.EMPTY_STRING,
+
+GET_MODEL = constant.EMPTY_STRING,
+
+RENDER_EVENT_METHOD = constant.EMPTY_STRING,
+
+GET_EVENT_METHOD = constant.EMPTY_STRING,
+
+RENDER_EVENT_NAME = constant.EMPTY_STRING,
+
+GET_EVENT_NAME = constant.EMPTY_STRING,
+
+RENDER_DIRECTIVE = constant.EMPTY_STRING,
+
+GET_DIRECTIVE = constant.EMPTY_STRING,
+
+RENDER_SPREAD = constant.EMPTY_STRING,
+
+RENDER_TEXT_VNODE = constant.EMPTY_STRING,
+
+RENDER_COMMENT_VNODE = constant.EMPTY_STRING,
+
+RENDER_SLOT = constant.EMPTY_STRING,
+
+RENDER_PARTIAL = constant.EMPTY_STRING,
+
+RENDER_IMPORT = constant.EMPTY_STRING,
+
+RENDER_EACH = constant.EMPTY_STRING,
+
+RENDER_RANGE = constant.EMPTY_STRING,
+
+RENDER_EXPRESSION_IDENTIFIER = constant.EMPTY_STRING,
+
+RENDER_EXPRESSION_MEMBER_LITERAL = constant.EMPTY_STRING,
+
+RENDER_EXPRESSION_CALL = constant.EMPTY_STRING,
+
+RENDER_MAGIC_VAR_KEYPATH = constant.EMPTY_STRING,
+
+RENDER_MAGIC_VAR_LENGTH = constant.EMPTY_STRING,
+
+RENDER_MAGIC_VAR_EVENT = constant.EMPTY_STRING,
+
+RENDER_MAGIC_VAR_DATA = constant.EMPTY_STRING,
+
+RENDER_MAGIC_VAR_ITEM = constant.EMPTY_STRING,
+
+TO_STRING = constant.EMPTY_STRING,
+
+ARG_STACK = constant.EMPTY_STRING
+
+
+function init() {
+
+  if (isUglify === PUBLIC_CONFIG.uglifyCompiled) {
+    return
+  }
+
+  if (PUBLIC_CONFIG.uglifyCompiled) {
+    RENDER_ELEMENT_VNODE = '_a'
+    RENDER_COMPONENT_VNODE = '_b'
+    RENDER_NATIVE_ATTRIBUTE = '_c'
+    RENDER_NATIVE_PROPERTY = '_d'
+    RENDER_PROPERTY = '_e'
+    RENDER_LAZY = '_f'
+    RENDER_TRANSITION = '_g'
+    GET_TRANSITION = '_h'
+    RENDER_MODEL = '_i'
+    GET_MODEL = '_j'
+    RENDER_EVENT_METHOD = '_k'
+    GET_EVENT_METHOD = '_l'
+    RENDER_EVENT_NAME = '_m'
+    GET_EVENT_NAME = '_n'
+    RENDER_DIRECTIVE = '_o'
+    GET_DIRECTIVE = '_p'
+    RENDER_SPREAD = '_q'
+    RENDER_TEXT_VNODE = '_r'
+    RENDER_COMMENT_VNODE = '_s'
+    RENDER_SLOT = '_t'
+    RENDER_PARTIAL = '_u'
+    RENDER_IMPORT = '_v'
+    RENDER_EACH = '_w'
+    RENDER_RANGE = '_x'
+    RENDER_EXPRESSION_IDENTIFIER = '_y'
+    RENDER_EXPRESSION_MEMBER_LITERAL = '_z'
+    RENDER_EXPRESSION_CALL = '_1'
+    RENDER_MAGIC_VAR_KEYPATH = '_2'
+    RENDER_MAGIC_VAR_LENGTH = '_3'
+    RENDER_MAGIC_VAR_EVENT = '_4'
+    RENDER_MAGIC_VAR_DATA = '_5'
+    RENDER_MAGIC_VAR_ITEM = '_6'
+    TO_STRING = '_7'
+    ARG_STACK = '_8'
+  }
+  else {
+    RENDER_ELEMENT_VNODE = 'renderElementVnode'
+    RENDER_COMPONENT_VNODE = 'renderComponentVnode'
+    RENDER_NATIVE_ATTRIBUTE = 'renderNativeAttribute'
+    RENDER_NATIVE_PROPERTY = 'renderNativeProperty'
+    RENDER_PROPERTY = 'renderProperty'
+    RENDER_LAZY = 'renderLazy'
+    RENDER_TRANSITION = 'renderTransition'
+    GET_TRANSITION = 'getTransition'
+    RENDER_MODEL = 'renderModel'
+    GET_MODEL = 'getModel'
+    RENDER_EVENT_METHOD = 'renderEventMethod'
+    GET_EVENT_METHOD = 'getEventMethod'
+    RENDER_EVENT_NAME = 'renderEventName'
+    GET_EVENT_NAME = 'getEventName'
+    RENDER_DIRECTIVE = 'renderDirective'
+    GET_DIRECTIVE = 'getDirective'
+    RENDER_SPREAD = 'renderSpread'
+    RENDER_TEXT_VNODE = 'renderTextVnode'
+    RENDER_COMMENT_VNODE = 'renderCommentVnode'
+    RENDER_SLOT = 'renderSlot'
+    RENDER_PARTIAL = 'renderPartial'
+    RENDER_IMPORT = 'renderImport'
+    RENDER_EACH = 'renderEach'
+    RENDER_RANGE = 'renderRange'
+    RENDER_EXPRESSION_IDENTIFIER = 'renderExpressionIdentifier'
+    RENDER_EXPRESSION_MEMBER_LITERAL = 'renderExpressionMemberLiteral'
+    RENDER_EXPRESSION_CALL = 'renderExpressionCall'
+    RENDER_MAGIC_VAR_KEYPATH = MAGIC_VAR_KEYPATH
+    RENDER_MAGIC_VAR_LENGTH = MAGIC_VAR_LENGTH
+    RENDER_MAGIC_VAR_EVENT = MAGIC_VAR_EVENT
+    RENDER_MAGIC_VAR_DATA = MAGIC_VAR_DATA
+    RENDER_MAGIC_VAR_ITEM = MAGIC_VAR_ITEM
+    TO_STRING = 'toString'
+    ARG_STACK = 'argStack'
+  }
+
+  isUglify = PUBLIC_CONFIG.uglifyCompiled
+
+}
+
 function transformIdentifier(node: ExpressionIdentifier) {
+  const { name } = node
   // 魔法变量，直接转换
-  if (array.has(magicVariables, node.name)) {
-    return generator.toRaw(node.name)
+  if (array.has(magicVariables, name)) {
+    switch (name) {
+      case MAGIC_VAR_KEYPATH:
+        return generator.toRaw(RENDER_MAGIC_VAR_KEYPATH)
+
+      case MAGIC_VAR_LENGTH:
+        return generator.toRaw(RENDER_MAGIC_VAR_LENGTH)
+
+      case MAGIC_VAR_EVENT:
+        return generator.toRaw(RENDER_MAGIC_VAR_EVENT)
+
+      case MAGIC_VAR_DATA:
+        return generator.toRaw(RENDER_MAGIC_VAR_DATA)
+
+      default:
+        return generator.toRaw(name)
+    }
   }
   // 把 this 转成 $item，方便直接读取
   // 避免不必要的查找，提升性能
@@ -134,9 +249,9 @@ function transformIdentifier(node: ExpressionIdentifier) {
     && node.lookup === constant.FALSE
     && node.offset === 0
   ) {
-    return node.name === constant.EMPTY_STRING
-      ? generator.toRaw(MAGIC_VAR_ITEM)
-      : generator.toRaw(MAGIC_VAR_ITEM + '.' + node.name)
+    return name === constant.EMPTY_STRING
+      ? generator.toRaw(RENDER_MAGIC_VAR_ITEM)
+      : generator.toRaw(RENDER_MAGIC_VAR_ITEM + '.' + name)
   }
 }
 
@@ -717,8 +832,8 @@ function getEventValue(node: Directive) {
           generator.toArray(callNode.args.map(stringifyExpressionArg)),
           [
             generator.toRaw(ARG_STACK),
-            generator.toRaw(MAGIC_VAR_EVENT),
-            generator.toRaw(MAGIC_VAR_DATA),
+            generator.toRaw(RENDER_MAGIC_VAR_EVENT),
+            generator.toRaw(RENDER_MAGIC_VAR_DATA),
           ]
         )
       )
@@ -962,9 +1077,9 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   isSpecial = to || from.type === exprNodeType.ARRAY || from.type === exprNodeType.OBJECT,
 
   args = [
-    generator.toRaw(MAGIC_VAR_KEYPATH),
-    generator.toRaw(MAGIC_VAR_LENGTH),
-    generator.toRaw(MAGIC_VAR_ITEM),
+    generator.toRaw(RENDER_MAGIC_VAR_KEYPATH),
+    generator.toRaw(RENDER_MAGIC_VAR_LENGTH),
+    generator.toRaw(RENDER_MAGIC_VAR_ITEM),
   ]
 
   if (index) {
@@ -1064,6 +1179,8 @@ nodeGenerator[nodeType.IMPORT] = function (node: Import) {
 }
 
 export function generate(node: Node): string {
+  init()
+  generator.init()
   return generator.generate(
     nodeGenerator[node.type](node),
     [
@@ -1094,8 +1211,8 @@ export function generate(node: Node): string {
       RENDER_EXPRESSION_IDENTIFIER,
       RENDER_EXPRESSION_MEMBER_LITERAL,
       RENDER_EXPRESSION_CALL,
+      RENDER_MAGIC_VAR_KEYPATH,
       TO_STRING,
-      MAGIC_VAR_KEYPATH,
     ]
   )
 }
