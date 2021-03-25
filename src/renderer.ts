@@ -478,20 +478,8 @@ export function render(
   renderSlot = function (name: string, render?: Function) {
 
     const vnodes = context.get(name)
-    if (vnodes) {
-      array.each(
-        vnodes,
-        function (vnode: VNode) {
-          vnode.slot = name
-          vnode.parent = context
-        }
-      )
-      return vnodes
-    }
-
-    if (render) {
-      return render()
-    }
+    return vnodes
+      || (render && render())
 
   },
 
