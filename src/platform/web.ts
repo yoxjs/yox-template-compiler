@@ -192,7 +192,7 @@ export function compatElement(element: Element) {
         if (name === 'type') {
           hasType = constant.TRUE
         }
-        else if (name === constant.RAW_VALUE) {
+        else if (name === 'value') {
           hasValue = constant.TRUE
         }
 

@@ -182,11 +182,11 @@ function removeComment(children: Node[]) {
   // 按照目前的解析逻辑，是根据定界符进行模板分拆
   // 一旦出现插值，children 长度必然大于 1
 
-  let openIndex = constant.MINUS_ONE,
+  let openIndex = -1,
 
   openText = constant.EMPTY_STRING,
 
-  closeIndex = constant.MINUS_ONE,
+  closeIndex = -1,
 
   closeText = constant.EMPTY_STRING
 
@@ -229,7 +229,7 @@ function removeComment(children: Node[]) {
             children.splice(startIndex, endIndex - startIndex + 1)
 
             // 重置，再继续寻找结束 index
-            openIndex = closeIndex = constant.MINUS_ONE
+            openIndex = closeIndex = -1
           }
         }
         else {

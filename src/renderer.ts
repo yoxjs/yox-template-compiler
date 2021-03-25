@@ -63,7 +63,7 @@ export function render(
 
   localPartials: Record<string, Function> = { },
 
-  findValue = function (stack: any[], index: number, key: string, lookup: boolean, call: boolean, defaultKeypath?: string): ValueHolder {
+  findValue = function (stack: string[], index: number, key: string, lookup: boolean, call: boolean, defaultKeypath?: string): ValueHolder {
 
     let baseKeypath = stack[index],
 
@@ -298,7 +298,7 @@ export function render(
     }
   },
 
-  createEventMethodListener = function (isComponent: boolean, name: string, args: Function | void, stack: any[]): Listener {
+  createEventMethodListener = function (isComponent: boolean, name: string, args: Function | void, stack: string[]): Listener {
     return function (event: CustomEvent, data?: Data) {
 
       // 监听组件事件不用处理父组件传下来的事件
@@ -366,13 +366,13 @@ export function render(
     }
   },
 
-  createDirectiveGetter = function (getter: Function, stack: any[]): () => any {
+  createDirectiveGetter = function (getter: Function, stack: string[]): () => any {
     return function () {
       return getter(stack)
     }
   },
 
-  createDirectiveHandler = function (name: string, args: Function | void, stack: any[]) {
+  createDirectiveHandler = function (name: string, args: Function | void, stack: string[]) {
     return function () {
 
       let methodArgs: any = constant.UNDEFINED
@@ -457,8 +457,8 @@ export function render(
       tag: TAG_TEXT,
       isText: constant.TRUE,
       text: value,
-      context,
       keypath: currentKeypath,
+      context,
     }
   },
 
@@ -655,12 +655,12 @@ export function render(
 
   renderExpressionIdentifier = function (params: Data) {
 
-    const myStack = params.stack || keypathStack,
+    const stack = params.stack || keypathStack,
 
-    index = myStack.length - 1,
+    index = stack.length - 1,
 
     result = findValue(
-      myStack,
+      stack,
       params.root ? 0 : (params.offset ? index - params.offset : index),
       params.keypath,
       params.lookup,
@@ -688,12 +688,11 @@ export function render(
     holder: boolean | void
   ) {
     globalHolder.keypath = constant.UNDEFINED
-    // 当 holder 为 true, args 为空时，args 会传入 false
-    globalHolder.value = execute(fn, context, args || constant.UNDEFINED)
+    globalHolder.value = execute(fn, context, args)
     return holder ? globalHolder : globalHolder.value
   },
 
-  renderTemplate = function (render) {
+  renderTemplate = function (render: Function) {
     return render(
       renderElementVnode,
       renderComponentVnode,
@@ -723,7 +722,7 @@ export function render(
       renderExpressionMemberLiteral,
       renderExpressionCall,
       toString,
-      array.last(keypathStack)
+      currentKeypath
     )
   }
 
