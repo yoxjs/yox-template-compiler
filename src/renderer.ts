@@ -1,8 +1,5 @@
 import {
-  DIRECTIVE_MODEL,
   DIRECTIVE_CUSTOM,
-  MAGIC_VAR_KEYPATH,
-  MAGIC_VAR_LENGTH,
 } from 'yox-config/src/config'
 
 import {
@@ -11,10 +8,6 @@ import {
   LazyValue,
   ValueHolder,
 } from 'yox-type/src/type'
-
-import {
-  VNode,
-} from 'yox-type/src/vnode'
 
 import {
   DirectiveHooks,
@@ -167,7 +160,6 @@ export function render(
   ) {
 
     data.context = context
-    data.keypath = currentKeypath
 
     if (attrs) {
       normalizeAttributes(data, attrs)
@@ -190,7 +182,6 @@ export function render(
   ) {
 
     data.context = context
-    data.keypath = currentKeypath
 
     if (attrs) {
       normalizeAttributes(data, attrs)
@@ -457,7 +448,6 @@ export function render(
       tag: TAG_TEXT,
       isText: constant.TRUE,
       text: value,
-      keypath: currentKeypath,
       context,
     }
   },
@@ -469,18 +459,14 @@ export function render(
       tag: TAG_COMMENT,
       isComment: constant.TRUE,
       text: constant.EMPTY_STRING,
-      keypath: currentKeypath,
       context,
     }
   },
 
   // <slot name="xx"/>
   renderSlot = function (name: string, render?: Function) {
-
-    const vnodes = context.get(name)
-    return vnodes
+    return context.get(name)
       || (render && render())
-
   },
 
   // {{#partial name}}
