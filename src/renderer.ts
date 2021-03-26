@@ -165,7 +165,6 @@ export function render(
   ) {
 
     data.context = context
-    data.keypath = currentKeypath
 
     if (attrs) {
       normalizeAttributes(data, attrs)
@@ -188,7 +187,6 @@ export function render(
   ) {
 
     data.context = context
-    data.keypath = currentKeypath
 
     if (attrs) {
       normalizeAttributes(data, attrs)
