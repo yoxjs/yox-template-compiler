@@ -320,7 +320,7 @@ function generateAttributeValue(value: any, expr: ExpressionNode | void, childre
 }
 
 function generateNodesToArray(nodes: Node[]) {
-  return generator.toArray(
+  return generator.toList(
     nodes.map(
       function (node) {
         return nodeGenerator[node.type](node)
@@ -341,19 +341,19 @@ function generateNodesToStringIfNeeded(children: Node[]) {
   if (array.last(stringStack)) {
     return children.length === 1
       ? result[0]
-      : generator.toArray(
+      : generator.toList(
           result,
           generator.JOIN_EMPTY
         )
   }
 
-  return generator.toArray(result)
+  return generator.toList(result)
 
 }
 
 function getComponentSlots(children: Node[]) {
 
-  const result = generator.toObject(),
+  const result = generator.toMap(),
 
   slots: Record<string, Node[]> = { },
 
@@ -413,16 +413,16 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   let { tag, dynamicTag, isComponent, ref, key, html, text, attrs, children } = node,
 
-  data = generator.toObject(),
+  data = generator.toMap(),
 
-  outputAttrs: generator.GBase = generator.toPrimitive(constant.UNDEFINED),
-  outputChildren: generator.GBase = generator.toPrimitive(constant.UNDEFINED),
-  outputSlots: generator.GBase = generator.toPrimitive(constant.UNDEFINED)
+  outputAttrs: generator.Base = generator.toPrimitive(constant.UNDEFINED),
+  outputChildren: generator.Base = generator.toPrimitive(constant.UNDEFINED),
+  outputSlots: generator.Base = generator.toPrimitive(constant.UNDEFINED)
 
   if (tag === constant.RAW_SLOT) {
     // slot 不可能有 html、text 属性
     // 因此 slot 的子节点只存在于 children 中
-    const args: generator.GBase[] = [
+    const args: generator.Base[] = [
       generator.toPrimitive(SLOT_DATA_PREFIX + node.name)
     ]
     if (children) {
@@ -492,17 +492,17 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   if (attrs) {
     // 先收集静态属性
-    let nativeAttributes = generator.toObject(),
+    let nativeAttributes = generator.toMap(),
 
-    nativeProperties = generator.toObject(),
+    nativeProperties = generator.toMap(),
 
-    properties = generator.toObject(),
+    properties = generator.toMap(),
 
-    directives = generator.toObject(),
+    directives = generator.toMap(),
 
-    events = generator.toObject(),
+    events = generator.toMap(),
 
-    lazy = generator.toObject(),
+    lazy = generator.toMap(),
 
     dynamicAttrs: any[] = [ ]
 
@@ -650,7 +650,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
     else {
 
-      let isStatic = constant.TRUE, newChildren = generator.toArray()
+      let isStatic = constant.TRUE, newChildren = generator.toList()
 
       array.each(
         children,
@@ -777,7 +777,7 @@ function getModelValue(node: Directive) {
 
 function getEventValue(node: Directive) {
 
-  const params = generator.toObject()
+  const params = generator.toMap()
 
   params.set(
     'key',
@@ -838,7 +838,7 @@ function getEventValue(node: Directive) {
       params.set(
         'args',
         generator.toAnonymousFunction(
-          generator.toArray(callNode.args.map(generateExpressionArg)),
+          generator.toList(callNode.args.map(generateExpressionArg)),
           [
             generator.toRaw(ARG_STACK),
             generator.toRaw(RENDER_MAGIC_VAR_EVENT),
@@ -871,7 +871,7 @@ function getDirectiveKey(node: Directive) {
 
 function getDirectiveValue(node: Directive) {
 
-  const params = generator.toObject()
+  const params = generator.toMap()
 
   params.set(
     'key',
@@ -918,7 +918,7 @@ function getDirectiveValue(node: Directive) {
         params.set(
           'args',
           generator.toAnonymousFunction(
-            generator.toArray(callNode.args.map(generateExpressionArg)),
+            generator.toList(callNode.args.map(generateExpressionArg)),
             [
               generator.toRaw(ARG_STACK),
             ]
