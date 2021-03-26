@@ -319,7 +319,7 @@ function generateAttributeValue(value: any, expr: ExpressionNode | void, childre
   return generator.toPrimitive(constant.UNDEFINED)
 }
 
-function generateNodesToArray(nodes: Node[]) {
+function generateNodesToList(nodes: Node[]) {
   return generator.toList(
     nodes.map(
       function (node) {
@@ -398,7 +398,7 @@ function getComponentSlots(children: Node[]) {
     function (children: Node[], name: string) {
       result.set(
         name,
-        generateNodesToArray(children)
+        generateNodesToList(children)
       )
     }
   )
@@ -429,7 +429,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       array.push(
         args,
         generator.toAnonymousFunction(
-          generateNodesToArray(children)
+          generateNodesToList(children)
         )
       )
     }
@@ -639,7 +639,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       )
     }
     if (dynamicAttrs.length) {
-      outputAttrs = generateNodesToArray(dynamicAttrs)
+      outputAttrs = generateNodesToList(dynamicAttrs)
     }
   }
 
@@ -1111,7 +1111,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
 
   // compiler 保证了 children 一定有值
   const renderChildren = generator.toAnonymousFunction(
-    generateNodesToArray(node.children as Node[]),
+    generateNodesToList(node.children as Node[]),
     args
   )
 
@@ -1130,7 +1130,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   // compiler 保证了 children 一定有值
   const renderElse = next
     ? generator.toAnonymousFunction(
-        generateNodesToArray(next.children as Node[])
+        generateNodesToList(next.children as Node[])
       )
     : generator.toPrimitive(constant.UNDEFINED)
 
@@ -1169,7 +1169,7 @@ nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
     [
       generator.toPrimitive(node.name),
       generator.toAnonymousFunction(
-        generateNodesToArray(node.children as Node[])
+        generateNodesToList(node.children as Node[])
       )
     ]
   )
