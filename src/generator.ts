@@ -69,6 +69,8 @@ RAW_METHOD = 'method'
 // 下面这些值需要根据外部配置才能确定
 let isUglify = constant.UNDEFINED,
 
+isRuntimeExpression = constant.FALSE,
+
 RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
 
 RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
@@ -214,7 +216,7 @@ function init() {
     RENDER_MAGIC_VAR_DATA = MAGIC_VAR_DATA
     RENDER_MAGIC_VAR_ITEM = MAGIC_VAR_ITEM
     TO_STRING = 'toString'
-    ARG_STACK = 'argStack'
+    ARG_STACK = 'stack'
   }
 
   isUglify = PUBLIC_CONFIG.uglifyCompiled
@@ -222,7 +224,9 @@ function init() {
 }
 
 function transformIdentifier(node: ExpressionIdentifier) {
+
   const { name } = node
+
   // 魔法变量，直接转换
   if (array.has(magicVariables, name)) {
     switch (name) {
@@ -242,9 +246,10 @@ function transformIdentifier(node: ExpressionIdentifier) {
         return generator.toRaw(name)
     }
   }
+
   // 把 this 转成 $item，方便直接读取
   // 避免不必要的查找，提升性能
-  if (array.last(specialEachStack)
+  if ((array.last(specialEachStack) || isRuntimeExpression)
     && node.root === constant.FALSE
     && node.lookup === constant.FALSE
     && node.offset === 0
@@ -253,9 +258,10 @@ function transformIdentifier(node: ExpressionIdentifier) {
       ? generator.toRaw(RENDER_MAGIC_VAR_ITEM)
       : generator.toRaw(RENDER_MAGIC_VAR_ITEM + '.' + name)
   }
+
 }
 
-function stringifyExpression(expr: ExpressionNode) {
+function generateExpression(expr: ExpressionNode) {
   return exprGenerator.generate(
     expr,
     transformIdentifier,
@@ -265,7 +271,7 @@ function stringifyExpression(expr: ExpressionNode) {
   )
 }
 
-function stringifyExpressionHolder(expr: ExpressionNode) {
+function generateExpressionHolder(expr: ExpressionNode) {
   return exprGenerator.generate(
     expr,
     transformIdentifier,
@@ -276,8 +282,9 @@ function stringifyExpressionHolder(expr: ExpressionNode) {
   )
 }
 
-function stringifyExpressionArg(expr: ExpressionNode) {
-  return exprGenerator.generate(
+function generateExpressionArg(expr: ExpressionNode) {
+  isRuntimeExpression = constant.TRUE
+  const result = exprGenerator.generate(
     expr,
     transformIdentifier,
     RENDER_EXPRESSION_IDENTIFIER,
@@ -286,15 +293,17 @@ function stringifyExpressionArg(expr: ExpressionNode) {
     constant.FALSE,
     ARG_STACK
   )
+  isRuntimeExpression = constant.FALSE
+  return result
 }
 
-function stringifyAttributeValue(value: any, expr: ExpressionNode | void, children: Node[] | void) {
+function generateAttributeValue(value: any, expr: ExpressionNode | void, children: Node[] | void) {
   if (isDef(value)) {
     return generator.toPrimitive(value)
   }
   // 只有一个表达式时，保持原始类型
   if (expr) {
-    return stringifyExpression(expr)
+    return generateExpression(expr)
   }
   // 多个值拼接时，要求是字符串
   if (children) {
@@ -303,14 +312,14 @@ function stringifyAttributeValue(value: any, expr: ExpressionNode | void, childr
     // compiler 会把单个插值编译成 expr
     // 因此走到这里，一定是多个插值或是单个特殊插值（比如 If)
     array.push(stringStack, constant.TRUE)
-    const result = stringifyNodesToStringIfNeeded(children)
+    const result = generateNodesToStringIfNeeded(children)
     array.pop(stringStack)
     return result
   }
   return generator.toPrimitive(constant.UNDEFINED)
 }
 
-function stringifyNodesToArray(nodes: Node[]) {
+function generateNodesToArray(nodes: Node[]) {
   return generator.toArray(
     nodes.map(
       function (node) {
@@ -320,7 +329,7 @@ function stringifyNodesToArray(nodes: Node[]) {
   )
 }
 
-function stringifyNodesToStringIfNeeded(children: Node[]) {
+function generateNodesToStringIfNeeded(children: Node[]) {
 
   const result = children.map(
     function (node) {
@@ -346,14 +355,14 @@ function getComponentSlots(children: Node[]) {
 
   const result = generator.toObject(),
 
-  slots: Record<string, Node[]> = {},
+  slots: Record<string, Node[]> = { },
 
   addSlot = function (name: string, nodes: Node[] | void) {
 
     if (!array.falsy(nodes)) {
       name = SLOT_DATA_PREFIX + name
       array.push(
-        slots[name] || (slots[name] = []),
+        slots[name] || (slots[name] = [ ]),
         nodes as Node[]
       )
     }
@@ -389,7 +398,7 @@ function getComponentSlots(children: Node[]) {
     function (children: Node[], name: string) {
       result.set(
         name,
-        stringifyNodesToArray(children)
+        generateNodesToArray(children)
       )
     }
   )
@@ -420,7 +429,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       array.push(
         args,
         generator.toAnonymousFunction(
-          stringifyNodesToArray(children)
+          generateNodesToArray(children)
         )
       )
     }
@@ -434,7 +443,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   data.set(
     'tag',
     dynamicTag
-        ? stringifyExpression(dynamicTag)
+        ? generateExpression(dynamicTag)
         : generator.toPrimitive(tag)
   )
 
@@ -445,13 +454,13 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   if (ref) {
     data.set(
       'ref',
-      stringifyAttributeValue(ref.value, ref.expr, ref.children)
+      generateAttributeValue(ref.value, ref.expr, ref.children)
     )
   }
   if (key) {
     data.set(
       'key',
-      stringifyAttributeValue(key.value, key.expr, key.children)
+      generateAttributeValue(key.value, key.expr, key.children)
     )
   }
   if (html) {
@@ -462,7 +471,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
           : generator.toCall(
               TO_STRING,
               [
-                stringifyExpression(html as ExpressionNode)
+                generateExpression(html as ExpressionNode)
               ]
             )
     )
@@ -475,7 +484,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
           : generator.toCall(
               TO_STRING,
               [
-                stringifyExpression(text as ExpressionNode)
+                generateExpression(text as ExpressionNode)
               ]
             )
     )
@@ -495,14 +504,14 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
     lazy = generator.toObject(),
 
-    dynamicAttrs: any[] = []
+    dynamicAttrs: any[] = [ ]
 
     array.each(
       attrs,
       function (attr) {
 
         if (attr.type === nodeType.ATTRIBUTE) {
-          const attributeNode = attr as Attribute, value = stringifyAttributeValue(attributeNode.value, attributeNode.expr, attributeNode.children)
+          const attributeNode = attr as Attribute, value = generateAttributeValue(attributeNode.value, attributeNode.expr, attributeNode.children)
           if (isComponent) {
             properties.set(
               attributeNode.name,
@@ -517,7 +526,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
           }
         }
         else if (attr.type === nodeType.PROPERTY) {
-          const propertyNode = attr as Property, value = stringifyAttributeValue(propertyNode.value, propertyNode.expr, propertyNode.children)
+          const propertyNode = attr as Property, value = generateAttributeValue(propertyNode.value, propertyNode.expr, propertyNode.children)
           nativeProperties.set(
             propertyNode.name,
             value
@@ -630,7 +639,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       )
     }
     if (dynamicAttrs.length) {
-      outputAttrs = stringifyNodesToArray(dynamicAttrs)
+      outputAttrs = generateNodesToArray(dynamicAttrs)
     }
   }
 
@@ -726,7 +735,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
 nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
 
-  const value = stringifyAttributeValue(node.value, node.expr, node.children)
+  const value = generateAttributeValue(node.value, node.expr, node.children)
 
   return generator.toCall(
     array.last(componentStack)
@@ -742,7 +751,7 @@ nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
 
 nodeGenerator[nodeType.PROPERTY] = function (node: Property) {
 
-  const value = stringifyAttributeValue(node.value, node.expr, node.children)
+  const value = generateAttributeValue(node.value, node.expr, node.children)
 
   return generator.toCall(
     RENDER_NATIVE_PROPERTY,
@@ -763,7 +772,7 @@ function getTransitionValue(node: Directive) {
 }
 
 function getModelValue(node: Directive) {
-  return stringifyExpressionHolder(node.expr as ExpressionNode)
+  return generateExpressionHolder(node.expr as ExpressionNode)
 }
 
 function getEventValue(node: Directive) {
@@ -829,7 +838,7 @@ function getEventValue(node: Directive) {
       params.set(
         'args',
         generator.toAnonymousFunction(
-          generator.toArray(callNode.args.map(stringifyExpressionArg)),
+          generator.toArray(callNode.args.map(generateExpressionArg)),
           [
             generator.toRaw(ARG_STACK),
             generator.toRaw(RENDER_MAGIC_VAR_EVENT),
@@ -909,7 +918,7 @@ function getDirectiveValue(node: Directive) {
         params.set(
           'args',
           generator.toAnonymousFunction(
-            generator.toArray(callNode.args.map(stringifyExpressionArg)),
+            generator.toArray(callNode.args.map(generateExpressionArg)),
             [
               generator.toRaw(ARG_STACK),
             ]
@@ -926,7 +935,7 @@ function getDirectiveValue(node: Directive) {
         params.set(
           'getter',
           generator.toAnonymousFunction(
-            stringifyExpressionArg(expr),
+            generateExpressionArg(expr),
             [
               generator.toRaw(ARG_STACK)
             ]
@@ -999,7 +1008,7 @@ nodeGenerator[nodeType.SPREAD] = function (node: Spread) {
   return generator.toCall(
     RENDER_SPREAD,
     [
-      stringifyExpression(node.expr)
+      generateExpression(node.expr)
     ]
   )
 }
@@ -1021,7 +1030,7 @@ nodeGenerator[nodeType.TEXT] = function (node: Text) {
 
 nodeGenerator[nodeType.EXPRESSION] = function (node: Expression) {
 
-  const result = stringifyExpression(node.expr)
+  const result = generateExpression(node.expr)
 
   return array.last(vnodeStack)
     ? generator.toCall(
@@ -1049,8 +1058,8 @@ nodeGenerator[nodeType.ELSE_IF] = function (node: If | ElseIf) {
     : generator.toPrimitive(constant.UNDEFINED)
 
   return generator.toTernary(
-    stringifyExpression(node.expr),
-    (children && stringifyNodesToStringIfNeeded(children)) || defaultValue,
+    generateExpression(node.expr),
+    (children && generateNodesToStringIfNeeded(children)) || defaultValue,
     next ? nodeGenerator[next.type](next) : defaultValue
   )
 
@@ -1065,7 +1074,7 @@ nodeGenerator[nodeType.ELSE] = function (node: Else) {
     : generator.toPrimitive(constant.UNDEFINED)
 
   return children
-    ? stringifyNodesToStringIfNeeded(children)
+    ? generateNodesToStringIfNeeded(children)
     : defaultValue
 
 }
@@ -1102,7 +1111,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
 
   // compiler 保证了 children 一定有值
   const renderChildren = generator.toAnonymousFunction(
-    stringifyNodesToArray(node.children as Node[]),
+    generateNodesToArray(node.children as Node[]),
     args
   )
 
@@ -1121,7 +1130,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   // compiler 保证了 children 一定有值
   const renderElse = next
     ? generator.toAnonymousFunction(
-        stringifyNodesToArray(next.children as Node[])
+        generateNodesToArray(next.children as Node[])
       )
     : generator.toPrimitive(constant.UNDEFINED)
 
@@ -1131,8 +1140,8 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
     return generator.toCall(
       RENDER_RANGE,
       [
-        stringifyExpression(from),
-        stringifyExpression(to),
+        generateExpression(from),
+        generateExpression(to),
         generator.toPrimitive(equal),
         renderChildren,
         renderElse,
@@ -1145,7 +1154,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   return generator.toCall(
     RENDER_EACH,
     [
-      stringifyExpressionHolder(from),
+      generateExpressionHolder(from),
       renderChildren,
       renderElse,
     ]
@@ -1160,7 +1169,7 @@ nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
     [
       generator.toPrimitive(node.name),
       generator.toAnonymousFunction(
-        stringifyNodesToArray(node.children as Node[])
+        generateNodesToArray(node.children as Node[])
       )
     ]
   )

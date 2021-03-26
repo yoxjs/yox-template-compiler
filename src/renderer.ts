@@ -160,6 +160,7 @@ export function render(
   ) {
 
     data.context = context
+    data.keypath = currentKeypath
 
     if (attrs) {
       normalizeAttributes(data, attrs)
@@ -182,6 +183,7 @@ export function render(
   ) {
 
     data.context = context
+    data.keypath = currentKeypath
 
     if (attrs) {
       normalizeAttributes(data, attrs)
@@ -511,9 +513,7 @@ export function render(
           renderChildren(
             currentKeypath || constant.EMPTY_STRING,
             length,
-            needKeypath
-              ? constant.UNDEFINED
-              : value[i],
+            value[i],
             i
           )
         )
@@ -530,9 +530,7 @@ export function render(
           renderChildren(
             currentKeypath || constant.EMPTY_STRING,
             constant.UNDEFINED,
-            needKeypath
-              ? constant.UNDEFINED
-              : value[key],
+            value[key]
             key
           )
         )
