@@ -504,6 +504,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
     lazy = generator.toMap(),
 
+    // 最后收集动态属性
     dynamicAttrs: any[] = [ ]
 
     array.each(
@@ -834,8 +835,9 @@ function getEventValue(node: Directive) {
 
     // 为了实现运行时动态收集参数，这里序列化成函数
     if (!array.falsy(callNode.args)) {
-      // args 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
-      params.set(
+      const runtime = generator.toMap()
+      params.set('runtime', runtime)
+      runtime.set(
         'args',
         generator.toAnonymousFunction(
           generator.toList(callNode.args.map(generateExpressionArg)),
@@ -914,8 +916,10 @@ function getDirectiveValue(node: Directive) {
 
       // 为了实现运行时动态收集参数，这里序列化成函数
       if (!array.falsy(callNode.args)) {
-        // args 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
-        params.set(
+        const runtime = generator.toMap()
+        params.set('runtime', runtime)
+
+        runtime.set(
           'args',
           generator.toAnonymousFunction(
             generator.toList(callNode.args.map(generateExpressionArg)),
@@ -932,8 +936,11 @@ function getDirectiveValue(node: Directive) {
       // 取值函数
       // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
       if (expr.type !== exprNodeType.LITERAL) {
-        params.set(
-          'getter',
+        const runtime = generator.toMap()
+        params.set('runtime', runtime)
+
+        runtime.set(
+          'arg',
           generator.toAnonymousFunction(
             generateExpressionArg(expr),
             [

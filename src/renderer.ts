@@ -15,6 +15,11 @@ import {
 } from 'yox-type/src/hooks'
 
 import {
+  EventRuntime,
+  DirectiveRuntime,
+} from 'yox-type/src/vnode'
+
+import {
   YoxInterface,
 } from 'yox-type/src/yox'
 
@@ -291,7 +296,7 @@ export function render(
     }
   },
 
-  createEventMethodListener = function (isComponent: boolean, name: string, args: Function | void, stack: string[]): Listener {
+  createEventMethodListener = function (isComponent: boolean, name: string, runtime: EventRuntime | void): Listener {
     return function (event: CustomEvent, data?: Data) {
 
       // 监听组件事件不用处理父组件传下来的事件
@@ -301,8 +306,8 @@ export function render(
 
       let methodArgs: any
 
-      if (args) {
-        methodArgs = args(stack, event, data)
+      if (runtime) {
+        methodArgs = runtime.args(runtime.stack, event, data)
         // 1 个或 0 个参数可优化调用方式，即 method.call 或直接调用函数
         if (methodArgs.length < 2) {
           methodArgs = methodArgs[0]
@@ -330,13 +335,18 @@ export function render(
   },
 
   getEventMethod = function (params: Data) {
+    const { runtime } = params
+    if (runtime) {
+      runtime.stack = keypathStack
+    }
     return {
       key: params.key,
       value: params.value,
       name: params.from,
       ns: params.fromNs,
       isNative: params.isNative,
-      listener: createEventMethodListener(params.isComponent, params.method, params.args, keypathStack),
+      listener: createEventMethodListener(params.isComponent, params.method, runtime),
+      runtime,
     }
   },
 
@@ -359,19 +369,19 @@ export function render(
     }
   },
 
-  createDirectiveGetter = function (getter: Function, stack: string[]): () => any {
+  createDirectiveGetter = function (runtime: DirectiveRuntime): () => any {
     return function () {
-      return getter(stack)
+      return (runtime.arg as Function)(runtime.stack)
     }
   },
 
-  createDirectiveHandler = function (name: string, args: Function | void, stack: string[]) {
+  createDirectiveHandler = function (name: string, runtime: DirectiveRuntime | void) {
     return function () {
 
       let methodArgs: any = constant.UNDEFINED
 
-      if (args) {
-        methodArgs = args(stack)
+      if (runtime) {
+        methodArgs = (runtime.args as Function)(runtime.stack)
         // 1 个或 0 个参数可优化调用方式，即 method.call 或直接调用函数
         if (methodArgs.length < 2) {
           methodArgs = methodArgs[0]
@@ -396,23 +406,27 @@ export function render(
 
   getDirective = function (params: Data) {
 
-    const hooks = directives[params.name]
+    const { name, runtime } = params, hooks = directives[name]
+    if (runtime) {
+      runtime.stack = keypathStack
+    }
 
     if (process.env.NODE_ENV === 'development') {
       if (!hooks) {
-        logger.fatal(`The directive "${params.name}" can't be found.`)
+        logger.fatal(`The directive "${name}" can't be found.`)
       }
     }
 
     return {
       ns: DIRECTIVE_CUSTOM,
       key: params.key,
-      name: params.name,
+      name,
       value: params.value,
       modifier: params.modifier,
+      getter: params.getter ? createDirectiveGetter(runtime) : constant.UNDEFINED,
+      handler: params.method ? createDirectiveHandler(params.method, runtime) : constant.UNDEFINED,
       hooks,
-      getter: params.getter ? createDirectiveGetter(params.getter, keypathStack) : constant.UNDEFINED,
-      handler: params.method ? createDirectiveHandler(params.method, params.args, keypathStack) : constant.UNDEFINED,
+      runtime,
     }
 
   },
