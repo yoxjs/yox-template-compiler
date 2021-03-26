@@ -423,7 +423,7 @@ export function render(
       name,
       value: params.value,
       modifier: params.modifier,
-      getter: params.getter ? createDirectiveGetter(runtime) : constant.UNDEFINED,
+      getter: runtime && runtime.arg ? createDirectiveGetter(runtime) : constant.UNDEFINED,
       handler: params.method ? createDirectiveHandler(params.method, runtime) : constant.UNDEFINED,
       hooks,
       runtime,
