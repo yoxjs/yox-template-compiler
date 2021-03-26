@@ -351,7 +351,7 @@ function generateNodesToStringIfNeeded(children: Node[]) {
 
 }
 
-function getComponentSlots(children: Node[]) {
+function generateComponentSlots(children: Node[]) {
 
   const result = generator.toMap(),
 
@@ -646,7 +646,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   if (children) {
     vnodeStack[vnodeStack.length - 1] = constant.TRUE
     if (isComponent) {
-      outputSlots = getComponentSlots(children)
+      outputSlots = generateComponentSlots(children)
     }
     else {
 
