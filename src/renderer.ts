@@ -371,7 +371,7 @@ export function render(
 
   createDirectiveGetter = function (runtime: DirectiveRuntime): () => any {
     return function () {
-      return (runtime.arg as Function)(runtime.stack)
+      return (runtime.expr as Function)(runtime.stack)
     }
   },
 
@@ -423,7 +423,7 @@ export function render(
       name,
       value: params.value,
       modifier: params.modifier,
-      getter: runtime && runtime.arg ? createDirectiveGetter(runtime) : constant.UNDEFINED,
+      getter: runtime && runtime.expr ? createDirectiveGetter(runtime) : constant.UNDEFINED,
       handler: params.method ? createDirectiveHandler(params.method, runtime) : constant.UNDEFINED,
       hooks,
       runtime,
@@ -544,7 +544,7 @@ export function render(
           renderChildren(
             currentKeypath || constant.EMPTY_STRING,
             constant.UNDEFINED,
-            value[key]
+            value[key],
             key
           )
         )

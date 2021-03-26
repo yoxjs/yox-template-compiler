@@ -940,7 +940,7 @@ function getDirectiveValue(node: Directive) {
         params.set('runtime', runtime)
 
         runtime.set(
-          'arg',
+          'expr',
           generator.toAnonymousFunction(
             generateExpressionArg(expr),
             [
