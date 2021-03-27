@@ -41,10 +41,6 @@ import Observer from 'yox-observer/src/Observer'
 
 import * as field from './field'
 
-const TAG_TEXT = '#',
-
-TAG_COMMENT = '!'
-
 export function render(
   context: YoxInterface,
   observer: Observer,
@@ -459,7 +455,6 @@ export function render(
 
   renderTextVnode = function (value: string) {
     return {
-      tag: TAG_TEXT,
       isText: constant.TRUE,
       text: value,
       context,
@@ -467,10 +462,7 @@ export function render(
   },
 
   renderCommentVnode = function () {
-    // 注释节点和文本节点需要有个区分
-    // 如果两者都没有 tag，则 patchVnode 时，会认为两者是 patchable 的
     return {
-      tag: TAG_COMMENT,
       isComment: constant.TRUE,
       text: constant.EMPTY_STRING,
       context,
