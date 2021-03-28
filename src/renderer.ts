@@ -311,11 +311,15 @@ export function render(
         methodArgs = data ? [event, data] : event
       }
 
-      return execute(
+      const result = execute(
         context[name],
         context,
         methodArgs
       )
+
+      if (result === constant.FALSE) {
+        event.prevent().stop()
+      }
 
     }
   },
