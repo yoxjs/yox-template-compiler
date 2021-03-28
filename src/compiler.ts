@@ -22,7 +22,6 @@ import {
   MAGIC_VAR_ITEM,
   SLOT_NAME_DEFAULT,
   MODIFER_NATIVE,
-  PUBLIC_CONFIG,
 } from 'yox-config/src/config'
 
 import {
@@ -241,14 +240,14 @@ function removeComment(children: Node[]) {
 export function compile(content: string): Branch[] {
 
   // 左安全定界符
-  let leftSafeDelimiter = string.repeat(PUBLIC_CONFIG.leftDelimiter, 2),
+  let leftSafeDelimiter = string.repeat(constant.PUBLIC_CONFIG.leftDelimiter, 2),
 
   // 右安全定界符
-  rightSafeDelimiter = string.repeat(PUBLIC_CONFIG.rightDelimiter, 2),
+  rightSafeDelimiter = string.repeat(constant.PUBLIC_CONFIG.rightDelimiter, 2),
 
-  leftUnsafeFlag = PUBLIC_CONFIG.leftDelimiter,
+  leftUnsafeFlag = constant.PUBLIC_CONFIG.leftDelimiter,
 
-  rightUnsafeFlag = PUBLIC_CONFIG.rightDelimiter,
+  rightUnsafeFlag = constant.PUBLIC_CONFIG.rightDelimiter,
 
   nodeList: Branch[] = [],
 
@@ -357,15 +356,6 @@ export function compile(content: string): Branch[] {
       }
     }
 
-    // 当 branchNode 出栈时，它的 isStatic 就彻底固定下来，不会再变了
-    // 这时如果它不是静态节点，则父节点也不是静态节点
-    if (parentBranchNode
-      && parentBranchNode.isStatic
-      && !branchNode.isStatic
-    ) {
-      parentBranchNode.isStatic = constant.FALSE
-    }
-
     let { children } = branchNode
 
     // 先处理 children.length 大于 1 的情况，因为这里会有一些优化，导致最后的 children.length 不一定大于 0
@@ -446,6 +436,16 @@ export function compile(content: string): Branch[] {
           bindSpecialAttr(currentElement, branchNode as Attribute)
         }
       }
+    }
+
+    // 弹出过程可能会修改 branchNode.isStatic，因此这段放在最后执行
+    // 当 branchNode 出栈时，它的 isStatic 就彻底固定下来，不会再变了
+    // 这时如果它不是静态节点，则父节点也不是静态节点
+    if (parentBranchNode
+      && parentBranchNode.isStatic
+      && !branchNode.isStatic
+    ) {
+      parentBranchNode.isStatic = constant.FALSE
     }
 
     return branchNode
@@ -775,6 +775,10 @@ export function compile(content: string): Branch[] {
 
     element[name] = isStringValueRequired ? value : attr
     replaceChild(attr)
+
+    if (attr.isStatic) {
+      attr.isStatic = constant.FALSE
+    }
 
   },
 

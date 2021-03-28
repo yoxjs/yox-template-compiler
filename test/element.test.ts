@@ -233,6 +233,15 @@ test('静态元素', () => {
   expect(ast[0].isStatic).toBe(true)
   expect((ast[0].children as Node[])[0].isStatic).toBe(true)
 
+  ast = compile('<div ref="xx"></div>')
+  expect(ast[0].isStatic).toBe(false)
+
+  ast = compile('<div key="xx"></div>')
+  expect(ast[0].isStatic).toBe(false)
+
+  ast = compile('<div slot="xx"></div>')
+  expect(ast[0].isStatic).toBe(false)
+
   ast = compile('<div><span id="xx">{{x}}</span></div>')
   expect(ast[0].isStatic).toBe(false)
   expect((ast[0].children as Node[])[0].isStatic).toBe(false)

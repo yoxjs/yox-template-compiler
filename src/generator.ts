@@ -11,7 +11,6 @@ import {
   MAGIC_VAR_EVENT,
   MAGIC_VAR_DATA,
   MAGIC_VAR_ITEM,
-  PUBLIC_CONFIG,
 } from 'yox-config/src/config'
 
 import isDef from 'yox-common/src/function/isDef'
@@ -142,11 +141,11 @@ ARG_STACK = constant.EMPTY_STRING
 
 function init() {
 
-  if (isUglify === PUBLIC_CONFIG.uglifyCompiled) {
+  if (isUglify === constant.PUBLIC_CONFIG.uglifyCompiled) {
     return
   }
 
-  if (PUBLIC_CONFIG.uglifyCompiled) {
+  if (constant.PUBLIC_CONFIG.uglifyCompiled) {
     RENDER_ELEMENT_VNODE = '_a'
     RENDER_COMPONENT_VNODE = '_b'
     RENDER_NATIVE_ATTRIBUTE = '_c'
@@ -219,7 +218,7 @@ function init() {
     ARG_STACK = 'stack'
   }
 
-  isUglify = PUBLIC_CONFIG.uglifyCompiled
+  isUglify = constant.PUBLIC_CONFIG.uglifyCompiled
 
 }
 
