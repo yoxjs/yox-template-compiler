@@ -53,7 +53,10 @@ const vnodeStack: boolean[] = [ constant.TRUE ],
 componentStack: boolean[] = [ ],
 
 // 是否正在处理特殊 each，包括 遍历 range 和 遍历数组字面量和对象字面量
-specialEachStack: boolean[] = [ ],
+eachSpecialStack: boolean[] = [ ],
+
+// each 渲染片段用过哪些 this，用过的标记为 true
+eachThisStack: Record<string, boolean>[] = [ ],
 
 // 是否正在收集字符串类型的值
 stringStack: boolean[] = [ ],
@@ -246,16 +249,38 @@ function transformIdentifier(node: ExpressionIdentifier) {
     }
   }
 
-  // 把 this 转成 $item，方便直接读取
+  // this 仅在 each 中有意义
+  // 这里把 this 转成 $item，方便直接读取
   // 避免不必要的查找，提升性能
-  if ((array.last(specialEachStack) || isRuntimeExpression)
+  if (eachThisStack.length > 0
     && node.root === constant.FALSE
     && node.lookup === constant.FALSE
     && node.offset === 0
   ) {
-    return name === constant.EMPTY_STRING
-      ? generator.toRaw(RENDER_MAGIC_VAR_ITEM)
-      : generator.toRaw(RENDER_MAGIC_VAR_ITEM + '.' + name)
+
+    const result = generator.toRaw(
+      name === constant.EMPTY_STRING
+        ? RENDER_MAGIC_VAR_ITEM
+        : RENDER_MAGIC_VAR_ITEM
+          + constant.RAW_DOT
+          // 这里要把 list.0.a 转成 list[0].a
+          // . 是 Yox 特有的访问数组的语法，正常的 js 语法是 [index]
+          + name.replace(/\.(\d+)/g, '[$1]')
+    )
+
+    if (isRuntimeExpression || array.last(eachSpecialStack)) {
+      return result
+    }
+    else {
+      const eachThis = array.last(eachThisStack)
+      if (eachThis[name]) {
+        return result
+      }
+      // 当前 each 还没用过 this，这里要标记已用过
+      // 这样下次再进来，就会走上面的分支
+      eachThis[name] = constant.TRUE
+    }
+
   }
 
 }
@@ -1108,12 +1133,16 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
     )
   }
 
-  if (isSpecial) {
-    array.push(
-      specialEachStack,
-      constant.TRUE
-    )
-  }
+  // 如果是特殊的 each，包括 遍历 range 和 遍历数组字面量和对象字面量
+  // 在这种 each 中引用 this 无需追踪依赖，因此可直接认为 this 已用过，这样生成代码时，会直接引用局部变量，提高执行效率
+  array.push(
+    eachSpecialStack,
+    isSpecial
+  )
+  array.push(
+    eachThisStack,
+    { }
+  )
 
   // compiler 保证了 children 一定有值
   const renderChildren = generator.toAnonymousFunction(
@@ -1127,11 +1156,12 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
     )
   }
 
-  if (isSpecial) {
-    array.pop(
-      specialEachStack
-    )
-  }
+  array.pop(
+    eachSpecialStack
+  )
+  array.pop(
+    eachThisStack
+  )
 
   // compiler 保证了 children 一定有值
   const renderElse = next

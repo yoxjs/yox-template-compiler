@@ -513,9 +513,10 @@ export function render(
     if (is.array(value)) {
       for (let i = 0, length = value.length; i < length; i++) {
         if (needKeypath) {
-          // keypath 和 i 都不可能为空，因此直接拼接比较快
           currentKeypath = keypath + constant.RAW_DOT + i
-          keypathStack = oldKeypathStack.concat(currentKeypath)
+          // slice + push 比直接 concat 快多了
+          keypathStack = oldKeypathStack.slice()
+          keypathStack.push(currentKeypath)
         }
         result.push(
           renderChildren(
@@ -530,9 +531,13 @@ export function render(
     else if (is.object(value)) {
       for (let key in value) {
         if (needKeypath) {
-          // key 可能是空字符串，因此用 keypathUtil.join
-          currentKeypath = keypathUtil.join(keypath as string, key)
-          keypathStack = oldKeypathStack.concat(currentKeypath)
+          // 这里 key 虽然可能为空，但也必须直接拼接
+          // 因为不拼接就变成了原来的 keypath，这样更是错的，
+          // 只能在使用上尽量避免 key 为空的用法
+          currentKeypath = keypath + constant.RAW_DOT + key
+          // slice + push 比直接 concat 快多了
+          keypathStack = oldKeypathStack.slice()
+          keypathStack.push(currentKeypath)
         }
         result.push(
           renderChildren(
@@ -545,8 +550,6 @@ export function render(
       }
     }
 
-    // 这里不能用 currentKeypath !== oldCurrentKeypath
-    // 因为对象的 key 如果是空字符串，新旧 keypath 会相同
     if (keypathStack !== oldKeypathStack) {
       currentKeypath = oldCurrentKeypath
       keypathStack = oldKeypathStack

@@ -60,7 +60,11 @@ test('event', () => {
 
   tpl1 = `
   <div>
-    <input  model="xx" />
+  {{#each list}}
+    <div on-click="print(this, this.name)">
+      {{this}}+{{this}}+{{this.name}}+{{this.name}}+{{this.list.0}}+{{this.list.0}}
+    </div>
+  {{/each}}
   </div>
   `
 
