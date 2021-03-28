@@ -95,10 +95,10 @@ directiveLazySeparator = DIRECTIVE_LAZY + directiveSeparator,
 directiveCustomSeparator = DIRECTIVE_CUSTOM + directiveSeparator,
 
 // 解析 each 的 index
-eachIndexPattern = /\s*:\s*([_$a-z]+)$/,
+eachIndexPattern = /\s*:\s*([_$a-z]+)$/i,
 
 // 调用的方法
-methodPattern = /^[_$a-z]([\w]+)?$/,
+methodPattern = /^[_$a-z]([\w]+)?$/i,
 
 // 没有命名空间的事件
 eventPattern = /^[_$a-z]([\w]+)?$/i,
@@ -331,6 +331,7 @@ export function compile(content: string): Branch[] {
     // 出栈节点类型不匹配
     if (process.env.NODE_ENV === 'development') {
       if (!node || node.type !== type) {
+        console.log(type, tagName, node)
         fatal(`The type of poping node is not expected.`)
       }
     }
@@ -852,7 +853,7 @@ export function compile(content: string): Branch[] {
 
     if (type === nodeType.ELSE_IF) {
 
-      const lastNode = array.pop(ifStack)
+      const lastNode = array.last(ifStack)
 
       if (lastNode) {
         // lastNode 只能是 if 或 else if 节点
@@ -874,9 +875,9 @@ export function compile(content: string): Branch[] {
     }
     else if (type === nodeType.ELSE) {
 
-      const lastIfNode = array.pop(ifStack),
+      const lastIfNode = array.last(ifStack),
 
-      lastEachNode = array.pop(eachStack)
+      lastEachNode = array.last(eachStack)
 
       if (lastIfNode && currentBranch === lastIfNode) {
         // lastIfNode 只能是 if 或 else if 节点
@@ -1041,17 +1042,17 @@ export function compile(content: string): Branch[] {
     }
     else if (lastIfBranch) {
       lastIfBranch.next = node
-      array.push(ifStack, node)
+      ifStack[ifStack.length - 1] = node
       popStack(lastIfBranch.type)
     }
     else if (lastElseIfBranch) {
       lastElseIfBranch.next = node
-      array.push(ifStack, node)
+      ifStack[ifStack.length - 1] = node
       popStack(lastElseIfBranch.type)
     }
     else if (lastEachBranch) {
       lastEachBranch.next = node
-      array.push(eachStack, node)
+      ifStack[eachStack.length - 1] = node
       popStack(lastEachBranch.type)
     }
 
