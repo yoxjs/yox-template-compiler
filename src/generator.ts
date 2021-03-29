@@ -356,14 +356,16 @@ function generateNodesToStringIfNeeded(children: Node[]) {
     }
   )
 
+  if (result.length === 1) {
+    return result[0]
+  }
+
   // 字符串拼接涉及表达式的优先级问题，改成 array.join 有利于一致性
   if (array.last(stringStack)) {
-    return children.length === 1
-      ? result[0]
-      : generator.toList(
-          result,
-          generator.JOIN_EMPTY
-        )
+    return generator.toList(
+      result,
+      generator.JOIN_EMPTY
+    )
   }
 
   return generator.toList(result)

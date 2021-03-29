@@ -115,7 +115,7 @@ export function render(
     }
   },
 
-  normalizeAttributes = function (data: Data, attrs: any[]) {
+  normalizeAttributes = function (attrs: any[], data: Data) {
     flattenArray(
       attrs,
       function (item) {
@@ -137,19 +137,22 @@ export function render(
     )
   },
 
-  normalizeChildren = function (result: any[], childs: any[]) {
+  normalizeChildren = function (children: any[], vnodes: any[], components?: any[]) {
     flattenArray(
-      childs,
+      children,
       function (item) {
         // item 只能是 vnode
         if (item.isText) {
-          const lastChild = array.last(result)
+          const lastChild = array.last(vnodes)
           if (lastChild && lastChild.isText) {
             lastChild.text += item.text
             return
           }
         }
-        result.push(item)
+        else if (item.isComponent && components) {
+          components.push(item)
+        }
+        vnodes.push(item)
       }
     )
   },
@@ -163,12 +166,12 @@ export function render(
     data.context = context
 
     if (attrs) {
-      normalizeAttributes(data, attrs)
+      normalizeAttributes(attrs, data)
     }
 
     if (childs) {
-      const children: any[] = []
-      normalizeChildren(children, childs)
+      const children: any[] = [ ]
+      normalizeChildren(childs, children)
       data.children = children
     }
 
@@ -185,20 +188,20 @@ export function render(
     data.context = context
 
     if (attrs) {
-      normalizeAttributes(data, attrs)
+      normalizeAttributes(attrs, data)
     }
 
     if (slots) {
-      const vnodeMap = {}
+      const result = { }
       for (let name in slots) {
-        const children: any[] = []
-        normalizeChildren(children, slots[name])
+        const vnodes: any[] = [ ], components: any[] = [ ]
+        normalizeChildren(slots[name], vnodes, components)
         // 就算是 undefined 也必须有值，用于覆盖旧值
-        vnodeMap[name] = children.length
-          ? children
+        result[name] = vnodes.length
+          ? { vnodes, components }
           : constant.UNDEFINED
       }
-      data.slots = vnodeMap
+      data.slots = result
     }
 
     return data
@@ -475,8 +478,15 @@ export function render(
 
   // <slot name="xx"/>
   renderSlot = function (name: string, render?: Function) {
-    return context.get(name)
-      || (render && render())
+    const result = context.get(name)
+    if (result) {
+      const { vnodes, components } = result
+      for (let i = 0, length = components.length; i < length; i++) {
+        components[i].parent = context
+      }
+      return vnodes
+    }
+    return render && render()
   },
 
   // {{#partial name}}
@@ -709,6 +719,14 @@ export function render(
     )
   }
 
-  return renderTemplate(template)
+  const result = renderTemplate(template)
+
+  if (process.env.NODE_ENV === 'development') {
+    if (is.array(result)) {
+      logger.fatal(`The template should have just one root element.`)
+    }
+  }
+
+  return result
 
 }
