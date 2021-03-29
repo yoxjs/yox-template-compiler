@@ -331,7 +331,6 @@ export function compile(content: string): Branch[] {
     // 出栈节点类型不匹配
     if (process.env.NODE_ENV === 'development') {
       if (!node || node.type !== type) {
-        console.log(type, tagName, node)
         fatal(`The type of poping node is not expected.`)
       }
     }

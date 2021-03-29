@@ -71,8 +71,6 @@ RAW_METHOD = 'method'
 // 下面这些值需要根据外部配置才能确定
 let isUglify = constant.UNDEFINED,
 
-isRuntimeExpression = constant.FALSE,
-
 RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
 
 RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
@@ -268,7 +266,7 @@ function transformIdentifier(node: ExpressionIdentifier) {
           + name.replace(/\.(\d+)/g, '[$1]')
     )
 
-    if (isRuntimeExpression || array.last(eachSpecialStack)) {
+    if (array.last(eachSpecialStack)) {
       return result
     }
     else {
@@ -307,8 +305,7 @@ function generateExpressionHolder(expr: ExpressionNode) {
 }
 
 function generateExpressionArg(expr: ExpressionNode) {
-  isRuntimeExpression = constant.TRUE
-  const result = exprGenerator.generate(
+  return exprGenerator.generate(
     expr,
     transformIdentifier,
     RENDER_EXPRESSION_IDENTIFIER,
@@ -317,8 +314,6 @@ function generateExpressionArg(expr: ExpressionNode) {
     constant.FALSE,
     ARG_STACK
   )
-  isRuntimeExpression = constant.FALSE
-  return result
 }
 
 function generateAttributeValue(value: any, expr: ExpressionNode | void, children: Node[] | void) {
