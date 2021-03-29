@@ -198,7 +198,12 @@ export function render(
         normalizeChildren(slots[name], vnodes, components)
         // 就算是 undefined 也必须有值，用于覆盖旧值
         result[name] = vnodes.length
-          ? { vnodes, components }
+          ? {
+              vnodes,
+              components: components.length
+                ? components
+                : constant.UNDEFINED
+            }
           : constant.UNDEFINED
       }
       data.slots = result
@@ -481,8 +486,10 @@ export function render(
     const result = context.get(name)
     if (result) {
       const { vnodes, components } = result
-      for (let i = 0, length = components.length; i < length; i++) {
-        components[i].parent = context
+      if (components) {
+        for (let i = 0, length = components.length; i < length; i++) {
+          components[i].parent = context
+        }
       }
       return vnodes
     }
@@ -516,7 +523,7 @@ export function render(
     renderElse?: Function
   ) {
 
-    let { keypath, value } = holder, result: any[] = [],
+    let { keypath, value } = holder, result: any[] = [ ],
 
     needKeypath = !!keypath, oldKeypathStack = keypathStack, oldCurrentKeypath = currentKeypath
 
