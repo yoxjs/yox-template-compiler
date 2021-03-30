@@ -26,6 +26,7 @@ import {
 import isDef from 'yox-common/src/function/isDef'
 import execute from 'yox-common/src/function/execute'
 import toString from 'yox-common/src/function/toString'
+import createPureObject from 'yox-common/src/function/createPureObject'
 import CustomEvent from 'yox-common/src/util/CustomEvent'
 
 import * as is from 'yox-common/src/util/is'
@@ -57,6 +58,8 @@ export function render(
 
   localPartials: Record<string, Function> = { },
 
+  valueCache = createPureObject(),
+
   findValue = function (stack: string[], index: number, key: string, lookup: boolean, call: boolean, defaultKeypath?: string): ValueHolder {
 
     let baseKeypath = stack[index],
@@ -65,13 +68,17 @@ export function render(
 
     value: any = constant.UNDEFINED
 
-    // 如果最后还是取不到值，用回最初的 keypath
-    if (defaultKeypath === constant.UNDEFINED) {
-      defaultKeypath = keypath
+    if (valueCache.has(keypath)) {
+      value = valueCache.get(keypath)
+    }
+    else {
+      // 如果最后还是取不到值，用回最初的 keypath
+      if (defaultKeypath === constant.UNDEFINED) {
+        defaultKeypath = keypath
+      }
+      value = observer.get(keypath, stack)
     }
 
-    // 正常取数据
-    value = observer.get(keypath, stack)
     if (value === stack) {
 
       if (lookup && index > 0) {
@@ -83,20 +90,23 @@ export function render(
 
       // 到头了，如果是函数调用，则最后尝试过滤器
       if (call) {
-        const result = object.get(filters, key)
+        const result = object.get(filters, keypath)
         if (result) {
-          result.keypath = key
+          result.keypath = keypath
+          valueCache[keypath] = result.value
           return result
         }
       }
 
-      globalHolder.value = constant.UNDEFINED
       globalHolder.keypath = defaultKeypath
+      globalHolder.value = constant.UNDEFINED
 
+      valueCache[defaultKeypath as string] = constant.UNDEFINED
     }
     else {
-      globalHolder.value = value
       globalHolder.keypath = keypath
+      globalHolder.value = value
+      valueCache[keypath] = value
     }
 
     return globalHolder
@@ -506,7 +516,7 @@ export function render(
   // {{> name}}
   renderImport = function (name: string) {
     if (localPartials[name]) {
-      return localPartials[name]()
+      return localPartials[name](currentKeypath)
     }
     const partial = partials[name]
     if (process.env.NODE_ENV === 'development') {

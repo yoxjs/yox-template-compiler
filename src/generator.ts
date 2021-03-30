@@ -52,11 +52,11 @@ const vnodeStack: boolean[] = [ constant.TRUE ],
 // 是否正在处理组件节点
 componentStack: boolean[] = [ ],
 
+// 是否正在处理 attribute
+attributeStack: boolean[] = [ ],
+
 // 是否正在处理特殊 each，包括 遍历 range 和 遍历数组字面量和对象字面量
 eachSpecialStack: boolean[] = [ ],
-
-// each 渲染片段用过哪些 this，用过的标记为 true
-eachThisStack: Record<string, boolean>[] = [ ],
 
 // 是否正在收集字符串类型的值
 stringStack: boolean[] = [ ],
@@ -250,13 +250,13 @@ function transformIdentifier(node: ExpressionIdentifier) {
   // this 仅在 each 中有意义
   // 这里把 this 转成 $item，方便直接读取
   // 避免不必要的查找，提升性能
-  if (eachThisStack.length > 0
+  if (array.last(eachSpecialStack)
     && node.root === constant.FALSE
     && node.lookup === constant.FALSE
     && node.offset === 0
   ) {
 
-    const result = generator.toRaw(
+    return generator.toRaw(
       name === constant.EMPTY_STRING
         ? RENDER_MAGIC_VAR_ITEM
         : RENDER_MAGIC_VAR_ITEM
@@ -265,19 +265,6 @@ function transformIdentifier(node: ExpressionIdentifier) {
           // . 是 Yox 特有的访问数组的语法，正常的 js 语法是 [index]
           + name.replace(/\.(\d+)/g, '[$1]')
     )
-
-    if (array.last(eachSpecialStack)) {
-      return result
-    }
-    else {
-      const eachThis = array.last(eachThisStack)
-      if (eachThis[name]) {
-        return result
-      }
-      // 当前 each 还没用过 this，这里要标记已用过
-      // 这样下次再进来，就会走上面的分支
-      eachThis[name] = constant.TRUE
-    }
 
   }
 
@@ -430,6 +417,143 @@ function generateComponentSlots(children: Node[]) {
 
 }
 
+function parseAttrs(attrs: Node[], isComponent: boolean | void) {
+
+  let nativeAttributeList: Attribute[] = [ ],
+
+  nativePropertyList: Property[] = [ ],
+
+  propertyList: Attribute[] = [ ],
+
+  lazyList: Directive[] = [ ],
+
+  transition: Directive | void = constant.UNDEFINED,
+
+  model: Directive | void = constant.UNDEFINED,
+
+  // 最后收集事件指令、自定义指令、动态属性
+
+  eventList: Directive[ ] = [ ],
+
+  customDirectiveList: Directive[] = [ ],
+
+  otherList: Node[] = [ ]
+
+  array.each(
+    attrs,
+    function (attr) {
+
+      if (attr.type === nodeType.ATTRIBUTE) {
+        const attributeNode = attr as Attribute
+        if (isComponent) {
+          array.push(
+            propertyList,
+            attributeNode
+          )
+        }
+        else {
+          array.push(
+            nativeAttributeList,
+            attributeNode
+          )
+        }
+      }
+      else if (attr.type === nodeType.PROPERTY) {
+        const propertyNode = attr as Property
+        array.push(
+          nativePropertyList,
+          propertyNode
+        )
+      }
+      else if (attr.type === nodeType.DIRECTIVE) {
+        const directiveNode = attr as Directive
+        switch (directiveNode.ns) {
+          case DIRECTIVE_LAZY:
+            array.push(
+              lazyList,
+              directiveNode
+            )
+            break
+
+          case DIRECTIVE_TRANSITION:
+            transition = directiveNode
+            break
+
+          case DIRECTIVE_MODEL:
+            model = directiveNode
+            break
+
+          case DIRECTIVE_EVENT:
+            array.push(
+              eventList,
+              directiveNode
+            )
+            break
+
+          default:
+            array.push(
+              customDirectiveList,
+              directiveNode
+            )
+        }
+      }
+      else {
+        array.push(
+          otherList,
+          attr
+        )
+      }
+    }
+  )
+
+  return {
+    nativeAttributeList,
+    nativePropertyList,
+    propertyList,
+    lazyList,
+    transition: transition as Directive | void,
+    model: model as Directive | void,
+    eventList,
+    customDirectiveList,
+    otherList,
+  }
+
+}
+
+function sortAttrs(attrs: Node[], isComponent: boolean | void) {
+
+  const {
+    nativeAttributeList,
+    nativePropertyList,
+    propertyList,
+    lazyList,
+    transition,
+    model,
+    eventList,
+    customDirectiveList,
+    otherList,
+  } = parseAttrs(attrs, isComponent)
+
+  const result: Node[] = []
+
+  array.push(result, nativeAttributeList)
+  array.push(result, nativePropertyList)
+  array.push(result, propertyList)
+  array.push(result, lazyList)
+  if (transition) {
+    array.push(result, transition)
+  }
+  if (model) {
+    array.push(result, model)
+  }
+  array.push(result, eventList)
+  array.push(result, customDirectiveList)
+  array.push(result, otherList)
+
+  return result
+
+}
+
 nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   let { tag, dynamicTag, isComponent, ref, key, html, text, attrs, children } = node,
@@ -468,7 +592,64 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         : generator.toPrimitive(tag)
   )
 
-  array.push(vnodeStack, constant.FALSE)
+
+  // 先序列化 children，再序列化 attrs，原因需要举两个例子：
+
+  // 例子1：
+  // <div on-click="output(this)"></div> 如果 this 序列化成 $item，如果外部修改了 this，因为模板没有计入此依赖，不会刷新，因此 item 是旧的
+  // 这个例子要求即使是动态执行的代码，也不能简单的直接序列化成 $item
+
+  // 例子2：
+  // <div on-click="output(this)">{{this}}</div>，如果第一个 this 转成 $item，第二个正常读取数据，这样肯定没问题
+  // 但问题是，你不知道有没有第二个 this，因此这里反过来，先序列化非动态部分，即 children，再序列化可能动态的部分，即 attrs
+  // 这样序列化动态部分的时候，就知道是否可以转成 $item
+
+  // 后来发现，即使这样实现也不行，因为模板里存在各种可能的 if 或三元运算，导致依赖的捕捉充满不确定，因此这里我们不再考虑把 this 转成 $item
+
+
+  array.push(vnodeStack, constant.TRUE)
+  array.push(componentStack, isComponent)
+
+  if (children) {
+    if (isComponent) {
+      outputSlots = generateComponentSlots(children)
+    }
+    else {
+
+      let isStatic = constant.TRUE, newChildren = generator.toList()
+
+      array.each(
+        children,
+        function (node) {
+          if (!node.isStatic) {
+            isStatic = constant.FALSE
+          }
+          newChildren.push(
+            nodeGenerator[node.type](node)
+          )
+        }
+      )
+
+      if (isStatic) {
+        data.set(
+          field.CHILDREN,
+          newChildren
+        )
+      }
+      else {
+        outputChildren = newChildren
+      }
+
+    }
+  }
+
+  array.pop(vnodeStack)
+  array.pop(componentStack)
+
+
+  // 开始序列化 attrs，原则也是先序列化非动态部分，再序列化动态部分，即指令留在最后序列化
+
+  array.push(attributeStack, constant.TRUE)
   array.push(componentStack, isComponent)
 
   // 在 vnodeStack 为 false 时取值
@@ -512,156 +693,184 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   }
 
   if (attrs) {
-    // 先收集静态属性
-    let nativeAttributes = generator.toMap(),
 
-    nativeProperties = generator.toMap(),
+    const {
+      nativeAttributeList,
+      nativePropertyList,
+      propertyList,
+      lazyList,
+      transition,
+      model,
+      eventList,
+      customDirectiveList,
+      otherList,
+    } = parseAttrs(attrs, isComponent)
 
-    properties = generator.toMap(),
+    if (nativeAttributeList.length) {
 
-    directives = generator.toMap(),
+      const nativeAttributes = generator.toMap()
 
-    events = generator.toMap(),
-
-    lazy = generator.toMap(),
-
-    // 最后收集动态属性
-    dynamicAttrs: any[] = [ ]
-
-    array.each(
-      attrs,
-      function (attr) {
-
-        if (attr.type === nodeType.ATTRIBUTE) {
-          const attributeNode = attr as Attribute, value = generateAttributeValue(attributeNode.value, attributeNode.expr, attributeNode.children)
-          if (isComponent) {
-            properties.set(
-              attributeNode.name,
-              value
-            )
-          }
-          else {
-            nativeAttributes.set(
-              attributeNode.name,
-              value
-            )
-          }
-        }
-        else if (attr.type === nodeType.PROPERTY) {
-          const propertyNode = attr as Property, value = generateAttributeValue(propertyNode.value, propertyNode.expr, propertyNode.children)
-          nativeProperties.set(
-            propertyNode.name,
-            value
+      array.each(
+        nativeAttributeList,
+        function (node) {
+          nativeAttributes.set(
+            node.name,
+            generateAttributeValue(node.value, node.expr, node.children)
           )
         }
-        else if (attr.type === nodeType.DIRECTIVE) {
-          const directiveNode = attr as Directive
-          switch (directiveNode.ns) {
-            case DIRECTIVE_LAZY:
-              lazy.set(
-                directiveNode.name,
-                getLazyValue(directiveNode)
-              )
-              break
+      )
 
-            case DIRECTIVE_TRANSITION:
-              data.set(
-                field.TRANSITION,
-                generator.toCall(
-                  GET_TRANSITION,
-                  [
-                    getTransitionValue(directiveNode)
-                  ]
-                )
-              )
-              break
-
-            case DIRECTIVE_MODEL:
-              data.set(
-                field.MODEL,
-                generator.toCall(
-                  GET_MODEL,
-                  [
-                    getModelValue(directiveNode)
-                  ]
-                )
-              )
-              break
-
-            case DIRECTIVE_EVENT:
-              const params = getEventValue(directiveNode)
-              events.set(
-                getDirectiveKey(directiveNode),
-                generator.toCall(
-                  params.has(RAW_METHOD)
-                    ? GET_EVENT_METHOD
-                    : GET_EVENT_NAME,
-                  [
-                    params
-                  ]
-                )
-              )
-              break
-
-            default:
-              directives.set(
-                getDirectiveKey(directiveNode),
-                generator.toCall(
-                  GET_DIRECTIVE,
-                  [
-                    getDirectiveValue(directiveNode)
-                  ]
-                )
-              )
-          }
-        }
-        else {
-          array.push(
-            dynamicAttrs,
-            attr
-          )
-        }
-      }
-    )
-
-    if (nativeAttributes.isNotEmpty()) {
       data.set(
         field.NATIVE_ATTRIBUTES,
         nativeAttributes
       )
+
     }
-    if (nativeProperties.isNotEmpty()) {
+
+    if (nativePropertyList.length) {
+
+      const nativeProperties = generator.toMap()
+
+      array.each(
+        nativePropertyList,
+        function (node) {
+          nativeProperties.set(
+            node.name,
+            generateAttributeValue(node.value, node.expr, node.children)
+          )
+        }
+      )
+
       data.set(
         field.NATIVE_PROPERTIES,
         nativeProperties
       )
+
     }
-    if (properties.isNotEmpty()) {
+
+    if (propertyList.length) {
+
+      const properties = generator.toMap()
+
+      array.each(
+        propertyList,
+        function (node) {
+          properties.set(
+            node.name,
+            generateAttributeValue(node.value, node.expr, node.children)
+          )
+        }
+      )
+
       data.set(
         field.PROPERTIES,
         properties
       )
+
     }
-    if (directives.isNotEmpty()) {
-      data.set(
-        field.DIRECTIVES,
-        directives
+
+    if (lazyList.length) {
+
+      const lazy = generator.toMap()
+
+      array.each(
+        lazyList,
+        function (node) {
+          lazy.set(
+            node.name,
+            getLazyValue(node)
+          )
+        }
       )
-    }
-    if (events.isNotEmpty()) {
-      data.set(
-        field.EVENTS,
-        events
-      )
-    }
-    if (lazy.isNotEmpty()) {
+
       data.set(
         field.LAZY,
         lazy
       )
+
     }
-    if (dynamicAttrs.length) {
-      outputAttrs = generateNodesToList(dynamicAttrs)
+
+    if (transition) {
+      data.set(
+        field.TRANSITION,
+        generator.toCall(
+          GET_TRANSITION,
+          [
+            getTransitionValue(transition)
+          ]
+        )
+      )
+    }
+
+    if (model) {
+      data.set(
+        field.MODEL,
+        generator.toCall(
+          GET_MODEL,
+          [
+            getModelValue(model)
+          ]
+        )
+      )
+    }
+
+    if (eventList.length) {
+
+      const events = generator.toMap()
+
+      array.each(
+        eventList,
+        function (node) {
+          const params = getEventValue(node)
+          events.set(
+            getDirectiveKey(node),
+            generator.toCall(
+              params.has(RAW_METHOD)
+                ? GET_EVENT_METHOD
+                : GET_EVENT_NAME,
+              [
+                params
+              ]
+            )
+          )
+        }
+      )
+
+      data.set(
+        field.EVENTS,
+        events
+      )
+
+    }
+
+    if (customDirectiveList.length) {
+
+      const directives = generator.toMap()
+
+      array.each(
+        customDirectiveList,
+        function (node) {
+          directives.set(
+            getDirectiveKey(node),
+            generator.toCall(
+              GET_DIRECTIVE,
+              [
+                getDirectiveValue(node)
+              ]
+            )
+          )
+        }
+      )
+
+      data.set(
+        field.DIRECTIVES,
+        directives
+      )
+
+    }
+
+    if (otherList.length) {
+      outputAttrs = generateNodesToList(otherList)
     }
   }
 
@@ -699,7 +908,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
   }
 
-  array.pop(vnodeStack)
+  array.pop(attributeStack)
   array.pop(componentStack)
 
   if (isComponent) {
@@ -1079,15 +1288,24 @@ nodeGenerator[nodeType.EXPRESSION] = function (node: Expression) {
 nodeGenerator[nodeType.IF] =
 nodeGenerator[nodeType.ELSE_IF] = function (node: If | ElseIf) {
 
-  const { children, next } = node,
+  let { children, next } = node,
 
   defaultValue = array.last(vnodeStack)
     ? generator.toCall(RENDER_COMMENT_VNODE)
-    : generator.toPrimitive(constant.UNDEFINED)
+    : generator.toPrimitive(constant.UNDEFINED),
+
+  value: generator.Base | void
+
+  if (children) {
+    if (array.last(attributeStack)) {
+      children = sortAttrs(children, array.last(componentStack))
+    }
+    value = generateNodesToStringIfNeeded(children)
+  }
 
   return generator.toTernary(
     generateExpression(node.expr),
-    (children && generateNodesToStringIfNeeded(children)) || defaultValue,
+    value || defaultValue,
     next ? nodeGenerator[next.type](next) : defaultValue
   )
 
@@ -1095,15 +1313,22 @@ nodeGenerator[nodeType.ELSE_IF] = function (node: If | ElseIf) {
 
 nodeGenerator[nodeType.ELSE] = function (node: Else) {
 
-  const { children } = node,
+  let { children } = node,
 
   defaultValue = array.last(vnodeStack)
     ? generator.toCall(RENDER_COMMENT_VNODE)
-    : generator.toPrimitive(constant.UNDEFINED)
+    : generator.toPrimitive(constant.UNDEFINED),
 
-  return children
-    ? generateNodesToStringIfNeeded(children)
-    : defaultValue
+  value: generator.Base | void
+
+  if (children) {
+    if (array.last(attributeStack)) {
+      children = sortAttrs(children, array.last(componentStack))
+    }
+    value = generateNodesToStringIfNeeded(children)
+  }
+
+  return value || defaultValue
 
 }
 
@@ -1136,10 +1361,6 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
     eachSpecialStack,
     isSpecial
   )
-  array.push(
-    eachThisStack,
-    { }
-  )
 
   // compiler 保证了 children 一定有值
   const renderChildren = generator.toAnonymousFunction(
@@ -1155,9 +1376,6 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
 
   array.pop(
     eachSpecialStack
-  )
-  array.pop(
-    eachThisStack
   )
 
   // compiler 保证了 children 一定有值
@@ -1202,7 +1420,10 @@ nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
     [
       generator.toPrimitive(node.name),
       generator.toAnonymousFunction(
-        generateNodesToList(node.children as Node[])
+        generateNodesToList(node.children as Node[]),
+        [
+          generator.toRaw(RENDER_MAGIC_VAR_KEYPATH)
+        ]
       )
     ]
   )
