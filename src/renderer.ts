@@ -60,7 +60,7 @@ export function render(
 
   valueCache = createPureObject(),
 
-  findValue = function (stack: string[], index: number, key: string, lookup: boolean, call: boolean, defaultKeypath?: string): ValueHolder {
+  findValue = function (stack: string[], index: number, key: string, lookup: boolean, call?: boolean, defaultKeypath?: string): ValueHolder {
 
     let baseKeypath = stack[index],
 
@@ -663,27 +663,27 @@ export function render(
 
   },
 
-  renderExpressionIdentifier = function (params: Data) {
+  renderExpressionIdentifier = function (name: string, lookup: boolean, root: boolean, offset: number, holder: boolean, stack?: string[], call?: boolean) {
 
-    const stack = params.stack || keypathStack,
+    const myStack = stack || keypathStack,
 
-    index = stack.length - 1,
+    index = myStack.length - 1,
 
     result = findValue(
-      stack,
-      params.root ? 0 : (params.offset ? index - params.offset : index),
-      params.name,
-      params.lookup,
-      params.call
+      myStack,
+      root ? 0 : (offset ? index - offset : index),
+      name,
+      lookup,
+      call
     )
 
-    return params.holder ? result : result.value
+    return holder ? result : result.value
 
   },
 
-  renderExpressionMemberLiteral = function (
+  renderExpressionValue = function (
     value: any,
-    keypath: string,
+    keypath: string[],
     holder: boolean | void
   ) {
     const match = object.get(value, keypath)
@@ -729,7 +729,7 @@ export function render(
       renderEach,
       renderRange,
       renderExpressionIdentifier,
-      renderExpressionMemberLiteral,
+      renderExpressionValue,
       renderExpressionCall,
       currentKeypath,
       toString

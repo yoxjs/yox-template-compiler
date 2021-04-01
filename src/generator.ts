@@ -121,7 +121,7 @@ RENDER_RANGE = constant.EMPTY_STRING,
 
 RENDER_EXPRESSION_IDENTIFIER = constant.EMPTY_STRING,
 
-RENDER_EXPRESSION_MEMBER_LITERAL = constant.EMPTY_STRING,
+RENDER_EXPRESSION_VALUE = constant.EMPTY_STRING,
 
 RENDER_EXPRESSION_CALL = constant.EMPTY_STRING,
 
@@ -172,7 +172,7 @@ function init() {
     RENDER_EACH = '_w'
     RENDER_RANGE = '_x'
     RENDER_EXPRESSION_IDENTIFIER = '_y'
-    RENDER_EXPRESSION_MEMBER_LITERAL = '_z'
+    RENDER_EXPRESSION_VALUE = '_z'
     RENDER_EXPRESSION_CALL = '_1'
     RENDER_MAGIC_VAR_KEYPATH = '_2'
     RENDER_MAGIC_VAR_LENGTH = '_3'
@@ -208,7 +208,7 @@ function init() {
     RENDER_EACH = 'renderEach'
     RENDER_RANGE = 'renderRange'
     RENDER_EXPRESSION_IDENTIFIER = 'renderExpressionIdentifier'
-    RENDER_EXPRESSION_MEMBER_LITERAL = 'renderExpressionMemberLiteral'
+    RENDER_EXPRESSION_VALUE = 'renderExpressionValue'
     RENDER_EXPRESSION_CALL = 'renderExpressionCall'
     RENDER_MAGIC_VAR_KEYPATH = MAGIC_VAR_KEYPATH
     RENDER_MAGIC_VAR_LENGTH = MAGIC_VAR_LENGTH
@@ -275,7 +275,7 @@ function generateExpression(expr: ExpressionNode) {
     expr,
     transformIdentifier,
     RENDER_EXPRESSION_IDENTIFIER,
-    RENDER_EXPRESSION_MEMBER_LITERAL,
+    RENDER_EXPRESSION_VALUE,
     RENDER_EXPRESSION_CALL
   )
 }
@@ -285,7 +285,7 @@ function generateExpressionHolder(expr: ExpressionNode) {
     expr,
     transformIdentifier,
     RENDER_EXPRESSION_IDENTIFIER,
-    RENDER_EXPRESSION_MEMBER_LITERAL,
+    RENDER_EXPRESSION_VALUE,
     RENDER_EXPRESSION_CALL,
     constant.TRUE
   )
@@ -296,7 +296,7 @@ function generateExpressionArg(expr: ExpressionNode) {
     expr,
     transformIdentifier,
     RENDER_EXPRESSION_IDENTIFIER,
-    RENDER_EXPRESSION_MEMBER_LITERAL,
+    RENDER_EXPRESSION_VALUE,
     RENDER_EXPRESSION_CALL,
     constant.FALSE,
     ARG_STACK
@@ -1472,7 +1472,7 @@ export function generate(node: Node): string {
       RENDER_EACH,
       RENDER_RANGE,
       RENDER_EXPRESSION_IDENTIFIER,
-      RENDER_EXPRESSION_MEMBER_LITERAL,
+      RENDER_EXPRESSION_VALUE,
       RENDER_EXPRESSION_CALL,
       RENDER_MAGIC_VAR_KEYPATH,
       TO_STRING,

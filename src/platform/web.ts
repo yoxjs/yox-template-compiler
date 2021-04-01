@@ -51,13 +51,13 @@ svgTagNames = split2Map('svg,g,defs,desc,metadata,symbol,use,image,path,rect,cir
 
 // 常见的字符串类型的属性
 // 注意：autocomplete,autocapitalize 不是布尔类型
-stringPropertyNames = split2Map('id,class,name,value,for,accesskey,title,style,src,type,href,target,alt,placeholder,preload,poster,wrap,accept,pattern,dir,autocomplete,autocapitalize'),
+stringPropertyNames = split2Map('id,class,name,value,for,accesskey,title,style,src,type,href,target,alt,placeholder,preload,poster,wrap,accept,pattern,dir,autocomplete,autocapitalize,valign'),
 
-// 常见的数字类型的属性
-numberPropertyNames = split2Map('min,minlength,max,maxlength,step,width,height,size,rows,cols,tabindex'),
+// 常见的数字类型的属性（width,height,cellpadding,cellspacing 支持百分比，因此不计入数字类型）
+numberPropertyNames = split2Map('min,minlength,max,maxlength,step,size,rows,cols,tabindex,colspan,rowspan,frameborder'),
 
 // 常见的布尔类型的属性
-booleanPropertyNames = split2Map('disabled,checked,required,multiple,readonly,autofocus,autoplay,controls,loop,muted,novalidate,draggable,hidden,spellcheck'),
+booleanPropertyNames = split2Map('disabled,checked,required,multiple,readonly,autofocus,autoplay,controls,loop,muted,novalidate,draggable,contenteditable,hidden,spellcheck'),
 
 // 某些属性 attribute name 和 property name 不同
 attr2Prop = {}
@@ -72,6 +72,12 @@ attr2Prop['readonly'] = 'readOnly'
 attr2Prop['tabindex'] = 'tabIndex'
 attr2Prop['minlength'] = 'minLength'
 attr2Prop['maxlength'] = 'maxLength'
+attr2Prop['cellpadding'] = 'cellPadding'
+attr2Prop['cellspacing'] = 'cellSpacing'
+attr2Prop['colspan'] = 'colSpan'
+attr2Prop['rowspan'] = 'rowSpan'
+attr2Prop['valign'] = 'vAlign'
+attr2Prop['frameborder'] = 'frameBorder'
 
 export function isSelfClosing(tagName: string) {
   return selfClosingTagNames.get(tagName) !== constant.UNDEFINED
