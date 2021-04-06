@@ -15,11 +15,11 @@ import {
   DIRECTIVE_MODEL,
   DIRECTIVE_TRANSITION,
   DIRECTIVE_CUSTOM,
+  MAGIC_VAR_SCOPE,
   MAGIC_VAR_KEYPATH,
   MAGIC_VAR_LENGTH,
   MAGIC_VAR_EVENT,
   MAGIC_VAR_DATA,
-  MAGIC_VAR_ITEM,
   SLOT_NAME_DEFAULT,
   MODIFER_NATIVE,
 } from 'yox-config/src/config'
@@ -1051,7 +1051,7 @@ export function compile(content: string): Branch[] {
     }
     else if (lastEachBranch) {
       lastEachBranch.next = node
-      ifStack[eachStack.length - 1] = node
+      eachStack[eachStack.length - 1] = node
       popStack(lastEachBranch.type)
     }
 
@@ -1406,9 +1406,9 @@ export function compile(content: string): Branch[] {
           if (!literal || index === constant.EMPTY_STRING) {
             fatal(`Invalid each`)
           }
-          if (index === MAGIC_VAR_KEYPATH
+          if (index === MAGIC_VAR_SCOPE
+            || index === MAGIC_VAR_KEYPATH
             || index === MAGIC_VAR_LENGTH
-            || index === MAGIC_VAR_ITEM
             || index === MAGIC_VAR_EVENT
             || index === MAGIC_VAR_DATA
           ) {

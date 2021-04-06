@@ -47,7 +47,7 @@ htmlEntityPattern = /&[#\w\d]{2,6};/,
 selfClosingTagNames = split2Map('area,base,embed,track,source,param,input,col,img,br,hr'),
 
 // 常见的 svg 标签
-svgTagNames = split2Map('svg,g,defs,desc,metadata,symbol,use,image,path,rect,circle,line,ellipse,polyline,polygon,text,tspan,tref,textpath,marker,pattern,clippath,mask,filter,cursor,view,animate,font,font-face,glyph,missing-glyph,foreignObject'),
+svgTagNames = split2Map('svg,g,defs,desc,metadata,symbol,use,image,path,rect,circle,line,ellipse,polyline,polygon,text,tspan,tref,textpath,marker,pattern,clippath,mask,filter,cursor,view,animate,font,font-face,glyph,missing-glyph,animateColor,animateMotion,animateTransform,textPath,foreignObject'),
 
 // 常见的字符串类型的属性
 // 注意：autocomplete,autocapitalize 不是布尔类型

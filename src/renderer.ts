@@ -26,7 +26,6 @@ import {
 import isDef from 'yox-common/src/function/isDef'
 import execute from 'yox-common/src/function/execute'
 import toString from 'yox-common/src/function/toString'
-import createPureObject from 'yox-common/src/function/createPureObject'
 import CustomEvent from 'yox-common/src/util/CustomEvent'
 
 import * as is from 'yox-common/src/util/is'
@@ -38,78 +37,53 @@ import * as keypathUtil from 'yox-common/src/util/keypath'
 
 import globalHolder from 'yox-common/src/util/holder'
 
-import Observer from 'yox-observer/src/Observer'
-
 import * as field from './field'
 
+type Context = {
+  keypath: string,
+  scope: any,
+}
+
 export function render(
-  context: YoxInterface,
-  observer: Observer,
+  instance: YoxInterface,
   template: Function,
+  scope: Record<string, any>,
   filters: Record<string, Function>,
   partials: Record<string, Function>,
   directives: Record<string, DirectiveHooks>,
   transitions: Record<string, TransitionHooks>
 ) {
 
-  let currentKeypath = constant.EMPTY_STRING,
+  let rootKeypath = constant.EMPTY_STRING,
 
-  keypathStack = [ currentKeypath ],
+  contextStack: Context[] = [
+    { keypath: rootKeypath, scope, }
+  ],
 
   localPartials: Record<string, Function> = { },
 
-  valueCache = createPureObject(),
+  // 渲染模板的数据依赖
+  dependencies: Record<string, boolean> = { },
 
-  findValue = function (stack: string[], index: number, key: string, lookup: boolean, call?: boolean, defaultKeypath?: string): ValueHolder {
+  lookupValue = function (stack: Context[], index: number, key: string): ValueHolder | undefined {
 
-    let baseKeypath = stack[index],
+    const context = stack[index],
 
-    keypath = keypathUtil.join(baseKeypath, key),
+    keypath = keypathUtil.join(context.keypath, key),
 
-    value: any = constant.UNDEFINED
+    result = object.get(context.scope, keypath)
 
-    if (valueCache.has(keypath)) {
-      value = valueCache.get(keypath)
+    if (result) {
+      result.keypath = keypath
+      return result
     }
-    else {
-      // 如果最后还是取不到值，用回最初的 keypath
-      if (defaultKeypath === constant.UNDEFINED) {
-        defaultKeypath = keypath
+
+    if (index > 0) {
+      if (process.env.NODE_ENV === 'development') {
+        logger.debug(`The data "${keypath}" can't be found in the current context, start looking up.`)
       }
-      value = observer.get(keypath, stack)
+      return lookupValue(stack, index - 1, key)
     }
-
-    if (value === stack) {
-
-      if (lookup && index > 0) {
-        if (process.env.NODE_ENV === 'development') {
-          logger.debug(`The data "${keypath}" can't be found in the current context, start looking up.`)
-        }
-        return findValue(stack, index - 1, key, lookup, call, defaultKeypath)
-      }
-
-      // 到头了，如果是函数调用，则最后尝试过滤器
-      if (call) {
-        const result = object.get(filters, keypath)
-        if (result) {
-          result.keypath = keypath
-          valueCache[keypath] = result.value
-          return result
-        }
-      }
-
-      globalHolder.keypath = defaultKeypath
-      globalHolder.value = constant.UNDEFINED
-
-      valueCache[defaultKeypath as string] = constant.UNDEFINED
-    }
-    else {
-      globalHolder.keypath = keypath
-      globalHolder.value = value
-      valueCache[keypath] = value
-    }
-
-    return globalHolder
 
   },
 
@@ -135,7 +109,7 @@ export function render(
         }
         else {
           if (name) {
-            const map = {}
+            const map = { }
             map[name] = value
             data[key] = map
           }
@@ -173,7 +147,7 @@ export function render(
     childs: any[] | void
   ) {
 
-    data.context = context
+    data.context = instance
 
     if (attrs) {
       normalizeAttributes(attrs, data)
@@ -195,7 +169,7 @@ export function render(
     slots: Data | void
   ) {
 
-    data.context = context
+    data.context = instance
 
     if (attrs) {
       normalizeAttributes(attrs, data)
@@ -303,7 +277,7 @@ export function render(
         )
         event.ns = ns
       }
-      context.fire(event, data)
+      instance.fire(event, data)
 
     }
   },
@@ -330,8 +304,8 @@ export function render(
       }
 
       const result = execute(
-        context[name],
-        context,
+        instance[name],
+        instance,
         methodArgs
       )
 
@@ -353,7 +327,7 @@ export function render(
   getEventMethod = function (params: Data) {
     const { runtime } = params
     if (runtime) {
-      runtime.stack = keypathStack
+      runtime.stack = contextStack
     }
     return {
       key: params.key,
@@ -405,8 +379,8 @@ export function render(
       }
 
       execute(
-        context[name],
-        context,
+        instance[name],
+        instance,
         methodArgs
       )
     }
@@ -424,7 +398,7 @@ export function render(
 
     const { name, runtime } = params, hooks = directives[name]
     if (runtime) {
-      runtime.stack = keypathStack
+      runtime.stack = contextStack
     }
 
     if (process.env.NODE_ENV === 'development') {
@@ -479,7 +453,7 @@ export function render(
     return {
       isText: constant.TRUE,
       text: value,
-      context,
+      context: instance,
     }
   },
 
@@ -487,18 +461,18 @@ export function render(
     return {
       isComment: constant.TRUE,
       text: constant.EMPTY_STRING,
-      context,
+      context: instance,
     }
   },
 
   // <slot name="xx"/>
   renderSlot = function (name: string, render?: Function) {
-    const result = context.get(name)
+    const result = instance.get(name)
     if (result) {
       const { vnodes, components } = result
       if (components) {
         for (let i = 0, length = components.length; i < length; i++) {
-          components[i].parent = context
+          components[i].parent = instance
         }
       }
       return vnodes
@@ -509,14 +483,14 @@ export function render(
   // {{#partial name}}
   //   xx
   // {{/partial}}
-  renderPartial = function (name: string, render: Function) {
+  definePartial = function (name: string, render: Function) {
     localPartials[name] = render
   },
 
   // {{> name}}
-  renderImport = function (name: string) {
+  renderPartial = function (name: string, keypath: string) {
     if (localPartials[name]) {
-      return localPartials[name](currentKeypath)
+      return localPartials[name](keypath)
     }
     const partial = partials[name]
     if (process.env.NODE_ENV === 'development') {
@@ -524,7 +498,7 @@ export function render(
         logger.fatal(`The partial "${name}" can't be found.`)
       }
     }
-    return renderTemplate(partial)
+    return renderTemplate(partial, keypath)
   },
 
   renderEach = function (
@@ -535,19 +509,22 @@ export function render(
 
     let { keypath, value } = holder, result: any[] = [ ],
 
-    needKeypath = !!keypath, oldKeypathStack = keypathStack, oldCurrentKeypath = currentKeypath
+    needKeypath = !!keypath, oldScopeStack = contextStack, currentKeypath = (array.last(contextStack) as Context).keypath
 
     if (is.array(value)) {
       for (let i = 0, length = value.length; i < length; i++) {
         if (needKeypath) {
           currentKeypath = keypath + constant.RAW_DOT + i
           // slice + push 比直接 concat 快多了
-          keypathStack = oldKeypathStack.slice()
-          keypathStack.push(currentKeypath)
+          contextStack = oldScopeStack.slice()
+          contextStack.push({
+            keypath: currentKeypath,
+            scope: value[i],
+          })
         }
         result.push(
           renderChildren(
-            currentKeypath || constant.EMPTY_STRING,
+            currentKeypath,
             length,
             value[i],
             i
@@ -563,12 +540,15 @@ export function render(
           // 只能在使用上尽量避免 key 为空的用法
           currentKeypath = keypath + constant.RAW_DOT + key
           // slice + push 比直接 concat 快多了
-          keypathStack = oldKeypathStack.slice()
-          keypathStack.push(currentKeypath)
+          contextStack = oldScopeStack.slice()
+          contextStack.push({
+            keypath: currentKeypath,
+            scope: value[key],
+          })
         }
         result.push(
           renderChildren(
-            currentKeypath || constant.EMPTY_STRING,
+            currentKeypath,
             constant.UNDEFINED,
             value[key],
             key
@@ -577,9 +557,8 @@ export function render(
       }
     }
 
-    if (keypathStack !== oldKeypathStack) {
-      currentKeypath = oldCurrentKeypath
-      keypathStack = oldKeypathStack
+    if (contextStack !== oldScopeStack) {
+      contextStack = oldScopeStack
     }
 
     if (renderElse && result.length === 0) {
@@ -598,7 +577,7 @@ export function render(
     renderElse?: Function
   ) {
 
-    let count = 0, length = 0, result: any[] = []
+    let count = 0, length = 0, result: any[] = [], currentKeypath = (array.last(contextStack) as Context).keypath
 
     if (from < to) {
       length = to - from
@@ -663,46 +642,85 @@ export function render(
 
   },
 
-  renderExpressionIdentifier = function (name: string, lookup: boolean, root: boolean, offset: number, holder: boolean, stack?: string[], call?: boolean) {
+  renderExpressionIdentifier = function (
+    getIndex: (stack: Context[]) => number, tokens?: string[],
+    lookup?: boolean, stack?: Context[], call?: boolean
+  ) {
 
-    const myStack = stack || keypathStack,
+    const currentStack = stack || contextStack,
 
-    index = myStack.length - 1,
+    index = getIndex(currentStack),
 
-    result = findValue(
-      myStack,
-      root ? 0 : (offset ? index - offset : index),
-      name,
-      lookup,
-      call
-    )
+    { keypath, scope } = currentStack[index],
 
-    return holder ? result : result.value
+    name = tokens ? tokens.join(constant.RAW_DOT) : constant.EMPTY_STRING,
+
+    currentKeypath = keypathUtil.join(keypath, name)
+
+
+    let result: ValueHolder | void
+    if (tokens) {
+      result = object.get(scope, tokens)
+    }
+    else {
+      result = globalHolder
+      result.value = scope
+    }
+
+    if (result) {
+      result.keypath = currentKeypath
+    }
+    else {
+      if (lookup && index > 0) {
+        result = lookupValue(currentStack, index - 1, name)
+      }
+      // 如果是函数调用，则最后尝试过滤器
+      if (!result && call) {
+        result = object.get(filters, name)
+        if (result) {
+          // filter 不算数据
+          result.keypath = constant.UNDEFINED
+        }
+      }
+      if (!result) {
+        result = globalHolder
+        result.keypath = currentKeypath
+        result.value = constant.UNDEFINED
+      }
+    }
+
+    if (result.keypath !== constant.UNDEFINED) {
+      dependencies[result.keypath] = constant.TRUE
+    }
+
+    return result
 
   },
 
   renderExpressionValue = function (
     value: any,
-    keypath: string[],
-    holder: boolean | void
+    tokens: string[]
   ) {
-    const match = object.get(value, keypath)
-    globalHolder.keypath = constant.UNDEFINED
-    globalHolder.value = match ? match.value : constant.UNDEFINED
-    return holder ? globalHolder : globalHolder.value
+    const result = object.get(value, tokens)
+    if (result) {
+      result.keypath = constant.UNDEFINED
+      return result
+    }
+    globalHolder.keypath =
+    globalHolder.value = constant.UNDEFINED
+    return globalHolder
   },
 
-  renderExpressionCall = function (
+  executeFunction = function (
     fn: Function | void,
-    args: any[] | void,
-    holder: boolean | void
+    args: any[] | void
   ) {
     globalHolder.keypath = constant.UNDEFINED
-    globalHolder.value = execute(fn, context, args)
-    return holder ? globalHolder : globalHolder.value
+    globalHolder.value = execute(fn, instance, args)
+    return globalHolder
   },
 
-  renderTemplate = function (render: Function) {
+  renderTemplate = function (render: Function, keypath: string) {
     return render(
       renderElementVnode,
       renderComponentVnode,
@@ -724,26 +742,29 @@ export function render(
       renderTextVnode,
       renderCommentVnode,
       renderSlot,
+      definePartial,
       renderPartial,
-      renderImport,
       renderEach,
       renderRange,
       renderExpressionIdentifier,
       renderExpressionValue,
-      renderExpressionCall,
-      currentKeypath,
-      toString
+      executeFunction,
+      toString,
+      keypath,
     )
   }
 
-  const result = renderTemplate(template)
+  const vnode = renderTemplate(template, rootKeypath)
 
   if (process.env.NODE_ENV === 'development') {
-    if (is.array(result)) {
+    if (is.array(vnode)) {
       logger.fatal(`The template should have just one root element.`)
     }
   }
 
-  return result
+  return {
+    vnode,
+    dependencies,
+  }
 
 }

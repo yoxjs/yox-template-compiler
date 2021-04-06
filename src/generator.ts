@@ -6,11 +6,11 @@ import {
   DIRECTIVE_EVENT,
   DIRECTIVE_TRANSITION,
   MODIFER_NATIVE,
+  MAGIC_VAR_SCOPE,
   MAGIC_VAR_KEYPATH,
   MAGIC_VAR_LENGTH,
   MAGIC_VAR_EVENT,
   MAGIC_VAR_DATA,
-  MAGIC_VAR_ITEM,
 } from 'yox-config/src/config'
 
 import isDef from 'yox-common/src/function/isDef'
@@ -28,6 +28,7 @@ import * as nodeType from './nodeType'
 import * as field from './field'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
+import ExpressionKeypath from 'yox-expression-compiler/src/node/Keypath'
 import ExpressionIdentifier from 'yox-expression-compiler/src/node/Identifier'
 import ExpressionCall from 'yox-expression-compiler/src/node/Call'
 
@@ -56,7 +57,7 @@ componentStack: boolean[] = [ ],
 attributeStack: boolean[] = [ ],
 
 // 是否正在处理特殊 each，包括 遍历 range 和 遍历数组字面量和对象字面量
-eachSpecialStack: boolean[] = [ ],
+eachStack: boolean[] = [ ],
 
 // 是否正在收集字符串类型的值
 stringStack: boolean[] = [ ],
@@ -111,9 +112,9 @@ RENDER_COMMENT_VNODE = constant.EMPTY_STRING,
 
 RENDER_SLOT = constant.EMPTY_STRING,
 
-RENDER_PARTIAL = constant.EMPTY_STRING,
+DEFINE_PARTIAL = constant.EMPTY_STRING,
 
-RENDER_IMPORT = constant.EMPTY_STRING,
+RENDER_PARTIAL = constant.EMPTY_STRING,
 
 RENDER_EACH = constant.EMPTY_STRING,
 
@@ -123,21 +124,21 @@ RENDER_EXPRESSION_IDENTIFIER = constant.EMPTY_STRING,
 
 RENDER_EXPRESSION_VALUE = constant.EMPTY_STRING,
 
-RENDER_EXPRESSION_CALL = constant.EMPTY_STRING,
-
-RENDER_MAGIC_VAR_KEYPATH = constant.EMPTY_STRING,
-
-RENDER_MAGIC_VAR_LENGTH = constant.EMPTY_STRING,
-
-RENDER_MAGIC_VAR_EVENT = constant.EMPTY_STRING,
-
-RENDER_MAGIC_VAR_DATA = constant.EMPTY_STRING,
-
-RENDER_MAGIC_VAR_ITEM = constant.EMPTY_STRING,
+EXECUTE_FUNCTION = constant.EMPTY_STRING,
 
 TO_STRING = constant.EMPTY_STRING,
 
-ARG_STACK = constant.EMPTY_STRING
+ARG_STACK = constant.EMPTY_STRING,
+
+ARG_MAGIC_VAR_SCOPE = constant.EMPTY_STRING,
+
+ARG_MAGIC_VAR_KEYPATH = constant.EMPTY_STRING,
+
+ARG_MAGIC_VAR_LENGTH = constant.EMPTY_STRING,
+
+ARG_MAGIC_VAR_EVENT = constant.EMPTY_STRING,
+
+ARG_MAGIC_VAR_DATA = constant.EMPTY_STRING
 
 
 function init() {
@@ -167,20 +168,20 @@ function init() {
     RENDER_TEXT_VNODE = '_r'
     RENDER_COMMENT_VNODE = '_s'
     RENDER_SLOT = '_t'
-    RENDER_PARTIAL = '_u'
-    RENDER_IMPORT = '_v'
+    DEFINE_PARTIAL = '_u'
+    RENDER_PARTIAL = '_v'
     RENDER_EACH = '_w'
     RENDER_RANGE = '_x'
     RENDER_EXPRESSION_IDENTIFIER = '_y'
     RENDER_EXPRESSION_VALUE = '_z'
-    RENDER_EXPRESSION_CALL = '_1'
-    RENDER_MAGIC_VAR_KEYPATH = '_2'
-    RENDER_MAGIC_VAR_LENGTH = '_3'
-    RENDER_MAGIC_VAR_EVENT = '_4'
-    RENDER_MAGIC_VAR_DATA = '_5'
-    RENDER_MAGIC_VAR_ITEM = '_6'
-    TO_STRING = '_7'
-    ARG_STACK = '_8'
+    EXECUTE_FUNCTION = '_0'
+    TO_STRING = '_1'
+    ARG_STACK = '_2'
+    ARG_MAGIC_VAR_SCOPE = '_3'
+    ARG_MAGIC_VAR_KEYPATH = '_4'
+    ARG_MAGIC_VAR_LENGTH = '_5'
+    ARG_MAGIC_VAR_EVENT = '_6'
+    ARG_MAGIC_VAR_DATA = '_7'
   }
   else {
     RENDER_ELEMENT_VNODE = 'renderElementVnode'
@@ -203,44 +204,44 @@ function init() {
     RENDER_TEXT_VNODE = 'renderTextVnode'
     RENDER_COMMENT_VNODE = 'renderCommentVnode'
     RENDER_SLOT = 'renderSlot'
+    DEFINE_PARTIAL = 'definePartial'
     RENDER_PARTIAL = 'renderPartial'
-    RENDER_IMPORT = 'renderImport'
     RENDER_EACH = 'renderEach'
     RENDER_RANGE = 'renderRange'
     RENDER_EXPRESSION_IDENTIFIER = 'renderExpressionIdentifier'
     RENDER_EXPRESSION_VALUE = 'renderExpressionValue'
-    RENDER_EXPRESSION_CALL = 'renderExpressionCall'
-    RENDER_MAGIC_VAR_KEYPATH = MAGIC_VAR_KEYPATH
-    RENDER_MAGIC_VAR_LENGTH = MAGIC_VAR_LENGTH
-    RENDER_MAGIC_VAR_EVENT = MAGIC_VAR_EVENT
-    RENDER_MAGIC_VAR_DATA = MAGIC_VAR_DATA
-    RENDER_MAGIC_VAR_ITEM = MAGIC_VAR_ITEM
+    EXECUTE_FUNCTION = 'executeFunction'
     TO_STRING = 'toString'
     ARG_STACK = 'stack'
+    ARG_MAGIC_VAR_SCOPE = MAGIC_VAR_SCOPE
+    ARG_MAGIC_VAR_KEYPATH = MAGIC_VAR_KEYPATH
+    ARG_MAGIC_VAR_LENGTH = MAGIC_VAR_LENGTH
+    ARG_MAGIC_VAR_EVENT = MAGIC_VAR_EVENT
+    ARG_MAGIC_VAR_DATA = MAGIC_VAR_DATA
   }
 
   isUglify = constant.PUBLIC_CONFIG.uglifyCompiled
 
 }
 
-function transformIdentifier(node: ExpressionIdentifier) {
+function transformExpressionIdentifier(node: ExpressionIdentifier, nodes?: generator.Base[]) {
 
-  const { name } = node
+  const { name, root, lookup, offset } = node
 
   // 魔法变量，直接转换
   if (array.has(magicVariables, name)) {
     switch (name) {
       case MAGIC_VAR_KEYPATH:
-        return generator.toRaw(RENDER_MAGIC_VAR_KEYPATH)
+        return generator.toRaw(ARG_MAGIC_VAR_KEYPATH)
 
       case MAGIC_VAR_LENGTH:
-        return generator.toRaw(RENDER_MAGIC_VAR_LENGTH)
+        return generator.toRaw(ARG_MAGIC_VAR_LENGTH)
 
       case MAGIC_VAR_EVENT:
-        return generator.toRaw(RENDER_MAGIC_VAR_EVENT)
+        return generator.toRaw(ARG_MAGIC_VAR_EVENT)
 
       case MAGIC_VAR_DATA:
-        return generator.toRaw(RENDER_MAGIC_VAR_DATA)
+        return generator.toRaw(ARG_MAGIC_VAR_DATA)
 
       default:
         return generator.toRaw(name)
@@ -248,18 +249,18 @@ function transformIdentifier(node: ExpressionIdentifier) {
   }
 
   // this 仅在 each 中有意义
-  // 这里把 this 转成 $item，方便直接读取
+  // 这里把 this 转成 $scope，方便直接读取
   // 避免不必要的查找，提升性能
-  if (array.last(eachSpecialStack)
-    && node.root === constant.FALSE
-    && node.lookup === constant.FALSE
-    && node.offset === 0
+  if (array.last(eachStack)
+    && root === constant.FALSE
+    && lookup === constant.FALSE
+    && offset === 0
   ) {
 
     return generator.toRaw(
       name === constant.EMPTY_STRING
-        ? RENDER_MAGIC_VAR_ITEM
-        : RENDER_MAGIC_VAR_ITEM
+        ? ARG_MAGIC_VAR_SCOPE
+        : ARG_MAGIC_VAR_SCOPE
           + constant.RAW_DOT
           // 这里要把 list.0.a 转成 list[0].a
           // . 是 Yox 特有的访问数组的语法，正常的 js 语法是 [index]
@@ -270,23 +271,120 @@ function transformIdentifier(node: ExpressionIdentifier) {
 
 }
 
+function generateHolderIfNeeded(node: generator.Base, holder?: boolean) {
+  return holder
+    ? node
+    : generator.toOperator(
+        node,
+        generator.toRaw('value')
+      )
+}
+
+function generateExpressionIdentifier(node: ExpressionKeypath, nodes?: generator.Base[], holder?: boolean, stack?: boolean, parentNode?: ExpressionNode) {
+
+  let getIndex: generator.Base
+
+  if (node.root) {
+    getIndex = generator.toAnonymousFunction(
+      generator.toPrimitive(0)
+    )
+  }
+  else if (node.offset) {
+    getIndex = generator.toAnonymousFunction(
+      generator.toOperator(
+        generator.toRaw(ARG_STACK),
+        generator.toRaw(`length - ${1 + node.offset}`),
+      ),
+      [
+        generator.toRaw(ARG_STACK)
+      ]
+    )
+  }
+  else {
+    getIndex = generator.toAnonymousFunction(
+      generator.toOperator(
+        generator.toRaw(ARG_STACK),
+        generator.toRaw(`length - 1`),
+      ),
+      [
+        generator.toRaw(ARG_STACK)
+      ]
+    )
+  }
+
+  return generateHolderIfNeeded(
+    generator.toCall(
+      RENDER_EXPRESSION_IDENTIFIER,
+      [
+        getIndex,
+        nodes
+          ? generator.toList(nodes)
+          : generator.toPrimitive(constant.UNDEFINED),
+        node.lookup
+          ? generator.toPrimitive(constant.TRUE)
+          : generator.toPrimitive(constant.UNDEFINED),
+        stack
+          ? generator.toRaw(ARG_STACK)
+          : generator.toPrimitive(constant.UNDEFINED),
+        parentNode && parentNode.type === exprNodeType.CALL
+          ? generator.toPrimitive(constant.TRUE)
+          : generator.toPrimitive(constant.UNDEFINED)
+      ]
+    ),
+    holder
+  )
+
+}
+
+function generateExpressionValue(value: generator.Base, keys: generator.Base[], holder?: boolean) {
+
+  return generateHolderIfNeeded(
+    generator.toCall(
+      RENDER_EXPRESSION_VALUE,
+      [
+        value,
+        generator.toList(keys)
+      ]
+    ),
+    holder
+  )
+
+}
+
+function generateExpressionCall(fn: generator.Base, args?: generator.Base[], holder?: boolean) {
+
+  return generateHolderIfNeeded(
+    generator.toCall(
+      EXECUTE_FUNCTION,
+      [
+        fn,
+        args
+          ? generator.toList(args)
+          : generator.toPrimitive(constant.UNDEFINED)
+      ]
+    ),
+    holder
+  )
+
+}
+
 function generateExpression(expr: ExpressionNode) {
   return exprGenerator.generate(
     expr,
-    transformIdentifier,
-    RENDER_EXPRESSION_IDENTIFIER,
-    RENDER_EXPRESSION_VALUE,
-    RENDER_EXPRESSION_CALL
+    transformExpressionIdentifier,
+    generateExpressionIdentifier,
+    generateExpressionValue,
+    generateExpressionCall
   )
 }
 
 function generateExpressionHolder(expr: ExpressionNode) {
   return exprGenerator.generate(
     expr,
-    transformIdentifier,
-    RENDER_EXPRESSION_IDENTIFIER,
-    RENDER_EXPRESSION_VALUE,
-    RENDER_EXPRESSION_CALL,
+    transformExpressionIdentifier,
+    generateExpressionIdentifier,
+    generateExpressionValue,
+    generateExpressionCall,
     constant.TRUE
   )
 }
@@ -294,12 +392,12 @@ function generateExpressionHolder(expr: ExpressionNode) {
 function generateExpressionArg(expr: ExpressionNode) {
   return exprGenerator.generate(
     expr,
-    transformIdentifier,
-    RENDER_EXPRESSION_IDENTIFIER,
-    RENDER_EXPRESSION_VALUE,
-    RENDER_EXPRESSION_CALL,
+    transformExpressionIdentifier,
+    generateExpressionIdentifier,
+    generateExpressionValue,
+    generateExpressionCall,
     constant.FALSE,
-    ARG_STACK
+    constant.TRUE,
   )
 }
 
@@ -349,9 +447,16 @@ function generateNodesToStringIfNeeded(children: Node[]) {
 
   // 字符串拼接涉及表达式的优先级问题，改成 array.join 有利于一致性
   if (array.last(stringStack)) {
-    return generator.toList(
-      result,
-      generator.JOIN_EMPTY
+    return generator.toOperator(
+      generator.toList(
+        result
+      ),
+      generator.toCall(
+        'join',
+        [
+          generator.toPrimitive(constant.EMPTY_STRING)
+        ]
+      )
     )
   }
 
@@ -596,15 +701,15 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   // 先序列化 children，再序列化 attrs，原因需要举两个例子：
 
   // 例子1：
-  // <div on-click="output(this)"></div> 如果 this 序列化成 $item，如果外部修改了 this，因为模板没有计入此依赖，不会刷新，因此 item 是旧的
-  // 这个例子要求即使是动态执行的代码，也不能简单的直接序列化成 $item
+  // <div on-click="output(this)"></div> 如果 this 序列化成 $scope，如果外部修改了 this，因为模板没有计入此依赖，不会刷新，因此 item 是旧的
+  // 这个例子要求即使是动态执行的代码，也不能简单的直接序列化成 $scope
 
   // 例子2：
-  // <div on-click="output(this)">{{this}}</div>，如果第一个 this 转成 $item，第二个正常读取数据，这样肯定没问题
+  // <div on-click="output(this)">{{this}}</div>，如果第一个 this 转成 $scope，第二个正常读取数据，这样肯定没问题
   // 但问题是，你不知道有没有第二个 this，因此这里反过来，先序列化非动态部分，即 children，再序列化可能动态的部分，即 attrs
-  // 这样序列化动态部分的时候，就知道是否可以转成 $item
+  // 这样序列化动态部分的时候，就知道是否可以转成 $scope
 
-  // 后来发现，即使这样实现也不行，因为模板里存在各种可能的 if 或三元运算，导致依赖的捕捉充满不确定，因此这里我们不再考虑把 this 转成 $item
+  // 后来发现，即使这样实现也不行，因为模板里存在各种可能的 if 或三元运算，导致依赖的捕捉充满不确定，因此这里我们不再考虑把 this 转成 $scope
 
 
   array.push(vnodeStack, constant.TRUE)
@@ -1073,8 +1178,8 @@ function getEventValue(node: Directive) {
           generator.toList(callNode.args.map(generateExpressionArg)),
           [
             generator.toRaw(ARG_STACK),
-            generator.toRaw(RENDER_MAGIC_VAR_EVENT),
-            generator.toRaw(RENDER_MAGIC_VAR_DATA),
+            generator.toRaw(ARG_MAGIC_VAR_EVENT),
+            generator.toRaw(ARG_MAGIC_VAR_DATA),
           ]
         )
       )
@@ -1336,12 +1441,12 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
 
   const { index, from, to, equal, next } = node,
 
-  isSpecial = to || from.type === exprNodeType.ARRAY || from.type === exprNodeType.OBJECT,
+  isSpecial = to || from.type === exprNodeType.ARRAY || from.type === exprNodeType.OBJECT
 
-  args = [
-    generator.toRaw(RENDER_MAGIC_VAR_KEYPATH),
-    generator.toRaw(RENDER_MAGIC_VAR_LENGTH),
-    generator.toRaw(RENDER_MAGIC_VAR_ITEM),
+  const args = [
+    generator.toRaw(ARG_MAGIC_VAR_KEYPATH),
+    generator.toRaw(ARG_MAGIC_VAR_LENGTH),
+    generator.toRaw(ARG_MAGIC_VAR_SCOPE),
   ]
 
   if (index) {
@@ -1358,7 +1463,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   // 如果是特殊的 each，包括 遍历 range 和 遍历数组字面量和对象字面量
   // 在这种 each 中引用 this 无需追踪依赖，因此可直接认为 this 已用过，这样生成代码时，会直接引用局部变量，提高执行效率
   array.push(
-    eachSpecialStack,
+    eachStack,
     isSpecial
   )
 
@@ -1375,7 +1480,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   }
 
   array.pop(
-    eachSpecialStack
+    eachStack
   )
 
   // compiler 保证了 children 一定有值
@@ -1416,13 +1521,13 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
 nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
 
   return generator.toCall(
-    RENDER_PARTIAL,
+    DEFINE_PARTIAL,
     [
       generator.toPrimitive(node.name),
       generator.toAnonymousFunction(
         generateNodesToList(node.children as Node[]),
         [
-          generator.toRaw(RENDER_MAGIC_VAR_KEYPATH)
+          generator.toRaw(ARG_MAGIC_VAR_KEYPATH)
         ]
       )
     ]
@@ -1433,9 +1538,10 @@ nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
 nodeGenerator[nodeType.IMPORT] = function (node: Import) {
 
   return generator.toCall(
-    RENDER_IMPORT,
+    RENDER_PARTIAL,
     [
-      generator.toPrimitive(node.name)
+      generator.toPrimitive(node.name),
+      generator.toRaw(ARG_MAGIC_VAR_KEYPATH)
     ]
   )
 
@@ -1467,15 +1573,15 @@ export function generate(node: Node): string {
       RENDER_TEXT_VNODE,
       RENDER_COMMENT_VNODE,
       RENDER_SLOT,
+      DEFINE_PARTIAL,
       RENDER_PARTIAL,
-      RENDER_IMPORT,
       RENDER_EACH,
       RENDER_RANGE,
       RENDER_EXPRESSION_IDENTIFIER,
       RENDER_EXPRESSION_VALUE,
-      RENDER_EXPRESSION_CALL,
-      RENDER_MAGIC_VAR_KEYPATH,
+      EXECUTE_FUNCTION,
       TO_STRING,
+      ARG_MAGIC_VAR_KEYPATH
     ]
   )
 }
