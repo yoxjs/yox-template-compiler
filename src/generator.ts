@@ -747,6 +747,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
 
   array.push(vnodeStack, constant.TRUE)
+  array.push(attributeStack, constant.FALSE)
   array.push(componentStack, isComponent)
 
   if (children) {
@@ -782,14 +783,10 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
   }
 
-  array.pop(vnodeStack)
-  array.pop(componentStack)
-
-
   // 开始序列化 attrs，原则也是先序列化非动态部分，再序列化动态部分，即指令留在最后序列化
 
-  array.push(attributeStack, constant.TRUE)
-  array.push(componentStack, isComponent)
+  vnodeStack[vnodeStack.length - 1] = constant.FALSE
+  attributeStack[attributeStack.length - 1] = constant.TRUE
 
   // 在 vnodeStack 为 false 时取值
   if (ref) {
@@ -1013,40 +1010,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
   }
 
-  if (children) {
-    vnodeStack[vnodeStack.length - 1] = constant.TRUE
-    if (isComponent) {
-      outputSlots = generateComponentSlots(children)
-    }
-    else {
-
-      let isStatic = constant.TRUE, newChildren = generator.toList()
-
-      array.each(
-        children,
-        function (node) {
-          if (!node.isStatic) {
-            isStatic = constant.FALSE
-          }
-          newChildren.push(
-            nodeGenerator[node.type](node)
-          )
-        }
-      )
-
-      if (isStatic) {
-        data.set(
-          field.CHILDREN,
-          newChildren
-        )
-      }
-      else {
-        outputChildren = newChildren
-      }
-
-    }
-  }
-
+  array.pop(vnodeStack)
   array.pop(attributeStack)
   array.pop(componentStack)
 
