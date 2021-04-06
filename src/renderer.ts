@@ -467,7 +467,8 @@ export function render(
 
   // <slot name="xx"/>
   renderSlot = function (name: string, render?: Function) {
-    const result = instance.get(name)
+    dependencies[name] = constant.TRUE
+    const result = scope[name]
     if (result) {
       const { vnodes, components } = result
       if (components) {

@@ -72,6 +72,15 @@ RAW_METHOD = 'method'
 // 下面这些值需要根据外部配置才能确定
 let isUglify = constant.UNDEFINED,
 
+// 下面 4 个变量用于分配局部变量名称
+localVarId: 0,
+
+localVarMap: Record<string, generator.Base> = { },
+
+localVarCache: Record<string, string> = { },
+
+VAR_LOCAL_PREFIX = constant.EMPTY_STRING,
+
 RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
 
 RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
@@ -148,6 +157,7 @@ function init() {
   }
 
   if (constant.PUBLIC_CONFIG.uglifyCompiled) {
+    VAR_LOCAL_PREFIX = '_v'
     RENDER_ELEMENT_VNODE = '_a'
     RENDER_COMPONENT_VNODE = '_b'
     RENDER_NATIVE_ATTRIBUTE = '_c'
@@ -184,6 +194,7 @@ function init() {
     ARG_MAGIC_VAR_DATA = '_7'
   }
   else {
+    VAR_LOCAL_PREFIX = 'var'
     RENDER_ELEMENT_VNODE = 'renderElementVnode'
     RENDER_COMPONENT_VNODE = 'renderComponentVnode'
     RENDER_NATIVE_ATTRIBUTE = 'renderNativeAttribute'
@@ -224,7 +235,18 @@ function init() {
 
 }
 
-function transformExpressionIdentifier(node: ExpressionIdentifier, nodes?: generator.Base[]) {
+function addLocalVar(value: generator.Base) {
+  const hash = value.toString()
+  if (localVarCache[hash]) {
+    return localVarCache[hash]
+  }
+  const key = VAR_LOCAL_PREFIX + (localVarId++)
+  localVarMap[key] = value
+  localVarCache[hash] = key
+  return key
+}
+
+function transformExpressionIdentifier(node: ExpressionIdentifier) {
 
   const { name, root, lookup, offset } = node
 
@@ -285,30 +307,42 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes?: generator
   let getIndex: generator.Base
 
   if (node.root) {
-    getIndex = generator.toAnonymousFunction(
-      generator.toPrimitive(0)
+    getIndex = generator.toRaw(
+      addLocalVar(
+        generator.toAnonymousFunction(
+          generator.toPrimitive(0)
+        )
+      )
     )
   }
   else if (node.offset) {
-    getIndex = generator.toAnonymousFunction(
-      generator.toOperator(
-        generator.toRaw(ARG_STACK),
-        generator.toRaw(`length - ${1 + node.offset}`),
-      ),
-      [
-        generator.toRaw(ARG_STACK)
-      ]
+    getIndex = generator.toRaw(
+      addLocalVar(
+        generator.toAnonymousFunction(
+          generator.toOperator(
+            generator.toRaw(ARG_STACK),
+            generator.toRaw(`length - ${1 + node.offset}`),
+          ),
+          [
+            generator.toRaw(ARG_STACK)
+          ]
+        )
+      )
     )
   }
   else {
-    getIndex = generator.toAnonymousFunction(
-      generator.toOperator(
-        generator.toRaw(ARG_STACK),
-        generator.toRaw(`length - 1`),
-      ),
-      [
-        generator.toRaw(ARG_STACK)
-      ]
+    getIndex = generator.toRaw(
+      addLocalVar(
+        generator.toAnonymousFunction(
+          generator.toOperator(
+            generator.toRaw(ARG_STACK),
+            generator.toRaw(`length - 1`),
+          ),
+          [
+            generator.toRaw(ARG_STACK)
+          ]
+        )
+      )
     )
   }
 
@@ -1047,25 +1081,23 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     )
   }
 
-  if (isComponent) {
-    return generator.toCall(
-      RENDER_COMPONENT_VNODE,
-      [
-        data,
-        outputAttrs,
-        outputSlots,
-      ]
-    )
-  }
-
-  return generator.toCall(
-    RENDER_ELEMENT_VNODE,
-    [
-      data,
-      outputAttrs,
-      outputChildren,
-    ]
-  )
+  return isComponent
+    ? generator.toCall(
+        RENDER_COMPONENT_VNODE,
+        [
+          data,
+          outputAttrs,
+          outputSlots,
+        ]
+      )
+    : generator.toCall(
+        RENDER_ELEMENT_VNODE,
+        [
+          data,
+          outputAttrs,
+          outputChildren,
+        ]
+      )
 
 }
 
@@ -1548,10 +1580,18 @@ nodeGenerator[nodeType.IMPORT] = function (node: Import) {
 }
 
 export function generate(node: Node): string {
+
   init()
   generator.init()
+
+  // 重新收集
+  localVarId = 0
+  localVarMap = { }
+  localVarCache = { }
+
   return generator.generate(
     nodeGenerator[node.type](node),
+    localVarMap,
     [
       RENDER_ELEMENT_VNODE,
       RENDER_COMPONENT_VNODE,
