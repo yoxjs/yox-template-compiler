@@ -62,6 +62,9 @@ eachStack: boolean[] = [ ],
 // 是否正在收集字符串类型的值
 stringStack: boolean[] = [ ],
 
+// 是否正在收集 slot
+slotStack: number[] = [ ],
+
 magicVariables: string[] = [ MAGIC_VAR_KEYPATH, MAGIC_VAR_LENGTH, MAGIC_VAR_EVENT, MAGIC_VAR_DATA ],
 
 nodeGenerator = { },
@@ -73,7 +76,7 @@ RAW_METHOD = 'method'
 let isUglify = constant.UNDEFINED,
 
 // 下面 4 个变量用于分配局部变量名称
-localVarId: 0,
+localVarId = 0,
 
 localVarMap: Record<string, generator.Base> = { },
 
@@ -139,6 +142,8 @@ TO_STRING = constant.EMPTY_STRING,
 
 ARG_STACK = constant.EMPTY_STRING,
 
+ARG_COMPONENTS = constant.EMPTY_STRING,
+
 ARG_MAGIC_VAR_SCOPE = constant.EMPTY_STRING,
 
 ARG_MAGIC_VAR_KEYPATH = constant.EMPTY_STRING,
@@ -187,11 +192,12 @@ function init() {
     EXECUTE_FUNCTION = '_0'
     TO_STRING = '_1'
     ARG_STACK = '_2'
-    ARG_MAGIC_VAR_SCOPE = '_3'
-    ARG_MAGIC_VAR_KEYPATH = '_4'
-    ARG_MAGIC_VAR_LENGTH = '_5'
-    ARG_MAGIC_VAR_EVENT = '_6'
-    ARG_MAGIC_VAR_DATA = '_7'
+    ARG_COMPONENTS = '_3'
+    ARG_MAGIC_VAR_SCOPE = '_4'
+    ARG_MAGIC_VAR_KEYPATH = '_5'
+    ARG_MAGIC_VAR_LENGTH = '_6'
+    ARG_MAGIC_VAR_EVENT = '_7'
+    ARG_MAGIC_VAR_DATA = '_8'
   }
   else {
     VAR_LOCAL_PREFIX = 'var'
@@ -224,6 +230,7 @@ function init() {
     EXECUTE_FUNCTION = 'executeFunction'
     TO_STRING = 'toString'
     ARG_STACK = 'stack'
+    ARG_COMPONENTS = 'components'
     ARG_MAGIC_VAR_SCOPE = MAGIC_VAR_SCOPE
     ARG_MAGIC_VAR_KEYPATH = MAGIC_VAR_KEYPATH
     ARG_MAGIC_VAR_LENGTH = MAGIC_VAR_LENGTH
@@ -543,9 +550,23 @@ function generateComponentSlots(children: Node[]) {
   object.each(
     slots,
     function (children: Node[], name: string) {
+      array.push(
+        slotStack,
+        0
+      )
       result.set(
         name,
-        generateNodesToList(children)
+        generator.toAnonymousFunction(
+          generateNodesToList(children),
+          array.last(slotStack) > 0
+            ? [
+                generator.toRaw(ARG_COMPONENTS)
+              ]
+            : constant.UNDEFINED
+        )
+      )
+      array.pop(
+        slotStack
       )
     }
   )
@@ -701,7 +722,8 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   outputAttrs: generator.Base = generator.toPrimitive(constant.UNDEFINED),
   outputChildren: generator.Base = generator.toPrimitive(constant.UNDEFINED),
-  outputSlots: generator.Base = generator.toPrimitive(constant.UNDEFINED)
+  outputSlots: generator.Base = generator.toPrimitive(constant.UNDEFINED),
+  outputComponents: generator.Base = generator.toPrimitive(constant.UNDEFINED)
 
   if (tag === constant.RAW_SLOT) {
     // slot 不可能有 html、text 属性
@@ -1045,23 +1067,31 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     )
   }
 
-  return isComponent
-    ? generator.toCall(
-        RENDER_COMPONENT_VNODE,
-        [
-          data,
-          outputAttrs,
-          outputSlots,
-        ]
-      )
-    : generator.toCall(
-        RENDER_ELEMENT_VNODE,
-        [
-          data,
-          outputAttrs,
-          outputChildren,
-        ]
-      )
+  if (isComponent) {
+    const lastSlotIndex = slotStack.length - 1
+    if (is.number(slotStack[lastSlotIndex])) {
+      slotStack[lastSlotIndex]++
+      outputComponents = generator.toRaw(ARG_COMPONENTS)
+    }
+    return generator.toCall(
+      RENDER_COMPONENT_VNODE,
+      [
+        data,
+        outputAttrs,
+        outputSlots,
+        outputComponents
+      ]
+    )
+  }
+
+  return generator.toCall(
+    RENDER_ELEMENT_VNODE,
+    [
+      data,
+      outputAttrs,
+      outputChildren,
+    ]
+  )
 
 }
 

@@ -121,7 +121,7 @@ export function render(
     )
   },
 
-  normalizeChildren = function (children: any[], vnodes: any[], components?: any[]) {
+  normalizeChildren = function (children: any[], vnodes: any[]) {
     flattenArray(
       children,
       function (item) {
@@ -132,9 +132,6 @@ export function render(
             lastChild.text += item.text
             return
           }
-        }
-        else if (item.isComponent && components) {
-          components.push(item)
         }
         vnodes.push(item)
       }
@@ -166,7 +163,8 @@ export function render(
   renderComponentVnode = function (
     data: Data,
     attrs: any[] | void,
-    slots: Data | void
+    slots: Data | void,
+    components: any[] | void,
   ) {
 
     data.context = instance
@@ -178,19 +176,24 @@ export function render(
     if (slots) {
       const result = { }
       for (let name in slots) {
-        const vnodes: any[] = [ ], components: any[] = [ ]
-        normalizeChildren(slots[name], vnodes, components)
+        const vnodes: any[] = [ ], slotComponents: any[] = [ ]
+        normalizeChildren(slots[name](slotComponents), vnodes)
         // 就算是 undefined 也必须有值，用于覆盖旧值
         result[name] = vnodes.length
           ? {
               vnodes,
-              components: components.length
-                ? components
+              components: slotComponents.length
+                ? slotComponents
                 : constant.UNDEFINED
             }
           : constant.UNDEFINED
+
       }
       data.slots = result
+    }
+
+    if (components) {
+      components.push(data)
     }
 
     return data
