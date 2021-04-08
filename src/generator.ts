@@ -1185,6 +1185,13 @@ function getEventInfo(node: Directive) {
         })
       )
     }
+    else {
+      // runtime
+      array.push(
+        args,
+        generator.toPrimitive(constant.UNDEFINED)
+      )
+    }
 
     addEventBooleanInfo(args, node)
 
