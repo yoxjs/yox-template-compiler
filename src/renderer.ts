@@ -293,23 +293,12 @@ export function render(
         return
       }
 
-      let methodArgs: any
-
-      if (runtime) {
-        methodArgs = runtime.args(runtime.stack, event, data)
-        // 1 个或 0 个参数可优化调用方式，即 method.call 或直接调用函数
-        if (methodArgs.length < 2) {
-          methodArgs = methodArgs[0]
-        }
-      }
-      else {
-        methodArgs = data ? [event, data] : event
-      }
-
       const result = execute(
         instance[name],
         instance,
-        methodArgs
+        runtime
+          ? runtime.args(runtime.stack, event, data)
+          : (data ? [event, data] : event)
       )
 
       if (result === constant.FALSE) {
@@ -370,21 +359,12 @@ export function render(
 
   createDirectiveHandler = function (name: string, runtime: DirectiveRuntime | void) {
     return function () {
-
-      let methodArgs: any = constant.UNDEFINED
-
-      if (runtime) {
-        methodArgs = (runtime.args as Function)(runtime.stack)
-        // 1 个或 0 个参数可优化调用方式，即 method.call 或直接调用函数
-        if (methodArgs.length < 2) {
-          methodArgs = methodArgs[0]
-        }
-      }
-
       execute(
         instance[name],
         instance,
-        methodArgs
+        runtime
+          ? (runtime.args as Function)(runtime.stack)
+          : constant.UNDEFINED
       )
     }
   },
