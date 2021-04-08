@@ -67,9 +67,7 @@ slotStack: number[] = [ ],
 
 magicVariables: string[] = [ MAGIC_VAR_KEYPATH, MAGIC_VAR_LENGTH, MAGIC_VAR_EVENT, MAGIC_VAR_DATA ],
 
-nodeGenerator = { },
-
-RAW_METHOD = 'method'
+nodeGenerator = { }
 
 
 // 下面这些值需要根据外部配置才能确定
@@ -84,43 +82,23 @@ localVarCache: Record<string, string> = { },
 
 VAR_LOCAL_PREFIX = constant.EMPTY_STRING,
 
+ARG_INSTANCE = constant.EMPTY_STRING,
+
 RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
 
 RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
 
-RENDER_NATIVE_ATTRIBUTE = constant.EMPTY_STRING,
-
-RENDER_NATIVE_PROPERTY = constant.EMPTY_STRING,
-
-RENDER_PROPERTY = constant.EMPTY_STRING,
-
-RENDER_LAZY = constant.EMPTY_STRING,
-
 RENDER_TRANSITION = constant.EMPTY_STRING,
-
-GET_TRANSITION = constant.EMPTY_STRING,
 
 RENDER_MODEL = constant.EMPTY_STRING,
 
-GET_MODEL = constant.EMPTY_STRING,
-
 RENDER_EVENT_METHOD = constant.EMPTY_STRING,
-
-GET_EVENT_METHOD = constant.EMPTY_STRING,
 
 RENDER_EVENT_NAME = constant.EMPTY_STRING,
 
-GET_EVENT_NAME = constant.EMPTY_STRING,
-
 RENDER_DIRECTIVE = constant.EMPTY_STRING,
 
-GET_DIRECTIVE = constant.EMPTY_STRING,
-
 RENDER_SPREAD = constant.EMPTY_STRING,
-
-RENDER_TEXT_VNODE = constant.EMPTY_STRING,
-
-RENDER_COMMENT_VNODE = constant.EMPTY_STRING,
 
 RENDER_SLOT = constant.EMPTY_STRING,
 
@@ -162,64 +140,44 @@ function init() {
   }
 
   if (constant.PUBLIC_CONFIG.uglifyCompiled) {
-    VAR_LOCAL_PREFIX = '_v'
-    RENDER_ELEMENT_VNODE = '_a'
-    RENDER_COMPONENT_VNODE = '_b'
-    RENDER_NATIVE_ATTRIBUTE = '_c'
-    RENDER_NATIVE_PROPERTY = '_d'
-    RENDER_PROPERTY = '_e'
-    RENDER_LAZY = '_f'
-    RENDER_TRANSITION = '_g'
-    GET_TRANSITION = '_h'
-    RENDER_MODEL = '_i'
-    GET_MODEL = '_j'
-    RENDER_EVENT_METHOD = '_k'
-    GET_EVENT_METHOD = '_l'
-    RENDER_EVENT_NAME = '_m'
-    GET_EVENT_NAME = '_n'
-    RENDER_DIRECTIVE = '_o'
-    GET_DIRECTIVE = '_p'
-    RENDER_SPREAD = '_q'
-    RENDER_TEXT_VNODE = '_r'
-    RENDER_COMMENT_VNODE = '_s'
-    RENDER_SLOT = '_t'
-    DEFINE_PARTIAL = '_u'
-    RENDER_PARTIAL = '_v'
-    RENDER_EACH = '_w'
-    RENDER_RANGE = '_x'
-    RENDER_EXPRESSION_IDENTIFIER = '_y'
-    RENDER_EXPRESSION_VALUE = '_z'
-    EXECUTE_FUNCTION = '_0'
-    TO_STRING = '_1'
-    ARG_STACK = '_2'
-    ARG_COMPONENTS = '_3'
-    ARG_MAGIC_VAR_SCOPE = '_4'
-    ARG_MAGIC_VAR_KEYPATH = '_5'
-    ARG_MAGIC_VAR_LENGTH = '_6'
-    ARG_MAGIC_VAR_EVENT = '_7'
-    ARG_MAGIC_VAR_DATA = '_8'
+    VAR_LOCAL_PREFIX = '_'
+    ARG_INSTANCE = '_a'
+    RENDER_ELEMENT_VNODE = '_b'
+    RENDER_COMPONENT_VNODE = '_c'
+    RENDER_TRANSITION = '_d'
+    RENDER_MODEL = '_e'
+    RENDER_EVENT_METHOD = '_f'
+    RENDER_EVENT_NAME = '_g'
+    RENDER_DIRECTIVE = '_h'
+    RENDER_SPREAD = '_i'
+    RENDER_SLOT = '_j'
+    DEFINE_PARTIAL = '_k'
+    RENDER_PARTIAL = '_l'
+    RENDER_EACH = '_m'
+    RENDER_RANGE = '_n'
+    RENDER_EXPRESSION_IDENTIFIER = '_o'
+    RENDER_EXPRESSION_VALUE = '_p'
+    EXECUTE_FUNCTION = '_q'
+    TO_STRING = '_r'
+    ARG_STACK = '_s'
+    ARG_COMPONENTS = '_t'
+    ARG_MAGIC_VAR_SCOPE = '_u'
+    ARG_MAGIC_VAR_KEYPATH = '_v'
+    ARG_MAGIC_VAR_LENGTH = '_w'
+    ARG_MAGIC_VAR_EVENT = '_x'
+    ARG_MAGIC_VAR_DATA = '_y'
   }
   else {
     VAR_LOCAL_PREFIX = 'var'
+    ARG_INSTANCE = 'instance'
     RENDER_ELEMENT_VNODE = 'renderElementVnode'
     RENDER_COMPONENT_VNODE = 'renderComponentVnode'
-    RENDER_NATIVE_ATTRIBUTE = 'renderNativeAttribute'
-    RENDER_NATIVE_PROPERTY = 'renderNativeProperty'
-    RENDER_PROPERTY = 'renderProperty'
-    RENDER_LAZY = 'renderLazy'
     RENDER_TRANSITION = 'renderTransition'
-    GET_TRANSITION = 'getTransition'
     RENDER_MODEL = 'renderModel'
-    GET_MODEL = 'getModel'
     RENDER_EVENT_METHOD = 'renderEventMethod'
-    GET_EVENT_METHOD = 'getEventMethod'
     RENDER_EVENT_NAME = 'renderEventName'
-    GET_EVENT_NAME = 'getEventName'
     RENDER_DIRECTIVE = 'renderDirective'
-    GET_DIRECTIVE = 'getDirective'
     RENDER_SPREAD = 'renderSpread'
-    RENDER_TEXT_VNODE = 'renderTextVnode'
-    RENDER_COMMENT_VNODE = 'renderCommentVnode'
     RENDER_SLOT = 'renderSlot'
     DEFINE_PARTIAL = 'definePartial'
     RENDER_PARTIAL = 'renderPartial'
@@ -503,6 +461,22 @@ function generateNodesToStringIfNeeded(children: Node[]) {
 
   return generator.toList(result)
 
+}
+
+function generateCommentVnode() {
+  return generator.toMap({
+    context: ARG_INSTANCE,
+    isComment: generator.toPrimitive(constant.TRUE),
+    text: generator.toPrimitive(constant.EMPTY_STRING),
+  })
+}
+
+function generateTextVnode(text: generator.Base) {
+  return generator.toMap({
+    context: ARG_INSTANCE,
+    isText: generator.toPrimitive(constant.TRUE),
+    text,
+  })
 }
 
 function generateComponentSlots(children: Node[]) {
@@ -952,7 +926,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       data.set(
         field.TRANSITION,
         generator.toCall(
-          GET_TRANSITION,
+          RENDER_TRANSITION,
           [
             getTransitionValue(transition)
           ]
@@ -963,12 +937,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     if (model) {
       data.set(
         field.MODEL,
-        generator.toCall(
-          GET_MODEL,
-          [
-            getModelValue(model)
-          ]
-        )
+        getModelValue(model)
       )
     }
 
@@ -979,16 +948,12 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       array.each(
         eventList,
         function (node) {
-          const params = getEventValue(node)
+          const info = getEventInfo(node)
           events.set(
             getDirectiveKey(node),
             generator.toCall(
-              params.has(RAW_METHOD)
-                ? GET_EVENT_METHOD
-                : GET_EVENT_NAME,
-              [
-                params
-              ]
+              info.name,
+              info.args
             )
           )
         }
@@ -1011,10 +976,8 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
           directives.set(
             getDirectiveKey(node),
             generator.toCall(
-              GET_DIRECTIVE,
-              [
-                getDirectiveValue(node)
-              ]
+              RENDER_DIRECTIVE,
+              getDirectiveArgs(node)
             )
           )
         }
@@ -1097,31 +1060,25 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
 nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
 
-  const value = generateAttributeValue(node.value, node.expr, node.children)
-
-  return generator.toCall(
-    array.last(componentStack)
-      ? RENDER_PROPERTY
-      : RENDER_NATIVE_ATTRIBUTE,
-    [
-      generator.toPrimitive(node.name),
-      value
-    ]
-  )
+  return generator.toMap({
+    key: generator.toPrimitive(
+      array.last(componentStack)
+        ? field.PROPERTIES
+        : field.NATIVE_ATTRIBUTES
+    ),
+    name: generator.toPrimitive(node.name),
+    value: generateAttributeValue(node.value, node.expr, node.children),
+  })
 
 }
 
 nodeGenerator[nodeType.PROPERTY] = function (node: Property) {
 
-  const value = generateAttributeValue(node.value, node.expr, node.children)
-
-  return generator.toCall(
-    RENDER_NATIVE_PROPERTY,
-    [
-      generator.toPrimitive(node.name),
-      value
-    ]
-  )
+  return generator.toMap({
+    key: generator.toPrimitive(field.NATIVE_PROPERTIES),
+    name: generator.toPrimitive(node.name),
+    value: generateAttributeValue(node.value, node.expr, node.children),
+  })
 
 }
 
@@ -1134,52 +1091,68 @@ function getTransitionValue(node: Directive) {
 }
 
 function getModelValue(node: Directive) {
-  return generateExpressionHolder(node.expr as ExpressionNode)
+  return generator.toCall(
+    RENDER_MODEL,
+    [
+      generateExpressionHolder(node.expr as ExpressionNode)
+    ]
+  )
 }
 
-function getEventValue(node: Directive) {
+function addEventBooleanInfo(args: generator.Base[], node: Directive) {
 
-  const params = generator.toMap()
-
-  params.set(
-    'key',
-    generator.toPrimitive(getDirectiveKey(node))
+  // isNative
+  array.push(
+    args,
+    generator.toPrimitive(constant.UNDEFINED)
   )
-  params.set(
-    'value',
-    generator.toPrimitive(node.value)
-  )
-  params.set(
-    'from',
-    generator.toPrimitive(node.name)
+  // isComponent
+  array.push(
+    args,
+    generator.toPrimitive(constant.UNDEFINED)
   )
 
   if (array.last(componentStack)) {
     if (node.modifier === MODIFER_NATIVE) {
-      params.set(
-        'isNative',
-        generator.toPrimitive(constant.TRUE)
-      )
+      // isNative
+      args[args.length - 2] = generator.toPrimitive(constant.TRUE)
     }
     else {
-      params.set(
-        'isComponent',
-        generator.toPrimitive(constant.TRUE)
-      )
-      // 组件事件要用 component.on(type, options) 进行监听
-      // 为了保证 options.ns 是字符串类型，这里需确保 fromNs 是字符串
-      params.set(
-        'fromNs',
-        generator.toPrimitive(node.modifier || constant.EMPTY_STRING)
-      )
+      // isComponent
+      args[args.length - 1] = generator.toPrimitive(constant.TRUE)
     }
   }
-  else {
-    params.set(
-      'fromNs',
-      generator.toPrimitive(node.modifier)
-    )
-  }
+
+}
+
+function getEventInfo(node: Directive) {
+
+  const args: generator.Base[] = [ ]
+
+  // key
+  array.push(
+    args,
+    generator.toPrimitive(getDirectiveKey(node))
+  )
+  // value
+  array.push(
+    args,
+    generator.toPrimitive(node.value)
+  )
+
+  // from
+  array.push(
+    args,
+    generator.toPrimitive(node.name)
+  )
+
+  // fromNs
+  array.push(
+    args,
+    // 组件事件要用 component.on(type, options) 进行监听
+    // 为了保证 options.ns 是字符串类型，这里需确保 fromNs 是字符串
+    generator.toPrimitive(node.modifier || constant.EMPTY_STRING)
+  )
 
   // 事件的 expr 必须是表达式
   const expr = node.expr as ExpressionNode, { raw } = expr
@@ -1189,42 +1162,58 @@ function getEventValue(node: Directive) {
     const callNode = expr as ExpressionCall
 
     // compiler 保证了函数调用的 name 是标识符
-    params.set(
-      RAW_METHOD,
+    // method
+    array.push(
+      args,
       generator.toPrimitive((callNode.name as ExpressionIdentifier).name)
     )
 
     // 为了实现运行时动态收集参数，这里序列化成函数
     if (!array.falsy(callNode.args)) {
-      const runtime = generator.toMap()
-      params.set('runtime', runtime)
-      runtime.set(
-        'args',
-        generator.toAnonymousFunction(
-          generator.toList(callNode.args.map(generateExpressionArg)),
-          [
-            generator.toRaw(ARG_STACK),
-            generator.toRaw(ARG_MAGIC_VAR_EVENT),
-            generator.toRaw(ARG_MAGIC_VAR_DATA),
-          ]
-        )
+      // runtime
+      array.push(
+        args,
+        generator.toMap({
+          args: generator.toAnonymousFunction(
+            generator.toList(callNode.args.map(generateExpressionArg)),
+            [
+              generator.toRaw(ARG_STACK),
+              generator.toRaw(ARG_MAGIC_VAR_EVENT),
+              generator.toRaw(ARG_MAGIC_VAR_DATA),
+            ]
+          )
+        })
       )
     }
 
-  }
-  else {
-    const parts = raw.split(constant.RAW_DOT)
-    params.set(
-      'to',
-      generator.toPrimitive(parts[0])
-    )
-    params.set(
-      'toNs',
-      generator.toPrimitive(parts[1])
-    )
+    addEventBooleanInfo(args, node)
+
+    return {
+      name: RENDER_EVENT_METHOD,
+      args,
+    }
+
   }
 
-  return params
+  const parts = raw.split(constant.RAW_DOT)
+
+  // to
+  array.push(
+    args,
+    generator.toPrimitive(parts[0])
+  )
+  // toNs
+  array.push(
+    args,
+    generator.toPrimitive(parts[1])
+  )
+
+  addEventBooleanInfo(args, node)
+
+  return {
+    name: RENDER_EVENT_NAME,
+    args,
+  }
 
 }
 
@@ -1232,24 +1221,28 @@ function getDirectiveKey(node: Directive) {
   return keypathUtil.join(node.name, node.modifier || constant.EMPTY_STRING)
 }
 
-function getDirectiveValue(node: Directive) {
+function getDirectiveArgs(node: Directive) {
 
-  const params = generator.toMap()
+  const args: generator.Base[] = [ ]
 
-  params.set(
-    'key',
+  // key
+  array.push(
+    args,
     generator.toPrimitive(getDirectiveKey(node))
   )
-  params.set(
-    'name',
+  // name
+  array.push(
+    args,
     generator.toPrimitive(node.name)
   )
-  params.set(
-    'modifier',
+  // modifier
+  array.push(
+    args,
     generator.toPrimitive(node.modifier)
   )
-  params.set(
-    'value',
+  // value
+  array.push(
+    args,
     generator.toPrimitive(node.value)
   )
 
@@ -1269,27 +1262,35 @@ function getDirectiveValue(node: Directive) {
 
       const callNode = expr as ExpressionCall
 
-      // compiler 保证了函数调用的 name 是标识符
-      params.set(
-        RAW_METHOD,
-        generator.toPrimitive((callNode.name as ExpressionIdentifier).name)
-      )
-
       // 为了实现运行时动态收集参数，这里序列化成函数
       if (!array.falsy(callNode.args)) {
-        const runtime = generator.toMap()
-        params.set('runtime', runtime)
-
-        runtime.set(
-          'args',
-          generator.toAnonymousFunction(
-            generator.toList(callNode.args.map(generateExpressionArg)),
-            [
-              generator.toRaw(ARG_STACK),
-            ]
-          )
+        // runtime
+        array.push(
+          args,
+          generator.toMap({
+            args: generator.toAnonymousFunction(
+              generator.toList(callNode.args.map(generateExpressionArg)),
+              [
+                generator.toRaw(ARG_STACK),
+              ]
+            )
+          })
         )
       }
+      else {
+        // runtime
+        array.push(
+          args,
+          generator.toPrimitive(constant.UNDEFINED)
+        )
+      }
+
+      // compiler 保证了函数调用的 name 是标识符
+      // method
+      array.push(
+        args,
+        generator.toPrimitive((callNode.name as ExpressionIdentifier).name)
+      )
 
     }
     else {
@@ -1297,17 +1298,17 @@ function getDirectiveValue(node: Directive) {
       // 取值函数
       // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
       if (expr.type !== exprNodeType.LITERAL) {
-        const runtime = generator.toMap()
-        params.set('runtime', runtime)
-
-        runtime.set(
-          'expr',
-          generator.toAnonymousFunction(
-            generateExpressionArg(expr),
-            [
-              generator.toRaw(ARG_STACK)
-            ]
-          )
+        // runtime
+        array.push(
+          args,
+          generator.toMap({
+            expr: generator.toAnonymousFunction(
+              generateExpressionArg(expr),
+              [
+                generator.toRaw(ARG_STACK)
+              ]
+            )
+          })
         )
       }
 
@@ -1315,7 +1316,7 @@ function getDirectiveValue(node: Directive) {
 
   }
 
-  return params
+  return args
 
 }
 
@@ -1323,51 +1324,52 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
 
   switch (node.ns) {
     case DIRECTIVE_LAZY:
-      return generator.toCall(
-        RENDER_LAZY,
-        [
-          generator.toPrimitive(node.name),
-          getLazyValue(node)
-        ]
-      )
+      return generator.toMap({
+        key: generator.toPrimitive(field.LAZY),
+        name: generator.toPrimitive(node.name),
+        value: getLazyValue(node),
+      })
 
     // <div transition="name">
     case DIRECTIVE_TRANSITION:
-      return generator.toCall(
-        RENDER_TRANSITION,
-        [
-          getTransitionValue(node)
-        ]
-      )
+      return generator.toMap({
+        key: generator.toPrimitive(field.TRANSITION),
+        value: generator.toCall(
+          RENDER_TRANSITION,
+          [
+            getTransitionValue(node)
+          ]
+        ),
+      })
 
     // <input model="id">
     case DIRECTIVE_MODEL:
-      return generator.toCall(
-        RENDER_MODEL,
-        [
-          getModelValue(node)
-        ]
-      )
+      return generator.toMap({
+        key: generator.toPrimitive(field.MODEL),
+        value: getModelValue(node),
+      })
 
     // <div on-click="name">
     case DIRECTIVE_EVENT:
-      const params = getEventValue(node)
-      return generator.toCall(
-        params.has(RAW_METHOD)
-          ? RENDER_EVENT_METHOD
-          : RENDER_EVENT_NAME,
-        [
-          params
-        ]
-      )
+      const info = getEventInfo(node)
+      return generator.toMap({
+        key: generator.toPrimitive(field.EVENTS),
+        name: generator.toPrimitive(getDirectiveKey(node)),
+        value: generator.toCall(
+          info.name,
+          info.args
+        )
+      })
 
     default:
-      return generator.toCall(
-        RENDER_DIRECTIVE,
-        [
-          getDirectiveValue(node)
-        ]
-      )
+      return generator.toMap({
+        key: generator.toPrimitive(field.DIRECTIVES),
+        name: generator.toPrimitive(getDirectiveKey(node)),
+        value: generator.toCall(
+          RENDER_DIRECTIVE,
+          getDirectiveArgs(node)
+        )
+      })
   }
 
 }
@@ -1376,6 +1378,7 @@ nodeGenerator[nodeType.SPREAD] = function (node: Spread) {
   return generator.toCall(
     RENDER_SPREAD,
     [
+      generator.toPrimitive(field.PROPERTIES),
       generateExpression(node.expr)
     ]
   )
@@ -1383,36 +1386,28 @@ nodeGenerator[nodeType.SPREAD] = function (node: Spread) {
 
 nodeGenerator[nodeType.TEXT] = function (node: Text) {
 
-  const result = generator.toPrimitive(node.text)
+  const text = generator.toPrimitive(node.text)
 
   return array.last(vnodeStack)
-    ? generator.toCall(
-        RENDER_TEXT_VNODE,
-        [
-          result
-        ]
-      )
-    : result
+    ? generateTextVnode(text)
+    : text
 
 }
 
 nodeGenerator[nodeType.EXPRESSION] = function (node: Expression) {
 
-  const result = generateExpression(node.expr)
+  const value = generateExpression(node.expr)
 
   return array.last(vnodeStack)
-    ? generator.toCall(
-        RENDER_TEXT_VNODE,
-        [
-          generator.toCall(
-            TO_STRING,
-            [
-              result
-            ]
-          )
-        ]
+    ? generateTextVnode(
+        generator.toCall(
+          TO_STRING,
+          [
+            value
+          ]
+        )
       )
-    : result
+    : value
 
 }
 
@@ -1422,7 +1417,7 @@ nodeGenerator[nodeType.ELSE_IF] = function (node: If | ElseIf) {
   let { children, next } = node,
 
   defaultValue = array.last(vnodeStack)
-    ? generator.toCall(RENDER_COMMENT_VNODE)
+    ? generateCommentVnode()
     : generator.toPrimitive(constant.UNDEFINED),
 
   value: generator.Base | void
@@ -1447,7 +1442,7 @@ nodeGenerator[nodeType.ELSE] = function (node: Else) {
   let { children } = node,
 
   defaultValue = array.last(vnodeStack)
-    ? generator.toCall(RENDER_COMMENT_VNODE)
+    ? generateCommentVnode()
     : generator.toPrimitive(constant.UNDEFINED),
 
   value: generator.Base | void
@@ -1587,25 +1582,15 @@ export function generate(node: Node): string {
     nodeGenerator[node.type](node),
     localVarMap,
     [
+      ARG_INSTANCE,
       RENDER_ELEMENT_VNODE,
       RENDER_COMPONENT_VNODE,
-      RENDER_NATIVE_ATTRIBUTE,
-      RENDER_NATIVE_PROPERTY,
-      RENDER_PROPERTY,
-      RENDER_LAZY,
       RENDER_TRANSITION,
-      GET_TRANSITION,
       RENDER_MODEL,
-      GET_MODEL,
       RENDER_EVENT_METHOD,
-      GET_EVENT_METHOD,
       RENDER_EVENT_NAME,
-      GET_EVENT_NAME,
       RENDER_DIRECTIVE,
-      GET_DIRECTIVE,
       RENDER_SPREAD,
-      RENDER_TEXT_VNODE,
-      RENDER_COMMENT_VNODE,
       RENDER_SLOT,
       DEFINE_PARTIAL,
       RENDER_PARTIAL,

@@ -4,8 +4,8 @@ import {
 
 import {
   Data,
+  Filter,
   Listener,
-  LazyValue,
   ValueHolder,
 } from 'yox-type/src/type'
 
@@ -37,8 +37,6 @@ import * as keypathUtil from 'yox-common/src/util/keypath'
 
 import globalHolder from 'yox-common/src/util/holder'
 
-import * as field from './field'
-
 type Context = {
   keypath: string,
   scope: any,
@@ -48,10 +46,14 @@ export function render(
   instance: YoxInterface,
   template: Function,
   scope: Record<string, any>,
-  filters: Record<string, Function>,
-  partials: Record<string, Function>,
-  directives: Record<string, DirectiveHooks>,
-  transitions: Record<string, TransitionHooks>
+  filters: Record<string, Filter> | undefined,
+  globalFilters: Record<string, Filter>,
+  partials: Record<string, Function> | undefined,
+  globalPartials: Record<string, Function>,
+  directives: Record<string, DirectiveHooks> | undefined,
+  globalDirectives: Record<string, DirectiveHooks>,
+  transitions: Record<string, TransitionHooks> | undefined,
+  globalTransitions: Record<string, TransitionHooks>,
 ) {
 
   let rootKeypath = constant.EMPTY_STRING,
@@ -200,47 +202,8 @@ export function render(
 
   },
 
-  renderNativeAttribute = function (name: string, value: string | void) {
-    return {
-      key: field.NATIVE_ATTRIBUTES,
-      name,
-      value,
-    }
-  },
-
-  renderNativeProperty = function (name: string, value: any) {
-    return {
-      key: field.NATIVE_PROPERTIES,
-      name,
-      value,
-    }
-  },
-
-  renderProperty = function (name: string, value: string | void) {
-    return {
-      key: field.PROPERTIES,
-      name,
-      value,
-    }
-  },
-
-  renderLazy = function (name: string, value: LazyValue) {
-    return {
-      key: field.LAZY,
-      name,
-      value,
-    }
-  },
-
   renderTransition = function (name: string) {
-    return {
-      key: field.TRANSITION,
-      value: getTransition(name),
-    }
-  },
-
-  getTransition = function (name: string) {
-    const transition = transitions[name]
+    const transition = (transitions && transitions[name]) || globalTransitions[name]
     if (process.env.NODE_ENV === 'development') {
       if (!transition) {
         logger.fatal(`The transition "${name}" can't be found.`)
@@ -249,21 +212,15 @@ export function render(
     return transition
   },
 
+  // holder 是全局共用的，这里要浅拷贝一次
   renderModel = function (holder: ValueHolder) {
     return {
-      key: field.MODEL,
-      value: getModel(holder),
-    }
-  },
-
-  getModel = function (holder: ValueHolder) {
-    return {
-      value: holder.value,
       keypath: holder.keypath,
+      value: holder.value,
     }
   },
 
-  createEventNameListener = function (isComponent: boolean, type: string, ns?: string): Listener {
+  createEventNameListener = function (isComponent: boolean | void, type: string, ns?: string): Listener {
     return function (event: CustomEvent, data?: Data, isNative?: boolean) {
 
       // 监听组件事件不用处理父组件传下来的事件
@@ -285,7 +242,7 @@ export function render(
     }
   },
 
-  createEventMethodListener = function (isComponent: boolean, name: string, runtime: EventRuntime | void): Listener {
+  createEventMethodListener = function (isComponent: boolean | void, name: string, runtime: EventRuntime | void): Listener {
     return function (event: CustomEvent, data?: Data) {
 
       // 监听组件事件不用处理父组件传下来的事件
@@ -308,46 +265,29 @@ export function render(
     }
   },
 
-  renderEventMethod = function (params: Data) {
-    return {
-      key: field.EVENTS,
-      name: params.key,
-      value: getEventMethod(params),
-    }
-  },
-
-  getEventMethod = function (params: Data) {
-    const { runtime } = params
+  renderEventMethod = function (key: string, value: string, name: string, ns: string, method: string, runtime?: EventRuntime, isNative?: boolean, isComponent?: boolean) {
     if (runtime) {
       runtime.stack = contextStack
     }
     return {
-      key: params.key,
-      value: params.value,
-      name: params.from,
-      ns: params.fromNs,
-      isNative: params.isNative,
-      listener: createEventMethodListener(params.isComponent, params.method, runtime),
+      key,
+      value,
+      name,
+      ns,
+      isNative,
+      listener: createEventMethodListener(isComponent, method, runtime),
       runtime,
     }
   },
 
-  renderEventName = function (params: Data) {
+  renderEventName = function (key: string, value: string, name: string, ns: string, to: string, toNs?: string, isNative?: boolean, isComponent?: boolean) {
     return {
-      key: field.EVENTS,
-      name: params.key,
-      value: getEventName(params),
-    }
-  },
-
-  getEventName = function (params: Data) {
-    return {
-      key: params.key,
-      value: params.value,
-      name: params.from,
-      ns: params.fromNs,
-      isNative: params.isNative,
-      listener: createEventNameListener(params.isComponent, params.to, params.toNs),
+      key,
+      value,
+      name,
+      ns,
+      isNative,
+      listener: createEventNameListener(isComponent, to, toNs),
     }
   },
 
@@ -369,42 +309,34 @@ export function render(
     }
   },
 
-  renderDirective = function (params: Data) {
-    return {
-      key: field.DIRECTIVES,
-      name: params.key,
-      value: getDirective(params),
-    }
-  },
+  renderDirective = function (key: string, name: string, modifier: string, value: any, runtime?: DirectiveRuntime, method?: string) {
 
-  getDirective = function (params: Data) {
-
-    const { name, runtime } = params, hooks = directives[name]
-    if (runtime) {
-      runtime.stack = contextStack
-    }
-
+    const hooks = (directives && directives[name]) || globalDirectives[name]
     if (process.env.NODE_ENV === 'development') {
       if (!hooks) {
         logger.fatal(`The directive "${name}" can't be found.`)
       }
     }
 
+    if (runtime) {
+      runtime.stack = contextStack
+    }
+
     return {
       ns: DIRECTIVE_CUSTOM,
-      key: params.key,
+      key,
       name,
-      value: params.value,
-      modifier: params.modifier,
+      value,
+      modifier,
       getter: runtime && runtime.expr ? createDirectiveGetter(runtime) : constant.UNDEFINED,
-      handler: params.method ? createDirectiveHandler(params.method, runtime) : constant.UNDEFINED,
+      handler: method ? createDirectiveHandler(method, runtime) : constant.UNDEFINED,
       hooks,
       runtime,
     }
 
   },
 
-  renderSpread = function (value: any) {
+  renderSpread = function (key: string, value: any) {
 
     if (is.object(value)) {
 
@@ -418,11 +350,11 @@ export function render(
 
       const result: any[] = []
 
-      for (let key in value) {
+      for (let name in value) {
         result.push({
-          key: field.PROPERTIES,
-          name: key,
-          value: value[key],
+          key,
+          name,
+          value: value[name],
         })
       }
 
@@ -430,22 +362,6 @@ export function render(
 
     }
 
-  },
-
-  renderTextVnode = function (value: string) {
-    return {
-      isText: constant.TRUE,
-      text: value,
-      context: instance,
-    }
-  },
-
-  renderCommentVnode = function () {
-    return {
-      isComment: constant.TRUE,
-      text: constant.EMPTY_STRING,
-      context: instance,
-    }
   },
 
   // <slot name="xx"/>
@@ -476,7 +392,7 @@ export function render(
     if (localPartials[name]) {
       return localPartials[name](keypath)
     }
-    const partial = partials[name]
+    const partial = (partials && partials[name]) || globalPartials[name]
     if (process.env.NODE_ENV === 'development') {
       if (!partial) {
         logger.fatal(`The partial "${name}" can't be found.`)
@@ -660,7 +576,12 @@ export function render(
       }
       // 如果是函数调用，则最后尝试过滤器
       if (!result && call) {
-        result = object.get(filters, name)
+        if (filters) {
+          result = object.get(filters, name)
+        }
+        if (!result) {
+          result = object.get(globalFilters, name)
+        }
         if (result) {
           // filter 不算数据
           result.keypath = constant.UNDEFINED
@@ -706,25 +627,15 @@ export function render(
 
   renderTemplate = function (render: Function, keypath: string) {
     return render(
+      instance,
       renderElementVnode,
       renderComponentVnode,
-      renderNativeAttribute,
-      renderNativeProperty,
-      renderProperty,
-      renderLazy,
       renderTransition,
-      getTransition,
       renderModel,
-      getModel,
       renderEventMethod,
-      getEventMethod,
       renderEventName,
-      getEventName,
       renderDirective,
-      getDirective,
       renderSpread,
-      renderTextVnode,
-      renderCommentVnode,
       renderSlot,
       definePartial,
       renderPartial,
