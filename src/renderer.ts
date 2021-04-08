@@ -265,7 +265,7 @@ export function render(
     }
   },
 
-  renderEventMethod = function (key: string, value: string, name: string, ns: string, method: string, runtime?: EventRuntime, isNative?: boolean, isComponent?: boolean) {
+  renderEventMethod = function (key: string, value: string, name: string, ns: string, method: string, runtime?: EventRuntime, isComponent?: boolean, isNative?: boolean) {
     if (runtime) {
       runtime.stack = contextStack
     }
@@ -280,7 +280,7 @@ export function render(
     }
   },
 
-  renderEventName = function (key: string, value: string, name: string, ns: string, to: string, toNs?: string, isNative?: boolean, isComponent?: boolean) {
+  renderEventName = function (key: string, value: string, name: string, ns: string, to: string, toNs?: string, isComponent?: boolean, isNative?: boolean) {
     return {
       key,
       value,

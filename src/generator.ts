@@ -1101,12 +1101,13 @@ function getModelValue(node: Directive) {
 
 function addEventBooleanInfo(args: generator.Base[], node: Directive) {
 
-  // isNative
+  // isComponent
   array.push(
     args,
     generator.toPrimitive(constant.UNDEFINED)
   )
-  // isComponent
+
+  // isNative
   array.push(
     args,
     generator.toPrimitive(constant.UNDEFINED)
@@ -1115,11 +1116,11 @@ function addEventBooleanInfo(args: generator.Base[], node: Directive) {
   if (array.last(componentStack)) {
     if (node.modifier === MODIFER_NATIVE) {
       // isNative
-      args[args.length - 2] = generator.toPrimitive(constant.TRUE)
+      args[args.length - 1] = generator.toPrimitive(constant.TRUE)
     }
     else {
       // isComponent
-      args[args.length - 1] = generator.toPrimitive(constant.TRUE)
+      args[args.length - 2] = generator.toPrimitive(constant.TRUE)
     }
   }
 
