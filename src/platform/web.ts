@@ -31,27 +31,29 @@ function split2Map(str: string) {
   return map
 }
 
+const needCompile = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'prod',
+
 // 首字母大写，或中间包含 -
-const componentNamePattern = /^[A-Z]|-/,
+componentNamePattern = /^[A-Z]|-/,
 
 // HTML 实体（中间最多 6 位，没见过更长的）
 htmlEntityPattern = /&[#\w\d]{2,6};/,
 
 // 常见的自闭合标签
-selfClosingTagNames = split2Map('area,base,embed,track,source,param,input,col,img,br,hr'),
+selfClosingTagNames = needCompile ? split2Map('area,base,embed,track,source,param,input,col,img,br,hr') : { },
 
 // 常见的 svg 标签
-svgTagNames = split2Map('svg,g,defs,desc,metadata,symbol,use,image,path,rect,circle,line,ellipse,polyline,polygon,text,tspan,tref,textpath,marker,pattern,clippath,mask,filter,cursor,view,animate,font,font-face,glyph,missing-glyph,animateColor,animateMotion,animateTransform,textPath,foreignObject'),
+svgTagNames = needCompile ? split2Map('svg,g,defs,desc,metadata,symbol,use,image,path,rect,circle,line,ellipse,polyline,polygon,text,tspan,tref,textpath,marker,pattern,clippath,mask,filter,cursor,view,animate,font,font-face,glyph,missing-glyph,animateColor,animateMotion,animateTransform,textPath,foreignObject') : { },
 
 // 常见的字符串类型的属性
 // 注意：autocomplete,autocapitalize 不是布尔类型
-stringPropertyNames = split2Map('id,class,name,value,for,accesskey,title,style,src,type,href,target,alt,placeholder,preload,poster,wrap,accept,pattern,dir,autocomplete,autocapitalize,valign'),
+stringPropertyNames = needCompile ? split2Map('id,class,name,value,for,accesskey,title,style,src,type,href,target,alt,placeholder,preload,poster,wrap,accept,pattern,dir,autocomplete,autocapitalize,valign') : { },
 
 // 常见的数字类型的属性（width,height,cellpadding,cellspacing 支持百分比，因此不计入数字类型）
-numberPropertyNames = split2Map('min,minlength,max,maxlength,step,size,rows,cols,tabindex,colspan,rowspan,frameborder'),
+numberPropertyNames = needCompile ? split2Map('min,minlength,max,maxlength,step,size,rows,cols,tabindex,colspan,rowspan,frameborder') : { },
 
 // 常见的布尔类型的属性
-booleanPropertyNames = split2Map('disabled,checked,required,multiple,readonly,autofocus,autoplay,controls,loop,muted,novalidate,draggable,contenteditable,hidden,spellcheck'),
+booleanPropertyNames = needCompile ? split2Map('disabled,checked,required,multiple,readonly,autofocus,autoplay,controls,loop,muted,novalidate,draggable,contenteditable,hidden,spellcheck') : { },
 
 // 某些属性 attribute name 和 property name 不同
 attr2Prop = { }
