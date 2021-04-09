@@ -465,7 +465,7 @@ function generateNodesToStringIfNeeded(children: Node[]) {
 
 function generateCommentVnode() {
   return generator.toMap({
-    context: ARG_INSTANCE,
+    context: generator.toRaw(ARG_INSTANCE),
     isComment: generator.toPrimitive(constant.TRUE),
     text: generator.toPrimitive(constant.EMPTY_STRING),
   })
@@ -473,7 +473,7 @@ function generateCommentVnode() {
 
 function generateTextVnode(text: generator.Base) {
   return generator.toMap({
-    context: ARG_INSTANCE,
+    context: generator.toRaw(ARG_INSTANCE),
     isText: generator.toPrimitive(constant.TRUE),
     text,
   })
@@ -719,12 +719,17 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     )
   }
 
+  data.set(
+    'context',
+    generator.toRaw(ARG_INSTANCE)
+  )
+
   // 如果是动态组件，tag 会是一个标识符表达式
   data.set(
     'tag',
     dynamicTag
-        ? generateExpression(dynamicTag)
-        : generator.toPrimitive(tag)
+      ? generateExpression(dynamicTag)
+      : generator.toPrimitive(tag)
   )
 
 
@@ -801,26 +806,26 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     data.set(
       'html',
       is.string(html)
-          ? generator.toPrimitive(html as string)
-          : generator.toCall(
-              TO_STRING,
-              [
-                generateExpression(html as ExpressionNode)
-              ]
-            )
+        ? generator.toPrimitive(html as string)
+        : generator.toCall(
+            TO_STRING,
+            [
+              generateExpression(html as ExpressionNode)
+            ]
+          )
     )
   }
   if (text) {
     data.set(
       'text',
       is.string(text)
-          ? generator.toPrimitive(text as string)
-          : generator.toCall(
-              TO_STRING,
-              [
-                generateExpression(text as ExpressionNode)
-              ]
-            )
+        ? generator.toPrimitive(text as string)
+        : generator.toCall(
+            TO_STRING,
+            [
+              generateExpression(text as ExpressionNode)
+            ]
+          )
     )
   }
 

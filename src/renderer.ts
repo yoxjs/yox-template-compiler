@@ -146,8 +146,6 @@ export function render(
     childs: any[] | void
   ) {
 
-    data.context = instance
-
     if (attrs) {
       normalizeAttributes(attrs, data)
     }
@@ -168,8 +166,6 @@ export function render(
     slots: Data | void,
     components: any[] | void,
   ) {
-
-    data.context = instance
 
     if (attrs) {
       normalizeAttributes(attrs, data)
