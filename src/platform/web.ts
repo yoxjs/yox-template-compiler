@@ -31,7 +31,7 @@ function split2Map(str: string) {
   return map
 }
 
-const needCompile = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'prod',
+const needCompile = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'production',
 
 // 首字母大写，或中间包含 -
 componentNamePattern = /^[A-Z]|-/,
