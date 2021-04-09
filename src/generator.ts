@@ -456,7 +456,7 @@ function generateNodesToTuple(nodes: Node[]) {
       return nodeGenerator[node.type](node)
     }
   )
-  return generator.toTuple('(', ')', result)
+  return generator.toTuple(constant.EMPTY_STRING, constant.EMPTY_STRING, ';', constant.TRUE, result)
 }
 
 function generateNodesToList(nodes: Node[]) {
