@@ -62,9 +62,6 @@ eachStack: boolean[] = [ ],
 // 是否正在收集字符串类型的值
 stringStack: boolean[] = [ ],
 
-// 是否正在收集 slot
-slotComponentStack: boolean[] = [ ],
-
 // 是否正在收集动态 child
 dynamicChildrenStack: boolean[] = [ constant.TRUE ],
 
@@ -519,7 +516,7 @@ function addDynamicChildVnode(node: generator.Base, isTextVnode?: true) {
   )
 }
 
-function addSlotComponentVnode(node: generator.Base) {
+function addComponentVnode(node: generator.Base) {
   return generator.toPush(
     ARG_COMPONENTS,
     node
@@ -593,10 +590,6 @@ function generateComponentSlots(children: Node[]) {
   object.each(
     slots,
     function (children: Node[], name: string) {
-      array.push(
-        slotComponentStack,
-        constant.TRUE
-      )
       result.set(
         name,
         generator.toAnonymousFunction(
@@ -606,9 +599,6 @@ function generateComponentSlots(children: Node[]) {
           ],
           generateNodesToList(children)
         )
-      )
-      array.pop(
-        slotComponentStack
       )
     }
   )
@@ -770,13 +760,13 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     // slot 不可能有 html、text 属性
     // 因此 slot 的子节点只存在于 children 中
     const args: generator.Base[] = [
-      generator.toPrimitive(SLOT_DATA_PREFIX + node.name)
+      generator.toPrimitive(SLOT_DATA_PREFIX + node.name),
+      generator.toRaw(ARG_CHILDREN),
     ]
     if (children) {
       array.push(
         args,
         generator.toAnonymousFunction(
-          constant.UNDEFINED,
           constant.UNDEFINED,
           generateNodesToList(children)
         )
@@ -1134,9 +1124,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         outputSlots
       ]
     )
-    if (array.last(slotComponentStack)) {
-      result = addSlotComponentVnode(result)
-    }
+    result = addComponentVnode(result)
   }
   else {
     result = generator.toCall(
@@ -1702,9 +1690,7 @@ nodeGenerator[nodeType.IMPORT] = function (node: Import) {
       generator.toPrimitive(node.name),
       generator.toRaw(ARG_MAGIC_VAR_KEYPATH),
       generator.toRaw(ARG_CHILDREN),
-      array.last(slotComponentStack)
-        ? generator.toRaw(ARG_COMPONENTS)
-        : generator.toPrimitive(constant.UNDEFINED)
+      generator.toRaw(ARG_COMPONENTS)
     ]
   )
 

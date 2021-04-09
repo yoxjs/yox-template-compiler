@@ -62,7 +62,7 @@ export function render(
     { keypath: rootKeypath, scope, }
   ],
 
-  localPartials: Record<string, Function> = { },
+  localPartials: Record<string, (keypath: string, children: VNode[], components: VNode[]) => void> = { },
 
   // 渲染模板的数据依赖
   dependencies: Record<string, boolean> = { },
@@ -188,7 +188,7 @@ export function render(
     }
   },
 
-  createEventNameListener = function (isComponent: boolean | void, type: string, ns?: string): Listener {
+  createEventNameListener = function (type: string, ns?: string, isComponent?: boolean): Listener {
     return function (event: CustomEvent, data?: Data, isNative?: boolean) {
 
       // 监听组件事件不用处理父组件传下来的事件
@@ -210,7 +210,7 @@ export function render(
     }
   },
 
-  createEventMethodListener = function (isComponent: boolean | void, name: string, runtime: EventRuntime | void): Listener {
+  createEventMethodListener = function (name: string, runtime?: EventRuntime, isComponent?: boolean): Listener {
     return function (event: CustomEvent, data?: Data) {
 
       // 监听组件事件不用处理父组件传下来的事件
@@ -243,7 +243,7 @@ export function render(
       name,
       ns,
       isNative,
-      listener: createEventMethodListener(isComponent, method, runtime),
+      listener: createEventMethodListener(method, runtime, isComponent),
       runtime,
     }
   },
@@ -255,7 +255,7 @@ export function render(
       name,
       ns,
       isNative,
-      listener: createEventNameListener(isComponent, to, toNs),
+      listener: createEventNameListener(to, toNs, isComponent),
     }
   },
 
@@ -330,7 +330,7 @@ export function render(
   },
 
   // <slot name="xx"/>
-  renderSlot = function (name: string, render?: Function) {
+  renderSlot = function (name: string, children: VNode[], render?: Function) {
     dependencies[name] = constant.TRUE
     const result = scope[name]
     if (result) {
@@ -340,22 +340,26 @@ export function render(
           components[i].parent = instance
         }
       }
-      return vnodes
+      for (let i = 0, length = vnodes.length; i < length; i++) {
+        children[children.length] = vnodes[i]
+      }
+      return
     }
-    return render && render()
+    render && render()
   },
 
   // {{#partial name}}
   //   xx
   // {{/partial}}
-  definePartial = function (name: string, render: Function) {
+  definePartial = function (name: string, render: (keypath: string, children: VNode[], components: VNode[]) => void) {
     localPartials[name] = render
   },
 
   // {{> name}}
   renderPartial = function (name: string, keypath: string, children: VNode[], components: VNode[]) {
     if (localPartials[name]) {
-      return localPartials[name](keypath, children, components)
+      localPartials[name](keypath, children, components)
+      return
     }
     const partial = (partials && partials[name]) || globalPartials[name]
     if (process.env.NODE_ENV === 'development') {
@@ -363,7 +367,7 @@ export function render(
         logger.fatal(`The partial "${name}" can't be found.`)
       }
     }
-    return renderTemplate(partial, keypath, children, components)
+    renderTemplate(partial, keypath, children, components)
   },
 
   renderEach = function (
@@ -618,7 +622,7 @@ export function render(
     )
   }
 
-  const children: VNode[] = [ ], components: VNode[] = []
+  const children: VNode[] = [ ], components: VNode[] = [ ]
 
   renderTemplate(template, rootKeypath, children, components)
 
@@ -627,7 +631,7 @@ export function render(
       logger.fatal(`The template should have just one root element.`)
     }
   }
-console.log(children[0])
+
   return {
     vnode: children[0],
     dependencies,
