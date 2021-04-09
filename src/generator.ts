@@ -63,7 +63,10 @@ eachStack: boolean[] = [ ],
 stringStack: boolean[] = [ ],
 
 // 是否正在收集 slot
-slotStack: number[] = [ ],
+slotComponentStack: boolean[] = [ ],
+
+// 是否正在收集动态 child
+dynamicChildrenStack: boolean[] = [ constant.TRUE ],
 
 magicVariables: string[] = [ MAGIC_VAR_KEYPATH, MAGIC_VAR_LENGTH, MAGIC_VAR_EVENT, MAGIC_VAR_DATA ],
 
@@ -87,6 +90,10 @@ ARG_INSTANCE = constant.EMPTY_STRING,
 RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
 
 RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
+
+ADD_ATTRIBUTE = constant.EMPTY_STRING,
+
+ADD_TEXT_VNODE = constant.EMPTY_STRING,
 
 RENDER_TRANSITION = constant.EMPTY_STRING,
 
@@ -120,6 +127,10 @@ TO_STRING = constant.EMPTY_STRING,
 
 ARG_STACK = constant.EMPTY_STRING,
 
+ARG_VNODE = constant.EMPTY_STRING,
+
+ARG_CHILDREN = constant.EMPTY_STRING,
+
 ARG_COMPONENTS = constant.EMPTY_STRING,
 
 ARG_MAGIC_VAR_SCOPE = constant.EMPTY_STRING,
@@ -140,38 +151,44 @@ function init() {
   }
 
   if (constant.PUBLIC_CONFIG.uglifyCompiled) {
-    VAR_LOCAL_PREFIX = '_'
+    VAR_LOCAL_PREFIX = '_v'
     ARG_INSTANCE = '_a'
     RENDER_ELEMENT_VNODE = '_b'
     RENDER_COMPONENT_VNODE = '_c'
-    RENDER_TRANSITION = '_d'
-    RENDER_MODEL = '_e'
-    RENDER_EVENT_METHOD = '_f'
-    RENDER_EVENT_NAME = '_g'
-    RENDER_DIRECTIVE = '_h'
-    RENDER_SPREAD = '_i'
-    RENDER_SLOT = '_j'
-    DEFINE_PARTIAL = '_k'
-    RENDER_PARTIAL = '_l'
-    RENDER_EACH = '_m'
-    RENDER_RANGE = '_n'
-    RENDER_EXPRESSION_IDENTIFIER = '_o'
-    RENDER_EXPRESSION_VALUE = '_p'
-    EXECUTE_FUNCTION = '_q'
-    TO_STRING = '_r'
-    ARG_STACK = '_s'
-    ARG_COMPONENTS = '_t'
-    ARG_MAGIC_VAR_SCOPE = '_u'
-    ARG_MAGIC_VAR_KEYPATH = '_v'
-    ARG_MAGIC_VAR_LENGTH = '_w'
-    ARG_MAGIC_VAR_EVENT = '_x'
-    ARG_MAGIC_VAR_DATA = '_y'
+    ADD_ATTRIBUTE = '_d'
+    ADD_TEXT_VNODE = '_e'
+    RENDER_TRANSITION = '_f'
+    RENDER_MODEL = '_g'
+    RENDER_EVENT_METHOD = '_h'
+    RENDER_EVENT_NAME = '_i'
+    RENDER_DIRECTIVE = '_j'
+    RENDER_SPREAD = '_k'
+    RENDER_SLOT = '_l'
+    DEFINE_PARTIAL = '_m'
+    RENDER_PARTIAL = '_n'
+    RENDER_EACH = '_o'
+    RENDER_RANGE = '_p'
+    RENDER_EXPRESSION_IDENTIFIER = '_q'
+    RENDER_EXPRESSION_VALUE = '_r'
+    EXECUTE_FUNCTION = '_s'
+    TO_STRING = '_t'
+    ARG_STACK = '_u'
+    ARG_VNODE = '_v'
+    ARG_CHILDREN = '_w'
+    ARG_COMPONENTS = '_x'
+    ARG_MAGIC_VAR_SCOPE = '_y'
+    ARG_MAGIC_VAR_KEYPATH = '_z'
+    ARG_MAGIC_VAR_LENGTH = '_1'
+    ARG_MAGIC_VAR_EVENT = '_2'
+    ARG_MAGIC_VAR_DATA = '_3'
   }
   else {
     VAR_LOCAL_PREFIX = 'var'
     ARG_INSTANCE = 'instance'
     RENDER_ELEMENT_VNODE = 'renderElementVnode'
     RENDER_COMPONENT_VNODE = 'renderComponentVnode'
+    ADD_ATTRIBUTE = 'addAttribute'
+    ADD_TEXT_VNODE = 'addTextVnode'
     RENDER_TRANSITION = 'renderTransition'
     RENDER_MODEL = 'renderModel'
     RENDER_EVENT_METHOD = 'renderEventMethod'
@@ -188,6 +205,8 @@ function init() {
     EXECUTE_FUNCTION = 'executeFunction'
     TO_STRING = 'toString'
     ARG_STACK = 'stack'
+    ARG_VNODE = 'vnode'
+    ARG_CHILDREN = 'children'
     ARG_COMPONENTS = 'components'
     ARG_MAGIC_VAR_SCOPE = MAGIC_VAR_SCOPE
     ARG_MAGIC_VAR_KEYPATH = MAGIC_VAR_KEYPATH
@@ -275,6 +294,8 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes?: generator
     getIndex = generator.toRaw(
       addLocalVar(
         generator.toAnonymousFunction(
+          constant.UNDEFINED,
+          constant.UNDEFINED,
           generator.toPrimitive(0)
         )
       )
@@ -284,13 +305,18 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes?: generator
     getIndex = generator.toRaw(
       addLocalVar(
         generator.toAnonymousFunction(
-          generator.toOperator(
-            generator.toRaw(ARG_STACK),
-            generator.toRaw(`length - ${1 + node.offset}`),
-          ),
           [
             generator.toRaw(ARG_STACK)
-          ]
+          ],
+          constant.UNDEFINED,
+          generator.toOperator(
+            generator.toRaw(ARG_STACK),
+            generator.toBinary(
+              generator.toRaw('length'),
+              '-',
+              generator.toPrimitive(1 + node.offset)
+            )
+          )
         )
       )
     )
@@ -299,13 +325,18 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes?: generator
     getIndex = generator.toRaw(
       addLocalVar(
         generator.toAnonymousFunction(
-          generator.toOperator(
-            generator.toRaw(ARG_STACK),
-            generator.toRaw(`length - 1`),
-          ),
           [
             generator.toRaw(ARG_STACK)
-          ]
+          ],
+          constant.UNDEFINED,
+          generator.toOperator(
+            generator.toRaw(ARG_STACK),
+            generator.toBinary(
+              generator.toRaw('length'),
+              '-',
+              generator.toPrimitive(1)
+            )
+          )
         )
       )
     )
@@ -422,6 +453,15 @@ function generateAttributeValue(value: any, expr: ExpressionNode | void, childre
   return generator.toPrimitive(constant.UNDEFINED)
 }
 
+function generateNodesToTuple(nodes: Node[]) {
+  const result = nodes.map(
+    function (node) {
+      return nodeGenerator[node.type](node)
+    }
+  )
+  return generator.toTuple('(', ')', result)
+}
+
 function generateNodesToList(nodes: Node[]) {
   return generator.toList(
     nodes.map(
@@ -463,20 +503,49 @@ function generateNodesToStringIfNeeded(children: Node[]) {
 
 }
 
+function addDynamicChildVnode(node: generator.Base, isTextVnode?: true) {
+  if (isTextVnode) {
+    return generator.toCall(
+      ADD_TEXT_VNODE,
+      [
+        generator.toRaw(ARG_CHILDREN),
+        node,
+      ]
+    )
+  }
+  return generator.toPush(
+    ARG_CHILDREN,
+    node
+  )
+}
+
+function addSlotComponentVnode(node: generator.Base) {
+  return generator.toPush(
+    ARG_COMPONENTS,
+    node
+  )
+}
+
 function generateCommentVnode() {
-  return generator.toMap({
+  const result = generator.toMap({
     context: generator.toRaw(ARG_INSTANCE),
     isComment: generator.toPrimitive(constant.TRUE),
     text: generator.toPrimitive(constant.EMPTY_STRING),
   })
+  return array.last(dynamicChildrenStack)
+    ? addDynamicChildVnode(result)
+    : result
 }
 
 function generateTextVnode(text: generator.Base) {
-  return generator.toMap({
+  const result = generator.toMap({
     context: generator.toRaw(ARG_INSTANCE),
     isText: generator.toPrimitive(constant.TRUE),
     text,
   })
+  return array.last(dynamicChildrenStack)
+    ? addDynamicChildVnode(result, constant.TRUE)
+    : result
 }
 
 function generateComponentSlots(children: Node[]) {
@@ -525,22 +594,21 @@ function generateComponentSlots(children: Node[]) {
     slots,
     function (children: Node[], name: string) {
       array.push(
-        slotStack,
-        0
+        slotComponentStack,
+        constant.TRUE
       )
       result.set(
         name,
         generator.toAnonymousFunction(
-          generateNodesToList(children),
-          array.last(slotStack) > 0
-            ? [
-                generator.toRaw(ARG_COMPONENTS)
-              ]
-            : constant.UNDEFINED
+          [
+            generator.toRaw(ARG_CHILDREN),
+            generator.toRaw(ARG_COMPONENTS)
+          ],
+          generateNodesToList(children)
         )
       )
       array.pop(
-        slotStack
+        slotComponentStack
       )
     }
   )
@@ -696,8 +764,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   outputAttrs: generator.Base = generator.toPrimitive(constant.UNDEFINED),
   outputChildren: generator.Base = generator.toPrimitive(constant.UNDEFINED),
-  outputSlots: generator.Base = generator.toPrimitive(constant.UNDEFINED),
-  outputComponents: generator.Base = generator.toPrimitive(constant.UNDEFINED)
+  outputSlots: generator.Base = generator.toPrimitive(constant.UNDEFINED)
 
   if (tag === constant.RAW_SLOT) {
     // slot 不可能有 html、text 属性
@@ -709,6 +776,8 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       array.push(
         args,
         generator.toAnonymousFunction(
+          constant.UNDEFINED,
+          constant.UNDEFINED,
           generateNodesToList(children)
         )
       )
@@ -757,29 +826,43 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
     else {
 
-      let isStatic = constant.TRUE, newChildren = generator.toList()
+      let isDynamic = constant.FALSE
 
       array.each(
         children,
         function (node) {
           if (!node.isStatic) {
-            isStatic = constant.FALSE
+            isDynamic = constant.TRUE
+            return constant.FALSE
           }
-          newChildren.push(
-            nodeGenerator[node.type](node)
-          )
         }
       )
 
-      if (isStatic) {
-        data.set(
-          field.CHILDREN,
-          newChildren
+      array.push(
+        dynamicChildrenStack,
+        isDynamic
+      )
+
+      if (isDynamic) {
+        outputChildren = generator.toAnonymousFunction(
+          [
+            generator.toRaw(ARG_CHILDREN)
+          ],
+          generateNodesToTuple(
+            children
+          )
         )
       }
       else {
-        outputChildren = newChildren
+        data.set(
+          field.CHILDREN,
+          generateNodesToList(children)
+        )
       }
+
+      array.pop(
+        dynamicChildrenStack
+      )
 
     }
   }
@@ -996,7 +1079,12 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
 
     if (otherList.length) {
-      outputAttrs = generateNodesToList(otherList)
+      outputAttrs = generator.toAnonymousFunction(
+        [
+          generator.toRaw(ARG_VNODE)
+        ],
+        generateNodesToTuple(otherList)
+      )
     }
   }
 
@@ -1035,55 +1123,67 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     )
   }
 
+  let result: generator.Base
+
   if (isComponent) {
-    const lastSlotIndex = slotStack.length - 1
-    if (is.number(slotStack[lastSlotIndex])) {
-      slotStack[lastSlotIndex]++
-      outputComponents = generator.toRaw(ARG_COMPONENTS)
-    }
-    return generator.toCall(
+    result = generator.toCall(
       RENDER_COMPONENT_VNODE,
       [
         data,
         outputAttrs,
-        outputSlots,
-        outputComponents
+        outputSlots
+      ]
+    )
+    if (array.last(slotComponentStack)) {
+      result = addSlotComponentVnode(result)
+    }
+  }
+  else {
+    result = generator.toCall(
+      RENDER_ELEMENT_VNODE,
+      [
+        data,
+        outputAttrs,
+        outputChildren,
       ]
     )
   }
 
-  return generator.toCall(
-    RENDER_ELEMENT_VNODE,
-    [
-      data,
-      outputAttrs,
-      outputChildren,
-    ]
-  )
+  return array.last(dynamicChildrenStack)
+    ? addDynamicChildVnode(result)
+    : result
 
 }
 
 nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
 
-  return generator.toMap({
-    key: generator.toPrimitive(
-      array.last(componentStack)
-        ? field.PROPERTIES
-        : field.NATIVE_ATTRIBUTES
-    ),
-    name: generator.toPrimitive(node.name),
-    value: generateAttributeValue(node.value, node.expr, node.children),
-  })
+  return generator.toCall(
+    ADD_ATTRIBUTE,
+    [
+      generator.toRaw(ARG_VNODE),
+      generator.toPrimitive(
+        array.last(componentStack)
+          ? field.PROPERTIES
+          : field.NATIVE_ATTRIBUTES
+      ),
+      generateAttributeValue(node.value, node.expr, node.children),
+      generator.toPrimitive(node.name),
+    ]
+  )
 
 }
 
 nodeGenerator[nodeType.PROPERTY] = function (node: Property) {
 
-  return generator.toMap({
-    key: generator.toPrimitive(field.NATIVE_PROPERTIES),
-    name: generator.toPrimitive(node.name),
-    value: generateAttributeValue(node.value, node.expr, node.children),
-  })
+  return generator.toCall(
+    ADD_ATTRIBUTE,
+    [
+      generator.toRaw(ARG_VNODE),
+      generator.toPrimitive(field.NATIVE_PROPERTIES),
+      generateAttributeValue(node.value, node.expr, node.children),
+      generator.toPrimitive(node.name),
+    ]
+  )
 
 }
 
@@ -1181,12 +1281,13 @@ function getEventInfo(node: Directive) {
         args,
         generator.toMap({
           args: generator.toAnonymousFunction(
-            generator.toList(callNode.args.map(generateExpressionArg)),
             [
               generator.toRaw(ARG_STACK),
               generator.toRaw(ARG_MAGIC_VAR_EVENT),
               generator.toRaw(ARG_MAGIC_VAR_DATA),
-            ]
+            ],
+            constant.UNDEFINED,
+            generator.toList(callNode.args.map(generateExpressionArg))
           )
         })
       )
@@ -1282,10 +1383,11 @@ function getDirectiveArgs(node: Directive) {
           args,
           generator.toMap({
             args: generator.toAnonymousFunction(
-              generator.toList(callNode.args.map(generateExpressionArg)),
               [
                 generator.toRaw(ARG_STACK),
-              ]
+              ],
+              constant.UNDEFINED,
+              generator.toList(callNode.args.map(generateExpressionArg))
             )
           })
         )
@@ -1316,10 +1418,11 @@ function getDirectiveArgs(node: Directive) {
           args,
           generator.toMap({
             expr: generator.toAnonymousFunction(
-              generateExpressionArg(expr),
               [
                 generator.toRaw(ARG_STACK)
-              ]
+              ],
+              constant.UNDEFINED,
+              generateExpressionArg(expr)
             )
           })
         )
@@ -1337,52 +1440,67 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
 
   switch (node.ns) {
     case DIRECTIVE_LAZY:
-      return generator.toMap({
-        key: generator.toPrimitive(field.LAZY),
-        name: generator.toPrimitive(node.name),
-        value: getLazyValue(node),
-      })
+      return generator.toCall(
+        ADD_ATTRIBUTE,
+        [
+          generator.toRaw(ARG_VNODE),
+          generator.toPrimitive(field.LAZY),
+          getLazyValue(node),
+          generator.toPrimitive(node.name),
+        ]
+      )
 
     // <div transition="name">
     case DIRECTIVE_TRANSITION:
-      return generator.toMap({
-        key: generator.toPrimitive(field.TRANSITION),
-        value: generator.toCall(
-          RENDER_TRANSITION,
-          [
-            getTransitionValue(node)
-          ]
-        ),
-      })
+      return generator.toCall(
+        ADD_ATTRIBUTE,
+        [
+          generator.toRaw(ARG_VNODE),
+          generator.toPrimitive(field.TRANSITION),
+          getTransitionValue(node),
+        ]
+      )
 
     // <input model="id">
     case DIRECTIVE_MODEL:
-      return generator.toMap({
-        key: generator.toPrimitive(field.MODEL),
-        value: getModelValue(node),
-      })
+      return generator.toCall(
+        ADD_ATTRIBUTE,
+        [
+          generator.toRaw(ARG_VNODE),
+          generator.toPrimitive(field.MODEL),
+          getModelValue(node),
+        ]
+      )
 
     // <div on-click="name">
     case DIRECTIVE_EVENT:
       const info = getEventInfo(node)
-      return generator.toMap({
-        key: generator.toPrimitive(field.EVENTS),
-        name: generator.toPrimitive(getDirectiveKey(node)),
-        value: generator.toCall(
-          info.name,
-          info.args
-        )
-      })
+      return generator.toCall(
+        ADD_ATTRIBUTE,
+        [
+          generator.toRaw(ARG_VNODE),
+          generator.toPrimitive(field.EVENTS),
+          generator.toCall(
+            info.name,
+            info.args
+          ),
+          generator.toPrimitive(getDirectiveKey(node)),
+        ]
+      )
 
     default:
-      return generator.toMap({
-        key: generator.toPrimitive(field.DIRECTIVES),
-        name: generator.toPrimitive(getDirectiveKey(node)),
-        value: generator.toCall(
-          RENDER_DIRECTIVE,
-          getDirectiveArgs(node)
-        )
-      })
+      return generator.toCall(
+        ADD_ATTRIBUTE,
+        [
+          generator.toRaw(ARG_VNODE),
+          generator.toPrimitive(field.DIRECTIVES),
+          generator.toCall(
+            RENDER_DIRECTIVE,
+            getDirectiveArgs(node)
+          ),
+          generator.toPrimitive(getDirectiveKey(node)),
+        ]
+      )
   }
 
 }
@@ -1391,6 +1509,7 @@ nodeGenerator[nodeType.SPREAD] = function (node: Spread) {
   return generator.toCall(
     RENDER_SPREAD,
     [
+      generator.toRaw(ARG_VNODE),
       generator.toPrimitive(field.PROPERTIES),
       generateExpression(node.expr)
     ]
@@ -1503,8 +1622,9 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
 
   // compiler 保证了 children 一定有值
   const renderChildren = generator.toAnonymousFunction(
-    generateNodesToList(node.children as Node[]),
-    args
+    args,
+    constant.UNDEFINED,
+    generateNodesToList(node.children as Node[])
   )
 
   if (index) {
@@ -1520,6 +1640,8 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   // compiler 保证了 children 一定有值
   const renderElse = next
     ? generator.toAnonymousFunction(
+        constant.UNDEFINED,
+        constant.UNDEFINED,
         generateNodesToList(next.children as Node[])
       )
     : generator.toPrimitive(constant.UNDEFINED)
@@ -1559,10 +1681,13 @@ nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
     [
       generator.toPrimitive(node.name),
       generator.toAnonymousFunction(
-        generateNodesToList(node.children as Node[]),
         [
-          generator.toRaw(ARG_MAGIC_VAR_KEYPATH)
-        ]
+          generator.toRaw(ARG_MAGIC_VAR_KEYPATH),
+          generator.toRaw(ARG_CHILDREN),
+          generator.toRaw(ARG_COMPONENTS),
+        ],
+        constant.UNDEFINED,
+        generateNodesToList(node.children as Node[])
       )
     ]
   )
@@ -1575,7 +1700,11 @@ nodeGenerator[nodeType.IMPORT] = function (node: Import) {
     RENDER_PARTIAL,
     [
       generator.toPrimitive(node.name),
-      generator.toRaw(ARG_MAGIC_VAR_KEYPATH)
+      generator.toRaw(ARG_MAGIC_VAR_KEYPATH),
+      generator.toRaw(ARG_CHILDREN),
+      array.last(slotComponentStack)
+        ? generator.toRaw(ARG_COMPONENTS)
+        : generator.toPrimitive(constant.UNDEFINED)
     ]
   )
 
@@ -1598,6 +1727,8 @@ export function generate(node: Node): string {
       ARG_INSTANCE,
       RENDER_ELEMENT_VNODE,
       RENDER_COMPONENT_VNODE,
+      ADD_ATTRIBUTE,
+      ADD_TEXT_VNODE,
       RENDER_TRANSITION,
       RENDER_MODEL,
       RENDER_EVENT_METHOD,
@@ -1613,7 +1744,9 @@ export function generate(node: Node): string {
       RENDER_EXPRESSION_VALUE,
       EXECUTE_FUNCTION,
       TO_STRING,
-      ARG_MAGIC_VAR_KEYPATH
+      ARG_MAGIC_VAR_KEYPATH,
+      ARG_CHILDREN,
+      ARG_COMPONENTS,
     ]
   )
 }

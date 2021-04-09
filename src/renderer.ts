@@ -17,13 +17,13 @@ import {
 import {
   EventRuntime,
   DirectiveRuntime,
+  VNode,
 } from 'yox-type/src/vnode'
 
 import {
   YoxInterface,
 } from 'yox-type/src/yox'
 
-import isDef from 'yox-common/src/function/isDef'
 import execute from 'yox-common/src/function/execute'
 import toString from 'yox-common/src/function/toString'
 import CustomEvent from 'yox-common/src/util/CustomEvent'
@@ -89,70 +89,19 @@ export function render(
 
   },
 
-  flattenArray = function (array: any[], handler: (item: any) => void) {
-    for (let i = 0, length = array.length; i < length; i++) {
-      const item = array[i]
-      if (is.array(item)) {
-        flattenArray(item, handler)
-      }
-      else if (isDef(item)) {
-        handler(item)
-      }
-    }
-  },
-
-  normalizeAttributes = function (attrs: any[], data: Data) {
-    flattenArray(
-      attrs,
-      function (item) {
-        const { key, name, value } = item
-        if (data[key]) {
-          data[key][name] = value
-        }
-        else {
-          if (name) {
-            const map = { }
-            map[name] = value
-            data[key] = map
-          }
-          else {
-            data[key] = value
-          }
-        }
-      }
-    )
-  },
-
-  normalizeChildren = function (children: any[], vnodes: any[]) {
-    flattenArray(
-      children,
-      function (item) {
-        // item 只能是 vnode
-        if (item.isText) {
-          const lastChild = array.last(vnodes)
-          if (lastChild && lastChild.isText) {
-            lastChild.text += item.text
-            return
-          }
-        }
-        vnodes.push(item)
-      }
-    )
-  },
-
   renderElementVnode = function (
     data: Data,
-    attrs: any[] | void,
-    childs: any[] | void
+    createAttributes: (vnode: Data) => void | void,
+    createChildren: (children: VNode[]) => void | void,
   ) {
 
-    if (attrs) {
-      normalizeAttributes(attrs, data)
+    if (createAttributes) {
+      createAttributes(data)
     }
 
-    if (childs) {
-      const children: any[] = [ ]
-      normalizeChildren(childs, children)
+    if (createChildren) {
+      const children: VNode[] = [ ]
+      createChildren(children)
       data.children = children
     }
 
@@ -162,26 +111,26 @@ export function render(
 
   renderComponentVnode = function (
     data: Data,
-    attrs: any[] | void,
-    slots: Data | void,
-    components: any[] | void,
+    createAttributes: (data: Data) => void | void,
+    slots: Record<string, (children: VNode[], components: VNode[]) => void> | void
   ) {
 
-    if (attrs) {
-      normalizeAttributes(attrs, data)
+    if (createAttributes) {
+      createAttributes(data)
     }
 
     if (slots) {
       const result = { }
       for (let name in slots) {
-        const vnodes: any[] = [ ], slotComponents: any[] = [ ]
-        normalizeChildren(slots[name](slotComponents), vnodes)
+        const children: VNode[] = [ ], components: VNode[] = [ ]
+        slots[name](children, components)
+
         // 就算是 undefined 也必须有值，用于覆盖旧值
-        result[name] = vnodes.length
+        result[name] = children.length
           ? {
-              vnodes,
-              components: slotComponents.length
-                ? slotComponents
+              vnodes: children,
+              components: components.length
+                ? components
                 : constant.UNDEFINED
             }
           : constant.UNDEFINED
@@ -190,12 +139,35 @@ export function render(
       data.slots = result
     }
 
-    if (components) {
-      components.push(data)
-    }
-
     return data
 
+  },
+
+  addAttribute = function (vnode: Data, key: string, value: any, name?: string) {
+
+    if (name) {
+      if (vnode[key]) {
+        vnode[key][name] = value
+      }
+      else {
+        const map = { }
+        map[name] = value
+        vnode[key] = map
+      }
+    }
+    else {
+      vnode[key] = value
+    }
+
+  },
+
+  addTextVnode = function (children: any[], vnode: VNode) {
+    const { length } = children, lastChild = children[length - 1]
+    if (lastChild && lastChild.isText) {
+      lastChild.text += vnode.text
+      return
+    }
+    children[length] = vnode
   },
 
   renderTransition = function (name: string) {
@@ -332,7 +304,7 @@ export function render(
 
   },
 
-  renderSpread = function (key: string, value: any) {
+  renderSpread = function (vnode: Data, key: string, value: any) {
 
     if (is.object(value)) {
 
@@ -344,17 +316,14 @@ export function render(
         }
       }
 
-      const result: any[] = []
-
       for (let name in value) {
-        result.push({
+        addAttribute(
+          vnode,
           key,
+          value[name],
           name,
-          value: value[name],
-        })
+        )
       }
-
-      return result
 
     }
 
@@ -384,9 +353,9 @@ export function render(
   },
 
   // {{> name}}
-  renderPartial = function (name: string, keypath: string) {
+  renderPartial = function (name: string, keypath: string, children: VNode[], components: VNode[]) {
     if (localPartials[name]) {
-      return localPartials[name](keypath)
+      return localPartials[name](keypath, children, components)
     }
     const partial = (partials && partials[name]) || globalPartials[name]
     if (process.env.NODE_ENV === 'development') {
@@ -394,7 +363,7 @@ export function render(
         logger.fatal(`The partial "${name}" can't be found.`)
       }
     }
-    return renderTemplate(partial, keypath)
+    return renderTemplate(partial, keypath, children, components)
   },
 
   renderEach = function (
@@ -621,11 +590,13 @@ export function render(
     return globalHolder
   },
 
-  renderTemplate = function (render: Function, keypath: string) {
+  renderTemplate = function (render: Function, keypath: string, children: VNode[], components: VNode[]) {
     return render(
       instance,
       renderElementVnode,
       renderComponentVnode,
+      addAttribute,
+      addTextVnode,
       renderTransition,
       renderModel,
       renderEventMethod,
@@ -642,19 +613,23 @@ export function render(
       executeFunction,
       toString,
       keypath,
+      children,
+      components
     )
   }
 
-  const vnode = renderTemplate(template, rootKeypath)
+  const children: VNode[] = [ ], components: VNode[] = []
+
+  renderTemplate(template, rootKeypath, children, components)
 
   if (process.env.NODE_ENV === 'development') {
-    if (is.array(vnode)) {
+    if (children.length > 1) {
       logger.fatal(`The template should have just one root element.`)
     }
   }
-
+console.log(children[0])
   return {
-    vnode,
+    vnode: children[0],
     dependencies,
   }
 
