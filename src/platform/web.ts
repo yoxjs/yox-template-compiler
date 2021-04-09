@@ -1,14 +1,8 @@
 import {
-  PureObject,
-} from 'yox-type/src/type'
-
-import {
   HINT_STRING,
   HINT_NUMBER,
   HINT_BOOLEAN,
 } from 'yox-config/src/config'
-
-import createPureObject from 'yox-common/src/function/createPureObject'
 
 import * as is from 'yox-common/src/util/is'
 import * as array from 'yox-common/src/util/array'
@@ -26,15 +20,15 @@ import * as helper from '../helper'
 import * as creator from '../creator'
 import * as nodeType from '../nodeType'
 
-function split2Map(str: string): PureObject {
-  const obj = createPureObject()
+function split2Map(str: string) {
+  const map = Object.create(constant.NULL)
   array.each(
     str.split(','),
     function (item) {
-      obj.set(item, constant.TRUE)
+      map[item] = constant.TRUE
     }
   )
-  return obj
+  return map
 }
 
 // 首字母大写，或中间包含 -
@@ -60,7 +54,7 @@ numberPropertyNames = split2Map('min,minlength,max,maxlength,step,size,rows,cols
 booleanPropertyNames = split2Map('disabled,checked,required,multiple,readonly,autofocus,autoplay,controls,loop,muted,novalidate,draggable,contenteditable,hidden,spellcheck'),
 
 // 某些属性 attribute name 和 property name 不同
-attr2Prop = {}
+attr2Prop = { }
 
 // 列举几个常见的
 attr2Prop['for'] = 'htmlFor'
@@ -80,7 +74,7 @@ attr2Prop['valign'] = 'vAlign'
 attr2Prop['frameborder'] = 'frameBorder'
 
 export function isSelfClosing(tagName: string) {
-  return selfClosingTagNames.get(tagName) !== constant.UNDEFINED
+  return selfClosingTagNames[tagName] !== constant.UNDEFINED
 }
 
 export function createAttribute(element: Element, name: string, ns: string | void): Attribute | Property {
@@ -103,21 +97,21 @@ export function createAttribute(element: Element, name: string, ns: string | voi
       return creator.createAttribute(name, ns)
     }
     // 尝试识别成 property
-    else if (stringPropertyNames.get(lowerName)) {
+    else if (stringPropertyNames[lowerName]) {
       return creator.createProperty(
         attr2Prop[lowerName] || lowerName,
         ns,
         HINT_STRING,
       )
     }
-    else if (numberPropertyNames.get(lowerName)) {
+    else if (numberPropertyNames[lowerName]) {
       return creator.createProperty(
         attr2Prop[lowerName] || lowerName,
         ns,
         HINT_NUMBER
       )
     }
-    else if (booleanPropertyNames.get(lowerName)) {
+    else if (booleanPropertyNames[lowerName]) {
       return creator.createProperty(
         attr2Prop[lowerName] || lowerName,
         ns,
@@ -161,7 +155,7 @@ export function createElement(staticTag: string, dynamicTag: ExpressionNode | vo
     isComponent = constant.TRUE
   }
   else {
-    isSvg = svgTagNames.get(staticTag) !== constant.UNDEFINED
+    isSvg = svgTagNames[staticTag] !== constant.UNDEFINED
 
     // 是 svg 就不可能是组件
     // 加这个判断的原因是，svg 某些标签含有 连字符 和 大写字母，比较蛋疼
