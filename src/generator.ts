@@ -500,16 +500,6 @@ function generateNodesToTuple(nodes: Node[]) {
   )
 }
 
-function generateNodesToList(nodes: Node[]) {
-  return generator.toList(
-    nodes.map(
-      function (node) {
-        return nodeGenerator[node.type](node)
-      }
-    )
-  )
-}
-
 function generateNodesToStringIfNeeded(children: Node[]) {
 
   const result = children.map(
@@ -663,7 +653,7 @@ function generateComponentSlots(children: Node[]) {
             generator.toRaw(ARG_CHILDREN),
             generator.toRaw(ARG_COMPONENTS)
           ],
-          generateNodesToList(children)
+          generateNodesToTuple(children)
         )
       )
     }
@@ -834,7 +824,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         args,
         generator.toAnonymousFunction(
           constant.UNDEFINED,
-          generateNodesToList(children)
+          generateNodesToTuple(children)
         )
       )
     }
@@ -912,7 +902,13 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       else {
         data.set(
           field.CHILDREN,
-          generateNodesToList(children)
+          generator.toList(
+            children.map(
+              function (node) {
+                return nodeGenerator[node.type](node)
+              }
+            )
+          )
         )
       }
 
@@ -1691,8 +1687,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   // compiler 保证了 children 一定有值
   const renderChildren = generator.toAnonymousFunction(
     args,
-    constant.UNDEFINED,
-    generateNodesToList(node.children as Node[])
+    generateNodesToTuple(node.children as Node[])
   )
 
   if (index) {
@@ -1709,8 +1704,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   const renderElse = next
     ? generator.toAnonymousFunction(
         constant.UNDEFINED,
-        constant.UNDEFINED,
-        generateNodesToList(next.children as Node[])
+        generateNodesToTuple(next.children as Node[])
       )
     : generator.toPrimitive(constant.UNDEFINED)
 
@@ -1755,7 +1749,7 @@ nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
         generator.toRaw(ARG_CHILDREN),
         generator.toRaw(ARG_COMPONENTS),
       ],
-      generateNodesToList(node.children as Node[])
+      generateNodesToTuple(node.children as Node[])
     )
   )
 
