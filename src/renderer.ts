@@ -376,12 +376,13 @@ export function render(
     renderElse?: Function
   ) {
 
-    let { keypath, value } = holder,
+    let { keypath, value } = holder, length = 0,
 
     needKeypath = !!keypath, oldScopeStack = contextStack, currentKeypath = (array.last(contextStack) as Context).keypath
 
     if (is.array(value)) {
-      for (let i = 0, length = value.length; i < length; i++) {
+      length = value.length
+      for (let i = 0; i < length; i++) {
         if (needKeypath) {
           currentKeypath = keypath + constant.RAW_DOT + i
           // slice + push 比直接 concat 快多了
@@ -400,7 +401,11 @@ export function render(
       }
     }
     else if (is.object(value)) {
-      for (let key in value) {
+      const keys = object.keys(value)
+      length = keys.length
+
+      for (let i = 0; i < length; i++) {
+        const key = keys[i]
         if (needKeypath) {
           // 这里 key 虽然可能为空，但也必须直接拼接
           // 因为不拼接就变成了原来的 keypath，这样更是错的，
@@ -415,7 +420,7 @@ export function render(
         }
         renderChildren(
           currentKeypath,
-          constant.UNDEFINED,
+          length,
           value[key],
           key
         )
@@ -425,7 +430,8 @@ export function render(
     if (contextStack !== oldScopeStack) {
       contextStack = oldScopeStack
     }
-    else if (renderElse) {
+
+    if (renderElse && length === 0) {
       renderElse()
     }
 
