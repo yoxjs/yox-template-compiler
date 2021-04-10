@@ -143,7 +143,7 @@ export function render(
 
   },
 
-  addAttribute = function (vnode: Data, key: string, value: any, name?: string) {
+  appendAttribute = function (vnode: Data, key: string, value: any, name?: string) {
 
     if (name) {
       if (vnode[key]) {
@@ -161,7 +161,7 @@ export function render(
 
   },
 
-  addTextVnode = function (children: any[], vnode: VNode) {
+  appendTextVnode = function (children: any[], vnode: VNode) {
     const { length } = children, lastChild = children[length - 1]
     if (lastChild && lastChild.isText) {
       lastChild.text += vnode.text
@@ -315,7 +315,7 @@ export function render(
       }
 
       for (let name in value) {
-        addAttribute(
+        appendAttribute(
           vnode,
           key,
           value[name],
@@ -569,8 +569,8 @@ export function render(
       instance,
       renderElementVnode,
       renderComponentVnode,
-      addAttribute,
-      addTextVnode,
+      appendAttribute,
+      appendTextVnode,
       renderTransition,
       renderModel,
       renderEventMethod,

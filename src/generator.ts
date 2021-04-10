@@ -88,9 +88,9 @@ RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
 
 RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
 
-ADD_ATTRIBUTE = constant.EMPTY_STRING,
+APPEND_ATTRIBUTE = constant.EMPTY_STRING,
 
-ADD_TEXT_VNODE = constant.EMPTY_STRING,
+APPEND_TEXT_VNODE = constant.EMPTY_STRING,
 
 RENDER_TRANSITION = constant.EMPTY_STRING,
 
@@ -168,8 +168,8 @@ function init() {
     ARG_INSTANCE = '_a'
     RENDER_ELEMENT_VNODE = '_b'
     RENDER_COMPONENT_VNODE = '_c'
-    ADD_ATTRIBUTE = '_d'
-    ADD_TEXT_VNODE = '_e'
+    APPEND_ATTRIBUTE = '_d'
+    APPEND_TEXT_VNODE = '_e'
     RENDER_TRANSITION = '_f'
     RENDER_MODEL = '_g'
     RENDER_EVENT_METHOD = '_h'
@@ -208,8 +208,8 @@ function init() {
     ARG_INSTANCE = 'instance'
     RENDER_ELEMENT_VNODE = 'renderElementVnode'
     RENDER_COMPONENT_VNODE = 'renderComponentVnode'
-    ADD_ATTRIBUTE = 'addAttribute'
-    ADD_TEXT_VNODE = 'addTextVnode'
+    APPEND_ATTRIBUTE = 'appendAttribute'
+    APPEND_TEXT_VNODE = 'appendTextVnode'
     RENDER_TRANSITION = 'renderTransition'
     RENDER_MODEL = 'renderModel'
     RENDER_EVENT_METHOD = 'renderEventMethod'
@@ -487,12 +487,17 @@ function generateAttributeValue(value: any, expr: ExpressionNode | void, childre
 }
 
 function generateNodesToTuple(nodes: Node[]) {
-  const result = nodes.map(
-    function (node) {
-      return nodeGenerator[node.type](node)
-    }
+  return generator.toTuple(
+    constant.EMPTY_STRING,
+    constant.EMPTY_STRING,
+    ';',
+    constant.TRUE,
+    nodes.map(
+      function (node) {
+        return nodeGenerator[node.type](node)
+      }
+    )
   )
-  return generator.toTuple(constant.EMPTY_STRING, constant.EMPTY_STRING, ';', constant.TRUE, result)
 }
 
 function generateNodesToList(nodes: Node[]) {
@@ -536,10 +541,10 @@ function generateNodesToStringIfNeeded(children: Node[]) {
 
 }
 
-function addDynamicChildVnode(node: generator.Base, isTextVnode?: true) {
+function appendDynamicChildVnode(node: generator.Base, isTextVnode?: true) {
   if (isTextVnode) {
     return generator.toCall(
-      ADD_TEXT_VNODE,
+      APPEND_TEXT_VNODE,
       [
         generator.toRaw(ARG_CHILDREN),
         node,
@@ -552,7 +557,7 @@ function addDynamicChildVnode(node: generator.Base, isTextVnode?: true) {
   )
 }
 
-function addComponentVnode(node: generator.Base) {
+function appendComponentVnode(node: generator.Base) {
   return generator.toPush(
     ARG_COMPONENTS,
     node
@@ -560,6 +565,13 @@ function addComponentVnode(node: generator.Base) {
 }
 
 function generateSelfAndGlobalReader(self: string, global: string, name: string) {
+  // 如果 name 包含 . 则只从全局取值，目前主要是处理全局过滤器，比如直接注册 lodash 整个对象进来
+  if (generator.parse(name).length > 1) {
+    return generator.toOperator(
+      generator.toRaw(global),
+      generator.toRaw(name)
+    )
+  }
   return generator.toBinary(
     generator.toBinary(
       generator.toRaw(self),
@@ -584,7 +596,7 @@ function generateCommentVnode() {
     text: generator.toPrimitive(constant.EMPTY_STRING),
   })
   return array.last(dynamicChildrenStack)
-    ? addDynamicChildVnode(result)
+    ? appendDynamicChildVnode(result)
     : result
 }
 
@@ -595,7 +607,7 @@ function generateTextVnode(text: generator.Base) {
     text,
   })
   return array.last(dynamicChildrenStack)
-    ? addDynamicChildVnode(result, constant.TRUE)
+    ? appendDynamicChildVnode(result, constant.TRUE)
     : result
 }
 
@@ -1173,7 +1185,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         outputSlots
       ]
     )
-    result = addComponentVnode(result)
+    result = appendComponentVnode(result)
   }
   else {
     result = generator.toCall(
@@ -1187,7 +1199,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   }
 
   return array.last(dynamicChildrenStack)
-    ? addDynamicChildVnode(result)
+    ? appendDynamicChildVnode(result)
     : result
 
 }
@@ -1195,7 +1207,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
 
   return generator.toCall(
-    ADD_ATTRIBUTE,
+    APPEND_ATTRIBUTE,
     [
       generator.toRaw(ARG_VNODE),
       generator.toPrimitive(
@@ -1213,7 +1225,7 @@ nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
 nodeGenerator[nodeType.PROPERTY] = function (node: Property) {
 
   return generator.toCall(
-    ADD_ATTRIBUTE,
+    APPEND_ATTRIBUTE,
     [
       generator.toRaw(ARG_VNODE),
       generator.toPrimitive(field.NATIVE_PROPERTIES),
@@ -1497,7 +1509,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
   switch (node.ns) {
     case DIRECTIVE_LAZY:
       return generator.toCall(
-        ADD_ATTRIBUTE,
+        APPEND_ATTRIBUTE,
         [
           generator.toRaw(ARG_VNODE),
           generator.toPrimitive(field.LAZY),
@@ -1509,7 +1521,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
     // <div transition="name">
     case DIRECTIVE_TRANSITION:
       return generator.toCall(
-        ADD_ATTRIBUTE,
+        APPEND_ATTRIBUTE,
         [
           generator.toRaw(ARG_VNODE),
           generator.toPrimitive(field.TRANSITION),
@@ -1520,7 +1532,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
     // <input model="id">
     case DIRECTIVE_MODEL:
       return generator.toCall(
-        ADD_ATTRIBUTE,
+        APPEND_ATTRIBUTE,
         [
           generator.toRaw(ARG_VNODE),
           generator.toPrimitive(field.MODEL),
@@ -1532,7 +1544,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
     case DIRECTIVE_EVENT:
       const info = getEventInfo(node)
       return generator.toCall(
-        ADD_ATTRIBUTE,
+        APPEND_ATTRIBUTE,
         [
           generator.toRaw(ARG_VNODE),
           generator.toPrimitive(field.EVENTS),
@@ -1546,7 +1558,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
 
     default:
       return generator.toCall(
-        ADD_ATTRIBUTE,
+        APPEND_ATTRIBUTE,
         [
           generator.toRaw(ARG_VNODE),
           generator.toPrimitive(field.DIRECTIVES),
@@ -1789,8 +1801,8 @@ export function generate(node: Node): string {
       generator.toRaw(ARG_INSTANCE),
       generator.toRaw(RENDER_ELEMENT_VNODE),
       generator.toRaw(RENDER_COMPONENT_VNODE),
-      generator.toRaw(ADD_ATTRIBUTE),
-      generator.toRaw(ADD_TEXT_VNODE),
+      generator.toRaw(APPEND_ATTRIBUTE),
+      generator.toRaw(APPEND_TEXT_VNODE),
       generator.toRaw(RENDER_TRANSITION),
       generator.toRaw(RENDER_MODEL),
       generator.toRaw(RENDER_EVENT_METHOD),
