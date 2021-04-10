@@ -91,8 +91,8 @@ export function render(
 
   renderElementVnode = function (
     data: Data,
-    createAttributes: (vnode: Data) => void | void,
-    createChildren: (children: VNode[]) => void | void,
+    createAttributes?: (vnode: Data) => void,
+    createChildren?: (children: VNode[]) => void,
   ) {
 
     if (createAttributes) {
@@ -111,19 +111,19 @@ export function render(
 
   renderComponentVnode = function (
     data: Data,
-    createAttributes: (data: Data) => void | void,
-    slots: Record<string, (children: VNode[], components: VNode[]) => void> | void
+    createAttributes?: (data: Data) => void,
+    createSlots?: Record<string, (children: VNode[], components: VNode[]) => void>
   ) {
 
     if (createAttributes) {
       createAttributes(data)
     }
 
-    if (slots) {
+    if (createSlots) {
       const result = { }
-      for (let name in slots) {
+      for (let name in createSlots) {
         const children: VNode[] = [ ], components: VNode[] = [ ]
-        slots[name](children, components)
+        createSlots[name](children, components)
 
         // 就算是 undefined 也必须有值，用于覆盖旧值
         result[name] = children.length
@@ -376,7 +376,7 @@ export function render(
     renderElse?: Function
   ) {
 
-    let { keypath, value } = holder, result: any[] = [ ],
+    let { keypath, value } = holder,
 
     needKeypath = !!keypath, oldScopeStack = contextStack, currentKeypath = (array.last(contextStack) as Context).keypath
 
@@ -391,13 +391,11 @@ export function render(
             scope: value[i],
           })
         }
-        result.push(
-          renderChildren(
-            currentKeypath,
-            length,
-            value[i],
-            i
-          )
+        renderChildren(
+          currentKeypath,
+          length,
+          value[i],
+          i
         )
       }
     }
@@ -415,13 +413,11 @@ export function render(
             scope: value[key],
           })
         }
-        result.push(
-          renderChildren(
-            currentKeypath,
-            constant.UNDEFINED,
-            value[key],
-            key
-          )
+        renderChildren(
+          currentKeypath,
+          constant.UNDEFINED,
+          value[key],
+          key
         )
       }
     }
@@ -429,12 +425,9 @@ export function render(
     if (contextStack !== oldScopeStack) {
       contextStack = oldScopeStack
     }
-
-    if (renderElse && result.length === 0) {
-      result = renderElse()
+    else if (renderElse) {
+      renderElse()
     }
-
-    return result
 
   },
 
@@ -446,31 +439,27 @@ export function render(
     renderElse?: Function
   ) {
 
-    let count = 0, length = 0, result: any[] = [], currentKeypath = (array.last(contextStack) as Context).keypath
+    let count = 0, length = 0, currentKeypath = (array.last(contextStack) as Context).keypath
 
     if (from < to) {
       length = to - from
       if (equal) {
         for (let i = from; i <= to; i++) {
-          result.push(
-            renderChildren(
-              currentKeypath,
-              length,
-              i,
-              count++
-            )
+          renderChildren(
+            currentKeypath,
+            length,
+            i,
+            count++
           )
         }
       }
       else {
         for (let i = from; i < to; i++) {
-          result.push(
-            renderChildren(
-              currentKeypath,
-              length,
-              i,
-              count++
-            )
+          renderChildren(
+            currentKeypath,
+            length,
+            i,
+            count++
           )
         }
       }
@@ -479,35 +468,29 @@ export function render(
       length = from - to
       if (equal) {
         for (let i = from; i >= to; i--) {
-          result.push(
-            renderChildren(
-              currentKeypath,
-              length,
-              i,
-              count++
-            )
+          renderChildren(
+            currentKeypath,
+            length,
+            i,
+            count++
           )
         }
       }
       else {
         for (let i = from; i > to; i--) {
-          result.push(
-            renderChildren(
-              currentKeypath,
-              length,
-              i,
-              count++
-            )
+          renderChildren(
+            currentKeypath,
+            length,
+            i,
+            count++
           )
         }
       }
     }
 
     if (renderElse && length === 0) {
-      result = renderElse()
+      renderElse()
     }
-
-    return result
 
   },
 
@@ -595,7 +578,7 @@ export function render(
   },
 
   renderTemplate = function (render: Function, keypath: string, children: VNode[], components: VNode[]) {
-    return render(
+    render(
       instance,
       renderElementVnode,
       renderComponentVnode,
