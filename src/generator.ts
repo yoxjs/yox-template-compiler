@@ -316,14 +316,13 @@ function transformExpressionIdentifier(node: ExpressionIdentifier) {
     && offset === 0
   ) {
 
-    return generator.toRaw(
-      name === constant.EMPTY_STRING
-        ? ARG_SCOPE
-        : ARG_SCOPE
-          + constant.RAW_DOT
-          // 这里要把 list.0.a 转成 list[0].a
-          // . 是 Yox 特有的访问数组的语法，正常的 js 语法是 [index]
-          + name.replace(/\.(\d+)/g, '[$1]')
+    if (name === constant.EMPTY_STRING) {
+      return generator.toRaw(ARG_SCOPE)
+    }
+
+    return generator.toMember(
+      generator.toRaw(ARG_SCOPE),
+      generator.parse(name)
     )
 
   }
@@ -333,9 +332,11 @@ function transformExpressionIdentifier(node: ExpressionIdentifier) {
 function generateHolderIfNeeded(node: generator.Base, holder?: boolean) {
   return holder
     ? node
-    : generator.toOperator(
+    : generator.toMember(
         node,
-        generator.toRaw('value')
+        [
+          generator.toPrimitive('value')
+        ]
       )
 }
 
@@ -364,13 +365,15 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
             generator.toRaw(ARG_STACK)
           ],
           constant.UNDEFINED,
-          generator.toOperator(
-            generator.toRaw(ARG_STACK),
-            generator.toBinary(
-              generator.toRaw('length'),
-              '-',
-              generator.toPrimitive(1 + offset)
-            )
+          generator.toBinary(
+            generator.toMember(
+              generator.toRaw(ARG_STACK),
+              [
+                generator.toPrimitive('length')
+              ]
+            ),
+            '-',
+            generator.toPrimitive(1 + offset)
           )
         )
       )
@@ -384,13 +387,15 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
             generator.toRaw(ARG_STACK)
           ],
           constant.UNDEFINED,
-          generator.toOperator(
-            generator.toRaw(ARG_STACK),
-            generator.toBinary(
-              generator.toRaw('length'),
-              '-',
-              generator.toPrimitive(1)
-            )
+          generator.toBinary(
+            generator.toMember(
+              generator.toRaw(ARG_STACK),
+              [
+                generator.toPrimitive('length')
+              ]
+            ),
+            '-',
+            generator.toPrimitive(1)
           )
         )
       )
@@ -409,9 +414,9 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
     && length > 0
   ) {
     if (length > 1) {
-      filter = generator.toOperator(
+      filter = generator.toMember(
         generator.toRaw(ARG_GLOBAL_FILTERS),
-        generator.toRaw(keypath)
+        nodes
       )
     }
     else {
@@ -462,9 +467,9 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
         GET_PROP,
         [
           generator.toPrimitive(keypath),
-          generator.toOperator(
+          generator.toMember(
             generator.toRaw(ARG_SCOPE),
-            generator.toRaw(keypath)
+            nodes
           ),
           stack
             ? generator.toRaw(ARG_STACK)
@@ -478,9 +483,9 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
         LOOKUP_PROP,
         [
           generator.toPrimitive(keypath),
-          generator.toOperator(
+          generator.toMember(
             generator.toRaw(ARG_SCOPE),
-            generator.toRaw(keypath)
+            nodes
           ),
           stack
             ? generator.toRaw(ARG_STACK)
@@ -538,7 +543,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
 
 }
 
-function generateExpressionValue(value: generator.Base, keys: generator.Base[], holder?: boolean) {
+function generateExpressionValue(value: generator.Base, keys: generator.Base[], keypath?: string, holder?: boolean) {
 
   let result: generator.Base
 
@@ -556,15 +561,17 @@ function generateExpressionValue(value: generator.Base, keys: generator.Base[], 
       READ_KEYPATH,
       [
         value,
-        generator.toOperator(
-          generator.toList(keys),
-          generator.toCall(
-            'join',
-            [
-              generator.toPrimitive(constant.RAW_DOT)
-            ]
-          )
-        ),
+        keypath
+          ? generator.toPrimitive(keypath)
+          : generator.toOperator(
+              generator.toList(keys),
+              generator.toCall(
+                'join',
+                [
+                  generator.toPrimitive(constant.RAW_DOT)
+                ]
+              )
+            ),
       ]
     )
   }
@@ -718,15 +725,19 @@ function generateSelfAndGlobalReader(self: string, global: string, name: string)
     generator.toBinary(
       generator.toRaw(self),
       '&&',
-      generator.toOperator(
+      generator.toMember(
         generator.toRaw(self),
-        generator.toRaw(name)
-      )
+        [
+          generator.toPrimitive(name)
+        ]
+      ),
     ),
     '||',
-    generator.toOperator(
+    generator.toMember(
       generator.toRaw(global),
-      generator.toRaw(name)
+      [
+        generator.toPrimitive(name)
+      ]
     )
   )
 }
@@ -1891,9 +1902,11 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
 nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
 
   return generator.toAssign(
-    generator.toOperator(
+    generator.toMember(
       generator.toRaw(ARG_LOCAL_PARTIALS),
-      generator.toRaw(node.name)
+      [
+        generator.toPrimitive(node.name)
+      ]
     ),
     generator.toAnonymousFunction(
       [
@@ -1920,9 +1933,11 @@ nodeGenerator[nodeType.IMPORT] = function (node: Import) {
       generator.toRaw(ARG_KEYPATH),
       generator.toRaw(ARG_CHILDREN),
       generator.toRaw(ARG_COMPONENTS),
-      generator.toOperator(
+      generator.toMember(
         generator.toRaw(ARG_LOCAL_PARTIALS),
-        generator.toRaw(name)
+        [
+          generator.toPrimitive(name)
+        ]
       ),
       generateSelfAndGlobalReader(
         ARG_PARTIALS,

@@ -478,7 +478,7 @@ export function render(
 
     currentKeypath = keypathUtil.join(context.keypath, keypath),
 
-    result = object.get(context.scope, currentKeypath)
+    result = object.get(context.scope, keypath)
 
     if (result) {
       holder.value = result.value
