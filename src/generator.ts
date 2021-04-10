@@ -106,8 +106,6 @@ RENDER_SPREAD = constant.EMPTY_STRING,
 
 RENDER_SLOT = constant.EMPTY_STRING,
 
-DEFINE_PARTIAL = constant.EMPTY_STRING,
-
 RENDER_PARTIAL = constant.EMPTY_STRING,
 
 RENDER_EACH = constant.EMPTY_STRING,
@@ -122,6 +120,24 @@ EXECUTE_FUNCTION = constant.EMPTY_STRING,
 
 TO_STRING = constant.EMPTY_STRING,
 
+ARG_FILTERS = constant.EMPTY_STRING,
+
+ARG_GLOBAL_FILTERS = constant.EMPTY_STRING,
+
+ARG_LOCAL_PARTIALS = constant.EMPTY_STRING,
+
+ARG_PARTIALS = constant.EMPTY_STRING,
+
+ARG_GLOBAL_PARTIALS = constant.EMPTY_STRING,
+
+ARG_DIRECTIVES = constant.EMPTY_STRING,
+
+ARG_GLOBAL_DIRECTIVES = constant.EMPTY_STRING,
+
+ARG_TRANSITIONS = constant.EMPTY_STRING,
+
+ARG_GLOBAL_TRANSITIONS = constant.EMPTY_STRING,
+
 ARG_STACK = constant.EMPTY_STRING,
 
 ARG_VNODE = constant.EMPTY_STRING,
@@ -130,15 +146,15 @@ ARG_CHILDREN = constant.EMPTY_STRING,
 
 ARG_COMPONENTS = constant.EMPTY_STRING,
 
-ARG_MAGIC_VAR_SCOPE = constant.EMPTY_STRING,
+ARG_SCOPE = constant.EMPTY_STRING,
 
-ARG_MAGIC_VAR_KEYPATH = constant.EMPTY_STRING,
+ARG_KEYPATH = constant.EMPTY_STRING,
 
-ARG_MAGIC_VAR_LENGTH = constant.EMPTY_STRING,
+ARG_LENGTH = constant.EMPTY_STRING,
 
-ARG_MAGIC_VAR_EVENT = constant.EMPTY_STRING,
+ARG_EVENT = constant.EMPTY_STRING,
 
-ARG_MAGIC_VAR_DATA = constant.EMPTY_STRING
+ARG_DATA = constant.EMPTY_STRING
 
 
 function init() {
@@ -161,23 +177,31 @@ function init() {
     RENDER_DIRECTIVE = '_j'
     RENDER_SPREAD = '_k'
     RENDER_SLOT = '_l'
-    DEFINE_PARTIAL = '_m'
-    RENDER_PARTIAL = '_n'
-    RENDER_EACH = '_o'
-    RENDER_RANGE = '_p'
-    RENDER_EXPRESSION_IDENTIFIER = '_q'
-    RENDER_EXPRESSION_VALUE = '_r'
-    EXECUTE_FUNCTION = '_s'
-    TO_STRING = '_t'
-    ARG_STACK = '_u'
-    ARG_VNODE = '_v'
-    ARG_CHILDREN = '_w'
-    ARG_COMPONENTS = '_x'
-    ARG_MAGIC_VAR_SCOPE = '_y'
-    ARG_MAGIC_VAR_KEYPATH = '_z'
-    ARG_MAGIC_VAR_LENGTH = '_1'
-    ARG_MAGIC_VAR_EVENT = '_2'
-    ARG_MAGIC_VAR_DATA = '_3'
+    RENDER_PARTIAL = '_m'
+    RENDER_EACH = '_n'
+    RENDER_RANGE = '_o'
+    RENDER_EXPRESSION_IDENTIFIER = '_p'
+    RENDER_EXPRESSION_VALUE = '_q'
+    EXECUTE_FUNCTION = '_r'
+    TO_STRING = '_s'
+    ARG_FILTERS = '_t',
+    ARG_GLOBAL_FILTERS = '_u',
+    ARG_LOCAL_PARTIALS = '_v'
+    ARG_PARTIALS = '_w',
+    ARG_GLOBAL_PARTIALS = '_x',
+    ARG_DIRECTIVES = '_y',
+    ARG_GLOBAL_DIRECTIVES = '_z',
+    ARG_TRANSITIONS = '_1',
+    ARG_GLOBAL_TRANSITIONS = '_2',
+    ARG_STACK = '_3'
+    ARG_VNODE = '_4'
+    ARG_CHILDREN = '_5'
+    ARG_COMPONENTS = '_6'
+    ARG_SCOPE = '_7'
+    ARG_KEYPATH = '_8'
+    ARG_LENGTH = '_9'
+    ARG_EVENT = '_10'
+    ARG_DATA = '_11'
   }
   else {
     VAR_LOCAL_PREFIX = 'var'
@@ -193,7 +217,6 @@ function init() {
     RENDER_DIRECTIVE = 'renderDirective'
     RENDER_SPREAD = 'renderSpread'
     RENDER_SLOT = 'renderSlot'
-    DEFINE_PARTIAL = 'definePartial'
     RENDER_PARTIAL = 'renderPartial'
     RENDER_EACH = 'renderEach'
     RENDER_RANGE = 'renderRange'
@@ -201,15 +224,24 @@ function init() {
     RENDER_EXPRESSION_VALUE = 'renderExpressionValue'
     EXECUTE_FUNCTION = 'executeFunction'
     TO_STRING = 'toString'
+    ARG_FILTERS = 'filters',
+    ARG_GLOBAL_FILTERS = 'globalFilters',
+    ARG_LOCAL_PARTIALS = 'localPartials'
+    ARG_PARTIALS = 'partials',
+    ARG_GLOBAL_PARTIALS = 'globalPartials',
+    ARG_DIRECTIVES = 'directives',
+    ARG_GLOBAL_DIRECTIVES = 'globalDirectives',
+    ARG_TRANSITIONS = 'transition',
+    ARG_GLOBAL_TRANSITIONS = 'globalTransitions',
     ARG_STACK = 'stack'
     ARG_VNODE = 'vnode'
     ARG_CHILDREN = 'children'
     ARG_COMPONENTS = 'components'
-    ARG_MAGIC_VAR_SCOPE = MAGIC_VAR_SCOPE
-    ARG_MAGIC_VAR_KEYPATH = MAGIC_VAR_KEYPATH
-    ARG_MAGIC_VAR_LENGTH = MAGIC_VAR_LENGTH
-    ARG_MAGIC_VAR_EVENT = MAGIC_VAR_EVENT
-    ARG_MAGIC_VAR_DATA = MAGIC_VAR_DATA
+    ARG_SCOPE = MAGIC_VAR_SCOPE
+    ARG_KEYPATH = MAGIC_VAR_KEYPATH
+    ARG_LENGTH = MAGIC_VAR_LENGTH
+    ARG_EVENT = MAGIC_VAR_EVENT
+    ARG_DATA = MAGIC_VAR_DATA
   }
 
   isUglify = constant.PUBLIC_CONFIG.uglifyCompiled
@@ -235,16 +267,16 @@ function transformExpressionIdentifier(node: ExpressionIdentifier) {
   if (array.has(magicVariables, name)) {
     switch (name) {
       case MAGIC_VAR_KEYPATH:
-        return generator.toRaw(ARG_MAGIC_VAR_KEYPATH)
+        return generator.toRaw(ARG_KEYPATH)
 
       case MAGIC_VAR_LENGTH:
-        return generator.toRaw(ARG_MAGIC_VAR_LENGTH)
+        return generator.toRaw(ARG_LENGTH)
 
       case MAGIC_VAR_EVENT:
-        return generator.toRaw(ARG_MAGIC_VAR_EVENT)
+        return generator.toRaw(ARG_EVENT)
 
       case MAGIC_VAR_DATA:
-        return generator.toRaw(ARG_MAGIC_VAR_DATA)
+        return generator.toRaw(ARG_DATA)
 
       default:
         return generator.toRaw(name)
@@ -262,8 +294,8 @@ function transformExpressionIdentifier(node: ExpressionIdentifier) {
 
     return generator.toRaw(
       name === constant.EMPTY_STRING
-        ? ARG_MAGIC_VAR_SCOPE
-        : ARG_MAGIC_VAR_SCOPE
+        ? ARG_SCOPE
+        : ARG_SCOPE
           + constant.RAW_DOT
           // 这里要把 list.0.a 转成 list[0].a
           // . 是 Yox 特有的访问数组的语法，正常的 js 语法是 [index]
@@ -283,7 +315,7 @@ function generateHolderIfNeeded(node: generator.Base, holder?: boolean) {
       )
 }
 
-function generateExpressionIdentifier(node: ExpressionKeypath, nodes?: generator.Base[], holder?: boolean, stack?: boolean, parentNode?: ExpressionNode) {
+function generateExpressionIdentifier(node: ExpressionKeypath, keypath?: string, nodes?: generator.Base[], holder?: boolean, stack?: boolean, parentNode?: ExpressionNode) {
 
   let getIndex: generator.Base
 
@@ -353,8 +385,12 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes?: generator
         stack
           ? generator.toRaw(ARG_STACK)
           : generator.toPrimitive(constant.UNDEFINED),
-        parentNode && parentNode.type === exprNodeType.CALL
-          ? generator.toPrimitive(constant.TRUE)
+        parentNode && parentNode.type === exprNodeType.CALL && keypath
+          ? generateSelfAndGlobalReader(
+              ARG_FILTERS,
+              ARG_GLOBAL_FILTERS,
+              keypath
+            )
           : generator.toPrimitive(constant.UNDEFINED)
       ]
     ),
@@ -520,6 +556,24 @@ function addComponentVnode(node: generator.Base) {
   return generator.toPush(
     ARG_COMPONENTS,
     node
+  )
+}
+
+function generateSelfAndGlobalReader(self: string, global: string, name: string) {
+  return generator.toBinary(
+    generator.toBinary(
+      generator.toRaw(self),
+      '&&',
+      generator.toOperator(
+        generator.toRaw(self),
+        generator.toRaw(name)
+      )
+    ),
+    '||',
+    generator.toOperator(
+      generator.toRaw(global),
+      generator.toRaw(name)
+    )
   )
 }
 
@@ -1003,12 +1057,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     if (transition) {
       data.set(
         field.TRANSITION,
-        generator.toCall(
-          RENDER_TRANSITION,
-          [
-            getTransitionValue(transition)
-          ]
-        )
+        getTransitionValue(transition)
       )
     }
 
@@ -1180,7 +1229,17 @@ function getLazyValue(node: Directive) {
 }
 
 function getTransitionValue(node: Directive) {
-  return generator.toPrimitive(node.value)
+  return generator.toCall(
+    RENDER_TRANSITION,
+    [
+      generator.toPrimitive(node.value),
+      generateSelfAndGlobalReader(
+        ARG_TRANSITIONS,
+        ARG_GLOBAL_TRANSITIONS,
+        node.value as string
+      )
+    ]
+  )
 }
 
 function getModelValue(node: Directive) {
@@ -1271,8 +1330,8 @@ function getEventInfo(node: Directive) {
           args: generator.toAnonymousFunction(
             [
               generator.toRaw(ARG_STACK),
-              generator.toRaw(ARG_MAGIC_VAR_EVENT),
-              generator.toRaw(ARG_MAGIC_VAR_DATA),
+              generator.toRaw(ARG_EVENT),
+              generator.toRaw(ARG_DATA),
             ],
             constant.UNDEFINED,
             generator.toList(callNode.args.map(generateExpressionArg))
@@ -1346,6 +1405,15 @@ function getDirectiveArgs(node: Directive) {
   array.push(
     args,
     generator.toPrimitive(node.value)
+  )
+  // hooks
+  array.push(
+    args,
+    generateSelfAndGlobalReader(
+      ARG_DIRECTIVES,
+      ARG_GLOBAL_DIRECTIVES,
+      node.name
+    )
   )
 
   // 尽可能把表达式编译成函数，这样对外界最友好
@@ -1585,9 +1653,9 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   isSpecial = to || from.type === exprNodeType.ARRAY || from.type === exprNodeType.OBJECT
 
   const args = [
-    generator.toRaw(ARG_MAGIC_VAR_KEYPATH),
-    generator.toRaw(ARG_MAGIC_VAR_LENGTH),
-    generator.toRaw(ARG_MAGIC_VAR_SCOPE),
+    generator.toRaw(ARG_KEYPATH),
+    generator.toRaw(ARG_LENGTH),
+    generator.toRaw(ARG_SCOPE),
   ]
 
   if (index) {
@@ -1664,33 +1732,43 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
 
 nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
 
-  return generator.toCall(
-    DEFINE_PARTIAL,
-    [
-      generator.toPrimitive(node.name),
-      generator.toAnonymousFunction(
-        [
-          generator.toRaw(ARG_MAGIC_VAR_KEYPATH),
-          generator.toRaw(ARG_CHILDREN),
-          generator.toRaw(ARG_COMPONENTS),
-        ],
-        constant.UNDEFINED,
-        generateNodesToList(node.children as Node[])
-      )
-    ]
+  return generator.toAssign(
+    generator.toOperator(
+      generator.toRaw(ARG_LOCAL_PARTIALS),
+      generator.toRaw(node.name)
+    ),
+    generator.toAnonymousFunction(
+      [
+        generator.toRaw(ARG_KEYPATH),
+        generator.toRaw(ARG_CHILDREN),
+        generator.toRaw(ARG_COMPONENTS),
+      ],
+      generateNodesToList(node.children as Node[])
+    )
   )
 
 }
 
 nodeGenerator[nodeType.IMPORT] = function (node: Import) {
 
+  const { name } = node
+
   return generator.toCall(
     RENDER_PARTIAL,
     [
-      generator.toPrimitive(node.name),
-      generator.toRaw(ARG_MAGIC_VAR_KEYPATH),
+      generator.toPrimitive(name),
+      generator.toRaw(ARG_KEYPATH),
       generator.toRaw(ARG_CHILDREN),
-      generator.toRaw(ARG_COMPONENTS)
+      generator.toRaw(ARG_COMPONENTS),
+      generator.toOperator(
+        generator.toRaw(ARG_LOCAL_PARTIALS),
+        generator.toRaw(name)
+      ),
+      generateSelfAndGlobalReader(
+        ARG_PARTIALS,
+        ARG_GLOBAL_PARTIALS,
+        name,
+      )
     ]
   )
 
@@ -1720,7 +1798,6 @@ export function generate(node: Node): string {
       generator.toRaw(RENDER_DIRECTIVE),
       generator.toRaw(RENDER_SPREAD),
       generator.toRaw(RENDER_SLOT),
-      generator.toRaw(DEFINE_PARTIAL),
       generator.toRaw(RENDER_PARTIAL),
       generator.toRaw(RENDER_EACH),
       generator.toRaw(RENDER_RANGE),
@@ -1728,7 +1805,16 @@ export function generate(node: Node): string {
       generator.toRaw(RENDER_EXPRESSION_VALUE),
       generator.toRaw(EXECUTE_FUNCTION),
       generator.toRaw(TO_STRING),
-      generator.toRaw(ARG_MAGIC_VAR_KEYPATH),
+      generator.toRaw(ARG_FILTERS),
+      generator.toRaw(ARG_GLOBAL_FILTERS),
+      generator.toRaw(ARG_LOCAL_PARTIALS),
+      generator.toRaw(ARG_PARTIALS),
+      generator.toRaw(ARG_GLOBAL_PARTIALS),
+      generator.toRaw(ARG_DIRECTIVES),
+      generator.toRaw(ARG_GLOBAL_DIRECTIVES),
+      generator.toRaw(ARG_TRANSITIONS),
+      generator.toRaw(ARG_GLOBAL_TRANSITIONS),
+      generator.toRaw(ARG_KEYPATH),
       generator.toRaw(ARG_CHILDREN),
       generator.toRaw(ARG_COMPONENTS),
     ],

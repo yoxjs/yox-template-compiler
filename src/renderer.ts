@@ -170,8 +170,7 @@ export function render(
     children[length] = vnode
   },
 
-  renderTransition = function (name: string) {
-    const transition = (transitions && transitions[name]) || globalTransitions[name]
+  renderTransition = function (name: string, transition: TransitionHooks) {
     if (process.env.NODE_ENV === 'development') {
       if (!transition) {
         logger.fatal(`The transition "${name}" can't be found.`)
@@ -277,9 +276,8 @@ export function render(
     }
   },
 
-  renderDirective = function (key: string, name: string, modifier: string, value: any, runtime?: DirectiveRuntime, method?: string) {
+  renderDirective = function (key: string, name: string, modifier: string, value: any, hooks: DirectiveHooks, runtime?: DirectiveRuntime, method?: string) {
 
-    const hooks = (directives && directives[name]) || globalDirectives[name]
     if (process.env.NODE_ENV === 'development') {
       if (!hooks) {
         logger.fatal(`The directive "${name}" can't be found.`)
@@ -348,26 +346,22 @@ export function render(
     render && render()
   },
 
-  // {{#partial name}}
-  //   xx
-  // {{/partial}}
-  definePartial = function (name: string, render: (keypath: string, children: VNode[], components: VNode[]) => void) {
-    localPartials[name] = render
-  },
-
   // {{> name}}
-  renderPartial = function (name: string, keypath: string, children: VNode[], components: VNode[]) {
-    if (localPartials[name]) {
-      localPartials[name](keypath, children, components)
+  renderPartial = function (
+    name: string, keypath: string, children: VNode[], components: VNode[],
+    renderLocal?: (keypath: string, children: VNode[], components: VNode[]) => void,
+    render?: Function,
+  ) {
+    if (renderLocal) {
+      renderLocal(keypath, children, components)
       return
     }
-    const partial = (partials && partials[name]) || globalPartials[name]
     if (process.env.NODE_ENV === 'development') {
-      if (!partial) {
+      if (!render) {
         logger.fatal(`The partial "${name}" can't be found.`)
       }
     }
-    renderTemplate(partial, keypath, children, components)
+    renderTemplate(render as Function, keypath, children, components)
   },
 
   renderEach = function (
@@ -502,7 +496,7 @@ export function render(
 
   renderExpressionIdentifier = function (
     getIndex: (stack: Context[]) => number, tokens?: string[],
-    lookup?: boolean, stack?: Context[], call?: boolean
+    lookup?: boolean, stack?: Context[], filter?: Function
   ) {
 
     const currentStack = stack || contextStack,
@@ -532,23 +526,10 @@ export function render(
       if (lookup && index > 0) {
         result = lookupValue(currentStack, index - 1, name)
       }
-      // 如果是函数调用，则最后尝试过滤器
-      if (!result && call) {
-        if (filters) {
-          result = object.get(filters, name)
-        }
-        if (!result) {
-          result = object.get(globalFilters, name)
-        }
-        if (result) {
-          // filter 不算数据
-          result.keypath = constant.UNDEFINED
-        }
-      }
       if (!result) {
         result = globalHolder
-        result.keypath = currentKeypath
-        result.value = constant.UNDEFINED
+        result.keypath = filter ? constant.UNDEFINED : currentKeypath
+        result.value = filter || constant.UNDEFINED
       }
     }
 
@@ -597,7 +578,6 @@ export function render(
       renderDirective,
       renderSpread,
       renderSlot,
-      definePartial,
       renderPartial,
       renderEach,
       renderRange,
@@ -605,6 +585,15 @@ export function render(
       renderExpressionValue,
       executeFunction,
       toString,
+      filters,
+      globalFilters,
+      localPartials,
+      partials,
+      globalPartials,
+      directives,
+      globalDirectives,
+      transitions,
+      globalTransitions,
       keypath,
       children,
       components
