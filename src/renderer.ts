@@ -67,28 +67,6 @@ export function render(
   // 渲染模板的数据依赖
   dependencies: Record<string, boolean> = { },
 
-  lookupValue = function (stack: Context[], index: number, key: string): ValueHolder | undefined {
-
-    const context = stack[index],
-
-    keypath = keypathUtil.join(context.keypath, key),
-
-    result = object.get(context.scope, keypath)
-
-    if (result) {
-      result.keypath = keypath
-      return result
-    }
-
-    if (index > 0) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.debug(`The data "${keypath}" can't be found in the current context, start looking up.`)
-      }
-      return lookupValue(stack, index - 1, key)
-    }
-
-  },
-
   renderElementVnode = function (
     data: Data,
     createAttributes?: (vnode: Data) => void,
@@ -348,12 +326,12 @@ export function render(
 
   // {{> name}}
   renderPartial = function (
-    name: string, keypath: string, children: VNode[], components: VNode[],
-    renderLocal?: (keypath: string, children: VNode[], components: VNode[]) => void,
+    name: string, scope: any, keypath: string, children: VNode[], components: VNode[],
+    renderLocal?: (scope: any, keypath: string, children: VNode[], components: VNode[]) => void,
     render?: Function,
   ) {
     if (renderLocal) {
-      renderLocal(keypath, children, components)
+      renderLocal(scope, keypath, children, components)
       return
     }
     if (process.env.NODE_ENV === 'development') {
@@ -361,7 +339,7 @@ export function render(
         logger.fatal(`The partial "${name}" can't be found.`)
       }
     }
-    renderTemplate(render as Function, keypath, children, components)
+    renderTemplate(render as Function, scope, keypath, children, components)
   },
 
   renderEach = function (
@@ -387,9 +365,9 @@ export function render(
           })
         }
         renderChildren(
+          value[i],
           currentKeypath,
           length,
-          value[i],
           i
         )
       }
@@ -413,9 +391,9 @@ export function render(
           })
         }
         renderChildren(
+          value[key],
           currentKeypath,
           length,
-          value[key],
           key
         )
       }
@@ -446,9 +424,9 @@ export function render(
       if (equal) {
         for (let i = from; i <= to; i++) {
           renderChildren(
+            i,
             currentKeypath,
             length,
-            i,
             count++
           )
         }
@@ -456,9 +434,9 @@ export function render(
       else {
         for (let i = from; i < to; i++) {
           renderChildren(
+            i,
             currentKeypath,
             length,
-            i,
             count++
           )
         }
@@ -469,9 +447,9 @@ export function render(
       if (equal) {
         for (let i = from; i >= to; i--) {
           renderChildren(
+            i,
             currentKeypath,
             length,
-            i,
             count++
           )
         }
@@ -479,9 +457,9 @@ export function render(
       else {
         for (let i = from; i > to; i--) {
           renderChildren(
+            i,
             currentKeypath,
             length,
-            i,
             count++
           )
         }
@@ -494,64 +472,214 @@ export function render(
 
   },
 
-  renderExpressionIdentifier = function (
-    getIndex: (stack: Context[]) => number, tokens?: string[],
-    lookup?: boolean, stack?: Context[], filter?: Function
+  findKeypath = function (holder: ValueHolder, stack: Context[], index: number, keypath: string, lookup?: boolean) {
+
+    const context = stack[index],
+
+    currentKeypath = keypathUtil.join(context.keypath, keypath),
+
+    result = object.get(context.scope, currentKeypath)
+
+    if (result) {
+      holder.value = result.value
+      holder.keypath = currentKeypath
+      return
+    }
+
+    if (holder.keypath === constant.UNDEFINED) {
+      holder.keypath = currentKeypath
+    }
+
+    if (lookup && index > 0) {
+      if (process.env.NODE_ENV === 'development') {
+        logger.debug(`The data "${currentKeypath}" can't be found in the current context, start looking up.`)
+      }
+      findKeypath(holder, stack, index - 1, keypath)
+    }
+
+  },
+
+  lookupKeypath = function (
+    getIndex: (stack: Context[]) => number,
+    keypath: string,
+    lookup?: boolean,
+    stack?: Context[],
+    filter?: Function
   ) {
 
     const currentStack = stack || contextStack,
 
-    index = getIndex(currentStack),
+    index = getIndex(currentStack)
 
-    { keypath, scope } = currentStack[index],
+    globalHolder.keypath = constant.UNDEFINED
+    globalHolder.value = constant.UNDEFINED
 
-    name = tokens ? tokens.join(constant.RAW_DOT) : constant.EMPTY_STRING,
+    findKeypath(globalHolder, currentStack, index, keypath, lookup)
 
-    currentKeypath = keypathUtil.join(keypath, name)
-
-
-    let result: ValueHolder | void
-    if (tokens) {
-      result = object.get(scope, tokens)
+    if (globalHolder.value === constant.UNDEFINED && filter) {
+      globalHolder.value = filter
     }
-    else {
-      result = globalHolder
-      result.value = scope
+    else if (globalHolder.keypath) {
+      dependencies[globalHolder.keypath] = constant.TRUE
     }
 
-    if (result) {
-      result.keypath = currentKeypath
-    }
-    else {
-      if (lookup && index > 0) {
-        result = lookupValue(currentStack, index - 1, name)
-      }
-      if (!result) {
-        result = globalHolder
-        result.keypath = filter ? constant.UNDEFINED : currentKeypath
-        result.value = filter || constant.UNDEFINED
-      }
-    }
-
-    if (result.keypath !== constant.UNDEFINED) {
-      dependencies[result.keypath] = constant.TRUE
-    }
-
-    return result
+    return globalHolder
 
   },
 
-  renderExpressionValue = function (
+  findProp = function (holder: ValueHolder, stack: Context[], index: number, name: string) {
+
+    const { keypath, scope } = stack[index],
+
+    currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
+
+    if (name in scope) {
+      holder.keypath = currentKeypath
+      holder.value = scope[name]
+      return
+    }
+
+    if (index > 0) {
+      if (process.env.NODE_ENV === 'development') {
+        logger.debug(`The data "${currentKeypath}" can't be found in the current context, start looking up.`)
+      }
+      findProp(holder, stack, index - 1, name)
+    }
+
+  },
+
+  lookupProp = function (
+    name: string,
     value: any,
-    tokens: string[]
+    stack?: Context[],
+    filter?: Function
   ) {
-    const result = object.get(value, tokens)
+
+    const currentStack = stack || contextStack,
+
+    index = currentStack.length - 1,
+
+    { keypath } = currentStack[index],
+
+    currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
+
+    globalHolder.keypath = currentKeypath
+    globalHolder.value = value
+
+    if (value === constant.UNDEFINED && index > 0) {
+      findProp(globalHolder, currentStack, index - 1, name)
+    }
+
+    if (globalHolder.value === constant.UNDEFINED && filter) {
+      globalHolder.keypath = constant.UNDEFINED
+      globalHolder.value = filter
+    }
+    else if (globalHolder.keypath) {
+      dependencies[globalHolder.keypath] = constant.TRUE
+    }
+
+    return globalHolder
+
+  },
+
+  getThis = function (
+    value: any,
+    stack?: Context[]
+  ) {
+
+    const currentStack = stack || contextStack,
+
+    { keypath } = currentStack[currentStack.length - 1]
+
+    globalHolder.keypath = keypath
+    globalHolder.value = value
+
+    dependencies[keypath] = constant.TRUE
+
+    return globalHolder
+
+  },
+
+  getThisByIndex = function (
+    getIndex: (stack: Context[]) => number,
+    stack?: Context[]
+  ) {
+
+    const currentStack = stack || contextStack,
+
+    { keypath, scope } = currentStack[getIndex(currentStack)]
+
+    globalHolder.keypath = keypath
+    globalHolder.value = scope
+
+    dependencies[keypath] = constant.TRUE
+
+    return globalHolder
+
+  },
+
+  getProp = function (
+    name: string,
+    value: any,
+    stack?: Context[]
+  ) {
+
+    const currentStack = stack || contextStack,
+
+    { keypath } = currentStack[currentStack.length - 1],
+
+    currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
+
+    globalHolder.keypath = currentKeypath
+    globalHolder.value = value
+
+    dependencies[currentKeypath] = constant.TRUE
+
+    return globalHolder
+
+  },
+
+  getPropByIndex = function (
+    getIndex: (stack: Context[]) => number,
+    name: string,
+    stack?: Context[]
+  ) {
+
+    const currentStack = stack || contextStack,
+
+    { keypath, scope } = currentStack[getIndex(currentStack)],
+
+    currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
+
+    globalHolder.keypath = currentKeypath
+    globalHolder.value = scope[name]
+
+    dependencies[currentKeypath] = constant.TRUE
+
+    return globalHolder
+
+  },
+
+  readKeypath = function (
+    value: any,
+    keypath: string
+  ) {
+    const result = object.get(value, keypath)
     if (result) {
       result.keypath = constant.UNDEFINED
       return result
     }
     globalHolder.keypath =
     globalHolder.value = constant.UNDEFINED
+    return globalHolder
+  },
+
+  readProp = function (
+    value: any,
+    name?: string
+  ) {
+    globalHolder.keypath = constant.UNDEFINED
+    globalHolder.value = name !== constant.UNDEFINED ? value[name] : value
     return globalHolder
   },
 
@@ -564,7 +692,7 @@ export function render(
     return globalHolder
   },
 
-  renderTemplate = function (render: Function, keypath: string, children: VNode[], components: VNode[]) {
+  renderTemplate = function (render: Function, scope: any, keypath: string, children: VNode[], components: VNode[]) {
     render(
       instance,
       renderElementVnode,
@@ -581,8 +709,14 @@ export function render(
       renderPartial,
       renderEach,
       renderRange,
-      renderExpressionIdentifier,
-      renderExpressionValue,
+      lookupKeypath,
+      lookupProp,
+      getThis,
+      getThisByIndex,
+      getProp,
+      getPropByIndex,
+      readKeypath,
+      readProp,
       executeFunction,
       toString,
       filters,
@@ -594,6 +728,7 @@ export function render(
       globalDirectives,
       transitions,
       globalTransitions,
+      scope,
       keypath,
       children,
       components
@@ -602,7 +737,7 @@ export function render(
 
   const children: VNode[] = [ ], components: VNode[] = [ ]
 
-  renderTemplate(template, rootKeypath, children, components)
+  renderTemplate(template, scope, rootKeypath, children, components)
 
   if (process.env.NODE_ENV === 'development') {
     if (children.length > 1) {

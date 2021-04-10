@@ -112,9 +112,21 @@ RENDER_EACH = constant.EMPTY_STRING,
 
 RENDER_RANGE = constant.EMPTY_STRING,
 
-RENDER_EXPRESSION_IDENTIFIER = constant.EMPTY_STRING,
+LOOKUP_KEYPATH = constant.EMPTY_STRING,
 
-RENDER_EXPRESSION_VALUE = constant.EMPTY_STRING,
+LOOKUP_PROP = constant.EMPTY_STRING,
+
+GET_THIS = constant.EMPTY_STRING,
+
+GET_THIS_BY_INDEX = constant.EMPTY_STRING,
+
+GET_PROP = constant.EMPTY_STRING,
+
+GET_PROP_BY_INDEX = constant.EMPTY_STRING,
+
+READ_KEYPATH = constant.EMPTY_STRING,
+
+READ_PROP = constant.EMPTY_STRING,
 
 EXECUTE_FUNCTION = constant.EMPTY_STRING,
 
@@ -180,28 +192,34 @@ function init() {
     RENDER_PARTIAL = '_m'
     RENDER_EACH = '_n'
     RENDER_RANGE = '_o'
-    RENDER_EXPRESSION_IDENTIFIER = '_p'
-    RENDER_EXPRESSION_VALUE = '_q'
-    EXECUTE_FUNCTION = '_r'
-    TO_STRING = '_s'
-    ARG_FILTERS = '_t',
-    ARG_GLOBAL_FILTERS = '_u',
-    ARG_LOCAL_PARTIALS = '_v'
-    ARG_PARTIALS = '_w',
-    ARG_GLOBAL_PARTIALS = '_x',
-    ARG_DIRECTIVES = '_y',
-    ARG_GLOBAL_DIRECTIVES = '_z',
-    ARG_TRANSITIONS = '_1',
-    ARG_GLOBAL_TRANSITIONS = '_2',
-    ARG_STACK = '_3'
-    ARG_VNODE = '_4'
-    ARG_CHILDREN = '_5'
-    ARG_COMPONENTS = '_6'
-    ARG_SCOPE = '_7'
-    ARG_KEYPATH = '_8'
-    ARG_LENGTH = '_9'
-    ARG_EVENT = '_10'
-    ARG_DATA = '_11'
+    LOOKUP_KEYPATH = '_p'
+    LOOKUP_PROP = '_q'
+    GET_THIS = '_r'
+    GET_THIS_BY_INDEX = '_s'
+    GET_PROP = '_t'
+    GET_PROP_BY_INDEX = '_u'
+    READ_KEYPATH = '_v'
+    READ_PROP = '_w'
+    EXECUTE_FUNCTION = '_x'
+    TO_STRING = '_y'
+    ARG_FILTERS = '_z',
+    ARG_GLOBAL_FILTERS = '__a',
+    ARG_LOCAL_PARTIALS = '__b'
+    ARG_PARTIALS = '__c',
+    ARG_GLOBAL_PARTIALS = '__d',
+    ARG_DIRECTIVES = '__e',
+    ARG_GLOBAL_DIRECTIVES = '__f',
+    ARG_TRANSITIONS = '_g',
+    ARG_GLOBAL_TRANSITIONS = '__h',
+    ARG_STACK = '__i'
+    ARG_VNODE = '__j'
+    ARG_CHILDREN = '__k'
+    ARG_COMPONENTS = '__l'
+    ARG_SCOPE = '__m'
+    ARG_KEYPATH = '__n'
+    ARG_LENGTH = '__o'
+    ARG_EVENT = '__p'
+    ARG_DATA = '__q'
   }
   else {
     VAR_LOCAL_PREFIX = 'var'
@@ -220,8 +238,14 @@ function init() {
     RENDER_PARTIAL = 'renderPartial'
     RENDER_EACH = 'renderEach'
     RENDER_RANGE = 'renderRange'
-    RENDER_EXPRESSION_IDENTIFIER = 'renderExpressionIdentifier'
-    RENDER_EXPRESSION_VALUE = 'renderExpressionValue'
+    LOOKUP_KEYPATH = 'lookupKeypath'
+    LOOKUP_PROP = 'lookupProp'
+    GET_THIS = 'getThis'
+    GET_THIS_BY_INDEX = 'getThisByIndex'
+    GET_PROP = 'getProp'
+    GET_PROP_BY_INDEX = 'getPropByIndex'
+    READ_KEYPATH = 'readKeypath'
+    READ_PROP = 'readProp'
     EXECUTE_FUNCTION = 'executeFunction'
     TO_STRING = 'toString'
     ARG_FILTERS = 'filters',
@@ -315,11 +339,13 @@ function generateHolderIfNeeded(node: generator.Base, holder?: boolean) {
       )
 }
 
-function generateExpressionIdentifier(node: ExpressionKeypath, keypath?: string, nodes?: generator.Base[], holder?: boolean, stack?: boolean, parentNode?: ExpressionNode) {
+function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.Base[], keypath?: string, holder?: boolean, stack?: boolean, parentNode?: ExpressionNode) {
+
+  const { root, lookup, offset } = node, { length } = nodes
 
   let getIndex: generator.Base
 
-  if (node.root) {
+  if (root) {
     getIndex = generator.toRaw(
       addLocalVar(
         generator.toAnonymousFunction(
@@ -330,7 +356,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, keypath?: string,
       )
     )
   }
-  else if (node.offset) {
+  else if (offset) {
     getIndex = generator.toRaw(
       addLocalVar(
         generator.toAnonymousFunction(
@@ -343,7 +369,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, keypath?: string,
             generator.toBinary(
               generator.toRaw('length'),
               '-',
-              generator.toPrimitive(1 + node.offset)
+              generator.toPrimitive(1 + offset)
             )
           )
         )
@@ -371,46 +397,179 @@ function generateExpressionIdentifier(node: ExpressionKeypath, keypath?: string,
     )
   }
 
-  return generateHolderIfNeeded(
-    generator.toCall(
-      RENDER_EXPRESSION_IDENTIFIER,
-      [
-        getIndex,
-        nodes
-          ? generator.toList(nodes)
-          : generator.toPrimitive(constant.UNDEFINED),
-        node.lookup
-          ? generator.toPrimitive(constant.TRUE)
-          : generator.toPrimitive(constant.UNDEFINED),
-        stack
-          ? generator.toRaw(ARG_STACK)
-          : generator.toPrimitive(constant.UNDEFINED),
-        parentNode && parentNode.type === exprNodeType.CALL && keypath
-          ? generateSelfAndGlobalReader(
-              ARG_FILTERS,
-              ARG_GLOBAL_FILTERS,
-              keypath
-            )
-          : generator.toPrimitive(constant.UNDEFINED)
-      ]
-    ),
-    holder
+  let filter: generator.Base = generator.toPrimitive(constant.UNDEFINED)
+
+  // 函数调用
+  if (parentNode
+    && parentNode.type === exprNodeType.CALL
+    // 调用过滤器肯定无需指定路径
+    && lookup
+    // 过滤器名称是简单的标识符，可支持多级属性，如 lodash.toUpper
+    && keypath
+    && length > 0
+  ) {
+    if (length > 1) {
+      filter = generator.toOperator(
+        generator.toRaw(ARG_GLOBAL_FILTERS),
+        generator.toRaw(keypath)
+      )
+    }
+    else {
+      filter = generateSelfAndGlobalReader(
+        ARG_FILTERS,
+        ARG_GLOBAL_FILTERS,
+        keypath
+      )
+    }
+  }
+
+  let result: generator.Base = generator.toCall(
+    LOOKUP_KEYPATH,
+    [
+      getIndex,
+      is.string(keypath)
+        ? generator.toPrimitive(keypath)
+        : length === 1
+          ? nodes[0]
+          : generator.toOperator(
+              generator.toList(nodes),
+              generator.toCall(
+                'join',
+                [
+                  generator.toPrimitive(constant.RAW_DOT)
+                ]
+              )
+            ),
+      lookup
+        ? generator.toPrimitive(constant.TRUE)
+        : generator.toPrimitive(constant.UNDEFINED),
+      stack
+        ? generator.toRaw(ARG_STACK)
+        : generator.toPrimitive(constant.UNDEFINED),
+      filter
+    ]
   )
+
+  // 如果是读取一级属性的场景，比如 this.x，这里可以优化成 scope.x
+  // 如果是读取多级属性的场景，比如 this.x.y，这里不做优化，因为 x 可能为空，导致整个表达式报错
+
+  // 处理一级属性
+  if (keypath && length === 1) {
+
+    // this.name
+    if (!root && !offset && !lookup) {
+      result = generator.toCall(
+        GET_PROP,
+        [
+          generator.toPrimitive(keypath),
+          generator.toOperator(
+            generator.toRaw(ARG_SCOPE),
+            generator.toRaw(keypath)
+          ),
+          stack
+            ? generator.toRaw(ARG_STACK)
+            : generator.toPrimitive(constant.UNDEFINED)
+        ]
+      )
+    }
+    // 未指定路径，如 name
+    else if (!root && !offset) {
+      result = generator.toCall(
+        LOOKUP_PROP,
+        [
+          generator.toPrimitive(keypath),
+          generator.toOperator(
+            generator.toRaw(ARG_SCOPE),
+            generator.toRaw(keypath)
+          ),
+          stack
+            ? generator.toRaw(ARG_STACK)
+            : generator.toPrimitive(constant.UNDEFINED),
+          filter
+        ]
+      )
+    }
+    // 指定了路径，如 ~/name 或 ../name
+    else {
+      result = generator.toCall(
+        GET_PROP_BY_INDEX,
+        [
+          getIndex,
+          generator.toPrimitive(keypath),
+          stack
+            ? generator.toRaw(ARG_STACK)
+            : generator.toPrimitive(constant.UNDEFINED)
+        ]
+      )
+    }
+
+  }
+  // 处理属性为空串，如 this、../this、~/this 之类的
+  else if (!keypath && !length) {
+
+    // this
+    if (!root && !offset && !lookup) {
+      result = generator.toCall(
+        GET_THIS,
+        [
+          generator.toRaw(ARG_SCOPE),
+          stack
+            ? generator.toRaw(ARG_STACK)
+            : generator.toPrimitive(constant.UNDEFINED)
+        ]
+      )
+    }
+    // 指定了路径，如 ~/name 或 ../name
+    else if (root || offset) {
+      result = generator.toCall(
+        GET_THIS_BY_INDEX,
+        [
+          getIndex,
+          stack
+            ? generator.toRaw(ARG_STACK)
+            : generator.toPrimitive(constant.UNDEFINED)
+        ]
+      )
+    }
+
+  }
+
+  return generateHolderIfNeeded(result, holder)
 
 }
 
 function generateExpressionValue(value: generator.Base, keys: generator.Base[], holder?: boolean) {
 
-  return generateHolderIfNeeded(
-    generator.toCall(
-      RENDER_EXPRESSION_VALUE,
+  let result: generator.Base
+
+  if (keys.length <= 1) {
+    result = generator.toCall(
+      READ_PROP,
       [
         value,
-        generator.toList(keys)
+        keys[0] || generator.toPrimitive(constant.UNDEFINED),
       ]
-    ),
-    holder
-  )
+    )
+  }
+  else {
+    result = generator.toCall(
+      READ_KEYPATH,
+      [
+        value,
+        generator.toOperator(
+          generator.toList(keys),
+          generator.toCall(
+            'join',
+            [
+              generator.toPrimitive(constant.RAW_DOT)
+            ]
+          )
+        ),
+      ]
+    )
+  }
+
+  return generateHolderIfNeeded(result, holder)
 
 }
 
@@ -555,13 +714,6 @@ function appendComponentVnode(node: generator.Base) {
 }
 
 function generateSelfAndGlobalReader(self: string, global: string, name: string) {
-  // 如果 name 包含 . 则只从全局取值，目前主要是处理全局过滤器，比如直接注册 lodash 整个对象进来
-  if (generator.parse(name).length > 1) {
-    return generator.toOperator(
-      generator.toRaw(global),
-      generator.toRaw(name)
-    )
-  }
   return generator.toBinary(
     generator.toBinary(
       generator.toRaw(self),
@@ -1661,9 +1813,9 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   isSpecial = to || from.type === exprNodeType.ARRAY || from.type === exprNodeType.OBJECT
 
   const args = [
+    generator.toRaw(ARG_SCOPE),
     generator.toRaw(ARG_KEYPATH),
     generator.toRaw(ARG_LENGTH),
-    generator.toRaw(ARG_SCOPE),
   ]
 
   if (index) {
@@ -1745,6 +1897,7 @@ nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
     ),
     generator.toAnonymousFunction(
       [
+        generator.toRaw(ARG_SCOPE),
         generator.toRaw(ARG_KEYPATH),
         generator.toRaw(ARG_CHILDREN),
         generator.toRaw(ARG_COMPONENTS),
@@ -1763,6 +1916,7 @@ nodeGenerator[nodeType.IMPORT] = function (node: Import) {
     RENDER_PARTIAL,
     [
       generator.toPrimitive(name),
+      generator.toRaw(ARG_SCOPE),
       generator.toRaw(ARG_KEYPATH),
       generator.toRaw(ARG_CHILDREN),
       generator.toRaw(ARG_COMPONENTS),
@@ -1807,8 +1961,14 @@ export function generate(node: Node): string {
       generator.toRaw(RENDER_PARTIAL),
       generator.toRaw(RENDER_EACH),
       generator.toRaw(RENDER_RANGE),
-      generator.toRaw(RENDER_EXPRESSION_IDENTIFIER),
-      generator.toRaw(RENDER_EXPRESSION_VALUE),
+      generator.toRaw(LOOKUP_KEYPATH),
+      generator.toRaw(LOOKUP_PROP),
+      generator.toRaw(GET_THIS),
+      generator.toRaw(GET_THIS_BY_INDEX),
+      generator.toRaw(GET_PROP),
+      generator.toRaw(GET_PROP_BY_INDEX),
+      generator.toRaw(READ_KEYPATH),
+      generator.toRaw(READ_PROP),
       generator.toRaw(EXECUTE_FUNCTION),
       generator.toRaw(TO_STRING),
       generator.toRaw(ARG_FILTERS),
@@ -1820,6 +1980,7 @@ export function generate(node: Node): string {
       generator.toRaw(ARG_GLOBAL_DIRECTIVES),
       generator.toRaw(ARG_TRANSITIONS),
       generator.toRaw(ARG_GLOBAL_TRANSITIONS),
+      generator.toRaw(ARG_SCOPE),
       generator.toRaw(ARG_KEYPATH),
       generator.toRaw(ARG_CHILDREN),
       generator.toRaw(ARG_COMPONENTS),
