@@ -436,15 +436,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
         ? generator.toPrimitive(keypath)
         : length === 1
           ? nodes[0]
-          : generator.toOperator(
-              generator.toList(nodes),
-              generator.toCall(
-                'join',
-                [
-                  generator.toPrimitive(constant.RAW_DOT)
-                ]
-              )
-            ),
+          : generator.toList(nodes, constant.RAW_DOT),
       lookup
         ? generator.toPrimitive(constant.TRUE)
         : generator.toPrimitive(constant.UNDEFINED),
@@ -563,15 +555,7 @@ function generateExpressionValue(value: generator.Base, keys: generator.Base[], 
         value,
         keypath
           ? generator.toPrimitive(keypath)
-          : generator.toOperator(
-              generator.toList(keys),
-              generator.toCall(
-                'join',
-                [
-                  generator.toPrimitive(constant.RAW_DOT)
-                ]
-              )
-            ),
+          : generator.toList(keys, constant.RAW_DOT)
       ]
     )
   }
@@ -680,16 +664,9 @@ function generateNodesToStringIfNeeded(children: Node[]) {
 
   // 字符串拼接涉及表达式的优先级问题，改成 array.join 有利于一致性
   if (array.last(stringStack)) {
-    return generator.toOperator(
-      generator.toList(
-        result
-      ),
-      generator.toCall(
-        'join',
-        [
-          generator.toPrimitive(constant.EMPTY_STRING)
-        ]
-      )
+    return generator.toList(
+      result,
+      constant.EMPTY_STRING
     )
   }
 
