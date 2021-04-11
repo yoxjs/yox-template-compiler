@@ -546,12 +546,7 @@ export function render(
 
     if (name in scope) {
       holder.keypath = currentKeypath
-
-      const value = scope[name]
-      holder.value = value && is.func(value.get)
-        ? value.get()
-        : value
-
+      holder.value = scope[name]
       return
     }
 
@@ -575,16 +570,9 @@ export function render(
 
     index = currentStack.length - 1,
 
-    { keypath } = currentStack[index],
+    { keypath } = currentStack[index]
 
-    currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
-
-    // 计算属性
-    if (value && is.func(value.get)) {
-      value = value.get()
-    }
-
-    globalHolder.keypath = currentKeypath
+    globalHolder.keypath = keypath ? keypath + constant.RAW_DOT + name : name
     globalHolder.value = value
 
     if (value === constant.UNDEFINED && index > 0) {
@@ -595,8 +583,14 @@ export function render(
       globalHolder.keypath = constant.UNDEFINED
       globalHolder.value = filter
     }
-    else if (globalHolder.keypath) {
-      dependencies[globalHolder.keypath] = constant.TRUE
+    else {
+      const actualKeypath = globalHolder.keypath, actualValue = globalHolder.value
+      if (actualKeypath) {
+        dependencies[actualKeypath] = constant.TRUE
+        if (actualValue && is.func(actualValue.get)) {
+          globalHolder.value = actualValue.get()
+        }
+      }
     }
 
     return globalHolder
@@ -612,12 +606,10 @@ export function render(
 
     { keypath } = currentStack[currentStack.length - 1]
 
-    globalHolder.keypath = keypath
-    globalHolder.value = value
-
-    dependencies[keypath] = constant.TRUE
-
-    return globalHolder
+    return setHolder(
+      value,
+      keypath
+    )
 
   },
 
@@ -630,12 +622,10 @@ export function render(
 
     { scope, keypath } = currentStack[getIndex(currentStack)]
 
-    globalHolder.keypath = keypath
-    globalHolder.value = scope
-
-    dependencies[keypath] = constant.TRUE
-
-    return globalHolder
+    return setHolder(
+      scope,
+      keypath
+    )
 
   },
 
@@ -647,18 +637,12 @@ export function render(
 
     const currentStack = stack || contextStack,
 
-    { keypath } = currentStack[currentStack.length - 1],
+    { keypath } = currentStack[currentStack.length - 1]
 
-    currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
-
-    globalHolder.keypath = currentKeypath
-    globalHolder.value = value && is.func(value.get)
-      ? value.get()
-      : value
-
-    dependencies[currentKeypath] = constant.TRUE
-
-    return globalHolder
+    return setHolder(
+      value,
+      keypath ? keypath + constant.RAW_DOT + name : name
+    )
 
   },
 
@@ -670,20 +654,12 @@ export function render(
 
     const currentStack = stack || contextStack,
 
-    { scope, keypath } = currentStack[getIndex(currentStack)],
+    { scope, keypath } = currentStack[getIndex(currentStack)]
 
-    currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name,
-
-    value = scope[name]
-
-    globalHolder.keypath = currentKeypath
-    globalHolder.value = value && is.func(value.get)
-      ? value.get()
-      : value
-
-    dependencies[currentKeypath] = constant.TRUE
-
-    return globalHolder
+    return setHolder(
+      scope[name],
+      keypath ? keypath + constant.RAW_DOT + name : name
+    )
 
   },
 
@@ -692,31 +668,24 @@ export function render(
     keypath: string
   ) {
     const result = object.get(value, keypath)
-    if (result) {
-      result.keypath = constant.UNDEFINED
-      return result
+    return setHolder(
+      result ? result.value : constant.UNDEFINED
+    )
+  },
+
+  setHolder = function (value: any, keypath?: string) {
+
+    globalHolder.keypath = keypath
+    globalHolder.value = value && is.func(value.get)
+      ? value.get()
+      : value
+
+    if (keypath !== constant.UNDEFINED) {
+      dependencies[keypath] = constant.TRUE
     }
-    globalHolder.keypath =
-    globalHolder.value = constant.UNDEFINED
-    return globalHolder
-  },
 
-  readProp = function (
-    value: any,
-    name?: string
-  ) {
-    globalHolder.keypath = constant.UNDEFINED
-    globalHolder.value = name !== constant.UNDEFINED ? value[name] : value
     return globalHolder
-  },
 
-  executeFunction = function (
-    fn: Function | void,
-    args: any[] | void
-  ) {
-    globalHolder.keypath = constant.UNDEFINED
-    globalHolder.value = execute(fn, instance, args)
-    return globalHolder
   },
 
   renderTemplate = function (render: Function, scope: any, keypath: string, children: VNode[], components: VNode[]) {
@@ -743,8 +712,8 @@ export function render(
       getProp,
       getPropByIndex,
       readKeypath,
-      readProp,
-      executeFunction,
+      execute,
+      setHolder,
       toString,
       filters,
       globalFilters,

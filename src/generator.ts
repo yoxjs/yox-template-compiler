@@ -126,9 +126,9 @@ GET_PROP_BY_INDEX = constant.EMPTY_STRING,
 
 READ_KEYPATH = constant.EMPTY_STRING,
 
-READ_PROP = constant.EMPTY_STRING,
-
 EXECUTE_FUNCTION = constant.EMPTY_STRING,
+
+SET_HOLDER = constant.EMPTY_STRING,
 
 TO_STRING = constant.EMPTY_STRING,
 
@@ -199,8 +199,8 @@ function init() {
     GET_PROP = '_t'
     GET_PROP_BY_INDEX = '_u'
     READ_KEYPATH = '_v'
-    READ_PROP = '_w'
     EXECUTE_FUNCTION = '_x'
+    SET_HOLDER = 'XXX'
     TO_STRING = '_y'
     ARG_FILTERS = '_z',
     ARG_GLOBAL_FILTERS = '__a',
@@ -245,8 +245,8 @@ function init() {
     GET_PROP = 'getProp'
     GET_PROP_BY_INDEX = 'getPropByIndex'
     READ_KEYPATH = 'readKeypath'
-    READ_PROP = 'readProp'
     EXECUTE_FUNCTION = 'executeFunction'
+    SET_HOLDER = 'setHolder'
     TO_STRING = 'toString'
     ARG_FILTERS = 'filters',
     ARG_GLOBAL_FILTERS = 'globalFilters',
@@ -539,25 +539,37 @@ function generateExpressionValue(value: generator.Base, keys: generator.Base[], 
 
   let result: generator.Base
 
-  if (keys.length <= 1) {
-    result = generator.toCall(
-      READ_PROP,
-      [
-        value,
-        keys[0] || generator.toPrimitive(constant.UNDEFINED),
-      ]
-    )
-  }
-  else {
-    result = generator.toCall(
-      READ_KEYPATH,
-      [
-        value,
-        keypath
-          ? generator.toPrimitive(keypath)
-          : generator.toList(keys, constant.RAW_DOT)
-      ]
-    )
+  switch (keys.length) {
+    case 0:
+      result = generator.toCall(
+        SET_HOLDER,
+        [
+          value,
+        ]
+      )
+      break
+    case 1:
+      result = generator.toCall(
+        SET_HOLDER,
+        [
+          generator.toMember(
+            value,
+            keys
+          )
+        ]
+      )
+      break
+    default:
+      result = generator.toCall(
+        READ_KEYPATH,
+        [
+          value,
+          keypath
+            ? generator.toPrimitive(keypath)
+            : generator.toList(keys, constant.RAW_DOT)
+        ]
+      )
+      break
   }
 
   return generateHolderIfNeeded(result, holder)
@@ -568,12 +580,18 @@ function generateExpressionCall(fn: generator.Base, args?: generator.Base[], hol
 
   return generateHolderIfNeeded(
     generator.toCall(
-      EXECUTE_FUNCTION,
+      SET_HOLDER,
       [
-        fn,
-        args
-          ? generator.toList(args)
-          : generator.toPrimitive(constant.UNDEFINED)
+        generator.toCall(
+          EXECUTE_FUNCTION,
+          [
+            fn,
+            generator.toRaw(ARG_INSTANCE),
+            args
+              ? generator.toList(args)
+              : generator.toPrimitive(constant.UNDEFINED)
+          ]
+        )
       ]
     ),
     holder
@@ -1960,8 +1978,8 @@ export function generate(node: Node): string {
       generator.toRaw(GET_PROP),
       generator.toRaw(GET_PROP_BY_INDEX),
       generator.toRaw(READ_KEYPATH),
-      generator.toRaw(READ_PROP),
       generator.toRaw(EXECUTE_FUNCTION),
+      generator.toRaw(SET_HOLDER),
       generator.toRaw(TO_STRING),
       generator.toRaw(ARG_FILTERS),
       generator.toRaw(ARG_GLOBAL_FILTERS),
