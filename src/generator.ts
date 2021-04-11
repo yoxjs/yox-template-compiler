@@ -25,7 +25,6 @@ import * as keypathUtil from 'yox-common/src/util/keypath'
 import * as exprGenerator from 'yox-expression-compiler/src/generator'
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import * as nodeType from './nodeType'
-import * as field from './field'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import ExpressionKeypath from 'yox-expression-compiler/src/node/Keypath'
@@ -67,7 +66,25 @@ dynamicChildrenStack: boolean[] = [ constant.TRUE ],
 
 magicVariables: string[] = [ MAGIC_VAR_KEYPATH, MAGIC_VAR_LENGTH, MAGIC_VAR_EVENT, MAGIC_VAR_DATA ],
 
-nodeGenerator = { }
+nodeGenerator: Record<number, (node: any) => generator.Base> = { },
+
+FIELD_NATIVE_ATTRIBUTES = 'nativeAttrs',
+
+FIELD_NATIVE_PROPERTIES = 'nativeProps',
+
+FIELD_PROPERTIES = 'props',
+
+FIELD_DIRECTIVES = 'directives',
+
+FIELD_EVENTS = 'events',
+
+FIELD_MODEL = 'model',
+
+FIELD_LAZY = 'lazy',
+
+FIELD_TRANSITION = 'transition',
+
+FIELD_CHILDREN = 'children'
 
 
 // 下面这些值需要根据外部配置才能确定
@@ -1059,7 +1076,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       }
       else {
         data.set(
-          field.CHILDREN,
+          FIELD_CHILDREN,
           generator.toList(
             children.map(
               function (node) {
@@ -1151,7 +1168,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       )
 
       data.set(
-        field.NATIVE_ATTRIBUTES,
+        FIELD_NATIVE_ATTRIBUTES,
         nativeAttributes
       )
 
@@ -1172,7 +1189,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       )
 
       data.set(
-        field.NATIVE_PROPERTIES,
+        FIELD_NATIVE_PROPERTIES,
         nativeProperties
       )
 
@@ -1193,7 +1210,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       )
 
       data.set(
-        field.PROPERTIES,
+        FIELD_PROPERTIES,
         properties
       )
 
@@ -1214,7 +1231,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       )
 
       data.set(
-        field.LAZY,
+        FIELD_LAZY,
         lazy
       )
 
@@ -1222,14 +1239,14 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
     if (transition) {
       data.set(
-        field.TRANSITION,
+        FIELD_TRANSITION,
         getTransitionValue(transition)
       )
     }
 
     if (model) {
       data.set(
-        field.MODEL,
+        FIELD_MODEL,
         getModelValue(model)
       )
     }
@@ -1253,7 +1270,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       )
 
       data.set(
-        field.EVENTS,
+        FIELD_EVENTS,
         events
       )
 
@@ -1277,7 +1294,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       )
 
       data.set(
-        field.DIRECTIVES,
+        FIELD_DIRECTIVES,
         directives
       )
 
@@ -1366,8 +1383,8 @@ nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
       generator.toRaw(ARG_VNODE),
       generator.toPrimitive(
         array.last(componentStack)
-          ? field.PROPERTIES
-          : field.NATIVE_ATTRIBUTES
+          ? FIELD_PROPERTIES
+          : FIELD_NATIVE_ATTRIBUTES
       ),
       generateAttributeValue(node.value, node.expr, node.children),
       generator.toPrimitive(node.name),
@@ -1382,7 +1399,7 @@ nodeGenerator[nodeType.PROPERTY] = function (node: Property) {
     APPEND_ATTRIBUTE,
     [
       generator.toRaw(ARG_VNODE),
-      generator.toPrimitive(field.NATIVE_PROPERTIES),
+      generator.toPrimitive(FIELD_NATIVE_PROPERTIES),
       generateAttributeValue(node.value, node.expr, node.children),
       generator.toPrimitive(node.name),
     ]
@@ -1666,7 +1683,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
         APPEND_ATTRIBUTE,
         [
           generator.toRaw(ARG_VNODE),
-          generator.toPrimitive(field.LAZY),
+          generator.toPrimitive(FIELD_LAZY),
           getLazyValue(node),
           generator.toPrimitive(node.name),
         ]
@@ -1678,7 +1695,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
         APPEND_ATTRIBUTE,
         [
           generator.toRaw(ARG_VNODE),
-          generator.toPrimitive(field.TRANSITION),
+          generator.toPrimitive(FIELD_TRANSITION),
           getTransitionValue(node),
         ]
       )
@@ -1689,7 +1706,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
         APPEND_ATTRIBUTE,
         [
           generator.toRaw(ARG_VNODE),
-          generator.toPrimitive(field.MODEL),
+          generator.toPrimitive(FIELD_MODEL),
           getModelValue(node),
         ]
       )
@@ -1701,7 +1718,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
         APPEND_ATTRIBUTE,
         [
           generator.toRaw(ARG_VNODE),
-          generator.toPrimitive(field.EVENTS),
+          generator.toPrimitive(FIELD_EVENTS),
           generator.toCall(
             info.name,
             info.args
@@ -1715,7 +1732,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
         APPEND_ATTRIBUTE,
         [
           generator.toRaw(ARG_VNODE),
-          generator.toPrimitive(field.DIRECTIVES),
+          generator.toPrimitive(FIELD_DIRECTIVES),
           generator.toCall(
             RENDER_DIRECTIVE,
             getDirectiveArgs(node)
@@ -1732,7 +1749,7 @@ nodeGenerator[nodeType.SPREAD] = function (node: Spread) {
     RENDER_SPREAD,
     [
       generator.toRaw(ARG_VNODE),
-      generator.toPrimitive(field.PROPERTIES),
+      generator.toPrimitive(FIELD_PROPERTIES),
       generateExpression(node.expr)
     ]
   )
