@@ -176,7 +176,7 @@ function init() {
   }
 
   if (constant.PUBLIC_CONFIG.uglifyCompiled) {
-    VAR_LOCAL_PREFIX = '_v'
+    VAR_LOCAL_PREFIX = 'v'
     RENDER_ELEMENT_VNODE = '_a'
     RENDER_COMPONENT_VNODE = '_b'
     APPEND_ATTRIBUTE = '_c'
