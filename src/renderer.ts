@@ -483,7 +483,7 @@ export function render(
 
   },
 
-  findKeypath = function (holder: ValueHolder, stack: Context[], index: number, keypath: string, lookup?: boolean) {
+  findKeypath = function (stack: Context[], index: number, keypath: string, lookup?: boolean) {
 
     const context = stack[index],
 
@@ -492,20 +492,25 @@ export function render(
     result = object.get(context.scope, keypath)
 
     if (result) {
-      holder.value = result.value
-      holder.keypath = currentKeypath
+      setHolder(
+        result.value,
+        currentKeypath
+      )
       return
     }
 
-    if (holder.keypath === constant.UNDEFINED) {
-      holder.keypath = currentKeypath
+    if (globalHolder.keypath === constant.UNDEFINED) {
+      setHolder(
+        constant.UNDEFINED,
+        currentKeypath
+      )
     }
 
     if (lookup && index > 0) {
       if (process.env.NODE_ENV === 'development') {
         logger.debug(`The data "${currentKeypath}" can't be found in the current context, start looking up.`)
       }
-      findKeypath(holder, stack, index - 1, keypath)
+      findKeypath(stack, index - 1, keypath)
     }
 
   },
@@ -518,35 +523,29 @@ export function render(
     filter?: Function
   ) {
 
-    const currentStack = stack || contextStack,
+    const currentStack = stack || contextStack
 
-    index = getIndex(currentStack)
-
-    globalHolder.keypath = constant.UNDEFINED
-    globalHolder.value = constant.UNDEFINED
-
-    findKeypath(globalHolder, currentStack, index, keypath, lookup)
+    findKeypath(currentStack, getIndex(currentStack), keypath, lookup)
 
     if (globalHolder.value === constant.UNDEFINED && filter) {
       globalHolder.value = filter
-    }
-    else if (globalHolder.keypath) {
-      dependencies[globalHolder.keypath] = constant.TRUE
     }
 
     return globalHolder
 
   },
 
-  findProp = function (holder: ValueHolder, stack: Context[], index: number, name: string) {
+  findProp = function (stack: Context[], index: number, name: string) {
 
     const { scope, keypath } = stack[index],
 
     currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
 
     if (name in scope) {
-      holder.keypath = currentKeypath
-      holder.value = scope[name]
+      setHolder(
+        scope[name],
+        currentKeypath
+      )
       return
     }
 
@@ -554,7 +553,7 @@ export function render(
       if (process.env.NODE_ENV === 'development') {
         logger.debug(`The data "${currentKeypath}" can't be found in the current context, start looking up.`)
       }
-      findProp(holder, stack, index - 1, name)
+      findProp(stack, index - 1, name)
     }
 
   },
@@ -572,25 +571,17 @@ export function render(
 
     { keypath } = currentStack[index]
 
-    globalHolder.keypath = keypath ? keypath + constant.RAW_DOT + name : name
-    globalHolder.value = value
+    setHolder(
+      value,
+      keypath ? keypath + constant.RAW_DOT + name : name
+    )
 
     if (value === constant.UNDEFINED && index > 0) {
-      findProp(globalHolder, currentStack, index - 1, name)
+      findProp(currentStack, index - 1, name)
     }
 
     if (globalHolder.value === constant.UNDEFINED && filter) {
-      globalHolder.keypath = constant.UNDEFINED
       globalHolder.value = filter
-    }
-    else {
-      const actualKeypath = globalHolder.keypath, actualValue = globalHolder.value
-      if (actualKeypath) {
-        dependencies[actualKeypath] = constant.TRUE
-        if (actualValue && is.func(actualValue.get)) {
-          globalHolder.value = actualValue.get()
-        }
-      }
     }
 
     return globalHolder
