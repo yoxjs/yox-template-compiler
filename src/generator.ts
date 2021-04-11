@@ -82,8 +82,6 @@ localVarCache: Record<string, string> = { },
 
 VAR_LOCAL_PREFIX = constant.EMPTY_STRING,
 
-ARG_INSTANCE = constant.EMPTY_STRING,
-
 RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
 
 RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
@@ -132,6 +130,8 @@ SET_HOLDER = constant.EMPTY_STRING,
 
 TO_STRING = constant.EMPTY_STRING,
 
+ARG_INSTANCE = constant.EMPTY_STRING,
+
 ARG_FILTERS = constant.EMPTY_STRING,
 
 ARG_GLOBAL_FILTERS = constant.EMPTY_STRING,
@@ -177,31 +177,31 @@ function init() {
 
   if (constant.PUBLIC_CONFIG.uglifyCompiled) {
     VAR_LOCAL_PREFIX = '_v'
-    ARG_INSTANCE = '_a'
-    RENDER_ELEMENT_VNODE = '_b'
-    RENDER_COMPONENT_VNODE = '_c'
-    APPEND_ATTRIBUTE = '_d'
-    APPEND_TEXT_VNODE = '_e'
-    RENDER_TRANSITION = '_f'
-    RENDER_MODEL = '_g'
-    RENDER_EVENT_METHOD = '_h'
-    RENDER_EVENT_NAME = '_i'
-    RENDER_DIRECTIVE = '_j'
-    RENDER_SPREAD = '_k'
-    RENDER_SLOT = '_l'
-    RENDER_PARTIAL = '_m'
-    RENDER_EACH = '_n'
-    RENDER_RANGE = '_o'
-    LOOKUP_KEYPATH = '_p'
-    LOOKUP_PROP = '_q'
-    GET_THIS = '_r'
-    GET_THIS_BY_INDEX = '_s'
-    GET_PROP = '_t'
-    GET_PROP_BY_INDEX = '_u'
-    READ_KEYPATH = '_v'
-    EXECUTE_FUNCTION = '_x'
-    SET_HOLDER = 'XXX'
-    TO_STRING = '_y'
+    RENDER_ELEMENT_VNODE = '_a'
+    RENDER_COMPONENT_VNODE = '_b'
+    APPEND_ATTRIBUTE = '_c'
+    APPEND_TEXT_VNODE = '_d'
+    RENDER_TRANSITION = '_e'
+    RENDER_MODEL = '_f'
+    RENDER_EVENT_METHOD = '_g'
+    RENDER_EVENT_NAME = '_h'
+    RENDER_DIRECTIVE = '_i'
+    RENDER_SPREAD = '_j'
+    RENDER_SLOT = '_k'
+    RENDER_PARTIAL = '_l'
+    RENDER_EACH = '_m'
+    RENDER_RANGE = '_n'
+    LOOKUP_KEYPATH = '_o'
+    LOOKUP_PROP = '_p'
+    GET_THIS = '_q'
+    GET_THIS_BY_INDEX = '_r'
+    GET_PROP = '_s'
+    GET_PROP_BY_INDEX = '_t'
+    READ_KEYPATH = '_u'
+    EXECUTE_FUNCTION = '_v'
+    SET_HOLDER = '_w'
+    TO_STRING = '_x'
+    ARG_INSTANCE = '_y'
     ARG_FILTERS = '_z',
     ARG_GLOBAL_FILTERS = '__a',
     ARG_LOCAL_PARTIALS = '__b'
@@ -223,7 +223,6 @@ function init() {
   }
   else {
     VAR_LOCAL_PREFIX = 'var'
-    ARG_INSTANCE = 'instance'
     RENDER_ELEMENT_VNODE = 'renderElementVnode'
     RENDER_COMPONENT_VNODE = 'renderComponentVnode'
     APPEND_ATTRIBUTE = 'appendAttribute'
@@ -248,6 +247,7 @@ function init() {
     EXECUTE_FUNCTION = 'executeFunction'
     SET_HOLDER = 'setHolder'
     TO_STRING = 'toString'
+    ARG_INSTANCE = 'instance'
     ARG_FILTERS = 'filters',
     ARG_GLOBAL_FILTERS = 'globalFilters',
     ARG_LOCAL_PARTIALS = 'localPartials'
@@ -1956,7 +1956,6 @@ export function generate(node: Node): string {
 
   return generator.generate(
     [
-      generator.toRaw(ARG_INSTANCE),
       generator.toRaw(RENDER_ELEMENT_VNODE),
       generator.toRaw(RENDER_COMPONENT_VNODE),
       generator.toRaw(APPEND_ATTRIBUTE),
@@ -1981,6 +1980,7 @@ export function generate(node: Node): string {
       generator.toRaw(EXECUTE_FUNCTION),
       generator.toRaw(SET_HOLDER),
       generator.toRaw(TO_STRING),
+      generator.toRaw(ARG_INSTANCE),
       generator.toRaw(ARG_FILTERS),
       generator.toRaw(ARG_GLOBAL_FILTERS),
       generator.toRaw(ARG_LOCAL_PARTIALS),

@@ -681,7 +681,6 @@ export function render(
 
   renderTemplate = function (render: Function, scope: any, keypath: string, children: VNode[], components: VNode[]) {
     render(
-      instance,
       renderElementVnode,
       renderComponentVnode,
       appendAttribute,
@@ -706,6 +705,7 @@ export function render(
       execute,
       setHolder,
       toString,
+      instance,
       filters,
       globalFilters,
       localPartials,
