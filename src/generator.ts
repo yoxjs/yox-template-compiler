@@ -226,7 +226,7 @@ function init() {
     ARG_GLOBAL_PARTIALS = '__d',
     ARG_DIRECTIVES = '__e',
     ARG_GLOBAL_DIRECTIVES = '__f',
-    ARG_TRANSITIONS = '_g',
+    ARG_TRANSITIONS = '__g',
     ARG_GLOBAL_TRANSITIONS = '__h',
     ARG_STACK = '__i'
     ARG_VNODE = '__j'
