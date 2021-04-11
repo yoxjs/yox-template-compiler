@@ -15,9 +15,9 @@ import {
 } from 'yox-type/src/hooks'
 
 import {
+  VNode,
   EventRuntime,
   DirectiveRuntime,
-  VNode,
 } from 'yox-type/src/vnode'
 
 import {
@@ -37,15 +37,18 @@ import * as keypathUtil from 'yox-common/src/util/keypath'
 
 import globalHolder from 'yox-common/src/util/holder'
 
+import Computed from 'yox-observer/src/Computed'
+
 type Context = {
-  keypath: string,
   scope: any,
+  keypath: string,
 }
 
 export function render(
   instance: YoxInterface,
   template: Function,
-  scope: Record<string, any>,
+  data: Data,
+  computed: Record<string, Computed> | undefined,
   filters: Record<string, Filter> | undefined,
   globalFilters: Record<string, Filter>,
   partials: Record<string, Function> | undefined,
@@ -56,45 +59,53 @@ export function render(
   globalTransitions: Record<string, TransitionHooks>,
 ) {
 
-  let rootKeypath = constant.EMPTY_STRING,
+  let rootScope = object.merge(data, computed),
+
+  rootKeypath = constant.EMPTY_STRING,
 
   contextStack: Context[] = [
-    { keypath: rootKeypath, scope, }
+    { scope: rootScope, keypath: rootKeypath }
   ],
 
-  localPartials: Record<string, (keypath: string, children: VNode[], components: VNode[]) => void> = { },
+  localPartials: Record<string, (scope: any, keypath: string, children: VNode[], components: VNode[]) => void> = { },
 
   // 渲染模板的数据依赖
   dependencies: Record<string, boolean> = { },
 
+  // 模板渲染过程收集的 vnode
+  children: VNode[] = [ ],
+
+  // 模板渲染过程收集的组件
+  components: VNode[] = [ ],
+
   renderElementVnode = function (
-    data: Data,
+    vnode: Data,
     createAttributes?: (vnode: Data) => void,
     createChildren?: (children: VNode[]) => void,
   ) {
 
     if (createAttributes) {
-      createAttributes(data)
+      createAttributes(vnode)
     }
 
     if (createChildren) {
       const children: VNode[] = [ ]
       createChildren(children)
-      data.children = children
+      vnode.children = children
     }
 
-    return data
+    return vnode
 
   },
 
   renderComponentVnode = function (
-    data: Data,
-    createAttributes?: (data: Data) => void,
+    vnode: Data,
+    createAttributes?: (vnode: Data) => void,
     createSlots?: Record<string, (children: VNode[], components: VNode[]) => void>
   ) {
 
     if (createAttributes) {
-      createAttributes(data)
+      createAttributes(vnode)
     }
 
     if (createSlots) {
@@ -114,10 +125,10 @@ export function render(
           : constant.UNDEFINED
 
       }
-      data.slots = result
+      vnode.slots = result
     }
 
-    return data
+    return vnode
 
   },
 
@@ -308,7 +319,7 @@ export function render(
   // <slot name="xx"/>
   renderSlot = function (name: string, children: VNode[], render?: Function) {
     dependencies[name] = constant.TRUE
-    const result = scope[name]
+    const result = rootScope[name]
     if (result) {
       const { vnodes, components } = result
       if (components) {
@@ -360,8 +371,8 @@ export function render(
           // slice + push 比直接 concat 快多了
           contextStack = oldScopeStack.slice()
           contextStack.push({
-            keypath: currentKeypath,
             scope: value[i],
+            keypath: currentKeypath,
           })
         }
         renderChildren(
@@ -386,8 +397,8 @@ export function render(
           // slice + push 比直接 concat 快多了
           contextStack = oldScopeStack.slice()
           contextStack.push({
-            keypath: currentKeypath,
             scope: value[key],
+            keypath: currentKeypath,
           })
         }
         renderChildren(
@@ -529,13 +540,18 @@ export function render(
 
   findProp = function (holder: ValueHolder, stack: Context[], index: number, name: string) {
 
-    const { keypath, scope } = stack[index],
+    const { scope, keypath } = stack[index],
 
     currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
 
     if (name in scope) {
       holder.keypath = currentKeypath
-      holder.value = scope[name]
+
+      const value = scope[name]
+      holder.value = value && is.func(value.get)
+        ? value.get()
+        : value
+
       return
     }
 
@@ -562,6 +578,11 @@ export function render(
     { keypath } = currentStack[index],
 
     currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
+
+    // 计算属性
+    if (value && is.func(value.get)) {
+      value = value.get()
+    }
 
     globalHolder.keypath = currentKeypath
     globalHolder.value = value
@@ -607,7 +628,7 @@ export function render(
 
     const currentStack = stack || contextStack,
 
-    { keypath, scope } = currentStack[getIndex(currentStack)]
+    { scope, keypath } = currentStack[getIndex(currentStack)]
 
     globalHolder.keypath = keypath
     globalHolder.value = scope
@@ -631,7 +652,9 @@ export function render(
     currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
 
     globalHolder.keypath = currentKeypath
-    globalHolder.value = value
+    globalHolder.value = value && is.func(value.get)
+      ? value.get()
+      : value
 
     dependencies[currentKeypath] = constant.TRUE
 
@@ -647,12 +670,16 @@ export function render(
 
     const currentStack = stack || contextStack,
 
-    { keypath, scope } = currentStack[getIndex(currentStack)],
+    { scope, keypath } = currentStack[getIndex(currentStack)],
 
-    currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
+    currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name,
+
+    value = scope[name]
 
     globalHolder.keypath = currentKeypath
-    globalHolder.value = scope[name]
+    globalHolder.value = value && is.func(value.get)
+      ? value.get()
+      : value
 
     dependencies[currentKeypath] = constant.TRUE
 
@@ -735,9 +762,7 @@ export function render(
     )
   }
 
-  const children: VNode[] = [ ], components: VNode[] = [ ]
-
-  renderTemplate(template, scope, rootKeypath, children, components)
+  renderTemplate(template, rootScope, rootKeypath, children, components)
 
   if (process.env.NODE_ENV === 'development') {
     if (children.length > 1) {
