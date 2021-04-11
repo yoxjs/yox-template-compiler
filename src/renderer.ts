@@ -483,23 +483,22 @@ export function render(
 
   },
 
-  findKeypath = function (stack: Context[], index: number, keypath: string, lookup?: boolean) {
+  findKeypath = function (stack: Context[], index: number, name: string, lookup?: boolean, isFirstCall?: boolean) {
 
-    const context = stack[index],
+    const { scope, keypath } = stack[index],
 
-    currentKeypath = keypathUtil.join(context.keypath, keypath),
+    currentKeypath = keypathUtil.join(keypath, name),
 
-    result = object.get(context.scope, keypath)
+    result = object.get(scope, name)
 
     if (result) {
-      setHolder(
+      return setHolder(
         result.value,
         currentKeypath
       )
-      return
     }
 
-    if (globalHolder.keypath === constant.UNDEFINED) {
+    if (isFirstCall) {
       setHolder(
         constant.UNDEFINED,
         currentKeypath
@@ -510,7 +509,7 @@ export function render(
       if (process.env.NODE_ENV === 'development') {
         logger.debug(`The data "${currentKeypath}" can't be found in the current context, start looking up.`)
       }
-      findKeypath(stack, index - 1, keypath)
+      return findKeypath(stack, index - 1, name, lookup)
     }
 
   },
@@ -525,13 +524,11 @@ export function render(
 
     const currentStack = stack || contextStack
 
-    findKeypath(currentStack, getIndex(currentStack), keypath, lookup)
-
-    if (globalHolder.value === constant.UNDEFINED && filter) {
-      globalHolder.value = filter
-    }
-
-    return globalHolder
+    return findKeypath(currentStack, getIndex(currentStack), keypath, lookup, constant.TRUE) || (
+      filter
+        ? setHolder(filter)
+        : globalHolder
+    )
 
   },
 
@@ -542,18 +539,17 @@ export function render(
     currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
 
     if (name in scope) {
-      setHolder(
+      return setHolder(
         scope[name],
         currentKeypath
       )
-      return
     }
 
     if (index > 0) {
       if (process.env.NODE_ENV === 'development') {
         logger.debug(`The data "${currentKeypath}" can't be found in the current context, start looking up.`)
       }
-      findProp(stack, index - 1, name)
+      return findProp(stack, index - 1, name)
     }
 
   },
@@ -569,22 +565,22 @@ export function render(
 
     index = currentStack.length - 1,
 
-    { keypath } = currentStack[index]
+    { keypath } = currentStack[index],
 
-    setHolder(
-      value,
-      keypath ? keypath + constant.RAW_DOT + name : name
+    currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
+
+    if (value !== constant.UNDEFINED) {
+      return setHolder(
+        value,
+        currentKeypath
+      )
+    }
+
+    return index > 0 && findProp(currentStack, index - 1, name) || (
+      filter
+        ? setHolder(filter)
+        : setHolder(constant.UNDEFINED, currentKeypath)
     )
-
-    if (value === constant.UNDEFINED && index > 0) {
-      findProp(currentStack, index - 1, name)
-    }
-
-    if (globalHolder.value === constant.UNDEFINED && filter) {
-      globalHolder.value = filter
-    }
-
-    return globalHolder
 
   },
 
