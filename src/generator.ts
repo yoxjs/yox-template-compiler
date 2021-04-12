@@ -1731,7 +1731,7 @@ nodeGenerator[nodeType.TEXT] = function (node: Text) {
   const text = generator.toPrimitive(node.text)
 
   return array.last(vnodeStack)
-    ? generateTextVnode(text, constant.TRUE)
+    ? generateTextVnode(text)
     : text
 
 }
