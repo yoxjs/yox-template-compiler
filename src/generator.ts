@@ -1334,23 +1334,21 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     result = appendComponentVnode(result)
   }
   else {
-    if (node.isStatic) {
-      result = generator.addVar(data)
+    if (outputAttrs || outputChildren) {
+      result = generator.toCall(
+        RENDER_ELEMENT_VNODE,
+        [
+          data,
+          outputAttrs || generator.toPrimitive(constant.UNDEFINED),
+          outputChildren || generator.toPrimitive(constant.UNDEFINED),
+        ]
+      )
     }
     else {
-      if (outputAttrs || outputChildren) {
-        result = generator.toCall(
-          RENDER_ELEMENT_VNODE,
-          [
-            data,
-            outputAttrs || generator.toPrimitive(constant.UNDEFINED),
-            outputChildren || generator.toPrimitive(constant.UNDEFINED),
-          ]
-        )
-      }
-      else {
-        result = data
-      }
+      result = data
+    }
+    if (node.isStatic) {
+      result = generator.addVar(result)
     }
   }
 
