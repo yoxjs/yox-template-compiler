@@ -719,6 +719,7 @@ function generateSelfAndGlobalReader(self: string, global: string, name: string)
 
 function generateCommentVnode() {
   const result = generator.toMap({
+    isPure: generator.toPrimitive(constant.TRUE),
     isComment: generator.toPrimitive(constant.TRUE),
     text: generator.toPrimitive(constant.EMPTY_STRING),
   })
@@ -729,6 +730,7 @@ function generateCommentVnode() {
 
 function generateTextVnode(text: generator.Base) {
   const result = generator.toMap({
+    isPure: generator.toPrimitive(constant.TRUE),
     isText: generator.toPrimitive(constant.TRUE),
     text,
   })
@@ -1302,6 +1304,10 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   if (node.isStatic) {
     data.set(
       'isStatic',
+      generator.toPrimitive(constant.TRUE)
+    )
+    data.set(
+      'isPure',
       generator.toPrimitive(constant.TRUE)
     )
   }
