@@ -286,19 +286,19 @@ function transformExpressionIdentifier(node: ExpressionIdentifier) {
   if (array.has(magicVariables, name)) {
     switch (name) {
       case MAGIC_VAR_KEYPATH:
-        return generator.toRaw(ARG_KEYPATH)
+        return ARG_KEYPATH
 
       case MAGIC_VAR_LENGTH:
-        return generator.toRaw(ARG_LENGTH)
+        return ARG_LENGTH
 
       case MAGIC_VAR_EVENT:
-        return generator.toRaw(ARG_EVENT)
+        return ARG_EVENT
 
       case MAGIC_VAR_DATA:
-        return generator.toRaw(ARG_DATA)
+        return ARG_DATA
 
       default:
-        return generator.toRaw(name)
+        return name
     }
   }
 
@@ -312,11 +312,11 @@ function transformExpressionIdentifier(node: ExpressionIdentifier) {
   ) {
 
     if (name === constant.EMPTY_STRING) {
-      return generator.toRaw(ARG_SCOPE)
+      return ARG_SCOPE
     }
 
     return generator.toMember(
-      generator.toRaw(ARG_SCOPE),
+      ARG_SCOPE,
       generator.parse(name)
     )
 
@@ -342,61 +342,55 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
   let getIndex: generator.Base
 
   if (root) {
-    getIndex = generator.toRaw(
-      generator.addVar(
-        generator.toAnonymousFunction(
-          constant.UNDEFINED,
-          constant.UNDEFINED,
-          generator.toPrimitive(0)
-        ),
-        constant.TRUE
-      )
+    getIndex = generator.addVar(
+      generator.toAnonymousFunction(
+        constant.UNDEFINED,
+        constant.UNDEFINED,
+        generator.toPrimitive(0)
+      ),
+      constant.TRUE
     )
   }
   else if (offset) {
-    getIndex = generator.toRaw(
-      generator.addVar(
-        generator.toAnonymousFunction(
-          [
-            generator.toRaw(ARG_STACK)
-          ],
-          constant.UNDEFINED,
-          generator.toBinary(
-            generator.toMember(
-              generator.toRaw(ARG_STACK),
-              [
-                generator.toPrimitive('length')
-              ]
-            ),
-            '-',
-            generator.toPrimitive(1 + offset)
-          )
-        ),
-        constant.TRUE
-      )
+    getIndex = generator.addVar(
+      generator.toAnonymousFunction(
+        [
+          ARG_STACK
+        ],
+        constant.UNDEFINED,
+        generator.toBinary(
+          generator.toMember(
+            ARG_STACK,
+            [
+              generator.toPrimitive('length')
+            ]
+          ),
+          '-',
+          generator.toPrimitive(1 + offset)
+        )
+      ),
+      constant.TRUE
     )
   }
   else {
-    getIndex = generator.toRaw(
-      generator.addVar(
-        generator.toAnonymousFunction(
-          [
-            generator.toRaw(ARG_STACK)
-          ],
-          constant.UNDEFINED,
-          generator.toBinary(
-            generator.toMember(
-              generator.toRaw(ARG_STACK),
-              [
-                generator.toPrimitive('length')
-              ]
-            ),
-            '-',
-            generator.toPrimitive(1)
-          )
-        ),
-        constant.TRUE
-      )
+    getIndex = generator.addVar(
+      generator.toAnonymousFunction(
+        [
+          ARG_STACK
+        ],
+        constant.UNDEFINED,
+        generator.toBinary(
+          generator.toMember(
+            ARG_STACK,
+            [
+              generator.toPrimitive('length')
+            ]
+          ),
+          '-',
+          generator.toPrimitive(1)
+        )
+      ),
+      constant.TRUE
     )
   }
 
@@ -413,7 +407,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
   ) {
     if (length > 1) {
       filter = generator.toMember(
-        generator.toRaw(ARG_GLOBAL_FILTERS),
+        ARG_GLOBAL_FILTERS,
         nodes
       )
     }
@@ -439,7 +433,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
         ? generator.toPrimitive(constant.TRUE)
         : generator.toPrimitive(constant.UNDEFINED),
       stack
-        ? generator.toRaw(ARG_STACK)
+        ? ARG_STACK
         : generator.toPrimitive(constant.UNDEFINED),
       filter
     ]
@@ -458,11 +452,11 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
         [
           generator.toPrimitive(keypath),
           generator.toMember(
-            generator.toRaw(ARG_SCOPE),
+            ARG_SCOPE,
             nodes
           ),
           stack
-            ? generator.toRaw(ARG_STACK)
+            ? ARG_STACK
             : generator.toPrimitive(constant.UNDEFINED)
         ]
       )
@@ -474,11 +468,11 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
         [
           generator.toPrimitive(keypath),
           generator.toMember(
-            generator.toRaw(ARG_SCOPE),
+            ARG_SCOPE,
             nodes
           ),
           stack
-            ? generator.toRaw(ARG_STACK)
+            ? ARG_STACK
             : generator.toPrimitive(constant.UNDEFINED),
           filter
         ]
@@ -492,7 +486,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
           getIndex,
           generator.toPrimitive(keypath),
           stack
-            ? generator.toRaw(ARG_STACK)
+            ? ARG_STACK
             : generator.toPrimitive(constant.UNDEFINED)
         ]
       )
@@ -507,9 +501,9 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
       result = generator.toCall(
         GET_THIS,
         [
-          generator.toRaw(ARG_SCOPE),
+          ARG_SCOPE,
           stack
-            ? generator.toRaw(ARG_STACK)
+            ? ARG_STACK
             : generator.toPrimitive(constant.UNDEFINED)
         ]
       )
@@ -521,7 +515,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
         [
           getIndex,
           stack
-            ? generator.toRaw(ARG_STACK)
+            ? ARG_STACK
             : generator.toPrimitive(constant.UNDEFINED)
         ]
       )
@@ -584,7 +578,7 @@ function generateExpressionCall(fn: generator.Base, args?: generator.Base[], hol
           EXECUTE_FUNCTION,
           [
             fn,
-            generator.toRaw(ARG_INSTANCE),
+            ARG_INSTANCE,
             args
               ? generator.toList(args)
               : generator.toPrimitive(constant.UNDEFINED)
@@ -695,7 +689,7 @@ function appendDynamicChildVnode(node: generator.Base, isTextVnode?: true) {
     return generator.toCall(
       APPEND_TEXT_VNODE,
       [
-        generator.toRaw(ARG_CHILDREN),
+        ARG_CHILDREN,
         node,
       ]
     )
@@ -716,10 +710,10 @@ function appendComponentVnode(node: generator.Base) {
 function generateSelfAndGlobalReader(self: string, global: string, name: string) {
   return generator.toBinary(
     generator.toBinary(
-      generator.toRaw(self),
+      self,
       '&&',
       generator.toMember(
-        generator.toRaw(self),
+        self,
         [
           generator.toPrimitive(name)
         ]
@@ -727,7 +721,7 @@ function generateSelfAndGlobalReader(self: string, global: string, name: string)
     ),
     '||',
     generator.toMember(
-      generator.toRaw(global),
+      global,
       [
         generator.toPrimitive(name)
       ]
@@ -813,8 +807,8 @@ function generateComponentSlots(children: Node[]) {
         name,
         generator.toAnonymousFunction(
           [
-            generator.toRaw(ARG_CHILDREN),
-            generator.toRaw(ARG_COMPONENTS)
+            ARG_CHILDREN,
+            ARG_COMPONENTS
           ],
           generateNodesToTuple(children)
         )
@@ -980,7 +974,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     // 因此 slot 的子节点只存在于 children 中
     const args: generator.Base[] = [
       generator.toPrimitive(SLOT_DATA_PREFIX + node.name),
-      generator.toRaw(ARG_CHILDREN),
+      ARG_CHILDREN,
     ]
     if (children) {
       array.push(
@@ -1050,7 +1044,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       if (isDynamic) {
         outputChildren = generator.toAnonymousFunction(
           [
-            generator.toRaw(ARG_CHILDREN)
+            ARG_CHILDREN
           ],
           generateNodesToTuple(
             children
@@ -1286,7 +1280,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     if (otherList.length) {
       outputAttrs = generator.toAnonymousFunction(
         [
-          generator.toRaw(ARG_VNODE)
+          ARG_VNODE
         ],
         generateNodesToTuple(otherList)
       )
@@ -1330,7 +1324,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   else {
     data.set(
       'context',
-      generator.toRaw(ARG_INSTANCE)
+      ARG_INSTANCE
     )
   }
 
@@ -1384,7 +1378,7 @@ nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
   return generator.toCall(
     APPEND_ATTRIBUTE,
     [
-      generator.toRaw(ARG_VNODE),
+      ARG_VNODE,
       generator.toPrimitive(
         array.last(componentStack)
           ? FIELD_PROPERTIES
@@ -1402,7 +1396,7 @@ nodeGenerator[nodeType.PROPERTY] = function (node: Property) {
   return generator.toCall(
     APPEND_ATTRIBUTE,
     [
-      generator.toRaw(ARG_VNODE),
+      ARG_VNODE,
       generator.toPrimitive(FIELD_NATIVE_PROPERTIES),
       generateAttributeValue(node.value, node.expr, node.children),
       generator.toPrimitive(node.name),
@@ -1516,9 +1510,9 @@ function getEventInfo(node: Directive) {
         generator.toMap({
           args: generator.toAnonymousFunction(
             [
-              generator.toRaw(ARG_STACK),
-              generator.toRaw(ARG_EVENT),
-              generator.toRaw(ARG_DATA),
+              ARG_STACK,
+              ARG_EVENT,
+              ARG_DATA,
             ],
             constant.UNDEFINED,
             generator.toList(callNode.args.map(generateExpressionArg))
@@ -1627,7 +1621,7 @@ function getDirectiveArgs(node: Directive) {
           generator.toMap({
             args: generator.toAnonymousFunction(
               [
-                generator.toRaw(ARG_STACK),
+                ARG_STACK,
               ],
               constant.UNDEFINED,
               generator.toList(callNode.args.map(generateExpressionArg))
@@ -1662,7 +1656,7 @@ function getDirectiveArgs(node: Directive) {
           generator.toMap({
             expr: generator.toAnonymousFunction(
               [
-                generator.toRaw(ARG_STACK)
+                ARG_STACK
               ],
               constant.UNDEFINED,
               generateExpressionArg(expr)
@@ -1686,7 +1680,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
       return generator.toCall(
         APPEND_ATTRIBUTE,
         [
-          generator.toRaw(ARG_VNODE),
+          ARG_VNODE,
           generator.toPrimitive(FIELD_LAZY),
           getLazyValue(node),
           generator.toPrimitive(node.name),
@@ -1698,7 +1692,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
       return generator.toCall(
         APPEND_ATTRIBUTE,
         [
-          generator.toRaw(ARG_VNODE),
+          ARG_VNODE,
           generator.toPrimitive(FIELD_TRANSITION),
           getTransitionValue(node),
         ]
@@ -1709,7 +1703,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
       return generator.toCall(
         APPEND_ATTRIBUTE,
         [
-          generator.toRaw(ARG_VNODE),
+          ARG_VNODE,
           generator.toPrimitive(FIELD_MODEL),
           getModelValue(node),
         ]
@@ -1721,7 +1715,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
       return generator.toCall(
         APPEND_ATTRIBUTE,
         [
-          generator.toRaw(ARG_VNODE),
+          ARG_VNODE,
           generator.toPrimitive(FIELD_EVENTS),
           generator.toCall(
             info.name,
@@ -1735,7 +1729,7 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
       return generator.toCall(
         APPEND_ATTRIBUTE,
         [
-          generator.toRaw(ARG_VNODE),
+          ARG_VNODE,
           generator.toPrimitive(FIELD_DIRECTIVES),
           generator.toCall(
             RENDER_DIRECTIVE,
@@ -1752,7 +1746,7 @@ nodeGenerator[nodeType.SPREAD] = function (node: Spread) {
   return generator.toCall(
     RENDER_SPREAD,
     [
-      generator.toRaw(ARG_VNODE),
+      ARG_VNODE,
       generator.toPrimitive(FIELD_PROPERTIES),
       generateExpression(node.expr)
     ]
@@ -1840,15 +1834,15 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   isSpecial = to || from.type === exprNodeType.ARRAY || from.type === exprNodeType.OBJECT
 
   const args = [
-    generator.toRaw(ARG_SCOPE),
-    generator.toRaw(ARG_KEYPATH),
-    generator.toRaw(ARG_LENGTH),
+    ARG_SCOPE,
+    ARG_KEYPATH,
+    ARG_LENGTH,
   ]
 
   if (index) {
     array.push(
       args,
-      generator.toRaw(index)
+      index
     )
     array.push(
       magicVariables,
@@ -1919,17 +1913,17 @@ nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
 
   return generator.toAssign(
     generator.toMember(
-      generator.toRaw(ARG_LOCAL_PARTIALS),
+      ARG_LOCAL_PARTIALS,
       [
         generator.toPrimitive(node.name)
       ]
     ),
     generator.toAnonymousFunction(
       [
-        generator.toRaw(ARG_SCOPE),
-        generator.toRaw(ARG_KEYPATH),
-        generator.toRaw(ARG_CHILDREN),
-        generator.toRaw(ARG_COMPONENTS),
+        ARG_SCOPE,
+        ARG_KEYPATH,
+        ARG_CHILDREN,
+        ARG_COMPONENTS,
       ],
       generateNodesToTuple(node.children as Node[])
     )
@@ -1945,12 +1939,12 @@ nodeGenerator[nodeType.IMPORT] = function (node: Import) {
     RENDER_PARTIAL,
     [
       generator.toPrimitive(name),
-      generator.toRaw(ARG_SCOPE),
-      generator.toRaw(ARG_KEYPATH),
-      generator.toRaw(ARG_CHILDREN),
-      generator.toRaw(ARG_COMPONENTS),
+      ARG_SCOPE,
+      ARG_KEYPATH,
+      ARG_CHILDREN,
+      ARG_COMPONENTS,
       generator.toMember(
-        generator.toRaw(ARG_LOCAL_PARTIALS),
+        ARG_LOCAL_PARTIALS,
         [
           generator.toPrimitive(name)
         ]
@@ -1972,44 +1966,44 @@ export function generate(node: Node): string {
 
   return generator.generate(
     [
-      generator.toRaw(RENDER_ELEMENT_VNODE),
-      generator.toRaw(RENDER_COMPONENT_VNODE),
-      generator.toRaw(APPEND_ATTRIBUTE),
-      generator.toRaw(APPEND_TEXT_VNODE),
-      generator.toRaw(RENDER_TRANSITION),
-      generator.toRaw(RENDER_MODEL),
-      generator.toRaw(RENDER_EVENT_METHOD),
-      generator.toRaw(RENDER_EVENT_NAME),
-      generator.toRaw(RENDER_DIRECTIVE),
-      generator.toRaw(RENDER_SPREAD),
-      generator.toRaw(RENDER_SLOT),
-      generator.toRaw(RENDER_PARTIAL),
-      generator.toRaw(RENDER_EACH),
-      generator.toRaw(RENDER_RANGE),
-      generator.toRaw(LOOKUP_KEYPATH),
-      generator.toRaw(LOOKUP_PROP),
-      generator.toRaw(GET_THIS),
-      generator.toRaw(GET_THIS_BY_INDEX),
-      generator.toRaw(GET_PROP),
-      generator.toRaw(GET_PROP_BY_INDEX),
-      generator.toRaw(READ_KEYPATH),
-      generator.toRaw(EXECUTE_FUNCTION),
-      generator.toRaw(SET_HOLDER),
-      generator.toRaw(TO_STRING),
-      generator.toRaw(ARG_INSTANCE),
-      generator.toRaw(ARG_FILTERS),
-      generator.toRaw(ARG_GLOBAL_FILTERS),
-      generator.toRaw(ARG_LOCAL_PARTIALS),
-      generator.toRaw(ARG_PARTIALS),
-      generator.toRaw(ARG_GLOBAL_PARTIALS),
-      generator.toRaw(ARG_DIRECTIVES),
-      generator.toRaw(ARG_GLOBAL_DIRECTIVES),
-      generator.toRaw(ARG_TRANSITIONS),
-      generator.toRaw(ARG_GLOBAL_TRANSITIONS),
-      generator.toRaw(ARG_SCOPE),
-      generator.toRaw(ARG_KEYPATH),
-      generator.toRaw(ARG_CHILDREN),
-      generator.toRaw(ARG_COMPONENTS),
+      RENDER_ELEMENT_VNODE,
+      RENDER_COMPONENT_VNODE,
+      APPEND_ATTRIBUTE,
+      APPEND_TEXT_VNODE,
+      RENDER_TRANSITION,
+      RENDER_MODEL,
+      RENDER_EVENT_METHOD,
+      RENDER_EVENT_NAME,
+      RENDER_DIRECTIVE,
+      RENDER_SPREAD,
+      RENDER_SLOT,
+      RENDER_PARTIAL,
+      RENDER_EACH,
+      RENDER_RANGE,
+      LOOKUP_KEYPATH,
+      LOOKUP_PROP,
+      GET_THIS,
+      GET_THIS_BY_INDEX,
+      GET_PROP,
+      GET_PROP_BY_INDEX,
+      READ_KEYPATH,
+      EXECUTE_FUNCTION,
+      SET_HOLDER,
+      TO_STRING,
+      ARG_INSTANCE,
+      ARG_FILTERS,
+      ARG_GLOBAL_FILTERS,
+      ARG_LOCAL_PARTIALS,
+      ARG_PARTIALS,
+      ARG_GLOBAL_PARTIALS,
+      ARG_DIRECTIVES,
+      ARG_GLOBAL_DIRECTIVES,
+      ARG_TRANSITIONS,
+      ARG_GLOBAL_TRANSITIONS,
+      ARG_SCOPE,
+      ARG_KEYPATH,
+      ARG_CHILDREN,
+      ARG_COMPONENTS,
     ],
     nodeGenerator[node.type](node)
   )
