@@ -958,7 +958,7 @@ export function compile(content: string): Branch[] {
 
           }
 
-          const children = currentBranch.children || (currentBranch.children = []),
+          const children = currentBranch.children || (currentBranch.children = [ ]),
           lastChild = array.last(children)
 
           // 如果表达式是安全插值的字面量，可以优化成字符串

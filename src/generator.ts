@@ -96,8 +96,6 @@ RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
 
 APPEND_ATTRIBUTE = constant.EMPTY_STRING,
 
-APPEND_TEXT_VNODE = constant.EMPTY_STRING,
-
 RENDER_TRANSITION = constant.EMPTY_STRING,
 
 RENDER_MODEL = constant.EMPTY_STRING,
@@ -187,7 +185,6 @@ function init() {
     RENDER_ELEMENT_VNODE = '_a'
     RENDER_COMPONENT_VNODE = '_b'
     APPEND_ATTRIBUTE = '_c'
-    APPEND_TEXT_VNODE = '_d'
     RENDER_TRANSITION = '_e'
     RENDER_MODEL = '_f'
     RENDER_EVENT_METHOD = '_g'
@@ -232,7 +229,6 @@ function init() {
     RENDER_ELEMENT_VNODE = 'renderElementVnode'
     RENDER_COMPONENT_VNODE = 'renderComponentVnode'
     APPEND_ATTRIBUTE = 'appendAttribute'
-    APPEND_TEXT_VNODE = 'appendTextVnode'
     RENDER_TRANSITION = 'renderTransition'
     RENDER_MODEL = 'renderModel'
     RENDER_EVENT_METHOD = 'renderEventMethod'
@@ -684,16 +680,7 @@ function generateNodesToStringIfNeeded(children: Node[]) {
 
 }
 
-function appendDynamicChildVnode(node: generator.Base, isTextVnode?: true) {
-  if (isTextVnode) {
-    return generator.toCall(
-      APPEND_TEXT_VNODE,
-      [
-        ARG_CHILDREN,
-        node,
-      ]
-    )
-  }
+function appendDynamicChildVnode(node: generator.Base) {
   return generator.toPush(
     ARG_CHILDREN,
     node
@@ -753,7 +740,7 @@ function generateTextVnode(text: generator.Base, isStatic?: true) {
   }
 
   return array.last(dynamicChildrenStack)
-    ? appendDynamicChildVnode(result, constant.TRUE)
+    ? appendDynamicChildVnode(result)
     : result
 
 }
@@ -1969,7 +1956,6 @@ export function generate(node: Node): string {
       RENDER_ELEMENT_VNODE,
       RENDER_COMPONENT_VNODE,
       APPEND_ATTRIBUTE,
-      APPEND_TEXT_VNODE,
       RENDER_TRANSITION,
       RENDER_MODEL,
       RENDER_EVENT_METHOD,

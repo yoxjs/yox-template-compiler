@@ -150,15 +150,6 @@ export function render(
 
   },
 
-  appendTextVnode = function (children: any[], vnode: VNode) {
-    const { length } = children, lastChild = children[length - 1]
-    if (lastChild && lastChild.isText) {
-      lastChild.text += vnode.text
-      return
-    }
-    children[length] = vnode
-  },
-
   renderTransition = function (name: string, transition: TransitionHooks) {
     if (process.env.NODE_ENV === 'development') {
       if (!transition) {
@@ -680,7 +671,6 @@ export function render(
       renderElementVnode,
       renderComponentVnode,
       appendAttribute,
-      appendTextVnode,
       renderTransition,
       renderModel,
       renderEventMethod,
