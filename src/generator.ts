@@ -718,34 +718,23 @@ function generateSelfAndGlobalReader(self: string, global: string, name: string)
 }
 
 function generateCommentVnode() {
-  const result = generator.addVar(
-    generator.toMap({
-      isStatic: generator.toPrimitive(constant.TRUE),
-      isComment: generator.toPrimitive(constant.TRUE),
-      text: generator.toPrimitive(constant.EMPTY_STRING),
-    })
-  )
+  const result = generator.toMap({
+    isComment: generator.toPrimitive(constant.TRUE),
+    text: generator.toPrimitive(constant.EMPTY_STRING),
+  })
   return array.last(dynamicChildrenStack)
     ? appendDynamicChildVnode(result)
     : result
 }
 
-function generateTextVnode(text: generator.Base, isStatic?: true) {
-
-  let result: generator.Base = generator.toMap({
-    isStatic: generator.toPrimitive(isStatic),
+function generateTextVnode(text: generator.Base) {
+  const result = generator.toMap({
     isText: generator.toPrimitive(constant.TRUE),
     text,
   })
-
-  if (isStatic) {
-    result = generator.addVar(result)
-  }
-
   return array.last(dynamicChildrenStack)
     ? appendDynamicChildVnode(result)
     : result
-
 }
 
 function generateComponentSlots(children: Node[]) {
@@ -980,6 +969,11 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       args
     )
   }
+
+  data.set(
+    'context',
+    ARG_INSTANCE
+  )
 
   // 如果是动态组件，tag 会是一个标识符表达式
   data.set(
@@ -1311,12 +1305,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       generator.toPrimitive(constant.TRUE)
     )
   }
-  else {
-    data.set(
-      'context',
-      ARG_INSTANCE
-    )
-  }
 
   let result: generator.Base
 
@@ -1349,9 +1337,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
     else {
       result = data
-    }
-    if (node.isStatic) {
-      result = generator.addVar(result)
     }
   }
 
