@@ -648,6 +648,7 @@ function generateNodesToTuple(nodes: Node[]) {
     constant.EMPTY_STRING,
     ';',
     constant.TRUE,
+    1,
     nodes.map(
       function (node) {
         return nodeGenerator[node.type](node)
