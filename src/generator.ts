@@ -90,15 +90,6 @@ FIELD_CHILDREN = 'children'
 // 下面这些值需要根据外部配置才能确定
 let isUglify = constant.UNDEFINED,
 
-// 下面 4 个变量用于分配局部变量名称
-localVarId = 0,
-
-localVarMap: Record<string, generator.Base> = { },
-
-localVarCache: Record<string, string> = { },
-
-VAR_LOCAL_PREFIX = constant.EMPTY_STRING,
-
 RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
 
 RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
@@ -193,7 +184,6 @@ function init() {
   }
 
   if (constant.PUBLIC_CONFIG.uglifyCompiled) {
-    VAR_LOCAL_PREFIX = 'v'
     RENDER_ELEMENT_VNODE = '_a'
     RENDER_COMPONENT_VNODE = '_b'
     APPEND_ATTRIBUTE = '_c'
@@ -239,7 +229,6 @@ function init() {
     ARG_DATA = '__q'
   }
   else {
-    VAR_LOCAL_PREFIX = 'var'
     RENDER_ELEMENT_VNODE = 'renderElementVnode'
     RENDER_COMPONENT_VNODE = 'renderComponentVnode'
     APPEND_ATTRIBUTE = 'appendAttribute'
@@ -287,17 +276,6 @@ function init() {
 
   isUglify = constant.PUBLIC_CONFIG.uglifyCompiled
 
-}
-
-function addLocalVar(value: generator.Base) {
-  const hash = value.toString()
-  if (localVarCache[hash]) {
-    return localVarCache[hash]
-  }
-  const key = VAR_LOCAL_PREFIX + (localVarId++)
-  localVarMap[key] = value
-  localVarCache[hash] = key
-  return key
 }
 
 function transformExpressionIdentifier(node: ExpressionIdentifier) {
@@ -365,18 +343,19 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
 
   if (root) {
     getIndex = generator.toRaw(
-      addLocalVar(
+      generator.addVar(
         generator.toAnonymousFunction(
           constant.UNDEFINED,
           constant.UNDEFINED,
           generator.toPrimitive(0)
-        )
+        ),
+        constant.TRUE
       )
     )
   }
   else if (offset) {
     getIndex = generator.toRaw(
-      addLocalVar(
+      generator.addVar(
         generator.toAnonymousFunction(
           [
             generator.toRaw(ARG_STACK)
@@ -392,13 +371,14 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
             '-',
             generator.toPrimitive(1 + offset)
           )
-        )
+        ),
+        constant.TRUE
       )
     )
   }
   else {
     getIndex = generator.toRaw(
-      addLocalVar(
+      generator.addVar(
         generator.toAnonymousFunction(
           [
             generator.toRaw(ARG_STACK)
@@ -414,7 +394,8 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
             '-',
             generator.toPrimitive(1)
           )
-        )
+        ),
+        constant.TRUE
       )
     )
   }
@@ -1966,11 +1947,6 @@ export function generate(node: Node): string {
   init()
   generator.init()
 
-  // 重新收集
-  localVarId = 0
-  localVarMap = { }
-  localVarCache = { }
-
   return generator.generate(
     [
       generator.toRaw(RENDER_ELEMENT_VNODE),
@@ -2012,7 +1988,6 @@ export function generate(node: Node): string {
       generator.toRaw(ARG_CHILDREN),
       generator.toRaw(ARG_COMPONENTS),
     ],
-    localVarMap,
     nodeGenerator[node.type](node)
   )
 }
