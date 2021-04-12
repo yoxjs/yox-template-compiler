@@ -189,7 +189,7 @@ export function render(
     }
   },
 
-  createEventMethodListener = function (name: string, runtime?: EventRuntime, isComponent?: boolean): Listener {
+  createEventMethodListener = function (method: Function, runtime?: EventRuntime, isComponent?: boolean): Listener {
     return function (event: CustomEvent, data?: Data) {
 
       // 监听组件事件不用处理父组件传下来的事件
@@ -198,7 +198,7 @@ export function render(
       }
 
       const result = execute(
-        instance[name],
+        method,
         instance,
         runtime
           ? runtime.args(runtime.stack, event, data)
@@ -212,7 +212,7 @@ export function render(
     }
   },
 
-  renderEventMethod = function (key: string, value: string, name: string, ns: string, method: string, runtime?: EventRuntime, isComponent?: boolean, isNative?: boolean) {
+  renderEventMethod = function (key: string, value: string, name: string, ns: string, method: Function, runtime?: EventRuntime, isComponent?: boolean, isNative?: boolean) {
     if (runtime) {
       runtime.stack = contextStack
     }
@@ -244,10 +244,10 @@ export function render(
     }
   },
 
-  createDirectiveHandler = function (name: string, runtime: DirectiveRuntime | void) {
+  createDirectiveHandler = function (method: Function, runtime: DirectiveRuntime | void) {
     return function () {
       execute(
-        instance[name],
+        method,
         instance,
         runtime
           ? (runtime.args as Function)(runtime.stack)
@@ -256,7 +256,7 @@ export function render(
     }
   },
 
-  renderDirective = function (key: string, name: string, modifier: string, value: any, hooks: DirectiveHooks, runtime?: DirectiveRuntime, method?: string) {
+  renderDirective = function (key: string, name: string, modifier: string, value: any, hooks: DirectiveHooks, runtime?: DirectiveRuntime, method?: Function) {
 
     if (process.env.NODE_ENV === 'development') {
       if (!hooks) {

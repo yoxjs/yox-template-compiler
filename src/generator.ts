@@ -1472,7 +1472,12 @@ function getEventInfo(node: Directive) {
     // method
     array.push(
       args,
-      generator.toPrimitive((callNode.name as ExpressionIdentifier).name)
+      generator.toMember(
+        ARG_INSTANCE,
+        [
+          generator.toPrimitive((callNode.name as ExpressionIdentifier).name)
+        ]
+      )
     )
 
     // 为了实现运行时动态收集参数，这里序列化成函数
@@ -1614,7 +1619,12 @@ function getDirectiveArgs(node: Directive) {
       // method
       array.push(
         args,
-        generator.toPrimitive((callNode.name as ExpressionIdentifier).name)
+        generator.toMember(
+          ARG_INSTANCE,
+          [
+            generator.toPrimitive((callNode.name as ExpressionIdentifier).name)
+          ]
+        )
       )
 
     }
