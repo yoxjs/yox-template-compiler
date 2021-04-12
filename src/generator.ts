@@ -90,6 +90,8 @@ FIELD_CHILDREN = 'children'
 // 下面这些值需要根据外部配置才能确定
 let isUglify = constant.UNDEFINED,
 
+ARG_INSTANCE = constant.EMPTY_STRING,
+
 RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
 
 RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
@@ -136,8 +138,6 @@ SET_HOLDER = constant.EMPTY_STRING,
 
 TO_STRING = constant.EMPTY_STRING,
 
-ARG_INSTANCE = constant.EMPTY_STRING,
-
 ARG_FILTERS = constant.EMPTY_STRING,
 
 ARG_GLOBAL_FILTERS = constant.EMPTY_STRING,
@@ -182,6 +182,7 @@ function init() {
   }
 
   if (constant.PUBLIC_CONFIG.uglifyCompiled) {
+    ARG_INSTANCE = '$$'
     RENDER_ELEMENT_VNODE = '_a'
     RENDER_COMPONENT_VNODE = '_b'
     APPEND_ATTRIBUTE = '_c'
@@ -205,27 +206,27 @@ function init() {
     EXECUTE_FUNCTION = '_u'
     SET_HOLDER = '_v'
     TO_STRING = '_w'
-    ARG_INSTANCE = '_x'
-    ARG_FILTERS = '_y',
-    ARG_GLOBAL_FILTERS = '_z',
-    ARG_LOCAL_PARTIALS = '__a'
-    ARG_PARTIALS = '__b',
-    ARG_GLOBAL_PARTIALS = '__c',
-    ARG_DIRECTIVES = '__d',
-    ARG_GLOBAL_DIRECTIVES = '__e',
-    ARG_TRANSITIONS = '__f',
-    ARG_GLOBAL_TRANSITIONS = '__g',
-    ARG_STACK = '__h'
-    ARG_VNODE = '__i'
-    ARG_CHILDREN = '__j'
-    ARG_COMPONENTS = '__k'
-    ARG_SCOPE = '__l'
-    ARG_KEYPATH = '__m'
-    ARG_LENGTH = '__n'
-    ARG_EVENT = '__o'
-    ARG_DATA = '__p'
+    ARG_FILTERS = '_x',
+    ARG_GLOBAL_FILTERS = '_y',
+    ARG_LOCAL_PARTIALS = '_z'
+    ARG_PARTIALS = '__a',
+    ARG_GLOBAL_PARTIALS = '__b',
+    ARG_DIRECTIVES = '__c',
+    ARG_GLOBAL_DIRECTIVES = '__d',
+    ARG_TRANSITIONS = '__e',
+    ARG_GLOBAL_TRANSITIONS = '__f',
+    ARG_STACK = '__g'
+    ARG_VNODE = '__h'
+    ARG_CHILDREN = '__i'
+    ARG_COMPONENTS = '__j'
+    ARG_SCOPE = '__k'
+    ARG_KEYPATH = '__l'
+    ARG_LENGTH = '__m'
+    ARG_EVENT = '__n'
+    ARG_DATA = '__o'
   }
   else {
+    ARG_INSTANCE = 'instance'
     RENDER_ELEMENT_VNODE = 'renderElementVnode'
     RENDER_COMPONENT_VNODE = 'renderComponentVnode'
     APPEND_ATTRIBUTE = 'appendAttribute'
@@ -249,7 +250,6 @@ function init() {
     EXECUTE_FUNCTION = 'executeFunction'
     SET_HOLDER = 'setHolder'
     TO_STRING = 'toString'
-    ARG_INSTANCE = 'instance'
     ARG_FILTERS = 'filters',
     ARG_GLOBAL_FILTERS = 'globalFilters',
     ARG_LOCAL_PARTIALS = 'localPartials'
@@ -720,6 +720,7 @@ function generateSelfAndGlobalReader(self: string, global: string, name: string)
 function generateCommentVnode() {
   const result = generator.addVar(
     generator.toMap({
+      isStatic: generator.toPrimitive(constant.TRUE),
       isComment: generator.toPrimitive(constant.TRUE),
       text: generator.toPrimitive(constant.EMPTY_STRING),
     })
@@ -732,6 +733,7 @@ function generateCommentVnode() {
 function generateTextVnode(text: generator.Base, isStatic?: true) {
 
   let result: generator.Base = generator.toMap({
+    isStatic: generator.toPrimitive(isStatic),
     isText: generator.toPrimitive(constant.TRUE),
     text,
   })
@@ -1952,6 +1954,9 @@ export function generate(node: Node): string {
 
   return generator.generate(
     [
+      ARG_INSTANCE,
+    ],
+    [
       RENDER_ELEMENT_VNODE,
       RENDER_COMPONENT_VNODE,
       APPEND_ATTRIBUTE,
@@ -1975,7 +1980,6 @@ export function generate(node: Node): string {
       EXECUTE_FUNCTION,
       SET_HOLDER,
       TO_STRING,
-      ARG_INSTANCE,
       ARG_FILTERS,
       ARG_GLOBAL_FILTERS,
       ARG_LOCAL_PARTIALS,

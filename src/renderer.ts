@@ -691,7 +691,6 @@ export function render(
       execute,
       setHolder,
       toString,
-      instance,
       filters,
       globalFilters,
       localPartials,
