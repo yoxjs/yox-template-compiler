@@ -474,7 +474,13 @@ export function render(
 
   },
 
-  findKeypath = function (stack: Context[], index: number, name: string, lookup?: boolean, isFirstCall?: boolean) {
+  findKeypath = function (
+    stack: Context[],
+    index: number,
+    name: string,
+    lookup?: boolean,
+    isFirstCall?: boolean
+  ) {
 
     const { scope, keypath } = stack[index],
 
@@ -523,7 +529,11 @@ export function render(
 
   },
 
-  findProp = function (stack: Context[], index: number, name: string) {
+  findProp = function (
+    stack: Context[],
+    index: number,
+    name: string
+  ) {
 
     const { scope, keypath } = stack[index],
 
