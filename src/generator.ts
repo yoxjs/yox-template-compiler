@@ -736,25 +736,32 @@ function generateSelfAndGlobalReader(self: string, global: string, name: string)
 }
 
 function generateCommentVnode() {
-  const result = generator.toMap({
-    context: generator.toRaw(ARG_INSTANCE),
-    isComment: generator.toPrimitive(constant.TRUE),
-    text: generator.toPrimitive(constant.EMPTY_STRING),
-  })
+  const result = generator.addVar(
+    generator.toMap({
+      isComment: generator.toPrimitive(constant.TRUE),
+      text: generator.toPrimitive(constant.EMPTY_STRING),
+    })
+  )
   return array.last(dynamicChildrenStack)
     ? appendDynamicChildVnode(result)
     : result
 }
 
-function generateTextVnode(text: generator.Base) {
-  const result = generator.toMap({
-    context: generator.toRaw(ARG_INSTANCE),
+function generateTextVnode(text: generator.Base, isStatic?: true) {
+
+  let result: generator.Base = generator.toMap({
     isText: generator.toPrimitive(constant.TRUE),
     text,
   })
+
+  if (isStatic) {
+    result = generator.addVar(result)
+  }
+
   return array.last(dynamicChildrenStack)
     ? appendDynamicChildVnode(result, constant.TRUE)
     : result
+
 }
 
 function generateComponentSlots(children: Node[]) {
@@ -815,9 +822,9 @@ function generateComponentSlots(children: Node[]) {
     }
   )
 
-  return result.isNotEmpty()
-    ? result
-    : generator.toPrimitive(constant.UNDEFINED)
+  if (result.isNotEmpty()) {
+    return result
+  }
 
 }
 
@@ -964,9 +971,9 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   data = generator.toMap(),
 
-  outputAttrs: generator.Base = generator.toPrimitive(constant.UNDEFINED),
-  outputChildren: generator.Base = generator.toPrimitive(constant.UNDEFINED),
-  outputSlots: generator.Base = generator.toPrimitive(constant.UNDEFINED)
+  outputAttrs: generator.Base | void = constant.UNDEFINED,
+  outputChildren: generator.Base | void = constant.UNDEFINED,
+  outputSlots: generator.Base | void = constant.UNDEFINED
 
   if (tag === constant.RAW_SLOT) {
     // slot 不可能有 html、text 属性
@@ -989,11 +996,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       args
     )
   }
-
-  data.set(
-    'context',
-    generator.toRaw(ARG_INSTANCE)
-  )
 
   // 如果是动态组件，tag 会是一个标识符表达式
   data.set(
@@ -1301,12 +1303,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       generator.toPrimitive(constant.TRUE)
     )
   }
-  if (node.isStatic) {
-    data.set(
-      'isStatic',
-      generator.toPrimitive(constant.TRUE)
-    )
-  }
   if (node.isOption) {
     data.set(
       'isOption',
@@ -1325,29 +1321,56 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       generator.toPrimitive(constant.TRUE)
     )
   }
+  if (node.isStatic) {
+    data.set(
+      'isStatic',
+      generator.toPrimitive(constant.TRUE)
+    )
+  }
+  else {
+    data.set(
+      'context',
+      generator.toRaw(ARG_INSTANCE)
+    )
+  }
 
   let result: generator.Base
 
   if (isComponent) {
-    result = generator.toCall(
-      RENDER_COMPONENT_VNODE,
-      [
-        data,
-        outputAttrs,
-        outputSlots
-      ]
-    )
+    if (outputAttrs || outputSlots) {
+      result = generator.toCall(
+        RENDER_COMPONENT_VNODE,
+        [
+          data,
+          outputAttrs || generator.toPrimitive(constant.UNDEFINED),
+          outputSlots || generator.toPrimitive(constant.UNDEFINED)
+        ]
+      )
+    }
+    else {
+      result = data
+    }
     result = appendComponentVnode(result)
   }
   else {
-    result = generator.toCall(
-      RENDER_ELEMENT_VNODE,
-      [
-        data,
-        outputAttrs,
-        outputChildren,
-      ]
-    )
+    if (node.isStatic) {
+      result = generator.addVar(data)
+    }
+    else {
+      if (outputAttrs || outputChildren) {
+        result = generator.toCall(
+          RENDER_ELEMENT_VNODE,
+          [
+            data,
+            outputAttrs || generator.toPrimitive(constant.UNDEFINED),
+            outputChildren || generator.toPrimitive(constant.UNDEFINED),
+          ]
+        )
+      }
+      else {
+        result = data
+      }
+    }
   }
 
   return array.last(dynamicChildrenStack)
@@ -1741,7 +1764,7 @@ nodeGenerator[nodeType.TEXT] = function (node: Text) {
   const text = generator.toPrimitive(node.text)
 
   return array.last(vnodeStack)
-    ? generateTextVnode(text)
+    ? generateTextVnode(text, constant.TRUE)
     : text
 
 }
