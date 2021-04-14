@@ -58,11 +58,11 @@ attributeStack: boolean[] = [ ],
 // 是否正在处理特殊 each，包括 遍历 range 和 遍历数组字面量和对象字面量
 eachStack: boolean[] = [ ],
 
-// 是否正在收集字符串类型的值
-stringStack: boolean[] = [ ],
-
 // 是否正在收集动态 child
 dynamicChildrenStack: boolean[] = [ constant.TRUE ],
+
+// 收集属性值
+attributeValueStack: generator.StringBuffer[] = [ ],
 
 magicVariables: string[] = [ MAGIC_VAR_KEYPATH, MAGIC_VAR_LENGTH, MAGIC_VAR_EVENT, MAGIC_VAR_DATA ],
 
@@ -90,7 +90,7 @@ FIELD_CHILDREN = 'children'
 // 下面这些值需要根据外部配置才能确定
 let isUglify = constant.UNDEFINED,
 
-textVNode: TextVNode | void = constant.UNDEFINED,
+currentTextVNode: TextVNode | void = constant.UNDEFINED,
 
 RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
 
@@ -284,7 +284,7 @@ class CommentVNode implements generator.Base {
     this.text = text
   }
 
-  toString(tabSize) {
+  toString(tabSize?: number) {
     return generator.toMap({
       isPure: generator.toPrimitive(constant.TRUE),
       isComment: generator.toPrimitive(constant.TRUE),
@@ -296,25 +296,22 @@ class CommentVNode implements generator.Base {
 
 class TextVNode implements generator.Base {
 
-  private text: generator.Base
+  private buffer: generator.StringBuffer
 
   constructor(text: generator.Base) {
-    this.text = text
+    this.buffer = generator.toStringBuffer()
+    this.append(text)
   }
 
   append(text: generator.Base) {
-    this.text = generator.toBinary(
-      this.text,
-      '+',
-      text
-    )
+    this.buffer.append(text)
   }
 
-  toString(tabSize) {
+  toString(tabSize?: number) {
     return generator.toMap({
       isPure: generator.toPrimitive(constant.TRUE),
       isText: generator.toPrimitive(constant.TRUE),
-      text: this.text,
+      text: this.buffer,
     }).toString(tabSize)
   }
 
@@ -666,6 +663,29 @@ function generateExpressionArg(expr: ExpressionNode) {
   )
 }
 
+function createAttributeValue(nodes: Node[]) {
+
+  const attributeValue = generator.toStringBuffer()
+
+  array.push(
+    attributeValueStack,
+    attributeValue
+  )
+
+  array.each(
+    nodes,
+    function (node) {
+      nodeGenerator[node.type](node)
+    }
+  )
+
+  array.pop(
+    attributeValueStack
+  )
+  return attributeValue
+
+}
+
 function generateAttributeValue(value: any, expr: ExpressionNode | void, children: Node[] | void) {
   if (isDef(value)) {
     return generator.toPrimitive(value)
@@ -680,17 +700,14 @@ function generateAttributeValue(value: any, expr: ExpressionNode | void, childre
     // compiler 会把原始字符串编译成 value
     // compiler 会把单个插值编译成 expr
     // 因此走到这里，一定是多个插值或是单个特殊插值（比如 If)
-    array.push(stringStack, constant.TRUE)
-    const result = generateNodesToStringIfNeeded(children)
-    array.pop(stringStack)
-    return result
+    return createAttributeValue(children)
   }
   return generator.toPrimitive(constant.UNDEFINED)
 }
 
 function mapNodes(nodes: Node[]) {
 
-  textVNode = constant.UNDEFINED
+  currentTextVNode = constant.UNDEFINED
 
   const result: generator.Base[] = [ ]
 
@@ -731,28 +748,9 @@ function generateNodesToList(nodes: Node[]) {
   )
 }
 
-function generateNodesToStringIfNeeded(children: Node[]) {
-
-  const result = mapNodes(children)
-  if (result.length === 1) {
-    return result[0]
-  }
-
-  // 字符串拼接涉及表达式的优先级问题，改成 array.join 有利于一致性
-  if (array.last(stringStack)) {
-    return generator.toList(
-      result,
-      constant.EMPTY_STRING
-    )
-  }
-
-  return generator.toList(result)
-
-}
-
 function appendDynamicChildVNode(vnode: generator.Base) {
 
-  textVNode = vnode instanceof TextVNode
+  currentTextVNode = vnode instanceof TextVNode
     ? vnode
     : constant.UNDEFINED
 
@@ -802,8 +800,8 @@ function generateCommentVNode() {
 }
 
 function generateTextVNode(text: generator.Base) {
-  if (textVNode) {
-    textVNode.append(text)
+  if (currentTextVNode) {
+    currentTextVNode.append(text)
     return generator.toPrimitive(constant.UNDEFINED)
   }
   const vnode = new TextVNode(text)
@@ -1815,9 +1813,17 @@ nodeGenerator[nodeType.TEXT] = function (node: Text) {
 
   const text = generator.toPrimitive(node.text)
 
-  return array.last(vnodeStack)
-    ? generateTextVNode(text)
-    : text
+  if (array.last(vnodeStack)) {
+    return generateTextVNode(text)
+  }
+
+  const attributeValue = array.last(attributeValueStack)
+  if (attributeValue) {
+    attributeValue.append(text)
+    return generator.toPrimitive(constant.UNDEFINED)
+  }
+
+  return text
 
 }
 
@@ -1825,40 +1831,97 @@ nodeGenerator[nodeType.EXPRESSION] = function (node: Expression) {
 
   const value = generateExpression(node.expr)
 
-  return array.last(vnodeStack)
-    ? generateTextVNode(
-        generator.toCall(
-          TO_STRING,
-          [
-            value
-          ]
-        )
+  if (array.last(vnodeStack)) {
+    return generateTextVNode(
+      generator.toCall(
+        TO_STRING,
+        [
+          value
+        ]
       )
-    : value
+    )
+  }
+
+  const attributeValue = array.last(attributeValueStack)
+  if (attributeValue) {
+    attributeValue.append(
+      generator.toCall(
+        TO_STRING,
+        [
+          value
+        ]
+      )
+    )
+    return generator.toPrimitive(constant.UNDEFINED)
+  }
+
+  return value
 
 }
 
-nodeGenerator[nodeType.IF] =
-nodeGenerator[nodeType.ELSE_IF] = function (node: If | ElseIf) {
-
-  let { children, next } = node,
-
-  defaultValue = array.last(vnodeStack)
+function getBranchDefaultValue() {
+  return array.last(vnodeStack)
     ? generateCommentVNode()
-    : generator.toPrimitive(constant.UNDEFINED),
+    : array.last(attributeValueStack)
+      ? generator.toPrimitive(constant.EMPTY_STRING)
+      : generator.toPrimitive(constant.UNDEFINED)
+}
 
-  value: generator.Base | void
-
+function getBranchValue(children: Node[] | void) {
   if (children) {
     if (array.last(attributeStack)) {
       children = sortAttrs(children, array.last(componentStack))
     }
-    value = generateNodesToStringIfNeeded(children)
+    if (array.last(attributeValueStack)) {
+      return createAttributeValue(children)
+    }
+    const nodes = mapNodes(children)
+    if (nodes.length === 1) {
+      return nodes[0]
+    }
+    return generator.toTuple(
+      '(',
+      ')',
+      ',',
+      constant.TRUE,
+      1,
+      nodes
+    )
   }
+}
+
+nodeGenerator[nodeType.IF] = function (node: If) {
+
+  const { next } = node,
+
+  attributeValue = array.last(attributeValueStack),
+
+  defaultValue = getBranchDefaultValue(),
+
+  result = generator.toTernary(
+    generateExpression(node.expr),
+    getBranchValue(node.children) || defaultValue,
+    next ? nodeGenerator[next.type](next) : defaultValue
+  )
+
+  if (attributeValue) {
+    attributeValue.append(result)
+    return generator.toPrimitive(constant.UNDEFINED)
+  }
+
+  return result
+
+}
+
+nodeGenerator[nodeType.ELSE_IF] = function (node: If | ElseIf) {
+
+  const { next } = node,
+
+  defaultValue = getBranchDefaultValue()
 
   return generator.toTernary(
     generateExpression(node.expr),
-    value || defaultValue,
+    getBranchValue(node.children) || defaultValue,
     next ? nodeGenerator[next.type](next) : defaultValue
   )
 
@@ -1866,22 +1929,7 @@ nodeGenerator[nodeType.ELSE_IF] = function (node: If | ElseIf) {
 
 nodeGenerator[nodeType.ELSE] = function (node: Else) {
 
-  let { children } = node,
-
-  defaultValue = array.last(vnodeStack)
-    ? generateCommentVNode()
-    : generator.toPrimitive(constant.UNDEFINED),
-
-  value: generator.Base | void
-
-  if (children) {
-    if (array.last(attributeStack)) {
-      children = sortAttrs(children, array.last(componentStack))
-    }
-    value = generateNodesToStringIfNeeded(children)
-  }
-
-  return value || defaultValue
+  return getBranchValue(node.children) || getBranchDefaultValue()
 
 }
 
