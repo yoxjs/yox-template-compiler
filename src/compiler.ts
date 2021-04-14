@@ -1452,42 +1452,42 @@ export function compile(content: string): Branch[] {
     function (source: string) {
       if (string.startsWith(source, SYNTAX_IMPORT)) {
         source = slicePrefix(source, SYNTAX_IMPORT)
-        if (source) {
-          if (process.env.NODE_ENV === 'development') {
-            if (currentElement) {
-              fatal(
-                currentAttribute
-                  ? `The "import" block can't be appear in an attribute value.`
-                  : `The "import" block can't be appear in attribute level.`
-              )
-            }
+        if (process.env.NODE_ENV === 'development') {
+          if (!source) {
+            fatal(`Invalid import`)
           }
-          return creator.createImport(source)
         }
         if (process.env.NODE_ENV === 'development') {
-          fatal(`Invalid import`)
+          if (currentElement) {
+            fatal(
+              currentAttribute
+                ? `The "import" block can't be appear in an attribute value.`
+                : `The "import" block can't be appear in attribute level.`
+            )
+          }
         }
+        return creator.createImport(source)
       }
     },
     // {{#partial name}}
     function (source: string) {
       if (string.startsWith(source, SYNTAX_PARTIAL)) {
         source = slicePrefix(source, SYNTAX_PARTIAL)
-        if (source) {
-          if (process.env.NODE_ENV === 'development') {
-            if (currentElement) {
-              fatal(
-                currentAttribute
-                  ? `The "partial" block can't be appear in an attribute value.`
-                  : `The "partial" block can't be appear in attribute level.`
-              )
-            }
+        if (process.env.NODE_ENV === 'development') {
+          if (!source) {
+            fatal(`Invalid partial`)
           }
-          return creator.createPartial(source)
         }
         if (process.env.NODE_ENV === 'development') {
-          fatal(`Invalid partial`)
+          if (currentElement) {
+            fatal(
+              currentAttribute
+                ? `The "partial" block can't be appear in an attribute value.`
+                : `The "partial" block can't be appear in attribute level.`
+            )
+          }
         }
+        return creator.createPartial(source)
       }
     },
     // {{#if expr}}
@@ -1495,12 +1495,12 @@ export function compile(content: string): Branch[] {
       if (string.startsWith(source, SYNTAX_IF)) {
         source = slicePrefix(source, SYNTAX_IF)
         const expr = exprCompiler.compile(source)
-        if (expr) {
-          return creator.createIf(expr)
-        }
         if (process.env.NODE_ENV === 'development') {
-          fatal(`Invalid if`)
+          if (!expr) {
+            fatal(`Invalid if`)
+          }
         }
+        return creator.createIf(expr)
       }
     },
     // {{else if expr}}
@@ -1508,24 +1508,24 @@ export function compile(content: string): Branch[] {
       if (string.startsWith(source, SYNTAX_ELSE_IF)) {
         source = slicePrefix(source, SYNTAX_ELSE_IF)
         const expr = exprCompiler.compile(source)
-        if (expr) {
-          return creator.createElseIf(expr)
-        }
         if (process.env.NODE_ENV === 'development') {
-          fatal(`Invalid else if`)
+          if (!expr) {
+            fatal(`Invalid else if`)
+          }
         }
+        return creator.createElseIf(expr)
       }
     },
     // {{else}}
     function (source: string) {
       if (string.startsWith(source, SYNTAX_ELSE)) {
         source = slicePrefix(source, SYNTAX_ELSE)
-        if (!string.trim(source)) {
-          return creator.createElse()
-        }
         if (process.env.NODE_ENV === 'development') {
-          fatal(`The "else" must not be followed by anything.`)
+          if (string.trim(source)) {
+            fatal(`The "else" must not be followed by anything.`)
+          }
         }
+        return creator.createElse()
       }
     },
     // {{...obj}}
@@ -1533,16 +1533,16 @@ export function compile(content: string): Branch[] {
       if (string.startsWith(source, SYNTAX_SPREAD)) {
         source = slicePrefix(source, SYNTAX_SPREAD)
         const expr = exprCompiler.compile(source)
-        if (expr) {
-          if (currentElement && currentElement.isComponent) {
-            return creator.createSpread(expr)
-          }
-          else if (process.env.NODE_ENV === 'development') {
-            fatal(`The spread can only be used by a component.`)
+        if (process.env.NODE_ENV === 'development') {
+          if (!expr) {
+            fatal(`Invalid spread`)
           }
         }
-        if (process.env.NODE_ENV === 'development') {
-          fatal(`Invalid spread`)
+        if (currentElement && currentElement.isComponent) {
+          return creator.createSpread(expr)
+        }
+        else if (process.env.NODE_ENV === 'development') {
+          fatal(`The spread can only be used by a component.`)
         }
       }
     },
@@ -1551,15 +1551,15 @@ export function compile(content: string): Branch[] {
       if (!SYNTAX_COMMENT.test(source)) {
         source = string.trim(source)
         const expr = exprCompiler.compile(source)
-        if (expr) {
-          return creator.createExpression(
-            expr,
-            blockMode === BLOCK_MODE_SAFE
-          )
-        }
         if (process.env.NODE_ENV === 'development') {
-          fatal(`Invalid expression`)
+          if (!expr) {
+            fatal(`Invalid expression`)
+          }
         }
+        return creator.createExpression(
+          expr,
+          blockMode === BLOCK_MODE_SAFE
+        )
       }
     },
   ],
