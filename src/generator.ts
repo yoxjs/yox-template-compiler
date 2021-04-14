@@ -90,6 +90,8 @@ FIELD_CHILDREN = 'children'
 // 下面这些值需要根据外部配置才能确定
 let isUglify = constant.UNDEFINED,
 
+textVNode: TextVNode | void = constant.UNDEFINED,
+
 RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
 
 RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
@@ -226,8 +228,8 @@ function init() {
     ARG_DATA = '__p'
   }
   else {
-    RENDER_ELEMENT_VNODE = 'renderElementVnode'
-    RENDER_COMPONENT_VNODE = 'renderComponentVnode'
+    RENDER_ELEMENT_VNODE = 'renderElementVNode'
+    RENDER_COMPONENT_VNODE = 'renderComponentVNode'
     APPEND_ATTRIBUTE = 'appendAttribute'
     RENDER_TRANSITION = 'renderTransition'
     RENDER_MODEL = 'renderModel'
@@ -271,6 +273,50 @@ function init() {
   }
 
   isUglify = constant.PUBLIC_CONFIG.uglifyCompiled
+
+}
+
+class CommentVNode implements generator.Base {
+
+  private text: generator.Base
+
+  constructor(text: generator.Base) {
+    this.text = text
+  }
+
+  toString(tabSize) {
+    return generator.toMap({
+      isPure: generator.toPrimitive(constant.TRUE),
+      isComment: generator.toPrimitive(constant.TRUE),
+      text: this.text,
+    }).toString(tabSize)
+  }
+
+}
+
+class TextVNode implements generator.Base {
+
+  private text: generator.Base
+
+  constructor(text: generator.Base) {
+    this.text = text
+  }
+
+  append(text: generator.Base) {
+    this.text = generator.toBinary(
+      this.text,
+      '+',
+      text
+    )
+  }
+
+  toString(tabSize) {
+    return generator.toMap({
+      isPure: generator.toPrimitive(constant.TRUE),
+      isText: generator.toPrimitive(constant.TRUE),
+      text: this.text,
+    }).toString(tabSize)
+  }
 
 }
 
@@ -642,6 +688,32 @@ function generateAttributeValue(value: any, expr: ExpressionNode | void, childre
   return generator.toPrimitive(constant.UNDEFINED)
 }
 
+function mapNodes(nodes: Node[]) {
+
+  textVNode = constant.UNDEFINED
+
+  const result: generator.Base[] = [ ]
+
+  array.each(
+    nodes,
+    function (node) {
+      const item = nodeGenerator[node.type](node)
+      if (item instanceof generator.Primitive
+        && item.value === constant.UNDEFINED
+      ) {
+        return
+      }
+      array.push(
+        result,
+        item
+      )
+    }
+  )
+
+  return result
+
+}
+
 function generateNodesToTuple(nodes: Node[]) {
   return generator.toTuple(
     constant.EMPTY_STRING,
@@ -649,22 +721,19 @@ function generateNodesToTuple(nodes: Node[]) {
     ';',
     constant.TRUE,
     1,
-    nodes.map(
-      function (node) {
-        return nodeGenerator[node.type](node)
-      }
-    )
+    mapNodes(nodes)
+  )
+}
+
+function generateNodesToList(nodes: Node[]) {
+  return generator.toList(
+    mapNodes(nodes)
   )
 }
 
 function generateNodesToStringIfNeeded(children: Node[]) {
 
-  const result = children.map(
-    function (node) {
-      return nodeGenerator[node.type](node)
-    }
-  )
-
+  const result = mapNodes(children)
   if (result.length === 1) {
     return result[0]
   }
@@ -681,17 +750,23 @@ function generateNodesToStringIfNeeded(children: Node[]) {
 
 }
 
-function appendDynamicChildVnode(node: generator.Base) {
+function appendDynamicChildVNode(vnode: generator.Base) {
+
+  textVNode = vnode instanceof TextVNode
+    ? vnode
+    : constant.UNDEFINED
+
   return generator.toPush(
     ARG_CHILDREN,
-    node
+    vnode
   )
+
 }
 
-function appendComponentVnode(node: generator.Base) {
+function appendComponentVNode(vnode: generator.Base) {
   return generator.toPush(
     ARG_COMPONENTS,
-    node
+    vnode
   )
 }
 
@@ -717,26 +792,24 @@ function generateSelfAndGlobalReader(self: string, global: string, name: string)
   )
 }
 
-function generateCommentVnode() {
-  const result = generator.toMap({
-    isPure: generator.toPrimitive(constant.TRUE),
-    isComment: generator.toPrimitive(constant.TRUE),
-    text: generator.toPrimitive(constant.EMPTY_STRING),
-  })
+function generateCommentVNode() {
+  const vnode = new CommentVNode(
+    generator.toPrimitive(constant.EMPTY_STRING)
+  )
   return array.last(dynamicChildrenStack)
-    ? appendDynamicChildVnode(result)
-    : result
+    ? appendDynamicChildVNode(vnode)
+    : vnode
 }
 
-function generateTextVnode(text: generator.Base) {
-  const result = generator.toMap({
-    isPure: generator.toPrimitive(constant.TRUE),
-    isText: generator.toPrimitive(constant.TRUE),
-    text,
-  })
+function generateTextVNode(text: generator.Base) {
+  if (textVNode) {
+    textVNode.append(text)
+    return generator.toPrimitive(constant.UNDEFINED)
+  }
+  const vnode = new TextVNode(text)
   return array.last(dynamicChildrenStack)
-    ? appendDynamicChildVnode(result)
-    : result
+    ? appendDynamicChildVNode(vnode)
+    : vnode
 }
 
 function generateComponentSlots(children: Node[]) {
@@ -1040,12 +1113,8 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       else {
         data.set(
           FIELD_CHILDREN,
-          generator.toList(
-            children.map(
-              function (node) {
-                return nodeGenerator[node.type](node)
-              }
-            )
+          generateNodesToList(
+            children
           )
         )
       }
@@ -1328,7 +1397,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     else {
       result = data
     }
-    result = appendComponentVnode(result)
+    result = appendComponentVNode(result)
   }
   else {
     if (outputAttrs || outputChildren) {
@@ -1347,7 +1416,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   }
 
   return array.last(dynamicChildrenStack)
-    ? appendDynamicChildVnode(result)
+    ? appendDynamicChildVNode(result)
     : result
 
 }
@@ -1747,7 +1816,7 @@ nodeGenerator[nodeType.TEXT] = function (node: Text) {
   const text = generator.toPrimitive(node.text)
 
   return array.last(vnodeStack)
-    ? generateTextVnode(text)
+    ? generateTextVNode(text)
     : text
 
 }
@@ -1757,7 +1826,7 @@ nodeGenerator[nodeType.EXPRESSION] = function (node: Expression) {
   const value = generateExpression(node.expr)
 
   return array.last(vnodeStack)
-    ? generateTextVnode(
+    ? generateTextVNode(
         generator.toCall(
           TO_STRING,
           [
@@ -1775,7 +1844,7 @@ nodeGenerator[nodeType.ELSE_IF] = function (node: If | ElseIf) {
   let { children, next } = node,
 
   defaultValue = array.last(vnodeStack)
-    ? generateCommentVnode()
+    ? generateCommentVNode()
     : generator.toPrimitive(constant.UNDEFINED),
 
   value: generator.Base | void
@@ -1800,7 +1869,7 @@ nodeGenerator[nodeType.ELSE] = function (node: Else) {
   let { children } = node,
 
   defaultValue = array.last(vnodeStack)
-    ? generateCommentVnode()
+    ? generateCommentVNode()
     : generator.toPrimitive(constant.UNDEFINED),
 
   value: generator.Base | void

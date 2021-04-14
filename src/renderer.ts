@@ -78,7 +78,7 @@ export function render(
   // 模板渲染过程收集的组件
   components: VNode[] = [ ],
 
-  renderElementVnode = function (
+  renderElementVNode = function (
     vnode: Data,
     createAttributes?: (vnode: Data) => void,
     createChildren?: (children: VNode[]) => void,
@@ -98,7 +98,7 @@ export function render(
 
   },
 
-  renderComponentVnode = function (
+  renderComponentVNode = function (
     vnode: Data,
     createAttributes?: (vnode: Data) => void,
     createSlots?: Record<string, (children: VNode[], components: VNode[]) => void>
@@ -678,8 +678,8 @@ export function render(
 
   renderTemplate = function (render: Function, scope: any, keypath: string, children: VNode[], components: VNode[]) {
     render(
-      renderElementVnode,
-      renderComponentVnode,
+      renderElementVNode,
+      renderComponentVNode,
       appendAttribute,
       renderTransition,
       renderModel,
