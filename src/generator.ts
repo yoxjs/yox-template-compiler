@@ -737,7 +737,7 @@ function generateNodesToTuple(nodes: Node[]) {
     constant.EMPTY_STRING,
     ';',
     constant.TRUE,
-    1,
+    0,
     mapNodes(nodes)
   )
 }
