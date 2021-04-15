@@ -47,6 +47,7 @@ type Context = {
 export function render(
   instance: YoxInterface,
   template: Function,
+  dependencies: Record<string, any>,
   data: Data,
   computed: Record<string, Computed> | undefined,
   filters: Record<string, Filter> | undefined,
@@ -68,9 +69,6 @@ export function render(
   ],
 
   localPartials: Record<string, (scope: any, keypath: string, children: VNode[], components: VNode[]) => void> = { },
-
-  // 渲染模板的数据依赖
-  dependencies: Record<string, boolean> = { },
 
   // 模板渲染过程收集的 vnode
   children: VNode[] = [ ],
@@ -309,7 +307,7 @@ export function render(
 
   // <slot name="xx"/>
   renderSlot = function (name: string, children: VNode[], render?: Function) {
-    dependencies[name] = constant.TRUE
+    dependencies[name] = children
     const result = rootScope[name]
     if (result) {
       const { vnodes, components } = result
@@ -663,13 +661,15 @@ export function render(
 
   setHolder = function (value: any, keypath?: string) {
 
+    if (value && is.func(value.get)) {
+      value = value.get()
+    }
+
     globalHolder.keypath = keypath
-    globalHolder.value = value && is.func(value.get)
-      ? value.get()
-      : value
+    globalHolder.value = value
 
     if (keypath !== constant.UNDEFINED) {
-      dependencies[keypath] = constant.TRUE
+      dependencies[keypath] = value
     }
 
     return globalHolder
@@ -726,9 +726,6 @@ export function render(
     }
   }
 
-  return {
-    vnode: children[0],
-    dependencies,
-  }
+  return children[0]
 
 }
