@@ -1187,42 +1187,64 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
     if (nativeAttributeList.length) {
 
-      const nativeAttributes = generator.toMap()
+      let nativeAttributes = generator.toMap(), isDynamic = otherList.length > 0
 
       array.each(
         nativeAttributeList,
         function (node) {
+
+          if (!node.isStatic) {
+            isDynamic = constant.TRUE
+          }
+
           nativeAttributes.set(
             node.name,
             generateAttributeValue(node.value, node.expr, node.children)
           )
+
         }
       )
 
       data.set(
         FIELD_NATIVE_ATTRIBUTES,
-        nativeAttributes
+        isDynamic
+          ? nativeAttributes
+          : generator.addVar(
+              nativeAttributes,
+              constant.TRUE
+            )
       )
 
     }
 
     if (nativePropertyList.length) {
 
-      const nativeProperties = generator.toMap()
+      let nativeProperties = generator.toMap(), isDynamic = otherList.length > 0
 
       array.each(
         nativePropertyList,
         function (node) {
+
+          if (!node.isStatic) {
+            isDynamic = constant.TRUE
+          }
+
           nativeProperties.set(
             node.name,
             generateAttributeValue(node.value, node.expr, node.children)
           )
+
         }
       )
 
       data.set(
         FIELD_NATIVE_PROPERTIES,
-        nativeProperties
+        isDynamic
+          ? nativeProperties
+          : generator.addVar(
+              nativeProperties,
+              constant.TRUE
+            )
       )
 
     }
