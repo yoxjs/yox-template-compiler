@@ -11,6 +11,10 @@ import {
   MAGIC_VAR_LENGTH,
   MAGIC_VAR_EVENT,
   MAGIC_VAR_DATA,
+  VNODE_TYPE_TEXT,
+  VNODE_TYPE_COMMENT,
+  VNODE_TYPE_ELEMENT,
+  VNODE_TYPE_COMPONENT,
 } from 'yox-config/src/config'
 
 import isDef from 'yox-common/src/function/isDef'
@@ -286,6 +290,7 @@ class CommentVNode implements generator.Base {
 
   toString(tabSize?: number) {
     return generator.toMap({
+      type: generator.toPrimitive(VNODE_TYPE_COMMENT),
       isPure: generator.toPrimitive(constant.TRUE),
       isComment: generator.toPrimitive(constant.TRUE),
       text: this.text,
@@ -309,6 +314,7 @@ class TextVNode implements generator.Base {
 
   toString(tabSize?: number) {
     return generator.toMap({
+      type: generator.toPrimitive(VNODE_TYPE_TEXT),
       isPure: generator.toPrimitive(constant.TRUE),
       isText: generator.toPrimitive(constant.TRUE),
       text: this.buffer,
@@ -1015,7 +1021,17 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   let { tag, dynamicTag, isComponent, ref, key, html, text, attrs, children } = node,
 
-  data = generator.toMap(),
+  data = generator.toMap({
+    context: ARG_INSTANCE,
+    type: generator.toPrimitive(
+      isComponent
+        ? VNODE_TYPE_COMPONENT
+        : VNODE_TYPE_ELEMENT
+    ),
+    tag: dynamicTag
+      ? generateExpression(dynamicTag)
+      : generator.toPrimitive(tag)
+  }),
 
   outputAttrs: generator.Base | void = constant.UNDEFINED,
   outputChildren: generator.Base | void = constant.UNDEFINED,
@@ -1042,20 +1058,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       args
     )
   }
-
-  data.set(
-    'context',
-    ARG_INSTANCE
-  )
-
-  // 如果是动态组件，tag 会是一个标识符表达式
-  data.set(
-    'tag',
-    dynamicTag
-      ? generateExpression(dynamicTag)
-      : generator.toPrimitive(tag)
-  )
-
 
   // 先序列化 children，再序列化 attrs，原因需要举两个例子：
 
