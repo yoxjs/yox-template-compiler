@@ -1183,11 +1183,13 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       eventList,
       customDirectiveList,
       otherList,
-    } = parseAttrs(attrs, isComponent)
+    } = parseAttrs(attrs, isComponent),
+
+    hasDynamicAttrs = otherList.length > 0
 
     if (nativeAttributeList.length) {
 
-      let nativeAttributes = generator.toMap(), isDynamic = otherList.length > 0
+      let nativeAttributes = generator.toMap(), isDynamic = hasDynamicAttrs
 
       array.each(
         nativeAttributeList,
@@ -1219,7 +1221,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
     if (nativePropertyList.length) {
 
-      let nativeProperties = generator.toMap(), isDynamic = otherList.length > 0
+      let nativeProperties = generator.toMap(), isDynamic = hasDynamicAttrs
 
       array.each(
         nativePropertyList,
