@@ -733,6 +733,8 @@ function mapNodes(nodes: Node[]) {
     }
   )
 
+  currentTextVNode = constant.UNDEFINED
+
   return result
 
 }
