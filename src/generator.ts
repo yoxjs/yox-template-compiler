@@ -102,8 +102,6 @@ RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
 
 APPEND_ATTRIBUTE = constant.EMPTY_STRING,
 
-RENDER_TRANSITION = constant.EMPTY_STRING,
-
 RENDER_MODEL = constant.EMPTY_STRING,
 
 RENDER_EVENT_METHOD = constant.EMPTY_STRING,
@@ -191,7 +189,6 @@ function init() {
     RENDER_ELEMENT_VNODE = '_a'
     RENDER_COMPONENT_VNODE = '_b'
     APPEND_ATTRIBUTE = '_c'
-    RENDER_TRANSITION = '_d'
     RENDER_MODEL = '_e'
     RENDER_EVENT_METHOD = '_f'
     RENDER_EVENT_NAME = '_g'
@@ -235,7 +232,6 @@ function init() {
     RENDER_ELEMENT_VNODE = 'renderElementVNode'
     RENDER_COMPONENT_VNODE = 'renderComponentVNode'
     APPEND_ATTRIBUTE = 'appendAttribute'
-    RENDER_TRANSITION = 'renderTransition'
     RENDER_MODEL = 'renderModel'
     RENDER_EVENT_METHOD = 'renderEventMethod'
     RENDER_EVENT_NAME = 'renderEventName'
@@ -1484,16 +1480,10 @@ function getLazyValue(node: Directive) {
 }
 
 function getTransitionValue(node: Directive) {
-  return generator.toCall(
-    RENDER_TRANSITION,
-    [
-      generator.toPrimitive(node.value),
-      generateSelfAndGlobalReader(
-        ARG_TRANSITIONS,
-        ARG_GLOBAL_TRANSITIONS,
-        node.value as string
-      )
-    ]
+  return generateSelfAndGlobalReader(
+    ARG_TRANSITIONS,
+    ARG_GLOBAL_TRANSITIONS,
+    node.value as string
   )
 }
 
@@ -2103,7 +2093,6 @@ export function generate(node: Node): string {
       RENDER_ELEMENT_VNODE,
       RENDER_COMPONENT_VNODE,
       APPEND_ATTRIBUTE,
-      RENDER_TRANSITION,
       RENDER_MODEL,
       RENDER_EVENT_METHOD,
       RENDER_EVENT_NAME,

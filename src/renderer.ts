@@ -148,15 +148,6 @@ export function render(
 
   },
 
-  renderTransition = function (name: string, transition: TransitionHooks) {
-    if (process.env.NODE_ENV === 'development') {
-      if (!transition) {
-        logger.fatal(`The transition "${name}" can't be found.`)
-      }
-    }
-    return transition
-  },
-
   // holder 是全局共用的，这里要浅拷贝一次
   renderModel = function (holder: ValueHolder) {
     return {
@@ -182,6 +173,7 @@ export function render(
         )
         event.ns = ns
       }
+
       instance.fire(event, data)
 
     }
@@ -681,7 +673,6 @@ export function render(
       renderElementVNode,
       renderComponentVNode,
       appendAttribute,
-      renderTransition,
       renderModel,
       renderEventMethod,
       renderEventName,
