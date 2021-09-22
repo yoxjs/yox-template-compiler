@@ -1059,9 +1059,10 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     // slot 不可能有 html、text 属性
     // 因此 slot 的子节点只存在于 children 中
     const args: generator.Base[] = [
-      generator.toPrimitive(
-        SLOT_DATA_PREFIX
-        + generateAttributeValue(node.name as Attribute)
+      generator.toBinary(
+        generator.toPrimitive(SLOT_DATA_PREFIX),
+        '+',
+        generateAttributeValue(node.name as Attribute)
       ),
       ARG_CHILDREN,
     ]
