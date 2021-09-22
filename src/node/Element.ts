@@ -31,7 +31,7 @@ export default interface Element extends Branch {
   slot?: string
 
   // <slot name="xx">
-  name?: string
+  name?: Attribute
 
   // <div ref="xx">
   ref?: Attribute

@@ -323,11 +323,7 @@ class TextVNode implements generator.Base {
 
 }
 
-function transformExpressionIdentifier(node: ExpressionIdentifier) {
-
-  const { name, root, lookup, offset } = node
-
-  // 魔法变量，直接转换
+function replaceMagicVariable(name: string) {
   if (array.has(magicVariables, name)) {
     switch (name) {
       case MAGIC_VAR_KEYPATH:
@@ -344,6 +340,26 @@ function transformExpressionIdentifier(node: ExpressionIdentifier) {
 
       default:
         return name
+    }
+  }
+}
+
+function transformExpressionIdentifier(node: ExpressionIdentifier) {
+
+  const { name, root, lookup, offset, literals } = node
+
+  if (literals) {
+    const variable = replaceMagicVariable(literals[0])
+    if (isDef(variable)) {
+      const result = object.copy(literals)
+      result[0] = variable
+      return array.join(result, constant.RAW_DOT)
+    }
+  }
+  else {
+    const variable = replaceMagicVariable(name)
+    if (isDef(variable)) {
+      return variable
     }
   }
 
@@ -692,21 +708,21 @@ function createAttributeValue(nodes: Node[]) {
 
 }
 
-function generateAttributeValue(value: any, expr: ExpressionNode | void, children: Node[] | void) {
-  if (isDef(value)) {
-    return generator.toPrimitive(value)
+function generateAttributeValue(attr: Attribute) {
+  if (isDef(attr.value)) {
+    return generator.toPrimitive(attr.value)
   }
   // 只有一个表达式时，保持原始类型
-  if (expr) {
-    return generateExpression(expr)
+  if (attr.expr) {
+    return generateExpression(attr.expr)
   }
   // 多个值拼接时，要求是字符串
-  if (children) {
+  if (attr.children) {
     // 常见的应用场景是序列化 HTML 元素属性值，处理值时要求字符串，在处理属性名这个级别，不要求字符串
     // compiler 会把原始字符串编译成 value
     // compiler 会把单个插值编译成 expr
     // 因此走到这里，一定是多个插值或是单个特殊插值（比如 If)
-    return createAttributeValue(children)
+    return createAttributeValue(attr.children)
   }
   return generator.toPrimitive(constant.UNDEFINED)
 }
@@ -1043,7 +1059,10 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     // slot 不可能有 html、text 属性
     // 因此 slot 的子节点只存在于 children 中
     const args: generator.Base[] = [
-      generator.toPrimitive(SLOT_DATA_PREFIX + node.name),
+      generator.toPrimitive(
+        SLOT_DATA_PREFIX
+        + generateAttributeValue(node.name as Attribute)
+      ),
       ARG_CHILDREN,
     ]
     if (children) {
@@ -1137,13 +1156,13 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   if (ref) {
     data.set(
       'ref',
-      generateAttributeValue(ref.value, ref.expr, ref.children)
+      generateAttributeValue(ref)
     )
   }
   if (key) {
     data.set(
       'key',
-      generateAttributeValue(key.value, key.expr, key.children)
+      generateAttributeValue(key)
     )
   }
   if (html) {
@@ -1203,7 +1222,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
           nativeAttributes.set(
             node.name,
-            generateAttributeValue(node.value, node.expr, node.children)
+            generateAttributeValue(node)
           )
 
         }
@@ -1235,7 +1254,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
           nativeProperties.set(
             node.name,
-            generateAttributeValue(node.value, node.expr, node.children)
+            generateAttributeValue(node)
           )
 
         }
@@ -1262,7 +1281,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         function (node) {
           properties.set(
             node.name,
-            generateAttributeValue(node.value, node.expr, node.children)
+            generateAttributeValue(node)
           )
         }
       )
@@ -1458,7 +1477,7 @@ nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
           ? FIELD_PROPERTIES
           : FIELD_NATIVE_ATTRIBUTES
       ),
-      generateAttributeValue(node.value, node.expr, node.children),
+      generateAttributeValue(node),
       generator.toPrimitive(node.name),
     ]
   )
@@ -1472,7 +1491,7 @@ nodeGenerator[nodeType.PROPERTY] = function (node: Property) {
     [
       ARG_VNODE,
       generator.toPrimitive(FIELD_NATIVE_PROPERTIES),
-      generateAttributeValue(node.value, node.expr, node.children),
+      generateAttributeValue(node),
       generator.toPrimitive(node.name),
     ]
   )

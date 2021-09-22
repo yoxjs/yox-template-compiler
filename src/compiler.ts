@@ -756,8 +756,8 @@ export function compile(content: string): Branch[] {
 
     const { name, value } = attr,
 
-    // 这 2 个属性值要求是字符串
-    isStringValueRequired = name === constant.RAW_NAME || name === constant.RAW_SLOT
+    // 这个属性值要求是字符串
+    isStringValueRequired = name === constant.RAW_SLOT
 
     if (process.env.NODE_ENV === 'development') {
       // 因为要拎出来给 element，所以不能用 if

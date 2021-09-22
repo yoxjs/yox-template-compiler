@@ -330,6 +330,9 @@ export function render(
     renderLocal?: (scope: any, keypath: string, children: VNode[], components: VNode[]) => void,
     render?: Function,
   ) {
+    if (process.env.NODE_ENV === 'development') {
+      logger.warn('Partial is not recommended for use, it may be removed in the future.')
+    }
     if (renderLocal) {
       renderLocal(scope, keypath, children, components)
       return
