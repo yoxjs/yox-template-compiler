@@ -743,7 +743,9 @@ export function compile(content: string): Branch[] {
     }
     // <slot /> 如果没写 name，自动加上默认名称
     else if (isSlot && !element.name) {
-      element.name = SLOT_NAME_DEFAULT
+      const attr = createAttribute(element, constant.RAW_NAME)
+      attr.value = SLOT_NAME_DEFAULT
+      element.name = attr
     }
     // 处理浏览器兼容问题
     else {
@@ -1289,8 +1291,7 @@ export function compile(content: string): Branch[] {
                 )
               : createAttribute(
                   currentElement,
-                  name,
-                  constant.UNDEFINED
+                  name
                 )
           }
 
