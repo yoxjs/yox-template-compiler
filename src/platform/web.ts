@@ -62,7 +62,6 @@ attr2Prop = { }
 attr2Prop['for'] = 'htmlFor'
 attr2Prop['class'] = 'className'
 attr2Prop['accesskey'] = 'accessKey'
-attr2Prop['style'] = 'style.cssText'
 attr2Prop['novalidate'] = 'noValidate'
 attr2Prop['readonly'] = 'readOnly'
 attr2Prop['tabindex'] = 'tabIndex'
@@ -77,6 +76,10 @@ attr2Prop['frameborder'] = 'frameBorder'
 
 export function isSelfClosing(tagName: string) {
   return selfClosingTagNames[tagName] !== constant.UNDEFINED
+}
+
+export function createStyle() {
+  return creator.createStyle()
 }
 
 export function createAttribute(element: Element, name: string, ns: string | void): Attribute | Property {

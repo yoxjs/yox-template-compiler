@@ -3,6 +3,7 @@ import Branch from './Branch'
 import Attribute from './Attribute'
 import Directive from './Directive'
 import Property from './Property'
+import Style from './Style'
 import If from './If'
 import Spread from './Spread'
 
@@ -47,6 +48,6 @@ export default interface Element extends Branch {
   // <div>123</div>
   text?: ExpressionNode | string
 
-  attrs?: (Attribute | Property | Directive | If | Spread)[]
+  attrs?: (Attribute | Property | Style | Directive | If | Spread)[]
 
 }

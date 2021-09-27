@@ -14,6 +14,7 @@ import Element from './node/Element'
 import Attribute from './node/Attribute'
 import Directive from './node/Directive'
 import Property from './node/Property'
+import Style from './node/Style'
 import Each from './node/Each'
 import If from './node/If'
 import Else from './node/Else'
@@ -52,6 +53,13 @@ export function createProperty(name: string, ns: string | void, hint: PropertyHi
     value,
     expr,
     children,
+  }
+}
+
+export function createStyle(): Style {
+  return {
+    type: nodeType.STYLE,
+    isStatic: constant.TRUE,
   }
 }
 

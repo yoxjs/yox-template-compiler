@@ -27,6 +27,7 @@ import {
 import {
   isSelfClosing,
   isNativeElement,
+  createStyle,
   createAttribute,
   getAttributeDefaultValue,
   createElement,
@@ -68,6 +69,7 @@ import Element from './node/Element'
 import Attribute from './node/Attribute'
 import Directive from './node/Directive'
 import Property from './node/Property'
+import Style from './node/Style'
 import Expression from './node/Expression'
 
 // 当前不位于 block 之间
@@ -267,7 +269,7 @@ export function compile(content: string): Branch[] {
 
   currentElement: Element | void,
 
-  currentAttribute: Attribute | Property | Directive | void,
+  currentAttribute: Attribute | Property | Style | Directive | void,
 
   length = content.length,
 
@@ -343,6 +345,8 @@ export function compile(content: string): Branch[] {
 
     isProperty = type === nodeType.PROPERTY,
 
+    isStyle = type === nodeType.STYLE,
+
     isDirective = type === nodeType.DIRECTIVE,
 
     parentBranchNode = array.last(nodeStack)
@@ -392,6 +396,9 @@ export function compile(content: string): Branch[] {
             else if (isProperty) {
               processPropertySingleText(branchNode as Property, onlyChild as Text)
             }
+            else if (isStyle) {
+              processStyleSingleText(branchNode as Style, onlyChild as Text)
+            }
             else if (isDirective) {
               processDirectiveSingleText(branchNode as Directive, onlyChild as Text)
             }
@@ -401,7 +408,7 @@ export function compile(content: string): Branch[] {
             if (isElement) {
               processElementSingleExpression(branchNode as Element, onlyChild as Expression)
             }
-            else if (isAttribute || isProperty || isDirective) {
+            else if (isAttribute || isProperty || isStyle || isDirective) {
               processAttributeSingleExpression(branchNode as any, onlyChild as Expression)
             }
             break
@@ -417,6 +424,9 @@ export function compile(content: string): Branch[] {
       }
       else if (isProperty) {
         processPropertyEmptyChildren(currentElement, branchNode as Property)
+      }
+      else if (isStyle) {
+        processStyleEmptyChildren(currentElement, branchNode as Style)
       }
       else if (isDirective) {
         processDirectiveEmptyChildren(currentElement, branchNode as Directive)
@@ -514,6 +524,26 @@ export function compile(content: string): Branch[] {
 
   },
 
+  processStyleEmptyChildren = function (element: Element, style: Style) {
+
+    // 如果不写值，直接忽略
+    replaceChild(style)
+
+  },
+
+  processStyleSingleText = function (style: Style, child: Text) {
+
+    if (child.text) {
+      style.value = child.text
+      style.children = constant.UNDEFINED
+    }
+    else {
+      // 如果是 style=""，直接忽略
+      replaceChild(style)
+    }
+
+  },
+
   processAttributeEmptyChildren = function (element: Element, attr: Attribute) {
 
     if (isSpecialAttr(element, attr)) {
@@ -534,7 +564,7 @@ export function compile(content: string): Branch[] {
 
   },
 
-  processAttributeSingleExpression = function (attr: Attribute | Property | Directive, child: Expression) {
+  processAttributeSingleExpression = function (attr: Attribute | Property | Style | Directive, child: Expression) {
 
     const { expr } = child
 
@@ -1209,7 +1239,7 @@ export function compile(content: string): Branch[] {
         const match = content.match(attributePattern)
         if (match) {
 
-          let node: Attribute | Directive | Property, name = match[1]
+          let node: Attribute | Property | Style | Directive, name = match[1]
 
           if (name === DIRECTIVE_MODEL || name === DIRECTIVE_TRANSITION) {
             node = creator.createDirective(
@@ -1283,16 +1313,22 @@ export function compile(content: string): Branch[] {
           else {
             // 处理类似 xml:name="value" 的命名空间
             const parts = name.split(':')
-            node = parts.length === 2
-              ? createAttribute(
-                  currentElement,
-                  parts[1],
-                  parts[0]
-                )
-              : createAttribute(
-                  currentElement,
-                  name
-                )
+            if (parts.length === 2) {
+              node = createAttribute(
+                currentElement,
+                parts[1],
+                parts[0]
+              )
+            }
+            else if (parts[0] === 'style') {
+              node = createStyle()
+            }
+            else {
+              node = createAttribute(
+                currentElement,
+                name
+              )
+            }
           }
 
           addChild(node)

@@ -22,6 +22,7 @@ import isDef from 'yox-common/src/function/isDef'
 import * as is from 'yox-common/src/util/is'
 import * as array from 'yox-common/src/util/array'
 import * as object from 'yox-common/src/util/object'
+import * as string from 'yox-common/src/util/string'
 import * as constant from 'yox-common/src/util/constant'
 import * as generator from 'yox-common/src/util/generator'
 import * as keypathUtil from 'yox-common/src/util/keypath'
@@ -40,6 +41,7 @@ import Element from './node/Element'
 import Attribute from './node/Attribute'
 import Directive from './node/Directive'
 import Property from './node/Property'
+import Style from './node/Style'
 import Each from './node/Each'
 import If from './node/If'
 import ElseIf from './node/ElseIf'
@@ -76,6 +78,8 @@ FIELD_NATIVE_ATTRIBUTES = 'nativeAttrs',
 
 FIELD_NATIVE_PROPERTIES = 'nativeProps',
 
+FIELD_NATIVE_STYLES = 'nativeStyles',
+
 FIELD_PROPERTIES = 'props',
 
 FIELD_DIRECTIVES = 'directives',
@@ -101,6 +105,8 @@ RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
 RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
 
 APPEND_ATTRIBUTE = constant.EMPTY_STRING,
+
+RENDER_STYLE = constant.EMPTY_STRING,
 
 RENDER_TRANSITION = constant.EMPTY_STRING,
 
@@ -191,50 +197,52 @@ function init() {
     RENDER_ELEMENT_VNODE = '_a'
     RENDER_COMPONENT_VNODE = '_b'
     APPEND_ATTRIBUTE = '_c'
-    RENDER_TRANSITION = '_d'
-    RENDER_MODEL = '_e'
-    RENDER_EVENT_METHOD = '_f'
-    RENDER_EVENT_NAME = '_g'
-    RENDER_DIRECTIVE = '_h'
-    RENDER_SPREAD = '_i'
-    RENDER_SLOT = '_j'
-    RENDER_PARTIAL = '_k'
-    RENDER_EACH = '_l'
-    RENDER_RANGE = '_m'
-    LOOKUP_KEYPATH = '_n'
-    LOOKUP_PROP = '_o'
-    GET_THIS = '_p'
-    GET_THIS_BY_INDEX = '_q'
-    GET_PROP = '_r'
-    GET_PROP_BY_INDEX = '_s'
-    READ_KEYPATH = '_t'
-    EXECUTE_FUNCTION = '_u'
-    SET_HOLDER = '_v'
-    TO_STRING = '_w'
-    ARG_INSTANCE = '_x'
-    ARG_FILTERS = '_y',
-    ARG_GLOBAL_FILTERS = '_z',
-    ARG_LOCAL_PARTIALS = '__a'
-    ARG_PARTIALS = '__b',
-    ARG_GLOBAL_PARTIALS = '__c',
-    ARG_DIRECTIVES = '__d',
-    ARG_GLOBAL_DIRECTIVES = '__e',
-    ARG_TRANSITIONS = '__f',
-    ARG_GLOBAL_TRANSITIONS = '__g',
-    ARG_STACK = '__h'
-    ARG_VNODE = '__i'
-    ARG_CHILDREN = '__j'
-    ARG_COMPONENTS = '__k'
-    ARG_SCOPE = '__l'
-    ARG_KEYPATH = '__m'
-    ARG_LENGTH = '__n'
-    ARG_EVENT = '__o'
-    ARG_DATA = '__p'
+    RENDER_STYLE = '_d',
+    RENDER_TRANSITION = '_e'
+    RENDER_MODEL = '_f'
+    RENDER_EVENT_METHOD = '_g'
+    RENDER_EVENT_NAME = '_h'
+    RENDER_DIRECTIVE = '_i'
+    RENDER_SPREAD = '_j'
+    RENDER_SLOT = '_k'
+    RENDER_PARTIAL = '_l'
+    RENDER_EACH = '_m'
+    RENDER_RANGE = '_n'
+    LOOKUP_KEYPATH = '_o'
+    LOOKUP_PROP = '_p'
+    GET_THIS = '_q'
+    GET_THIS_BY_INDEX = '_r'
+    GET_PROP = '_s'
+    GET_PROP_BY_INDEX = '_t'
+    READ_KEYPATH = '_u'
+    EXECUTE_FUNCTION = '_v'
+    SET_HOLDER = '_w'
+    TO_STRING = '_x'
+    ARG_INSTANCE = '_y'
+    ARG_FILTERS = '_z',
+    ARG_GLOBAL_FILTERS = '__a',
+    ARG_LOCAL_PARTIALS = '__b'
+    ARG_PARTIALS = '__c',
+    ARG_GLOBAL_PARTIALS = '__d',
+    ARG_DIRECTIVES = '__e',
+    ARG_GLOBAL_DIRECTIVES = '__f',
+    ARG_TRANSITIONS = '__g',
+    ARG_GLOBAL_TRANSITIONS = '__h',
+    ARG_STACK = '__i'
+    ARG_VNODE = '__j'
+    ARG_CHILDREN = '__k'
+    ARG_COMPONENTS = '__l'
+    ARG_SCOPE = '__m'
+    ARG_KEYPATH = '__n'
+    ARG_LENGTH = '__o'
+    ARG_EVENT = '__p'
+    ARG_DATA = '__q'
   }
   else {
     RENDER_ELEMENT_VNODE = 'renderElementVNode'
     RENDER_COMPONENT_VNODE = 'renderComponentVNode'
     APPEND_ATTRIBUTE = 'appendAttribute'
+    RENDER_STYLE = 'renderStyle'
     RENDER_TRANSITION = 'renderTransition'
     RENDER_MODEL = 'renderModel'
     RENDER_EVENT_METHOD = 'renderEventMethod'
@@ -910,6 +918,8 @@ function parseAttrs(attrs: Node[], isComponent: boolean | void) {
 
   propertyList: Attribute[] = [ ],
 
+  style: Style | void = constant.UNDEFINED,
+
   lazyList: Directive[] = [ ],
 
   transition: Directive | void = constant.UNDEFINED,
@@ -944,11 +954,13 @@ function parseAttrs(attrs: Node[], isComponent: boolean | void) {
         }
       }
       else if (attr.type === nodeType.PROPERTY) {
-        const propertyNode = attr as Property
         array.push(
           nativePropertyList,
-          propertyNode
+          attr as Property
         )
+      }
+      else if (attr.type === nodeType.STYLE) {
+        style = attr as Style
       }
       else if (attr.type === nodeType.DIRECTIVE) {
         const directiveNode = attr as Directive
@@ -995,6 +1007,7 @@ function parseAttrs(attrs: Node[], isComponent: boolean | void) {
     nativeAttributeList,
     nativePropertyList,
     propertyList,
+    style: style as Style | void,
     lazyList,
     transition: transition as Directive | void,
     model: model as Directive | void,
@@ -1011,6 +1024,7 @@ function sortAttrs(attrs: Node[], isComponent: boolean | void) {
     nativeAttributeList,
     nativePropertyList,
     propertyList,
+    style,
     lazyList,
     transition,
     model,
@@ -1024,6 +1038,9 @@ function sortAttrs(attrs: Node[], isComponent: boolean | void) {
   array.push(result, nativeAttributeList)
   array.push(result, nativePropertyList)
   array.push(result, propertyList)
+  if (style) {
+    array.push(result, style)
+  }
   array.push(result, lazyList)
   if (transition) {
     array.push(result, transition)
@@ -1087,6 +1104,27 @@ function parseChildren(children: Node[]) {
     staticChildren,
   }
 
+}
+
+function parseStyleValue(value: string) {
+  const styles = generator.toMap()
+  array.each(
+    value.split(';'),
+    function (item: string) {
+      const pairs = item.split(':')
+      if (pairs.length >= 2) {
+        const key = string.trim(pairs.shift())
+        const value = string.trim(pairs.join(constant.EMPTY_STRING))
+        if (key && value) {
+          styles.set(
+            string.camelize(key),
+            generator.toPrimitive(value)
+          )
+        }
+      }
+    }
+  )
+  return styles
 }
 
 nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
@@ -1225,6 +1263,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       nativeAttributeList,
       nativePropertyList,
       propertyList,
+      style,
       lazyList,
       transition,
       model,
@@ -1318,6 +1357,13 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         properties
       )
 
+    }
+
+    if (style) {
+      data.set(
+        FIELD_NATIVE_STYLES,
+        getStyleValue(style)
+      )
     }
 
     if (lazyList.length) {
@@ -1518,6 +1564,41 @@ nodeGenerator[nodeType.PROPERTY] = function (node: Property) {
       generator.toPrimitive(FIELD_NATIVE_PROPERTIES),
       generateAttributeValue(node),
       generator.toPrimitive(node.name),
+    ]
+  )
+
+}
+
+nodeGenerator[nodeType.STYLE] = function (node: Style) {
+
+  return generator.toAssign(
+    generator.toMember(
+      ARG_VNODE,
+      [
+        generator.toPrimitive(FIELD_NATIVE_STYLES)
+      ]
+    ),
+    getStyleValue(node)
+  )
+
+}
+
+function getStyleValue(node: Style) {
+
+  if (isDef(node.value)) {
+    return parseStyleValue(node.value as string)
+  }
+
+  // 只有一个表达式时，只能是对象字面量
+  if (node.expr) {
+    return generateExpression(node.expr)
+  }
+
+  // 多值拼接，compiler 保证了 children 必然有值
+  return generator.toCall(
+    RENDER_STYLE,
+    [
+      createAttributeValue(node.children as Node[])
     ]
   )
 
@@ -2147,6 +2228,7 @@ export function generate(node: Node): string {
       RENDER_ELEMENT_VNODE,
       RENDER_COMPONENT_VNODE,
       APPEND_ATTRIBUTE,
+      RENDER_STYLE,
       RENDER_TRANSITION,
       RENDER_MODEL,
       RENDER_EVENT_METHOD,

@@ -19,46 +19,51 @@ export const DIRECTIVE = 3
 export const PROPERTY = 4
 
 /**
+ * 样式 节点
+ */
+export const STYLE = 5
+
+/**
  * 文本 节点
  */
-export const TEXT = 5
+export const TEXT = 6
 
 /**
  * if 节点
  */
-export const IF = 6
+export const IF = 7
 
 /**
  * else if 节点
  */
-export const ELSE_IF = 7
+export const ELSE_IF = 8
 
 /**
  * else 节点
  */
-export const ELSE = 8
+export const ELSE = 9
 
 /**
  * each 节点
  */
-export const EACH = 9
+export const EACH = 10
 
 /**
  * partial 节点
  */
-export const PARTIAL = 10
+export const PARTIAL = 11
 
 /**
  * import 节点
  */
-export const IMPORT = 11
+export const IMPORT = 12
 
 /**
  * 表达式 节点
  */
-export const EXPRESSION = 12
+export const EXPRESSION = 13
 
 /**
  * 延展操作 节点
  */
-export const SPREAD = 13
+export const SPREAD = 14
