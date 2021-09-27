@@ -814,13 +814,18 @@ function generateSelfAndGlobalReader(self: string, global: string, name: string)
   )
 }
 
-function generateCommentVNode() {
-  const vnode = new CommentVNode(
-    generator.toPrimitive(constant.EMPTY_STRING)
-  )
+function generateVNode(vnode: generator.Base) {
   return array.last(dynamicChildrenStack)
     ? appendDynamicChildVNode(vnode)
     : vnode
+}
+
+function generateCommentVNode() {
+  return generateVNode(
+    new CommentVNode(
+      generator.toPrimitive(constant.EMPTY_STRING)
+    )
+  )
 }
 
 function generateTextVNode(text: generator.Base) {
@@ -828,10 +833,9 @@ function generateTextVNode(text: generator.Base) {
     currentTextVNode.append(text)
     return generator.toPrimitive(constant.UNDEFINED)
   }
-  const vnode = new TextVNode(text)
-  return array.last(dynamicChildrenStack)
-    ? appendDynamicChildVNode(vnode)
-    : vnode
+  return generateVNode(
+    new TextVNode(text)
+  )
 }
 
 function generateComponentSlots(children: Node[]) {
@@ -1035,6 +1039,56 @@ function sortAttrs(attrs: Node[], isComponent: boolean | void) {
 
 }
 
+function parseChildren(children: Node[]) {
+
+  let dynamicChildren: generator.Base | void = constant.UNDEFINED,
+
+  staticChildren: generator.Base | void = constant.UNDEFINED,
+
+  isDynamic = constant.FALSE
+
+  array.each(
+    children,
+    function (node) {
+      if (!node.isStatic) {
+        isDynamic = constant.TRUE
+        return constant.FALSE
+      }
+    }
+  )
+
+  array.push(
+    dynamicChildrenStack,
+    isDynamic
+  )
+
+  if (isDynamic) {
+    dynamicChildren = generator.toAnonymousFunction(
+      [
+        ARG_CHILDREN
+      ],
+      generateNodesToTuple(
+        children
+      )
+    )
+  }
+  else {
+    staticChildren = generateNodesToList(
+      children
+    )
+  }
+
+  array.pop(
+    dynamicChildrenStack
+  )
+
+  return {
+    dynamicChildren,
+    staticChildren,
+  }
+
+}
+
 nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   let { tag, dynamicTag, isComponent, ref, key, html, text, attrs, children } = node,
@@ -1105,45 +1159,17 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
     else {
 
-      let isDynamic = constant.FALSE
+      const { dynamicChildren, staticChildren } = parseChildren(children)
 
-      array.each(
-        children,
-        function (node) {
-          if (!node.isStatic) {
-            isDynamic = constant.TRUE
-            return constant.FALSE
-          }
-        }
-      )
-
-      array.push(
-        dynamicChildrenStack,
-        isDynamic
-      )
-
-      if (isDynamic) {
-        outputChildren = generator.toAnonymousFunction(
-          [
-            ARG_CHILDREN
-          ],
-          generateNodesToTuple(
-            children
-          )
-        )
+      if (dynamicChildren) {
+        outputChildren = dynamicChildren
       }
-      else {
+      else if (staticChildren) {
         data.set(
           FIELD_CHILDREN,
-          generateNodesToList(
-            children
-          )
+          staticChildren
         )
       }
-
-      array.pop(
-        dynamicChildrenStack
-      )
 
     }
   }
@@ -1461,9 +1487,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
   }
 
-  return array.last(dynamicChildrenStack)
-    ? appendDynamicChildVNode(result)
-    : result
+  return generateVNode(result)
 
 }
 
