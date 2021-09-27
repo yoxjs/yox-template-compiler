@@ -197,7 +197,7 @@ function init() {
     RENDER_ELEMENT_VNODE = '_a'
     RENDER_COMPONENT_VNODE = '_b'
     APPEND_ATTRIBUTE = '_c'
-    RENDER_STYLE = '_d',
+    RENDER_STYLE = '_d'
     RENDER_TRANSITION = '_e'
     RENDER_MODEL = '_f'
     RENDER_EVENT_METHOD = '_g'
