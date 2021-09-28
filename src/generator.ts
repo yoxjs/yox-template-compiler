@@ -109,7 +109,9 @@ RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
 
 APPEND_ATTRIBUTE = constant.EMPTY_STRING,
 
-RENDER_STYLE = constant.EMPTY_STRING,
+RENDER_STYLE_STRING = constant.EMPTY_STRING,
+
+RENDER_STYLE_EXPR = constant.EMPTY_STRING,
 
 RENDER_TRANSITION = constant.EMPTY_STRING,
 
@@ -200,52 +202,54 @@ function init() {
     RENDER_ELEMENT_VNODE = '_a'
     RENDER_COMPONENT_VNODE = '_b'
     APPEND_ATTRIBUTE = '_c'
-    RENDER_STYLE = '_d'
-    RENDER_TRANSITION = '_e'
-    RENDER_MODEL = '_f'
-    RENDER_EVENT_METHOD = '_g'
-    RENDER_EVENT_NAME = '_h'
-    RENDER_DIRECTIVE = '_i'
-    RENDER_SPREAD = '_j'
-    RENDER_SLOT = '_k'
-    RENDER_PARTIAL = '_l'
-    RENDER_EACH = '_m'
-    RENDER_RANGE = '_n'
-    LOOKUP_KEYPATH = '_o'
-    LOOKUP_PROP = '_p'
-    GET_THIS = '_q'
-    GET_THIS_BY_INDEX = '_r'
-    GET_PROP = '_s'
-    GET_PROP_BY_INDEX = '_t'
-    READ_KEYPATH = '_u'
-    EXECUTE_FUNCTION = '_v'
-    SET_HOLDER = '_w'
-    TO_STRING = '_x'
-    ARG_INSTANCE = '_y'
-    ARG_FILTERS = '_z',
-    ARG_GLOBAL_FILTERS = '__a',
-    ARG_LOCAL_PARTIALS = '__b'
-    ARG_PARTIALS = '__c',
-    ARG_GLOBAL_PARTIALS = '__d',
-    ARG_DIRECTIVES = '__e',
-    ARG_GLOBAL_DIRECTIVES = '__f',
-    ARG_TRANSITIONS = '__g',
-    ARG_GLOBAL_TRANSITIONS = '__h',
-    ARG_STACK = '__i'
-    ARG_VNODE = '__j'
-    ARG_CHILDREN = '__k'
-    ARG_COMPONENTS = '__l'
-    ARG_SCOPE = '__m'
-    ARG_KEYPATH = '__n'
-    ARG_LENGTH = '__o'
-    ARG_EVENT = '__p'
-    ARG_DATA = '__q'
+    RENDER_STYLE_STRING = '_d'
+    RENDER_STYLE_EXPR = '_e'
+    RENDER_TRANSITION = '_f'
+    RENDER_MODEL = '_g'
+    RENDER_EVENT_METHOD = '_h'
+    RENDER_EVENT_NAME = '_i'
+    RENDER_DIRECTIVE = '_j'
+    RENDER_SPREAD = '_k'
+    RENDER_SLOT = '_l'
+    RENDER_PARTIAL = '_m'
+    RENDER_EACH = '_n'
+    RENDER_RANGE = '_o'
+    LOOKUP_KEYPATH = '_p'
+    LOOKUP_PROP = '_q'
+    GET_THIS = '_r'
+    GET_THIS_BY_INDEX = '_s'
+    GET_PROP = '_t'
+    GET_PROP_BY_INDEX = '_u'
+    READ_KEYPATH = '_v'
+    EXECUTE_FUNCTION = '_w'
+    SET_HOLDER = '_x'
+    TO_STRING = '_y'
+    ARG_INSTANCE = '_z'
+    ARG_FILTERS = '__a',
+    ARG_GLOBAL_FILTERS = '__b',
+    ARG_LOCAL_PARTIALS = '__c'
+    ARG_PARTIALS = '__d',
+    ARG_GLOBAL_PARTIALS = '__e',
+    ARG_DIRECTIVES = '__f',
+    ARG_GLOBAL_DIRECTIVES = '__g',
+    ARG_TRANSITIONS = '__h',
+    ARG_GLOBAL_TRANSITIONS = '__i',
+    ARG_STACK = '__j'
+    ARG_VNODE = '__k'
+    ARG_CHILDREN = '__l'
+    ARG_COMPONENTS = '__m'
+    ARG_SCOPE = '__n'
+    ARG_KEYPATH = '__o'
+    ARG_LENGTH = '__p'
+    ARG_EVENT = '__q'
+    ARG_DATA = '__r'
   }
   else {
     RENDER_ELEMENT_VNODE = 'renderElementVNode'
     RENDER_COMPONENT_VNODE = 'renderComponentVNode'
     APPEND_ATTRIBUTE = 'appendAttribute'
-    RENDER_STYLE = 'renderStyle'
+    RENDER_STYLE_STRING = 'renderStyleStyle'
+    RENDER_STYLE_EXPR = 'renderStyleExpr'
     RENDER_TRANSITION = 'renderTransition'
     RENDER_MODEL = 'renderModel'
     RENDER_EVENT_METHOD = 'renderEventMethod'
@@ -1581,14 +1585,18 @@ function getStyleValue(node: Style) {
     return styles
   }
 
-  // 只有一个表达式时，只能是对象字面量或数组字面量
   if (node.expr) {
-    return generateExpression(node.expr)
+    return generator.toCall(
+      RENDER_STYLE_EXPR,
+      [
+        generateExpression(node.expr)
+      ]
+    )
   }
 
   // 多值拼接，compiler 保证了 children 必然有值
   return generator.toCall(
-    RENDER_STYLE,
+    RENDER_STYLE_STRING,
     [
       createAttributeValue(node.children as Node[])
     ]
@@ -2220,7 +2228,8 @@ export function generate(node: Node): string {
       RENDER_ELEMENT_VNODE,
       RENDER_COMPONENT_VNODE,
       APPEND_ATTRIBUTE,
-      RENDER_STYLE,
+      RENDER_STYLE_STRING,
+      RENDER_STYLE_EXPR,
       RENDER_TRANSITION,
       RENDER_MODEL,
       RENDER_EVENT_METHOD,

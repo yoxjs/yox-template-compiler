@@ -772,7 +772,7 @@ export function compile(content: string): Branch[] {
     }
     // <slot /> 如果没写 name，自动加上默认名称
     else if (isSlot && !element.name) {
-      const attr = createAttribute(element, constant.RAW_NAME)
+      const attr = createAttribute(element, constant.RAW_NAME) as Attribute
       attr.value = SLOT_NAME_DEFAULT
       element.name = attr
     }

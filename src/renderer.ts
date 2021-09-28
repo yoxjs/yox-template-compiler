@@ -152,7 +152,7 @@ export function render(
 
   },
 
-  renderStyle = function (value: string) {
+  renderStyleString = function (value: string) {
     const styles: Data = { }
     parseStyleString(
       value,
@@ -161,6 +161,27 @@ export function render(
       }
     )
     return styles
+  },
+
+  renderStyleExpr = function (value: any) {
+    if (is.array(value)) {
+      const styles: Data = { }
+      for (let i = 0, len = value.length, item: Data | void; i < len; i++) {
+        item = renderStyleExpr(value[i])
+        if (item) {
+          for (let key in item) {
+            styles[key] = item[key]
+          }
+        }
+      }
+      return styles
+    }
+    if (is.object(value)) {
+      return value
+    }
+    if (is.string(value)) {
+      return renderStyleString(value as string)
+    }
   },
 
   renderTransition = function (name: string, transition: TransitionHooks) {
@@ -699,7 +720,8 @@ export function render(
       renderElementVNode,
       renderComponentVNode,
       appendAttribute,
-      renderStyle,
+      renderStyleString,
+      renderStyleExpr,
       renderTransition,
       renderModel,
       renderEventMethod,
