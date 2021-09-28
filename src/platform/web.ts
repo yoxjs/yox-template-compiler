@@ -15,6 +15,7 @@ import Node from '../node/Node'
 import Element from '../node/Element'
 import Attribute from '../node/Attribute'
 import Property from '../node/Property'
+import Style from '../node/Style'
 
 import * as helper from '../helper'
 import * as creator from '../creator'
@@ -78,11 +79,7 @@ export function isSelfClosing(tagName: string) {
   return selfClosingTagNames[tagName] !== constant.UNDEFINED
 }
 
-export function createStyle() {
-  return creator.createStyle()
-}
-
-export function createAttribute(element: Element, name: string, ns: string | void): Attribute | Property {
+export function createAttribute(element: Element, name: string, ns: string | void): Attribute | Property | Style {
 
   // 组件用驼峰格式
   if (element.isComponent) {
@@ -97,8 +94,11 @@ export function createAttribute(element: Element, name: string, ns: string | voi
     // 把 attr 优化成 prop
     const lowerName = string.lower(name)
 
+    if (name === 'style') {
+      return creator.createStyle()
+    }
     // <slot> 、<template> 或 svg 中的属性不用识别为 property
-    if (helper.specialTags[element.tag] || element.isSvg) {
+    else if (helper.specialTags[element.tag] || element.isSvg) {
       return creator.createAttribute(name, ns)
     }
     // 尝试识别成 property

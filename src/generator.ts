@@ -22,7 +22,6 @@ import isDef from 'yox-common/src/function/isDef'
 import * as is from 'yox-common/src/util/is'
 import * as array from 'yox-common/src/util/array'
 import * as object from 'yox-common/src/util/object'
-import * as string from 'yox-common/src/util/string'
 import * as constant from 'yox-common/src/util/constant'
 import * as generator from 'yox-common/src/util/generator'
 import * as keypathUtil from 'yox-common/src/util/keypath'
@@ -51,6 +50,10 @@ import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Expression from './node/Expression'
 import Text from './node/Text'
+
+import {
+  parseStyleString,
+} from './helper'
 
 // 是否正在收集虚拟节点
 const vnodeStack: boolean[] = [ constant.TRUE ],
@@ -1106,27 +1109,6 @@ function parseChildren(children: Node[]) {
 
 }
 
-function parseStyleValue(value: string) {
-  const styles = generator.toMap()
-  array.each(
-    value.split(';'),
-    function (item: string) {
-      const pairs = item.split(':')
-      if (pairs.length >= 2) {
-        const key = string.trim(pairs.shift())
-        const value = string.trim(pairs.join(constant.EMPTY_STRING))
-        if (key && value) {
-          styles.set(
-            string.camelize(key),
-            generator.toPrimitive(value)
-          )
-        }
-      }
-    }
-  )
-  return styles
-}
-
 nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   let { tag, dynamicTag, isComponent, ref, key, html, text, attrs, children } = node,
@@ -1586,10 +1568,20 @@ nodeGenerator[nodeType.STYLE] = function (node: Style) {
 function getStyleValue(node: Style) {
 
   if (isDef(node.value)) {
-    return parseStyleValue(node.value as string)
+    const styles = generator.toMap()
+    parseStyleString(
+      node.value as string,
+      function (key, value) {
+        styles.set(
+          key,
+          generator.toPrimitive(value)
+        )
+      }
+    )
+    return styles
   }
 
-  // 只有一个表达式时，只能是对象字面量
+  // 只有一个表达式时，只能是对象字面量或数组字面量
   if (node.expr) {
     return generateExpression(node.expr)
   }

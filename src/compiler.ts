@@ -27,7 +27,6 @@ import {
 import {
   isSelfClosing,
   isNativeElement,
-  createStyle,
   createAttribute,
   getAttributeDefaultValue,
   createElement,
@@ -1313,22 +1312,16 @@ export function compile(content: string): Branch[] {
           else {
             // 处理类似 xml:name="value" 的命名空间
             const parts = name.split(':')
-            if (parts.length === 2) {
-              node = createAttribute(
-                currentElement,
-                parts[1],
-                parts[0]
-              )
-            }
-            else if (parts[0] === 'style') {
-              node = createStyle()
-            }
-            else {
-              node = createAttribute(
-                currentElement,
-                name
-              )
-            }
+            node = parts.length === 2
+              ? createAttribute(
+                  currentElement,
+                  parts[1],
+                  parts[0]
+                )
+              : createAttribute(
+                  currentElement,
+                  name
+                )
           }
 
           addChild(node)

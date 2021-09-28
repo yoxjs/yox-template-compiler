@@ -31,7 +31,6 @@ import CustomEvent from 'yox-common/src/util/CustomEvent'
 import * as is from 'yox-common/src/util/is'
 import * as array from 'yox-common/src/util/array'
 import * as object from 'yox-common/src/util/object'
-import * as string from 'yox-common/src/util/string'
 import * as logger from 'yox-common/src/util/logger'
 import * as constant from 'yox-common/src/util/constant'
 import * as keypathUtil from 'yox-common/src/util/keypath'
@@ -39,6 +38,10 @@ import * as keypathUtil from 'yox-common/src/util/keypath'
 import globalHolder from 'yox-common/src/util/holder'
 
 import Computed from 'yox-observer/src/Computed'
+
+import {
+  parseStyleString,
+} from './helper'
 
 type Context = {
   scope: any,
@@ -151,17 +154,10 @@ export function render(
 
   renderStyle = function (value: string) {
     const styles: Data = { }
-    array.each(
-      value.split(';'),
-      function (item: string) {
-        const pairs = item.split(':')
-        if (pairs.length >= 2) {
-          const key = string.trim(pairs.shift())
-          const value = string.trim(pairs.join(constant.EMPTY_STRING))
-          if (key && value) {
-            styles[key] = value
-          }
-        }
+    parseStyleString(
+      value,
+      function (key, value) {
+        styles[key] = value
       }
     )
     return styles
