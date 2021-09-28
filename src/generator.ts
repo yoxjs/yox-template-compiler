@@ -1586,6 +1586,9 @@ function getStyleValue(node: Style) {
   }
 
   if (node.expr) {
+    if (node.expr.type === exprNodeType.OBJECT) {
+      return generateExpression(node.expr)
+    }
     return generator.toCall(
       RENDER_STYLE_EXPR,
       [
