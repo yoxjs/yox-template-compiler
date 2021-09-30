@@ -1,3 +1,14 @@
+import {
+  ATTR_KEY,
+  ATTR_REF,
+  TAG_SLOT,
+  TAG_PORTAL,
+  TAG_FRAGMENT,
+  TAG_TEMPLATE,
+  VNODE_TYPE_FRAGMENT,
+  VNODE_TYPE_PORTAL,
+} from 'yox-config/src/config'
+
 import * as constant from 'yox-common/src/util/constant'
 import * as string from 'yox-common/src/util/string'
 
@@ -9,17 +20,22 @@ export const specialTags = {}
 export const specialAttrs = {}
 // 名称 -> 类型的映射
 export const name2Type = {}
+// 标签名 -> vnode 类型的映射
+export const specialTag2VNodeType = {}
 
-specialTags[constant.RAW_SLOT] =
-specialTags[constant.RAW_TEMPLATE] =
+specialTags[TAG_SLOT] =
+specialTags[TAG_TEMPLATE] =
 
-specialAttrs[constant.RAW_KEY] =
-specialAttrs[constant.RAW_REF] =
-specialAttrs[constant.RAW_SLOT] = constant.TRUE
+specialAttrs[ATTR_KEY] =
+specialAttrs[ATTR_REF] =
+specialAttrs[TAG_SLOT] = constant.TRUE
 
 name2Type['if'] = nodeType.IF
 name2Type['each'] = nodeType.EACH
 name2Type['partial'] = nodeType.PARTIAL
+
+specialTag2VNodeType[TAG_FRAGMENT] = VNODE_TYPE_FRAGMENT
+specialTag2VNodeType[TAG_PORTAL] = VNODE_TYPE_PORTAL
 
 export function parseStyleString(value: string, callback: (key: string, value: string) => void) {
   const parts = value.split(';')

@@ -7,6 +7,10 @@ import {
   SYNTAX_IMPORT,
   SYNTAX_PARTIAL,
   SYNTAX_SPREAD,
+  ATTR_SLOT,
+  ATTR_NAME,
+  TAG_SLOT,
+  TAG_TEMPLATE,
   HINT_BOOLEAN,
   HINT_NUMBER,
   DIRECTIVE_ON,
@@ -162,7 +166,7 @@ function isDangerousInterpolation(node: Node | void) {
 
 function isSpecialAttr(element: Element, attr: Attribute) {
   return helper.specialAttrs[attr.name]
-    || element.tag === constant.RAW_SLOT && attr.name === constant.RAW_NAME
+    || element.tag === TAG_SLOT && attr.name === ATTR_NAME
 }
 
 function removeComment(children: Node[]) {
@@ -238,7 +242,7 @@ function removeComment(children: Node[]) {
   )
 }
 
-export function compile(content: string): Branch {
+export function compile(content: string): Branch[] {
 
   // 左安全定界符
   let leftSafeDelimiter = string.repeat(constant.PUBLIC_CONFIG.leftDelimiter, 2),
@@ -745,9 +749,9 @@ export function compile(content: string): Branch {
 
     const { tag, slot } = element,
 
-    isTemplate = tag === constant.RAW_TEMPLATE,
+    isTemplate = tag === TAG_TEMPLATE,
 
-    isSlot = tag === constant.RAW_SLOT
+    isSlot = tag === TAG_SLOT
 
     if (process.env.NODE_ENV === 'development') {
       if (isTemplate) {
@@ -772,7 +776,7 @@ export function compile(content: string): Branch {
     }
     // <slot /> 如果没写 name，自动加上默认名称
     else if (isSlot && !element.name) {
-      const attr = createAttribute(element, constant.RAW_NAME) as Attribute
+      const attr = createAttribute(element, ATTR_NAME) as Attribute
       attr.value = SLOT_NAME_DEFAULT
       element.name = attr
     }
@@ -788,7 +792,7 @@ export function compile(content: string): Branch {
     const { name, value } = attr,
 
     // 这个属性值要求是字符串
-    isStringValueRequired = name === constant.RAW_SLOT
+    isStringValueRequired = name === ATTR_SLOT
 
     if (process.env.NODE_ENV === 'development') {
       // 因为要拎出来给 element，所以不能用 if
@@ -1156,7 +1160,7 @@ export function compile(content: string): Branch {
              * </Component>
              */
             if (process.env.NODE_ENV === 'development') {
-              if (tag === constant.RAW_TEMPLATE) {
+              if (tag === TAG_TEMPLATE) {
                 const lastNode = array.last(nodeStack)
                 if (!lastNode || !(lastNode as Element).isComponent) {
                   fatal('<template> can only be used within an component children.')
@@ -1862,8 +1866,6 @@ export function compile(content: string): Branch {
     removeComment(nodeList)
   }
 
-  return nodeList.length > 1
-    ? creator.createFragment(nodeList)
-    : nodeList[0]
+  return nodeList
 
 }

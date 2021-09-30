@@ -1,4 +1,7 @@
 import {
+  TAG_SLOT,
+  TAG_FRAGMENT,
+  TAG_TEMPLATE,
   SLOT_DATA_PREFIX,
   SLOT_NAME_DEFAULT,
   DIRECTIVE_LAZY,
@@ -38,7 +41,6 @@ import ExpressionCall from 'yox-expression-compiler/src/node/Call'
 
 import Node from './node/Node'
 import Element from './node/Element'
-import Fragment from './node/Fragment'
 import Attribute from './node/Attribute'
 import Directive from './node/Directive'
 import Property from './node/Property'
@@ -54,6 +56,7 @@ import Expression from './node/Expression'
 import Text from './node/Text'
 
 import {
+  specialTag2VNodeType,
   parseStyleString,
 } from './helper'
 
@@ -108,8 +111,6 @@ currentTextVNode: TextVNode | void = constant.UNDEFINED,
 RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
 
 RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
-
-RENDER_FRAGMENT_VNODE = constant.EMPTY_STRING,
 
 APPEND_ATTRIBUTE = constant.EMPTY_STRING,
 
@@ -205,7 +206,6 @@ function init() {
   if (constant.PUBLIC_CONFIG.uglifyCompiled) {
     RENDER_ELEMENT_VNODE = '_a'
     RENDER_COMPONENT_VNODE = '_b'
-    RENDER_FRAGMENT_VNODE = '_BBB'
     APPEND_ATTRIBUTE = '_c'
     RENDER_STYLE_STRING = '_d'
     RENDER_STYLE_EXPR = '_e'
@@ -252,7 +252,6 @@ function init() {
   else {
     RENDER_ELEMENT_VNODE = 'renderElementVNode'
     RENDER_COMPONENT_VNODE = 'renderComponentVNode'
-    RENDER_FRAGMENT_VNODE = 'renderFragmentVNode'
     APPEND_ATTRIBUTE = 'appendAttribute'
     RENDER_STYLE_STRING = 'renderStyleStyle'
     RENDER_STYLE_EXPR = 'renderStyleExpr'
@@ -886,7 +885,7 @@ function generateComponentSlots(children: Node[]) {
         if (element.slot) {
           addSlot(
             element.slot,
-            element.tag === constant.RAW_TEMPLATE
+            element.tag === TAG_TEMPLATE
               ? element.children
               : [element]
           )
@@ -1128,7 +1127,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     type: generator.toPrimitive(
       isComponent
         ? VNODE_TYPE_COMPONENT
-        : VNODE_TYPE_ELEMENT
+        : (specialTag2VNodeType[tag] || VNODE_TYPE_ELEMENT)
     ),
     tag: dynamicTag
       ? generateExpression(dynamicTag)
@@ -1139,7 +1138,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   outputChildren: generator.Base | void = constant.UNDEFINED,
   outputSlots: generator.Base | void = constant.UNDEFINED
 
-  if (tag === constant.RAW_SLOT) {
+  if (tag === TAG_SLOT) {
     // slot 不可能有 html、text 属性
     // 因此 slot 的子节点只存在于 children 中
     const args: generator.Base[] = [
@@ -1523,37 +1522,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     else {
       result = data
     }
-  }
-
-  return generateVNode(result)
-
-}
-
-nodeGenerator[nodeType.FRAGMENT] = function (node: Fragment) {
-
-  const { dynamicChildren, staticChildren } = parseChildren(node.children as Node[]),
-
-  data = generator.toMap({
-    context: ARG_INSTANCE,
-    type: generator.toPrimitive(VNODE_TYPE_FRAGMENT),
-  })
-
-  let result: generator.Base = data
-
-  if (dynamicChildren) {
-    result = generator.toCall(
-      RENDER_FRAGMENT_VNODE,
-      [
-        data,
-        dynamicChildren,
-      ]
-    )
-  }
-  else if (staticChildren) {
-    data.set(
-      FIELD_CHILDREN,
-      staticChildren
-    )
   }
 
   return generateVNode(result)
@@ -2267,7 +2235,6 @@ export function generate(node: Node): string {
     [
       RENDER_ELEMENT_VNODE,
       RENDER_COMPONENT_VNODE,
-      RENDER_FRAGMENT_VNODE,
       APPEND_ATTRIBUTE,
       RENDER_STYLE_STRING,
       RENDER_STYLE_EXPR,

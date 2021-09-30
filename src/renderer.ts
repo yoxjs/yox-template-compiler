@@ -134,21 +134,6 @@ export function render(
 
   },
 
-  renderFragmentVNode = function (
-    vnode: Data,
-    createChildren?: (children: VNode[]) => void,
-  ) {
-
-    if (createChildren) {
-      const children: VNode[] = [ ]
-      createChildren(children)
-      vnode.children = children
-    }
-
-    return vnode
-
-  },
-
   appendAttribute = function (vnode: Data, key: string, value: any, name?: string) {
 
     if (name) {
@@ -734,7 +719,6 @@ export function render(
     render(
       renderElementVNode,
       renderComponentVNode,
-      renderFragmentVNode,
       appendAttribute,
       renderStyleString,
       renderStyleExpr,
