@@ -134,6 +134,21 @@ export function render(
 
   },
 
+  renderFragmentVNode = function (
+    vnode: Data,
+    createChildren?: (children: VNode[]) => void,
+  ) {
+
+    if (createChildren) {
+      const children: VNode[] = [ ]
+      createChildren(children)
+      vnode.children = children
+    }
+
+    return vnode
+
+  },
+
   appendAttribute = function (vnode: Data, key: string, value: any, name?: string) {
 
     if (name) {
@@ -166,8 +181,8 @@ export function render(
   renderStyleExpr = function (value: any) {
     if (is.array(value)) {
       const styles: Data = { }
-      for (let i = 0, len = value.length, item: Data | void; i < len; i++) {
-        item = renderStyleExpr(value[i])
+      for (let i = 0, len = value.length; i < len; i++) {
+        const item = renderStyleExpr(value[i])
         if (item) {
           for (let key in item) {
             styles[key] = item[key]
@@ -719,6 +734,7 @@ export function render(
     render(
       renderElementVNode,
       renderComponentVNode,
+      renderFragmentVNode,
       appendAttribute,
       renderStyleString,
       renderStyleExpr,

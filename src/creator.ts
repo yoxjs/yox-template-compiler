@@ -11,6 +11,7 @@ import * as nodeType from './nodeType'
 
 import Node from './node/Node'
 import Element from './node/Element'
+import Fragment from './node/Fragment'
 import Attribute from './node/Attribute'
 import Directive from './node/Directive'
 import Property from './node/Property'
@@ -85,6 +86,13 @@ export function createElement(tag: string, dynamicTag: ExpressionNode | void, is
     // 只有 <option> 没有 value 属性时才为 true
     isOption: constant.FALSE,
     isStatic: !isComponent && tag !== constant.RAW_SLOT,
+  }
+}
+
+export function createFragment(children: Node[]): Fragment {
+  return {
+    type: nodeType.FRAGMENT,
+    children,
   }
 }
 

@@ -15,6 +15,7 @@ import {
   VNODE_TYPE_COMMENT,
   VNODE_TYPE_ELEMENT,
   VNODE_TYPE_COMPONENT,
+  VNODE_TYPE_FRAGMENT,
 } from 'yox-config/src/config'
 
 import isDef from 'yox-common/src/function/isDef'
@@ -37,6 +38,7 @@ import ExpressionCall from 'yox-expression-compiler/src/node/Call'
 
 import Node from './node/Node'
 import Element from './node/Element'
+import Fragment from './node/Fragment'
 import Attribute from './node/Attribute'
 import Directive from './node/Directive'
 import Property from './node/Property'
@@ -106,6 +108,8 @@ currentTextVNode: TextVNode | void = constant.UNDEFINED,
 RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
 
 RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
+
+RENDER_FRAGMENT_VNODE = constant.EMPTY_STRING,
 
 APPEND_ATTRIBUTE = constant.EMPTY_STRING,
 
@@ -201,6 +205,7 @@ function init() {
   if (constant.PUBLIC_CONFIG.uglifyCompiled) {
     RENDER_ELEMENT_VNODE = '_a'
     RENDER_COMPONENT_VNODE = '_b'
+    RENDER_FRAGMENT_VNODE = '_BBB'
     APPEND_ATTRIBUTE = '_c'
     RENDER_STYLE_STRING = '_d'
     RENDER_STYLE_EXPR = '_e'
@@ -247,6 +252,7 @@ function init() {
   else {
     RENDER_ELEMENT_VNODE = 'renderElementVNode'
     RENDER_COMPONENT_VNODE = 'renderComponentVNode'
+    RENDER_FRAGMENT_VNODE = 'renderFragmentVNode'
     APPEND_ATTRIBUTE = 'appendAttribute'
     RENDER_STYLE_STRING = 'renderStyleStyle'
     RENDER_STYLE_EXPR = 'renderStyleExpr'
@@ -1523,6 +1529,37 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
 }
 
+nodeGenerator[nodeType.FRAGMENT] = function (node: Fragment) {
+
+  const { dynamicChildren, staticChildren } = parseChildren(node.children as Node[]),
+
+  data = generator.toMap({
+    context: ARG_INSTANCE,
+    type: generator.toPrimitive(VNODE_TYPE_FRAGMENT),
+  })
+
+  let result: generator.Base = data
+
+  if (dynamicChildren) {
+    result = generator.toCall(
+      RENDER_FRAGMENT_VNODE,
+      [
+        data,
+        dynamicChildren,
+      ]
+    )
+  }
+  else if (staticChildren) {
+    data.set(
+      FIELD_CHILDREN,
+      staticChildren
+    )
+  }
+
+  return generateVNode(result)
+
+}
+
 nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
 
   return generator.toCall(
@@ -2230,6 +2267,7 @@ export function generate(node: Node): string {
     [
       RENDER_ELEMENT_VNODE,
       RENDER_COMPONENT_VNODE,
+      RENDER_FRAGMENT_VNODE,
       APPEND_ATTRIBUTE,
       RENDER_STYLE_STRING,
       RENDER_STYLE_EXPR,

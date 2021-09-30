@@ -238,7 +238,7 @@ function removeComment(children: Node[]) {
   )
 }
 
-export function compile(content: string): Branch[] {
+export function compile(content: string): Branch {
 
   // 左安全定界符
   let leftSafeDelimiter = string.repeat(constant.PUBLIC_CONFIG.leftDelimiter, 2),
@@ -1862,6 +1862,8 @@ export function compile(content: string): Branch[] {
     removeComment(nodeList)
   }
 
-  return nodeList
+  return nodeList.length > 1
+    ? creator.createFragment(nodeList)
+    : nodeList[0]
 
 }
