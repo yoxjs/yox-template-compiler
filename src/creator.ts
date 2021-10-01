@@ -4,7 +4,7 @@ import {
 
 import {
   TAG_SLOT,
-  TAG_FRAGMENT,
+  TAG_PORTAL,
 } from 'yox-config/src/config'
 
 import * as constant from 'yox-common/src/util/constant'
@@ -89,7 +89,7 @@ export function createElement(tag: string, dynamicTag: ExpressionNode | void, is
     isComponent,
     // 只有 <option> 没有 value 属性时才为 true
     isOption: constant.FALSE,
-    isStatic: !isComponent && tag !== TAG_SLOT,
+    isStatic: !isComponent && tag !== TAG_SLOT && tag !== TAG_PORTAL,
   }
 }
 
