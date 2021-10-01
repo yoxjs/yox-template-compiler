@@ -7,9 +7,11 @@ import {
   SYNTAX_IMPORT,
   SYNTAX_PARTIAL,
   SYNTAX_SPREAD,
+  ATTR_TO,
   ATTR_SLOT,
   ATTR_NAME,
   TAG_SLOT,
+  TAG_PORTAL,
   TAG_TEMPLATE,
   HINT_BOOLEAN,
   HINT_NUMBER,
@@ -167,6 +169,7 @@ function isDangerousInterpolation(node: Node | void) {
 function isSpecialAttr(element: Element, attr: Attribute) {
   return helper.specialAttrs[attr.name]
     || element.tag === TAG_SLOT && attr.name === ATTR_NAME
+    || element.tag === TAG_PORTAL && attr.name === ATTR_TO
 }
 
 function removeComment(children: Node[]) {
@@ -751,6 +754,8 @@ export function compile(content: string): Branch[] {
 
     isTemplate = tag === TAG_TEMPLATE,
 
+    isPortal = tag === TAG_PORTAL,
+
     isSlot = tag === TAG_SLOT
 
     if (process.env.NODE_ENV === 'development') {
@@ -770,8 +775,8 @@ export function compile(content: string): Branch[] {
       }
     }
 
-    // 没有子节点，则意味着这个插槽没任何意义
-    if (isTemplate && !element.children) {
+    // 没有子节点，则意味着这个插槽或传送门没任何意义
+    if ((isTemplate || isPortal) && !element.children) {
       replaceChild(element)
     }
     // <slot /> 如果没写 name，自动加上默认名称

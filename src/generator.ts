@@ -19,6 +19,7 @@ import {
   VNODE_TYPE_ELEMENT,
   VNODE_TYPE_COMPONENT,
   VNODE_TYPE_FRAGMENT,
+  VNODE_TYPE_PORTAL,
 } from 'yox-config/src/config'
 
 import isDef from 'yox-common/src/function/isDef'
@@ -1120,15 +1121,15 @@ function parseChildren(children: Node[]) {
 
 nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
-  let { tag, dynamicTag, isComponent, ref, key, html, text, attrs, children } = node,
+  let { tag, dynamicTag, isComponent, to, ref, key, html, text, attrs, children } = node,
 
-  data = generator.toMap({
+  vnodeType = isComponent
+    ? VNODE_TYPE_COMPONENT
+    : (specialTag2VNodeType[tag] || VNODE_TYPE_ELEMENT),
+
+  vnode = generator.toMap({
     context: ARG_INSTANCE,
-    type: generator.toPrimitive(
-      isComponent
-        ? VNODE_TYPE_COMPONENT
-        : (specialTag2VNodeType[tag] || VNODE_TYPE_ELEMENT)
-    ),
+    type: generator.toPrimitive(vnodeType),
     tag: dynamicTag
       ? generateExpression(dynamicTag)
       : generator.toPrimitive(tag)
@@ -1194,7 +1195,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         outputChildren = dynamicChildren
       }
       else if (staticChildren) {
-        data.set(
+        vnode.set(
           FIELD_CHILDREN,
           staticChildren
         )
@@ -1209,20 +1210,26 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   attributeStack[attributeStack.length - 1] = constant.TRUE
 
   // 在 vnodeStack 为 false 时取值
+  if (to) {
+    vnode.set(
+      'to',
+      generateAttributeValue(to)
+    )
+  }
   if (ref) {
-    data.set(
+    vnode.set(
       'ref',
       generateAttributeValue(ref)
     )
   }
   if (key) {
-    data.set(
+    vnode.set(
       'key',
       generateAttributeValue(key)
     )
   }
   if (html) {
-    data.set(
+    vnode.set(
       'html',
       is.string(html)
         ? generator.toPrimitive(html as string)
@@ -1235,7 +1242,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     )
   }
   if (text) {
-    data.set(
+    vnode.set(
       'text',
       is.string(text)
         ? generator.toPrimitive(text as string)
@@ -1285,7 +1292,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         }
       )
 
-      data.set(
+      vnode.set(
         FIELD_NATIVE_ATTRIBUTES,
         isDynamic
           ? nativeAttributes
@@ -1317,7 +1324,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         }
       )
 
-      data.set(
+      vnode.set(
         FIELD_NATIVE_PROPERTIES,
         isDynamic
           ? nativeProperties
@@ -1343,7 +1350,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         }
       )
 
-      data.set(
+      vnode.set(
         FIELD_PROPERTIES,
         properties
       )
@@ -1351,7 +1358,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
 
     if (style) {
-      data.set(
+      vnode.set(
         FIELD_NATIVE_STYLES,
         getStyleValue(style)
       )
@@ -1371,7 +1378,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         }
       )
 
-      data.set(
+      vnode.set(
         FIELD_LAZY,
         lazy
       )
@@ -1379,14 +1386,14 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
 
     if (transition) {
-      data.set(
+      vnode.set(
         FIELD_TRANSITION,
         getTransitionValue(transition)
       )
     }
 
     if (model) {
-      data.set(
+      vnode.set(
         FIELD_MODEL,
         getModelValue(model)
       )
@@ -1410,7 +1417,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         }
       )
 
-      data.set(
+      vnode.set(
         FIELD_EVENTS,
         events
       )
@@ -1434,7 +1441,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         }
       )
 
-      data.set(
+      vnode.set(
         FIELD_DIRECTIVES,
         directives
       )
@@ -1455,36 +1462,54 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   array.pop(attributeStack)
   array.pop(componentStack)
 
-  if (isComponent) {
-    data.set(
+  if (vnodeType === VNODE_TYPE_COMPONENT) {
+    vnode.set(
       'isComponent',
       generator.toPrimitive(constant.TRUE)
     )
   }
+  if (vnodeType === VNODE_TYPE_ELEMENT) {
+    vnode.set(
+      'isElement',
+      generator.toPrimitive(constant.TRUE)
+    )
+  }
+  if (vnodeType === VNODE_TYPE_FRAGMENT) {
+    vnode.set(
+      'isFragment',
+      generator.toPrimitive(constant.TRUE)
+    )
+  }
+  if (vnodeType === VNODE_TYPE_PORTAL) {
+    vnode.set(
+      'isPortal',
+      generator.toPrimitive(constant.TRUE)
+    )
+  }
   if (node.isOption) {
-    data.set(
+    vnode.set(
       'isOption',
       generator.toPrimitive(constant.TRUE)
     )
   }
   if (node.isStyle) {
-    data.set(
+    vnode.set(
       'isStyle',
       generator.toPrimitive(constant.TRUE)
     )
   }
   if (node.isSvg) {
-    data.set(
+    vnode.set(
       'isSvg',
       generator.toPrimitive(constant.TRUE)
     )
   }
   if (node.isStatic) {
-    data.set(
+    vnode.set(
       'isStatic',
       generator.toPrimitive(constant.TRUE)
     )
-    data.set(
+    vnode.set(
       'isPure',
       generator.toPrimitive(constant.TRUE)
     )
@@ -1497,14 +1522,14 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       result = generator.toCall(
         RENDER_COMPONENT_VNODE,
         [
-          data,
+          vnode,
           outputAttrs || generator.toPrimitive(constant.UNDEFINED),
           outputSlots || generator.toPrimitive(constant.UNDEFINED)
         ]
       )
     }
     else {
-      result = data
+      result = vnode
     }
     result = appendComponentVNode(result)
   }
@@ -1513,14 +1538,14 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       result = generator.toCall(
         RENDER_ELEMENT_VNODE,
         [
-          data,
+          vnode,
           outputAttrs || generator.toPrimitive(constant.UNDEFINED),
           outputChildren || generator.toPrimitive(constant.UNDEFINED),
         ]
       )
     }
     else {
-      result = data
+      result = vnode
     }
   }
 

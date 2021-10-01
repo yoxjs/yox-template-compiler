@@ -34,6 +34,9 @@ export default interface Element extends Branch {
   // <slot name="xx">
   name?: Attribute
 
+  // <portal to="#id">
+  to?: Attribute
+
   // <div ref="xx">
   ref?: Attribute
 
