@@ -1,6 +1,5 @@
 import {
   TAG_SLOT,
-  TAG_FRAGMENT,
   TAG_TEMPLATE,
   SLOT_DATA_PREFIX,
   SLOT_NAME_DEFAULT,
@@ -159,6 +158,18 @@ SET_HOLDER = constant.EMPTY_STRING,
 
 TO_STRING = constant.EMPTY_STRING,
 
+OPERATOR_TEXT_VNODE = constant.EMPTY_STRING,
+
+OPERATOR_COMMENT_VNODE = constant.EMPTY_STRING,
+
+OPERATOR_ELEMENT_VNODE = constant.EMPTY_STRING,
+
+OPERATOR_COMPONENT_VNODE = constant.EMPTY_STRING,
+
+OPERATOR_FRAGMENT_VNODE = constant.EMPTY_STRING,
+
+OPERATOR_PORTAL_VNODE = constant.EMPTY_STRING,
+
 ARG_INSTANCE = constant.EMPTY_STRING,
 
 ARG_FILTERS = constant.EMPTY_STRING,
@@ -230,25 +241,31 @@ function init() {
     EXECUTE_FUNCTION = '_w'
     SET_HOLDER = '_x'
     TO_STRING = '_y'
-    ARG_INSTANCE = '_z'
-    ARG_FILTERS = '__a'
-    ARG_GLOBAL_FILTERS = '__b'
-    ARG_LOCAL_PARTIALS = '__c'
-    ARG_PARTIALS = '__d'
-    ARG_GLOBAL_PARTIALS = '__e'
-    ARG_DIRECTIVES = '__f'
-    ARG_GLOBAL_DIRECTIVES = '__g'
-    ARG_TRANSITIONS = '__h'
-    ARG_GLOBAL_TRANSITIONS = '__i'
-    ARG_STACK = '__j'
-    ARG_VNODE = '__k'
-    ARG_CHILDREN = '__l'
-    ARG_COMPONENTS = '__m'
-    ARG_SCOPE = '__n'
-    ARG_KEYPATH = '__o'
-    ARG_LENGTH = '__p'
-    ARG_EVENT = '__q'
-    ARG_DATA = '__r'
+    OPERATOR_TEXT_VNODE = '_z'
+    OPERATOR_COMMENT_VNODE = '__a'
+    OPERATOR_ELEMENT_VNODE = '__b'
+    OPERATOR_COMPONENT_VNODE = '__c'
+    OPERATOR_FRAGMENT_VNODE = '__d'
+    OPERATOR_PORTAL_VNODE = '__e'
+    ARG_INSTANCE = '__f'
+    ARG_FILTERS = '__g'
+    ARG_GLOBAL_FILTERS = '__h'
+    ARG_LOCAL_PARTIALS = '__i'
+    ARG_PARTIALS = '__j'
+    ARG_GLOBAL_PARTIALS = '__k'
+    ARG_DIRECTIVES = '__l'
+    ARG_GLOBAL_DIRECTIVES = '__m'
+    ARG_TRANSITIONS = '__n'
+    ARG_GLOBAL_TRANSITIONS = '__o'
+    ARG_STACK = '__p'
+    ARG_VNODE = '__q'
+    ARG_CHILDREN = '__r'
+    ARG_COMPONENTS = '__s'
+    ARG_SCOPE = '__t'
+    ARG_KEYPATH = '__u'
+    ARG_LENGTH = '__v'
+    ARG_EVENT = '__w'
+    ARG_DATA = '__x'
   }
   else {
     RENDER_ELEMENT_VNODE = 'renderElementVNode'
@@ -276,6 +293,12 @@ function init() {
     EXECUTE_FUNCTION = 'executeFunction'
     SET_HOLDER = 'setHolder'
     TO_STRING = 'toString'
+    OPERATOR_TEXT_VNODE = 'textVNodeOperator'
+    OPERATOR_COMMENT_VNODE = 'commentVNodeOperator'
+    OPERATOR_ELEMENT_VNODE = 'elementVNodeOperator'
+    OPERATOR_COMPONENT_VNODE = 'componentVNodeOperator'
+    OPERATOR_FRAGMENT_VNODE = 'fragmentVNodeOperator'
+    OPERATOR_PORTAL_VNODE = 'portalVNodeOperator'
     ARG_INSTANCE = 'instance'
     ARG_FILTERS = 'filters'
     ARG_GLOBAL_FILTERS = 'globalFilters'
@@ -314,6 +337,7 @@ class CommentVNode implements generator.Base {
       type: generator.toPrimitive(VNODE_TYPE_COMMENT),
       isPure: generator.toPrimitive(constant.TRUE),
       isComment: generator.toPrimitive(constant.TRUE),
+      operator: OPERATOR_COMMENT_VNODE,
       text: this.text,
     }).toString(tabSize)
   }
@@ -338,6 +362,7 @@ class TextVNode implements generator.Base {
       type: generator.toPrimitive(VNODE_TYPE_TEXT),
       isPure: generator.toPrimitive(constant.TRUE),
       isText: generator.toPrimitive(constant.TRUE),
+      operator: OPERATOR_TEXT_VNODE,
       text: this.buffer,
     }).toString(tabSize)
   }
@@ -1462,16 +1487,24 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   array.pop(attributeStack)
   array.pop(componentStack)
 
+  if (vnodeType === VNODE_TYPE_ELEMENT) {
+    vnode.set(
+      'isElement',
+      generator.toPrimitive(constant.TRUE)
+    )
+    vnode.set(
+      'operator',
+      OPERATOR_ELEMENT_VNODE
+    )
+  }
   if (vnodeType === VNODE_TYPE_COMPONENT) {
     vnode.set(
       'isComponent',
       generator.toPrimitive(constant.TRUE)
     )
-  }
-  if (vnodeType === VNODE_TYPE_ELEMENT) {
     vnode.set(
-      'isElement',
-      generator.toPrimitive(constant.TRUE)
+      'operator',
+      OPERATOR_COMPONENT_VNODE
     )
   }
   if (vnodeType === VNODE_TYPE_FRAGMENT) {
@@ -1479,11 +1512,19 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       'isFragment',
       generator.toPrimitive(constant.TRUE)
     )
+    vnode.set(
+      'operator',
+      OPERATOR_FRAGMENT_VNODE
+    )
   }
   if (vnodeType === VNODE_TYPE_PORTAL) {
     vnode.set(
       'isPortal',
       generator.toPrimitive(constant.TRUE)
+    )
+    vnode.set(
+      'operator',
+      OPERATOR_PORTAL_VNODE
     )
   }
   if (node.isOption) {
@@ -2283,6 +2324,12 @@ export function generate(node: Node): string {
       EXECUTE_FUNCTION,
       SET_HOLDER,
       TO_STRING,
+      OPERATOR_TEXT_VNODE,
+      OPERATOR_COMMENT_VNODE,
+      OPERATOR_ELEMENT_VNODE,
+      OPERATOR_COMPONENT_VNODE,
+      OPERATOR_FRAGMENT_VNODE,
+      OPERATOR_PORTAL_VNODE,
       ARG_INSTANCE,
       ARG_FILTERS,
       ARG_GLOBAL_FILTERS,

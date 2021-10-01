@@ -40,6 +40,15 @@ import globalHolder from 'yox-common/src/util/holder'
 import Computed from 'yox-observer/src/Computed'
 
 import {
+  textVNodeOperator,
+  commentVNodeOperator,
+  elementVNodeOperator,
+  componentVNodeOperator,
+  fragmentVNodeOperator,
+  portalVNodeOperator,
+} from 'yox-snabbdom/src/snabbdom'
+
+import {
   parseStyleString,
 } from './helper'
 
@@ -742,6 +751,12 @@ export function render(
       execute,
       setHolder,
       toString,
+      textVNodeOperator,
+      commentVNodeOperator,
+      elementVNodeOperator,
+      componentVNodeOperator,
+      fragmentVNodeOperator,
+      portalVNodeOperator,
       instance,
       filters,
       globalFilters,

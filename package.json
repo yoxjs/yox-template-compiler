@@ -26,6 +26,7 @@
     "yox-config": "^0.3.0",
     "yox-expression-compiler": "^0.18.0",
     "yox-observer": "^0.19.0",
+    "yox-snabbdom": "^0.21.0",
     "yox-type": "^0.2.0"
   }
 }
