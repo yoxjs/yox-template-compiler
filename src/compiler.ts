@@ -7,12 +7,13 @@ import {
   SYNTAX_IMPORT,
   SYNTAX_PARTIAL,
   SYNTAX_SPREAD,
-  ATTR_TO,
-  ATTR_SLOT,
-  ATTR_NAME,
   TAG_SLOT,
   TAG_PORTAL,
   TAG_TEMPLATE,
+  TAG_FRAGMENT,
+  ATTR_TO,
+  ATTR_SLOT,
+  ATTR_NAME,
   HINT_BOOLEAN,
   HINT_NUMBER,
   DIRECTIVE_ON,
@@ -754,6 +755,8 @@ export function compile(content: string): Branch[] {
 
     isTemplate = tag === TAG_TEMPLATE,
 
+    isFragment = tag === TAG_FRAGMENT,
+
     isPortal = tag === TAG_PORTAL,
 
     isSlot = tag === TAG_SLOT
@@ -775,8 +778,8 @@ export function compile(content: string): Branch[] {
       }
     }
 
-    // 没有子节点，则意味着这个插槽或传送门没任何意义
-    if ((isTemplate || isPortal) && !element.children) {
+    // 没有子节点，则意味着这个元素没任何意义
+    if ((isTemplate || isFragment || isPortal) && !element.children) {
       replaceChild(element)
     }
     // <slot /> 如果没写 name，自动加上默认名称
