@@ -46,6 +46,7 @@ import {
   componentVNodeOperator,
   fragmentVNodeOperator,
   portalVNodeOperator,
+  slotVNodeOperator,
 } from 'yox-snabbdom/src/snabbdom'
 
 import {
@@ -351,7 +352,7 @@ export function render(
   },
 
   // <slot name="xx"/>
-  renderSlot = function (name: string, children: VNode[], render?: Function) {
+  renderSlot = function (name: string, children: VNode[]) {
     dependencies[name] = children
     const result = rootScope[name]
     if (result) {
@@ -364,9 +365,8 @@ export function render(
       for (let i = 0, length = vnodes.length; i < length; i++) {
         children[children.length] = vnodes[i]
       }
-      return
+      return constant.TRUE
     }
-    render && render()
   },
 
   // {{> name}}
@@ -757,6 +757,7 @@ export function render(
       componentVNodeOperator,
       fragmentVNodeOperator,
       portalVNodeOperator,
+      slotVNodeOperator,
       instance,
       filters,
       globalFilters,

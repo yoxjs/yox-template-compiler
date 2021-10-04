@@ -7,6 +7,7 @@ import {
   TAG_TEMPLATE,
   VNODE_TYPE_FRAGMENT,
   VNODE_TYPE_PORTAL,
+  VNODE_TYPE_SLOT,
 } from 'yox-config/src/config'
 
 import * as constant from 'yox-common/src/util/constant'
@@ -36,6 +37,7 @@ name2Type['partial'] = nodeType.PARTIAL
 
 specialTag2VNodeType[TAG_FRAGMENT] = VNODE_TYPE_FRAGMENT
 specialTag2VNodeType[TAG_PORTAL] = VNODE_TYPE_PORTAL
+specialTag2VNodeType[TAG_SLOT] = VNODE_TYPE_SLOT
 
 export function parseStyleString(value: string, callback: (key: string, value: string) => void) {
   const parts = value.split(';')

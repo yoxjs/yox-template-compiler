@@ -19,6 +19,7 @@ import {
   VNODE_TYPE_COMPONENT,
   VNODE_TYPE_FRAGMENT,
   VNODE_TYPE_PORTAL,
+  VNODE_TYPE_SLOT,
 } from 'yox-config/src/config'
 
 import isDef from 'yox-common/src/function/isDef'
@@ -170,6 +171,8 @@ OPERATOR_FRAGMENT_VNODE = constant.EMPTY_STRING,
 
 OPERATOR_PORTAL_VNODE = constant.EMPTY_STRING,
 
+OPERATOR_SLOT_VNODE = constant.EMPTY_STRING,
+
 ARG_INSTANCE = constant.EMPTY_STRING,
 
 ARG_FILTERS = constant.EMPTY_STRING,
@@ -247,25 +250,26 @@ function init() {
     OPERATOR_COMPONENT_VNODE = '_C'
     OPERATOR_FRAGMENT_VNODE = '_D'
     OPERATOR_PORTAL_VNODE = '_E'
-    ARG_INSTANCE = '_F'
-    ARG_FILTERS = '_G'
-    ARG_GLOBAL_FILTERS = '_H'
-    ARG_LOCAL_PARTIALS = '_I'
-    ARG_PARTIALS = '_J'
-    ARG_GLOBAL_PARTIALS = '_K'
-    ARG_DIRECTIVES = '_L'
-    ARG_GLOBAL_DIRECTIVES = '_M'
-    ARG_TRANSITIONS = '_N'
-    ARG_GLOBAL_TRANSITIONS = '_O'
-    ARG_STACK = '_P'
-    ARG_VNODE = '_Q'
-    ARG_CHILDREN = '_R'
-    ARG_COMPONENTS = '_S'
-    ARG_SCOPE = '_T'
-    ARG_KEYPATH = '_U'
-    ARG_LENGTH = '_V'
-    ARG_EVENT = '_W'
-    ARG_DATA = '_X'
+    OPERATOR_SLOT_VNODE = '_F'
+    ARG_INSTANCE = '_G'
+    ARG_FILTERS = '_H'
+    ARG_GLOBAL_FILTERS = '_I'
+    ARG_LOCAL_PARTIALS = '_J'
+    ARG_PARTIALS = '_K'
+    ARG_GLOBAL_PARTIALS = '_L'
+    ARG_DIRECTIVES = '_M'
+    ARG_GLOBAL_DIRECTIVES = '_N'
+    ARG_TRANSITIONS = '_O'
+    ARG_GLOBAL_TRANSITIONS = '_P'
+    ARG_STACK = '_Q'
+    ARG_VNODE = '_R'
+    ARG_CHILDREN = '_S'
+    ARG_COMPONENTS = '_T'
+    ARG_SCOPE = '_U'
+    ARG_KEYPATH = '_V'
+    ARG_LENGTH = '_W'
+    ARG_EVENT = '_X'
+    ARG_DATA = '_Y'
   }
   else {
     RENDER_ELEMENT_VNODE = 'renderElementVNode'
@@ -299,6 +303,7 @@ function init() {
     OPERATOR_COMPONENT_VNODE = 'componentVNodeOperator'
     OPERATOR_FRAGMENT_VNODE = 'fragmentVNodeOperator'
     OPERATOR_PORTAL_VNODE = 'portalVNodeOperator'
+    OPERATOR_SLOT_VNODE = 'slotVNodeOperator'
     ARG_INSTANCE = 'instance'
     ARG_FILTERS = 'filters'
     ARG_GLOBAL_FILTERS = 'globalFilters'
@@ -1094,23 +1099,25 @@ function sortAttrs(attrs: Node[], isComponent: boolean | void) {
 
 }
 
-function parseChildren(children: Node[]) {
+function parseChildren(children: Node[], forceDynamic?: boolean) {
 
   let dynamicChildren: generator.Base | void = constant.UNDEFINED,
 
   staticChildren: generator.Base | void = constant.UNDEFINED,
 
-  isDynamic = constant.FALSE
+  isDynamic = forceDynamic || constant.FALSE
 
-  array.each(
-    children,
-    function (node) {
-      if (!node.isStatic) {
-        isDynamic = constant.TRUE
-        return constant.FALSE
+  if (!isDynamic) {
+    array.each(
+      children,
+      function (node) {
+        if (!node.isStatic) {
+          isDynamic = constant.TRUE
+          return constant.FALSE
+        }
       }
-    }
-  )
+    )
+  }
 
   array.push(
     dynamicChildrenStack,
@@ -1160,35 +1167,11 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       : generator.toPrimitive(tag)
   }),
 
+  isSlot = vnodeType === VNODE_TYPE_SLOT,
+
   outputAttrs: generator.Base | void = constant.UNDEFINED,
   outputChildren: generator.Base | void = constant.UNDEFINED,
   outputSlots: generator.Base | void = constant.UNDEFINED
-
-  if (tag === TAG_SLOT) {
-    // slot 不可能有 html、text 属性
-    // 因此 slot 的子节点只存在于 children 中
-    const args: generator.Base[] = [
-      generator.toBinary(
-        generator.toPrimitive(SLOT_DATA_PREFIX),
-        '+',
-        generateAttributeValue(node.name as Attribute)
-      ),
-      ARG_CHILDREN,
-    ]
-    if (children) {
-      array.push(
-        args,
-        generator.toAnonymousFunction(
-          constant.UNDEFINED,
-          generateNodesToTuple(children)
-        )
-      )
-    }
-    return generator.toCall(
-      RENDER_SLOT,
-      args
-    )
-  }
 
   // 先序列化 children，再序列化 attrs，原因需要举两个例子：
 
@@ -1214,16 +1197,23 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
     else {
 
-      const { dynamicChildren, staticChildren } = parseChildren(children)
-
-      if (dynamicChildren) {
-        outputChildren = dynamicChildren
-      }
-      else if (staticChildren) {
-        vnode.set(
-          FIELD_CHILDREN,
-          staticChildren
+      if (isSlot) {
+        outputChildren = generator.toAnonymousFunction(
+          constant.UNDEFINED,
+          generateNodesToTuple(children)
         )
+      }
+      else {
+        const { dynamicChildren, staticChildren } = parseChildren(children)
+        if (dynamicChildren) {
+          outputChildren = dynamicChildren
+        }
+        else if (staticChildren) {
+          vnode.set(
+            FIELD_CHILDREN,
+            staticChildren
+          )
+        }
       }
 
     }
@@ -1497,17 +1487,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       OPERATOR_ELEMENT_VNODE
     )
   }
-  if (vnodeType === VNODE_TYPE_COMPONENT) {
-    vnode.set(
-      'isComponent',
-      generator.toPrimitive(constant.TRUE)
-    )
-    vnode.set(
-      'operator',
-      OPERATOR_COMPONENT_VNODE
-    )
-  }
-  if (vnodeType === VNODE_TYPE_FRAGMENT) {
+  else if (vnodeType === VNODE_TYPE_FRAGMENT) {
     vnode.set(
       'isFragment',
       generator.toPrimitive(constant.TRUE)
@@ -1517,7 +1497,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       OPERATOR_FRAGMENT_VNODE
     )
   }
-  if (vnodeType === VNODE_TYPE_PORTAL) {
+  else if (vnodeType === VNODE_TYPE_PORTAL) {
     vnode.set(
       'isPortal',
       generator.toPrimitive(constant.TRUE)
@@ -1526,6 +1506,55 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       'operator',
       OPERATOR_PORTAL_VNODE
     )
+  }
+  else if (isComponent) {
+    vnode.set(
+      'isComponent',
+      generator.toPrimitive(constant.TRUE)
+    )
+    vnode.set(
+      'operator',
+      OPERATOR_COMPONENT_VNODE
+    )
+  }
+  else if (isSlot) {
+
+    vnode.set(
+      'isSlot',
+      generator.toPrimitive(constant.TRUE)
+    )
+    vnode.set(
+      'operator',
+      OPERATOR_SLOT_VNODE
+    )
+
+    const renderSlot = generator.toCall(
+      RENDER_SLOT,
+      [
+        generator.toBinary(
+          generator.toPrimitive(SLOT_DATA_PREFIX),
+          '+',
+          generateAttributeValue(node.name as Attribute)
+        ),
+        ARG_CHILDREN
+      ]
+    )
+
+    outputChildren = generator.toAnonymousFunction(
+      [
+        ARG_CHILDREN
+      ],
+      outputChildren
+      ? generator.toBinary(
+          renderSlot,
+          '||',
+          generator.toCall(
+            outputChildren
+          )
+        )
+      : renderSlot
+    )
+
   }
   if (node.isOption) {
     vnode.set(
@@ -2330,6 +2359,7 @@ export function generate(node: Node): string {
       OPERATOR_COMPONENT_VNODE,
       OPERATOR_FRAGMENT_VNODE,
       OPERATOR_PORTAL_VNODE,
+      OPERATOR_SLOT_VNODE,
       ARG_INSTANCE,
       ARG_FILTERS,
       ARG_GLOBAL_FILTERS,
