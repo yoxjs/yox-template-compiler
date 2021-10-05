@@ -757,9 +757,7 @@ export function compile(content: string): Branch[] {
 
     isFragment = tag === TAG_FRAGMENT,
 
-    isPortal = tag === TAG_PORTAL,
-
-    isSlot = tag === TAG_SLOT
+    isPortal = tag === TAG_PORTAL
 
     if (process.env.NODE_ENV === 'development') {
       if (isTemplate) {
@@ -782,14 +780,8 @@ export function compile(content: string): Branch[] {
     if ((isTemplate || isFragment || isPortal) && !element.children) {
       replaceChild(element)
     }
-    // <slot /> 如果没写 name，自动加上默认名称
-    else if (isSlot && !element.name) {
-      const attr = createAttribute(element, ATTR_NAME) as Attribute
-      attr.value = SLOT_NAME_DEFAULT
-      element.name = attr
-    }
     // 处理浏览器兼容问题
-    else {
+    else if (tag !== TAG_SLOT) {
       compatElement(element)
     }
 

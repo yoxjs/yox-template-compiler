@@ -1,5 +1,4 @@
 import {
-  TAG_SLOT,
   TAG_TEMPLATE,
   SLOT_DATA_PREFIX,
   SLOT_NAME_DEFAULT,
@@ -817,6 +816,27 @@ function generateNodesToTuple(nodes: Node[]) {
   )
 }
 
+function generateNodesToStatement(nodes: Node[], precedence?: boolean) {
+  if (precedence) {
+    return generator.toTuple(
+      '(',
+      ')',
+      ',',
+      constant.TRUE,
+      1,
+      mapNodes(nodes)
+    )
+  }
+  return generator.toTuple(
+    constant.EMPTY_STRING,
+    constant.EMPTY_STRING,
+    ',',
+    constant.TRUE,
+    0,
+    mapNodes(nodes)
+  )
+}
+
 function generateNodesToList(nodes: Node[]) {
   return generator.toList(
     mapNodes(nodes)
@@ -1196,7 +1216,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     else {
 
       if (isSlot) {
-        outputChildren = getBranchValue(children)
+        outputChildren = generateNodesToStatement(children, constant.TRUE)
       }
       else {
         const { dynamicChildren, staticChildren } = parseChildren(children)
@@ -1523,21 +1543,29 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       OPERATOR_SLOT_VNODE
     )
 
-    const nameAttr = node.name as Attribute,
+    let nameAttr = node.name,
 
-    renderSlot = generator.toCall(
+    argName: generator.Base = generator.toPrimitive(
+      SLOT_DATA_PREFIX + SLOT_NAME_DEFAULT
+    )
+
+    if (nameAttr) {
+      // 如果 name 是字面量，直接拼出结果
+      argName = isDef(nameAttr.value)
+        ? generator.toPrimitive(
+            SLOT_DATA_PREFIX + nameAttr.value
+          )
+        : generator.toBinary(
+            generator.toPrimitive(SLOT_DATA_PREFIX),
+            '+',
+            generateAttributeValue(nameAttr)
+          )
+    }
+
+    const renderSlot = generator.toCall(
       RENDER_SLOT,
       [
-        // 如果 name 是字面量，直接拼出结果
-        isDef(nameAttr.value)
-          ? generator.toPrimitive(
-              SLOT_DATA_PREFIX + nameAttr.value
-            )
-          : generator.toBinary(
-              generator.toPrimitive(SLOT_DATA_PREFIX),
-              '+',
-              generateAttributeValue(nameAttr)
-            ),
+        argName,
         ARG_CHILDREN
       ]
     )
