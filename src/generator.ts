@@ -1528,14 +1528,21 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       OPERATOR_SLOT_VNODE
     )
 
-    const renderSlot = generator.toCall(
+    const nameAttr = node.name as Attribute,
+
+    renderSlot = generator.toCall(
       RENDER_SLOT,
       [
-        generator.toBinary(
-          generator.toPrimitive(SLOT_DATA_PREFIX),
-          '+',
-          generateAttributeValue(node.name as Attribute)
-        ),
+        // 如果 name 是字面量，直接拼出结果
+        isDef(nameAttr.value)
+          ? generator.toPrimitive(
+              SLOT_DATA_PREFIX + nameAttr.value
+            )
+          : generator.toBinary(
+              generator.toPrimitive(SLOT_DATA_PREFIX),
+              '+',
+              generateAttributeValue(nameAttr)
+            ),
         ARG_CHILDREN
       ]
     )
