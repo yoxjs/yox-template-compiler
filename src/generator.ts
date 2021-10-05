@@ -977,83 +977,81 @@ function parseAttrs(attrs: Node[], isComponent: boolean | void) {
 
   otherList: Node[] = [ ]
 
-  array.each(
-    attrs,
-    function (attr) {
+  for (let i = 0, len = attrs.length; i < len; i++) {
+    const attr = attrs[i]
 
-      if (attr.type === nodeType.ATTRIBUTE) {
-        const attributeNode = attr as Attribute
-        if (isComponent) {
-          array.push(
-            propertyList,
-            attributeNode
-          )
-        }
-        else {
-          array.push(
-            nativeAttributeList,
-            attributeNode
-          )
-        }
-      }
-      else if (attr.type === nodeType.PROPERTY) {
+    if (attr.type === nodeType.ATTRIBUTE) {
+      const attributeNode = attr as Attribute
+      if (isComponent) {
         array.push(
-          nativePropertyList,
-          attr as Property
+          propertyList,
+          attributeNode
         )
-      }
-      else if (attr.type === nodeType.STYLE) {
-        style = attr as Style
-      }
-      else if (attr.type === nodeType.DIRECTIVE) {
-        const directiveNode = attr as Directive
-        switch (directiveNode.ns) {
-          case DIRECTIVE_LAZY:
-            array.push(
-              lazyList,
-              directiveNode
-            )
-            break
-
-          case DIRECTIVE_TRANSITION:
-            transition = directiveNode
-            break
-
-          case DIRECTIVE_MODEL:
-            model = directiveNode
-            break
-
-          case DIRECTIVE_EVENT:
-            array.push(
-              eventList,
-              directiveNode
-            )
-            break
-
-          default:
-            array.push(
-              customDirectiveList,
-              directiveNode
-            )
-        }
       }
       else {
         array.push(
-          otherList,
-          attr
+          nativeAttributeList,
+          attributeNode
         )
       }
     }
-  )
+    else if (attr.type === nodeType.PROPERTY) {
+      array.push(
+        nativePropertyList,
+        attr as Property
+      )
+    }
+    else if (attr.type === nodeType.STYLE) {
+      style = attr as Style
+    }
+    else if (attr.type === nodeType.DIRECTIVE) {
+      const directiveNode = attr as Directive
+      switch (directiveNode.ns) {
+        case DIRECTIVE_LAZY:
+          array.push(
+            lazyList,
+            directiveNode
+          )
+          break
+
+        case DIRECTIVE_TRANSITION:
+          transition = directiveNode
+          break
+
+        case DIRECTIVE_MODEL:
+          model = directiveNode
+          break
+
+        case DIRECTIVE_EVENT:
+          array.push(
+            eventList,
+            directiveNode
+          )
+          break
+
+        default:
+          array.push(
+            customDirectiveList,
+            directiveNode
+          )
+      }
+    }
+    else {
+      array.push(
+        otherList,
+        attr
+      )
+    }
+  }
 
   return {
     nativeAttributeList,
     nativePropertyList,
     propertyList,
-    style: style as Style | void,
+    style,
     lazyList,
-    transition: transition as Directive | void,
-    model: model as Directive | void,
+    transition,
+    model,
     eventList,
     customDirectiveList,
     otherList,
@@ -2159,7 +2157,9 @@ nodeGenerator[nodeType.IF] = function (node: If) {
   result = generator.toTernary(
     generateExpression(node.expr),
     getBranchValue(node.children) || defaultValue,
-    next ? nodeGenerator[next.type](next) : defaultValue
+    next
+      ? nodeGenerator[next.type](next)
+      : defaultValue
   )
 
   if (attributeValue) {
@@ -2180,7 +2180,9 @@ nodeGenerator[nodeType.ELSE_IF] = function (node: If | ElseIf) {
   return generator.toTernary(
     generateExpression(node.expr),
     getBranchValue(node.children) || defaultValue,
-    next ? nodeGenerator[next.type](next) : defaultValue
+    next
+      ? nodeGenerator[next.type](next)
+      : defaultValue
   )
 
 }
