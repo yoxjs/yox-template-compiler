@@ -1198,7 +1198,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     else {
 
       if (isSlot) {
-        outputChildren = generateNodesToTuple(children)
+        outputChildren = getBranchValue(children)
       }
       else {
         const { dynamicChildren, staticChildren } = parseChildren(children)
@@ -1549,14 +1549,12 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         ARG_CHILDREN
       ],
       outputChildren
-      ? generator.toBinary(
-          renderSlot,
-          '||',
-          generator.toPrecedence(
+        ? generator.toBinary(
+            renderSlot,
+            '||',
             outputChildren
           )
-        )
-      : renderSlot
+        : renderSlot
     )
 
   }
