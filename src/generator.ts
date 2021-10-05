@@ -1198,10 +1198,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     else {
 
       if (isSlot) {
-        outputChildren = generator.toAnonymousFunction(
-          constant.UNDEFINED,
-          generateNodesToTuple(children)
-        )
+        outputChildren = generateNodesToTuple(children)
       }
       else {
         const { dynamicChildren, staticChildren } = parseChildren(children)
@@ -1555,7 +1552,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       ? generator.toBinary(
           renderSlot,
           '||',
-          generator.toCall(
+          generator.toPrecedence(
             outputChildren
           )
         )
