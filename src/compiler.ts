@@ -27,7 +27,6 @@ import {
   MAGIC_VAR_LENGTH,
   MAGIC_VAR_EVENT,
   MAGIC_VAR_DATA,
-  SLOT_NAME_DEFAULT,
   MODIFER_NATIVE,
 } from 'yox-config/src/config'
 
@@ -449,9 +448,7 @@ export function compile(content: string): Branch[] {
     }
     else if (currentElement) {
       if (isAttribute) {
-        if (isSpecialAttr(currentElement, branchNode as Attribute)) {
-          bindSpecialAttr(currentElement, branchNode as Attribute)
-        }
+        checkAttribute(currentElement, branchNode as Attribute)
       }
     }
 
@@ -787,32 +784,45 @@ export function compile(content: string): Branch[] {
 
   },
 
-  bindSpecialAttr = function (element: Element, attr: Attribute) {
+  checkAttribute = function (element: Element, attr: Attribute) {
 
     const { name, value } = attr,
 
-    // 这个属性值要求是字符串
-    isStringValueRequired = name === ATTR_SLOT
+    isSlot = name === ATTR_SLOT
 
     if (process.env.NODE_ENV === 'development') {
-      // 因为要拎出来给 element，所以不能用 if
-      if (array.last(nodeStack) !== element) {
-        fatal(`The "${name}" can't be used in an if block.`)
-      }
-      // 对于所有特殊属性来说，空字符串是肯定不行的，没有任何意义
-      if (value === constant.EMPTY_STRING) {
-        fatal(`The value of "${name}" is empty.`)
-      }
-      else if (isStringValueRequired && string.falsy(value)) {
-        fatal(`The value of "${name}" can only be a string literal.`)
+      if (isSlot) {
+        // 只能是 <template> 和 其他原生标签
+        if (helper.specialTag2VNodeType[element.tag]) {
+          fatal(`The "slot" attribute can't be used in <${element.tag}>.`)
+        }
       }
     }
 
-    element[name] = isStringValueRequired ? value : attr
-    replaceChild(attr)
+    if (isSpecialAttr(element, attr)) {
 
-    if (attr.isStatic) {
-      attr.isStatic = constant.FALSE
+      const isStringValueRequired = isSlot
+
+      if (process.env.NODE_ENV === 'development') {
+        // 因为要拎出来给 element，所以不能用 if
+        if (array.last(nodeStack) !== element) {
+          fatal(`The "${name}" can't be used in an if block.`)
+        }
+        // 对于所有特殊属性来说，空字符串是肯定不行的，没有任何意义
+        if (value === constant.EMPTY_STRING) {
+          fatal(`The value of "${name}" is empty.`)
+        }
+        else if (isStringValueRequired && string.falsy(value)) {
+          fatal(`The value of "${name}" can only be a string literal.`)
+        }
+      }
+
+      element[name] = isStringValueRequired ? value : attr
+      replaceChild(attr)
+
+      if (attr.isStatic) {
+        attr.isStatic = constant.FALSE
+      }
     }
 
   },
