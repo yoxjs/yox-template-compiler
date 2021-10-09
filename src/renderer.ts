@@ -1,5 +1,6 @@
 import {
   DIRECTIVE_CUSTOM,
+  VNODE_TYPE_COMMENT,
 } from 'yox-config/src/config'
 
 import {
@@ -90,57 +91,14 @@ export function render(
   // 模板渲染过程收集的组件
   components: VNode[] = [ ],
 
-  renderElementVNode = function (
+  renderComposeVNode = function (
     vnode: Data,
-    createAttributes?: (vnode: Data) => void,
-    createChildren?: (children: VNode[]) => void,
+    children: Data[]
   ) {
 
-    if (createAttributes) {
-      createAttributes(vnode)
+    if (vnode.children.length) {
+      children[children.length] = vnode
     }
-
-    if (createChildren) {
-      const children: VNode[] = [ ]
-      createChildren(children)
-      vnode.children = children
-    }
-
-    return vnode
-
-  },
-
-  renderComponentVNode = function (
-    vnode: Data,
-    createAttributes?: (vnode: Data) => void,
-    createSlots?: Record<string, (children: VNode[], components: VNode[]) => void>
-  ) {
-
-    if (createAttributes) {
-      createAttributes(vnode)
-    }
-
-    if (createSlots) {
-      const result = { }
-      for (let name in createSlots) {
-        const children: VNode[] = [ ], components: VNode[] = [ ]
-        createSlots[name](children, components)
-
-        // 就算是 undefined 也必须有值，用于覆盖旧值
-        result[name] = children.length
-          ? {
-              vnodes: children,
-              components: components.length
-                ? components
-                : constant.UNDEFINED
-            }
-          : constant.UNDEFINED
-
-      }
-      vnode.slots = result
-    }
-
-    return vnode
 
   },
 
@@ -351,8 +309,34 @@ export function render(
 
   },
 
+  renderChildren = function (createChildren: (children: VNode[]) => void) {
+    const result: VNode[] = [ ]
+    createChildren(result)
+    return result
+  },
+
+  renderSlots = function (createSlots: Record<string, (children: VNode[], components: VNode[]) => void>) {
+    const result = { }
+    for (let name in createSlots) {
+      const children: VNode[] = [ ], components: VNode[] = [ ]
+      createSlots[name](children, components)
+
+      // 就算是 undefined 也必须有值，用于覆盖旧值
+      result[name] = children.length
+        ? {
+            vnodes: children,
+            components: components.length
+              ? components
+              : constant.UNDEFINED
+          }
+        : constant.UNDEFINED
+
+    }
+    return result
+  },
+
   // <slot name="xx"/>
-  renderSlot = function (name: string, children: VNode[]) {
+  renderSlotChildren = function (name: string, children: VNode[]) {
     dependencies[name] = children
     const result = rootScope[name]
     if (result) {
@@ -726,8 +710,7 @@ export function render(
 
   renderTemplate = function (render: Function, scope: any, keypath: string, children: VNode[], components: VNode[]) {
     render(
-      renderElementVNode,
-      renderComponentVNode,
+      renderComposeVNode,
       appendAttribute,
       renderStyleString,
       renderStyleExpr,
@@ -737,7 +720,9 @@ export function render(
       renderEventName,
       renderDirective,
       renderSpread,
-      renderSlot,
+      renderChildren,
+      renderSlots,
+      renderSlotChildren,
       renderPartial,
       renderEach,
       renderRange,

@@ -100,7 +100,9 @@ FIELD_LAZY = 'lazy',
 
 FIELD_TRANSITION = 'transition',
 
-FIELD_CHILDREN = 'children'
+FIELD_CHILDREN = 'children',
+
+FIELD_SLOTS = 'slots'
 
 
 // 下面这些值需要根据外部配置才能确定
@@ -108,9 +110,7 @@ let isUglify = constant.UNDEFINED,
 
 currentTextVNode: TextVNode | void = constant.UNDEFINED,
 
-RENDER_ELEMENT_VNODE = constant.EMPTY_STRING,
-
-RENDER_COMPONENT_VNODE = constant.EMPTY_STRING,
+RENDER_COMPOSE_VNODE = constant.EMPTY_STRING,
 
 APPEND_ATTRIBUTE = constant.EMPTY_STRING,
 
@@ -130,7 +130,11 @@ RENDER_DIRECTIVE = constant.EMPTY_STRING,
 
 RENDER_SPREAD = constant.EMPTY_STRING,
 
-RENDER_SLOT = constant.EMPTY_STRING,
+RENDER_CHILDREN = constant.EMPTY_STRING,
+
+RENDER_SLOTS = constant.EMPTY_STRING,
+
+RENDER_SLOT_CHILDREN = constant.EMPTY_STRING,
 
 RENDER_PARTIAL = constant.EMPTY_STRING,
 
@@ -218,61 +222,61 @@ function init() {
   }
 
   if (constant.PUBLIC_CONFIG.uglifyCompiled) {
-    RENDER_ELEMENT_VNODE = '_a'
-    RENDER_COMPONENT_VNODE = '_b'
-    APPEND_ATTRIBUTE = '_c'
-    RENDER_STYLE_STRING = '_d'
-    RENDER_STYLE_EXPR = '_e'
-    RENDER_TRANSITION = '_f'
-    RENDER_MODEL = '_g'
-    RENDER_EVENT_METHOD = '_h'
-    RENDER_EVENT_NAME = '_i'
-    RENDER_DIRECTIVE = '_j'
-    RENDER_SPREAD = '_k'
-    RENDER_SLOT = '_l'
-    RENDER_PARTIAL = '_m'
-    RENDER_EACH = '_n'
-    RENDER_RANGE = '_o'
-    LOOKUP_KEYPATH = '_p'
-    LOOKUP_PROP = '_q'
-    GET_THIS = '_r'
-    GET_THIS_BY_INDEX = '_s'
-    GET_PROP = '_t'
-    GET_PROP_BY_INDEX = '_u'
-    READ_KEYPATH = '_v'
-    EXECUTE_FUNCTION = '_w'
-    SET_HOLDER = '_x'
-    TO_STRING = '_y'
-    OPERATOR_TEXT_VNODE = '_z'
-    OPERATOR_COMMENT_VNODE = '_A'
-    OPERATOR_ELEMENT_VNODE = '_B'
-    OPERATOR_COMPONENT_VNODE = '_C'
-    OPERATOR_FRAGMENT_VNODE = '_D'
-    OPERATOR_PORTAL_VNODE = '_E'
-    OPERATOR_SLOT_VNODE = '_F'
-    ARG_INSTANCE = '_G'
-    ARG_FILTERS = '_H'
-    ARG_GLOBAL_FILTERS = '_I'
-    ARG_LOCAL_PARTIALS = '_J'
-    ARG_PARTIALS = '_K'
-    ARG_GLOBAL_PARTIALS = '_L'
-    ARG_DIRECTIVES = '_M'
-    ARG_GLOBAL_DIRECTIVES = '_N'
-    ARG_TRANSITIONS = '_O'
-    ARG_GLOBAL_TRANSITIONS = '_P'
-    ARG_STACK = '_Q'
-    ARG_VNODE = '_R'
-    ARG_CHILDREN = '_S'
-    ARG_COMPONENTS = '_T'
-    ARG_SCOPE = '_U'
-    ARG_KEYPATH = '_V'
-    ARG_LENGTH = '_W'
-    ARG_EVENT = '_X'
-    ARG_DATA = '_Y'
+    RENDER_COMPOSE_VNODE = '_a'
+    APPEND_ATTRIBUTE = '_b'
+    RENDER_STYLE_STRING = '_c'
+    RENDER_STYLE_EXPR = '_d'
+    RENDER_TRANSITION = '_e'
+    RENDER_MODEL = '_f'
+    RENDER_EVENT_METHOD = '_g'
+    RENDER_EVENT_NAME = '_h'
+    RENDER_DIRECTIVE = '_i'
+    RENDER_SPREAD = '_j'
+    RENDER_CHILDREN = '_k'
+    RENDER_SLOTS = '_l'
+    RENDER_SLOT_CHILDREN = '_m'
+    RENDER_PARTIAL = '_n'
+    RENDER_EACH = '_o'
+    RENDER_RANGE = '_p'
+    LOOKUP_KEYPATH = '_q'
+    LOOKUP_PROP = '_r'
+    GET_THIS = '_s'
+    GET_THIS_BY_INDEX = '_t'
+    GET_PROP = '_u'
+    GET_PROP_BY_INDEX = '_v'
+    READ_KEYPATH = '_w'
+    EXECUTE_FUNCTION = '_x'
+    SET_HOLDER = '_y'
+    TO_STRING = '_z'
+    OPERATOR_TEXT_VNODE = '_A'
+    OPERATOR_COMMENT_VNODE = '_B'
+    OPERATOR_ELEMENT_VNODE = '_C'
+    OPERATOR_COMPONENT_VNODE = '_D'
+    OPERATOR_FRAGMENT_VNODE = '_E'
+    OPERATOR_PORTAL_VNODE = '_F'
+    OPERATOR_SLOT_VNODE = '_G'
+    ARG_INSTANCE = '_H'
+    ARG_FILTERS = '_I'
+    ARG_GLOBAL_FILTERS = '_J'
+    ARG_LOCAL_PARTIALS = '_K'
+    ARG_PARTIALS = '_L'
+    ARG_GLOBAL_PARTIALS = '_M'
+    ARG_DIRECTIVES = '_N'
+    ARG_GLOBAL_DIRECTIVES = '_O'
+    ARG_TRANSITIONS = '_P'
+    ARG_GLOBAL_TRANSITIONS = '_Q'
+    ARG_STACK = '_R'
+    ARG_VNODE = '_S'
+    ARG_CHILDREN = '_T'
+    ARG_COMPONENTS = '_U'
+    ARG_SCOPE = '_V'
+    ARG_KEYPATH = '_W'
+    ARG_LENGTH = '_X'
+    ARG_EVENT = '_Y'
+    ARG_DATA = '_Z'
   }
   else {
-    RENDER_ELEMENT_VNODE = 'renderElementVNode'
-    RENDER_COMPONENT_VNODE = 'renderComponentVNode'
+    RENDER_COMPOSE_VNODE = 'renderComposeVNode'
     APPEND_ATTRIBUTE = 'appendAttribute'
     RENDER_STYLE_STRING = 'renderStyleStyle'
     RENDER_STYLE_EXPR = 'renderStyleExpr'
@@ -282,7 +286,9 @@ function init() {
     RENDER_EVENT_NAME = 'renderEventName'
     RENDER_DIRECTIVE = 'renderDirective'
     RENDER_SPREAD = 'renderSpread'
-    RENDER_SLOT = 'renderSlot'
+    RENDER_CHILDREN = 'renderChildren'
+    RENDER_SLOTS = 'renderSlots'
+    RENDER_SLOT_CHILDREN = 'renderSlotChildren'
     RENDER_PARTIAL = 'renderPartial'
     RENDER_EACH = 'renderEach'
     RENDER_RANGE = 'renderRange'
@@ -473,7 +479,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
           generator.toMember(
             ARG_STACK,
             [
-              generator.toPrimitive('length')
+              generator.toPrimitive(constant.RAW_LENGTH)
             ]
           ),
           '-',
@@ -494,7 +500,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
           generator.toMember(
             ARG_STACK,
             [
-              generator.toPrimitive('length')
+              generator.toPrimitive(constant.RAW_LENGTH)
             ]
           ),
           '-',
@@ -816,31 +822,16 @@ function generateNodesToTuple(nodes: Node[]) {
   )
 }
 
-function generateNodesToStatement(nodes: Node[], precedence?: boolean) {
-  if (precedence) {
-    return generator.toTuple(
-      '(',
-      ')',
-      ',',
-      constant.TRUE,
-      1,
-      mapNodes(nodes)
-    )
-  }
-  return generator.toTuple(
-    constant.EMPTY_STRING,
-    constant.EMPTY_STRING,
-    ',',
-    constant.TRUE,
-    0,
-    mapNodes(nodes)
-  )
-}
-
 function generateNodesToList(nodes: Node[]) {
   return generator.toList(
     mapNodes(nodes)
   )
+}
+
+function generateStatementIfNeeded(nodes: generator.Base[]) {
+  return nodes.length === 1
+    ? nodes[0]
+    : generator.toStatement(nodes, constant.TRUE)
 }
 
 function appendDynamicChildVNode(vnode: generator.Base) {
@@ -1210,27 +1201,26 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   array.push(componentStack, isComponent)
 
   if (children) {
-    if (isComponent) {
+    if (isSlot) {
+      outputChildren = generator.toStatement(
+        mapNodes(children),
+        constant.TRUE
+      )
+    }
+    else if (isComponent) {
       outputSlots = generateComponentSlots(children)
     }
     else {
-
-      if (isSlot) {
-        outputChildren = generateNodesToStatement(children, constant.TRUE)
+      const { dynamicChildren, staticChildren } = parseChildren(children)
+      if (dynamicChildren) {
+        outputChildren = dynamicChildren
       }
-      else {
-        const { dynamicChildren, staticChildren } = parseChildren(children)
-        if (dynamicChildren) {
-          outputChildren = dynamicChildren
-        }
-        else if (staticChildren) {
-          vnode.set(
-            FIELD_CHILDREN,
-            staticChildren
-          )
-        }
+      else if (staticChildren) {
+        vnode.set(
+          FIELD_CHILDREN,
+          staticChildren
+        )
       }
-
     }
   }
 
@@ -1563,7 +1553,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
 
     const renderSlot = generator.toCall(
-      RENDER_SLOT,
+      RENDER_SLOT_CHILDREN,
       [
         argName,
         ARG_CHILDREN
@@ -1613,41 +1603,69 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     )
   }
 
-  let result: generator.Base
-
-  if (isComponent) {
-    if (outputAttrs || outputSlots) {
-      result = generator.toCall(
-        RENDER_COMPONENT_VNODE,
+  if (outputChildren) {
+    vnode.set(
+      FIELD_CHILDREN,
+      generator.toCall(
+        RENDER_CHILDREN,
         [
-          vnode,
-          outputAttrs || generator.toPrimitive(constant.UNDEFINED),
-          outputSlots || generator.toPrimitive(constant.UNDEFINED)
+          outputChildren
         ]
       )
-    }
-    else {
-      result = vnode
-    }
-    result = appendComponentVNode(result)
+    )
   }
-  else {
-    if (outputAttrs || outputChildren) {
-      result = generator.toCall(
-        RENDER_ELEMENT_VNODE,
+  if (outputSlots) {
+    vnode.set(
+      FIELD_SLOTS,
+      generator.toCall(
+        RENDER_SLOTS,
         [
-          vnode,
-          outputAttrs || generator.toPrimitive(constant.UNDEFINED),
-          outputChildren || generator.toPrimitive(constant.UNDEFINED),
+          outputSlots
         ]
       )
-    }
-    else {
-      result = vnode
-    }
+    )
   }
 
-  return generateVNode(result)
+  const result: generator.Base[] = []
+
+  if (outputAttrs) {
+    array.push(
+      result,
+      generator.toCall(
+        outputAttrs,
+        [
+          vnode
+        ]
+      )
+    )
+  }
+
+  if (isSlot) {
+    array.push(
+      result,
+      generator.toCall(
+        RENDER_COMPOSE_VNODE,
+        [
+          vnode,
+          ARG_CHILDREN,
+        ]
+      )
+    )
+    return generateStatementIfNeeded(result)
+  }
+
+  array.push(
+    result,
+    vnode
+  )
+
+  return generateVNode(
+    isComponent
+    ? appendComponentVNode(
+        generateStatementIfNeeded(result)
+      )
+    : generateStatementIfNeeded(result)
+  )
 
 }
 
@@ -2159,17 +2177,8 @@ function getBranchValue(children: Node[] | void) {
     if (array.last(attributeValueStack)) {
       return createAttributeValue(children)
     }
-    const nodes = mapNodes(children)
-    if (nodes.length === 1) {
-      return nodes[0]
-    }
-    return generator.toTuple(
-      '(',
-      ')',
-      ',',
-      constant.TRUE,
-      1,
-      nodes
+    return generateStatementIfNeeded(
+      mapNodes(children)
     )
   }
 }
@@ -2360,8 +2369,7 @@ export function generate(node: Node): string {
 
   return generator.generate(
     [
-      RENDER_ELEMENT_VNODE,
-      RENDER_COMPONENT_VNODE,
+      RENDER_COMPOSE_VNODE,
       APPEND_ATTRIBUTE,
       RENDER_STYLE_STRING,
       RENDER_STYLE_EXPR,
@@ -2371,7 +2379,9 @@ export function generate(node: Node): string {
       RENDER_EVENT_NAME,
       RENDER_DIRECTIVE,
       RENDER_SPREAD,
-      RENDER_SLOT,
+      RENDER_CHILDREN,
+      RENDER_SLOTS,
+      RENDER_SLOT_CHILDREN,
       RENDER_PARTIAL,
       RENDER_EACH,
       RENDER_RANGE,
