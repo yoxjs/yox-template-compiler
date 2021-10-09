@@ -346,7 +346,6 @@ class CommentVNode implements generator.Base {
     return generator.toMap({
       type: generator.toPrimitive(VNODE_TYPE_COMMENT),
       isPure: generator.toPrimitive(constant.TRUE),
-      isComment: generator.toPrimitive(constant.TRUE),
       operator: OPERATOR_COMMENT_VNODE,
       text: this.text,
     }).toString(tabSize)
@@ -371,7 +370,6 @@ class TextVNode implements generator.Base {
     return generator.toMap({
       type: generator.toPrimitive(VNODE_TYPE_TEXT),
       isPure: generator.toPrimitive(constant.TRUE),
-      isText: generator.toPrimitive(constant.TRUE),
       operator: OPERATOR_TEXT_VNODE,
       text: this.buffer,
     }).toString(tabSize)
@@ -929,7 +927,7 @@ function generateComponentSlots(children: Node[]) {
             element.slot,
             element.tag === TAG_TEMPLATE
               ? element.children
-              : [element]
+              : [ element ]
           )
           return
         }
@@ -937,7 +935,7 @@ function generateComponentSlots(children: Node[]) {
 
       // 匿名 slot，名称统一为 children
       // 这个步骤不能放在 compiler，因为除了 element，还会有其他节点，比如文本节点
-      addSlot(SLOT_NAME_DEFAULT, [child])
+      addSlot(SLOT_NAME_DEFAULT, [ child ])
 
     }
   )
@@ -1486,10 +1484,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   if (vnodeType === VNODE_TYPE_ELEMENT) {
     vnode.set(
-      'isElement',
-      generator.toPrimitive(constant.TRUE)
-    )
-    vnode.set(
       'operator',
       OPERATOR_ELEMENT_VNODE
     )
@@ -1505,10 +1499,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     )
   }
   else if (isPortal) {
-    vnode.set(
-      'isPortal',
-      generator.toPrimitive(constant.TRUE)
-    )
     vnode.set(
       'operator',
       OPERATOR_PORTAL_VNODE

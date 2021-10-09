@@ -41,6 +41,7 @@ import globalHolder from 'yox-common/src/util/holder'
 import Computed from 'yox-observer/src/Computed'
 
 import {
+  clone,
   textVNodeOperator,
   commentVNodeOperator,
   elementVNodeOperator,
@@ -346,7 +347,7 @@ export function render(
         }
       }
       for (let i = 0, length = vnodes.length; i < length; i++) {
-        children[children.length] = vnodes[i]
+        children[children.length] = clone(vnodes[i])
       }
       return constant.TRUE
     }
