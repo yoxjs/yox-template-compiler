@@ -130,7 +130,7 @@ RENDER_DIRECTIVE = constant.EMPTY_STRING,
 
 RENDER_SPREAD = constant.EMPTY_STRING,
 
-RENDER_CHILDREN = constant.EMPTY_STRING,
+RENDER_CUSTOM = constant.EMPTY_STRING,
 
 RENDER_SLOTS = constant.EMPTY_STRING,
 
@@ -232,7 +232,7 @@ function init() {
     RENDER_EVENT_NAME = '_h'
     RENDER_DIRECTIVE = '_i'
     RENDER_SPREAD = '_j'
-    RENDER_CHILDREN = '_k'
+    RENDER_CUSTOM = '_k'
     RENDER_SLOTS = '_l'
     RENDER_SLOT_CHILDREN = '_m'
     RENDER_PARTIAL = '_n'
@@ -286,7 +286,7 @@ function init() {
     RENDER_EVENT_NAME = 'renderEventName'
     RENDER_DIRECTIVE = 'renderDirective'
     RENDER_SPREAD = 'renderSpread'
-    RENDER_CHILDREN = 'renderChildren'
+    RENDER_CUSTOM = 'renderCustom'
     RENDER_SLOTS = 'renderSlots'
     RENDER_SLOT_CHILDREN = 'renderSlotChildren'
     RENDER_PARTIAL = 'renderPartial'
@@ -1176,6 +1176,8 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       : generator.toPrimitive(tag)
   }),
 
+  isFragment = vnodeType === VNODE_TYPE_FRAGMENT,
+  isPortal = vnodeType === VNODE_TYPE_PORTAL,
   isSlot = vnodeType === VNODE_TYPE_SLOT,
 
   outputAttrs: generator.Base | void = constant.UNDEFINED,
@@ -1492,7 +1494,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       OPERATOR_ELEMENT_VNODE
     )
   }
-  else if (vnodeType === VNODE_TYPE_FRAGMENT) {
+  else if (isFragment) {
     vnode.set(
       'isFragment',
       generator.toPrimitive(constant.TRUE)
@@ -1502,7 +1504,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       OPERATOR_FRAGMENT_VNODE
     )
   }
-  else if (vnodeType === VNODE_TYPE_PORTAL) {
+  else if (isPortal) {
     vnode.set(
       'isPortal',
       generator.toPrimitive(constant.TRUE)
@@ -1607,8 +1609,9 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     vnode.set(
       FIELD_CHILDREN,
       generator.toCall(
-        RENDER_CHILDREN,
+        RENDER_CUSTOM,
         [
+          generator.toList(),
           outputChildren
         ]
       )
@@ -1626,45 +1629,43 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     )
   }
 
-  const result: generator.Base[] = []
+  const list: generator.Base[] = [],
 
-  if (outputAttrs) {
-    array.push(
-      result,
-      generator.toCall(
-        outputAttrs,
+  result: generator.Base = outputAttrs
+    ? generator.toCall(
+        RENDER_CUSTOM,
         [
-          vnode
+          vnode,
+          outputAttrs
         ]
       )
-    )
-  }
+    : vnode
 
-  if (isSlot) {
+  if (isFragment || isPortal || isSlot) {
     array.push(
-      result,
+      list,
       generator.toCall(
         RENDER_COMPOSE_VNODE,
         [
-          vnode,
+          result,
           ARG_CHILDREN,
         ]
       )
     )
-    return generateStatementIfNeeded(result)
+    return generateStatementIfNeeded(list)
   }
 
   array.push(
-    result,
-    vnode
+    list,
+    result
   )
 
   return generateVNode(
     isComponent
     ? appendComponentVNode(
-        generateStatementIfNeeded(result)
+        generateStatementIfNeeded(list)
       )
-    : generateStatementIfNeeded(result)
+    : generateStatementIfNeeded(list)
   )
 
 }
@@ -2379,7 +2380,7 @@ export function generate(node: Node): string {
       RENDER_EVENT_NAME,
       RENDER_DIRECTIVE,
       RENDER_SPREAD,
-      RENDER_CHILDREN,
+      RENDER_CUSTOM,
       RENDER_SLOTS,
       RENDER_SLOT_CHILDREN,
       RENDER_PARTIAL,

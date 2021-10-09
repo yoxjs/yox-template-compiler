@@ -309,17 +309,16 @@ export function render(
 
   },
 
-  renderChildren = function (createChildren: (children: VNode[]) => void) {
-    const result: VNode[] = [ ]
-    createChildren(result)
-    return result
+  renderCustom = function (custom: any, render: (custom: any) => void) {
+    render(custom)
+    return custom
   },
 
-  renderSlots = function (createSlots: Record<string, (children: VNode[], components: VNode[]) => void>) {
+  renderSlots = function (render: Record<string, (children: VNode[], components: VNode[]) => void>) {
     const result = { }
-    for (let name in createSlots) {
+    for (let name in render) {
       const children: VNode[] = [ ], components: VNode[] = [ ]
-      createSlots[name](children, components)
+      render[name](children, components)
 
       // 就算是 undefined 也必须有值，用于覆盖旧值
       result[name] = children.length
@@ -720,7 +719,7 @@ export function render(
       renderEventName,
       renderDirective,
       renderSpread,
-      renderChildren,
+      renderCustom,
       renderSlots,
       renderSlotChildren,
       renderPartial,
