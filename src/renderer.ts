@@ -1,6 +1,5 @@
 import {
   DIRECTIVE_CUSTOM,
-  VNODE_TYPE_COMMENT,
 } from 'yox-config/src/config'
 
 import {
@@ -308,11 +307,6 @@ export function render(
 
     }
 
-  },
-
-  renderCustom = function (custom: any, render: (custom: any) => void) {
-    render(custom)
-    return custom
   },
 
   renderSlots = function (render: Record<string, (children: VNode[], components: VNode[]) => void>) {
@@ -720,7 +714,6 @@ export function render(
       renderEventName,
       renderDirective,
       renderSpread,
-      renderCustom,
       renderSlots,
       renderSlotChildren,
       renderPartial,

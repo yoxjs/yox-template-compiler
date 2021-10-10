@@ -130,8 +130,6 @@ RENDER_DIRECTIVE = constant.EMPTY_STRING,
 
 RENDER_SPREAD = constant.EMPTY_STRING,
 
-RENDER_CUSTOM = constant.EMPTY_STRING,
-
 RENDER_SLOTS = constant.EMPTY_STRING,
 
 RENDER_SLOT_CHILDREN = constant.EMPTY_STRING,
@@ -232,48 +230,47 @@ function init() {
     RENDER_EVENT_NAME = '_h'
     RENDER_DIRECTIVE = '_i'
     RENDER_SPREAD = '_j'
-    RENDER_CUSTOM = '_k'
-    RENDER_SLOTS = '_l'
-    RENDER_SLOT_CHILDREN = '_m'
-    RENDER_PARTIAL = '_n'
-    RENDER_EACH = '_o'
-    RENDER_RANGE = '_p'
-    LOOKUP_KEYPATH = '_q'
-    LOOKUP_PROP = '_r'
-    GET_THIS = '_s'
-    GET_THIS_BY_INDEX = '_t'
-    GET_PROP = '_u'
-    GET_PROP_BY_INDEX = '_v'
-    READ_KEYPATH = '_w'
-    EXECUTE_FUNCTION = '_x'
-    SET_HOLDER = '_y'
-    TO_STRING = '_z'
-    OPERATOR_TEXT_VNODE = '_A'
-    OPERATOR_COMMENT_VNODE = '_B'
-    OPERATOR_ELEMENT_VNODE = '_C'
-    OPERATOR_COMPONENT_VNODE = '_D'
-    OPERATOR_FRAGMENT_VNODE = '_E'
-    OPERATOR_PORTAL_VNODE = '_F'
-    OPERATOR_SLOT_VNODE = '_G'
-    ARG_INSTANCE = '_H'
-    ARG_FILTERS = '_I'
-    ARG_GLOBAL_FILTERS = '_J'
-    ARG_LOCAL_PARTIALS = '_K'
-    ARG_PARTIALS = '_L'
-    ARG_GLOBAL_PARTIALS = '_M'
-    ARG_DIRECTIVES = '_N'
-    ARG_GLOBAL_DIRECTIVES = '_O'
-    ARG_TRANSITIONS = '_P'
-    ARG_GLOBAL_TRANSITIONS = '_Q'
-    ARG_STACK = '_R'
-    ARG_VNODE = '_S'
-    ARG_CHILDREN = '_T'
-    ARG_COMPONENTS = '_U'
-    ARG_SCOPE = '_V'
-    ARG_KEYPATH = '_W'
-    ARG_LENGTH = '_X'
-    ARG_EVENT = '_Y'
-    ARG_DATA = '_Z'
+    RENDER_SLOTS = '_k'
+    RENDER_SLOT_CHILDREN = '_l'
+    RENDER_PARTIAL = '_m'
+    RENDER_EACH = '_n'
+    RENDER_RANGE = '_o'
+    LOOKUP_KEYPATH = '_p'
+    LOOKUP_PROP = '_q'
+    GET_THIS = '_r'
+    GET_THIS_BY_INDEX = '_s'
+    GET_PROP = '_t'
+    GET_PROP_BY_INDEX = '_u'
+    READ_KEYPATH = '_v'
+    EXECUTE_FUNCTION = '_w'
+    SET_HOLDER = '_x'
+    TO_STRING = '_y'
+    OPERATOR_TEXT_VNODE = '_z'
+    OPERATOR_COMMENT_VNODE = '_A'
+    OPERATOR_ELEMENT_VNODE = '_B'
+    OPERATOR_COMPONENT_VNODE = '_C'
+    OPERATOR_FRAGMENT_VNODE = '_D'
+    OPERATOR_PORTAL_VNODE = '_E'
+    OPERATOR_SLOT_VNODE = '_F'
+    ARG_INSTANCE = '_G'
+    ARG_FILTERS = '_H'
+    ARG_GLOBAL_FILTERS = '_I'
+    ARG_LOCAL_PARTIALS = '_J'
+    ARG_PARTIALS = '_K'
+    ARG_GLOBAL_PARTIALS = '_L'
+    ARG_DIRECTIVES = '_M'
+    ARG_GLOBAL_DIRECTIVES = '_N'
+    ARG_TRANSITIONS = '_O'
+    ARG_GLOBAL_TRANSITIONS = '_P'
+    ARG_STACK = '_Q'
+    ARG_VNODE = '_R'
+    ARG_CHILDREN = '_S'
+    ARG_COMPONENTS = '_T'
+    ARG_SCOPE = '_U'
+    ARG_KEYPATH = '_V'
+    ARG_LENGTH = '_W'
+    ARG_EVENT = '_X'
+    ARG_DATA = '_Y'
   }
   else {
     RENDER_COMPOSE_VNODE = 'renderComposeVNode'
@@ -286,7 +283,6 @@ function init() {
     RENDER_EVENT_NAME = 'renderEventName'
     RENDER_DIRECTIVE = 'renderDirective'
     RENDER_SPREAD = 'renderSpread'
-    RENDER_CUSTOM = 'renderCustom'
     RENDER_SLOTS = 'renderSlots'
     RENDER_SLOT_CHILDREN = 'renderSlotChildren'
     RENDER_PARTIAL = 'renderPartial'
@@ -1138,7 +1134,8 @@ function parseChildren(children: Node[], forceDynamic?: boolean) {
       ],
       generateNodesToTuple(
         children
-      )
+      ),
+      ARG_CHILDREN
     )
   }
   else {
@@ -1473,7 +1470,8 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         [
           ARG_VNODE
         ],
-        generateNodesToTuple(otherList)
+        generateNodesToTuple(otherList),
+        ARG_VNODE
       )
     }
   }
@@ -1562,7 +1560,8 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
             '||',
             outputChildren
           )
-        : renderSlot
+        : renderSlot,
+      ARG_CHILDREN
     )
 
   }
@@ -1599,10 +1598,9 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     vnode.set(
       FIELD_CHILDREN,
       generator.toCall(
-        RENDER_CUSTOM,
+        outputChildren,
         [
-          generator.toList(),
-          outputChildren
+          generator.toList()
         ]
       )
     )
@@ -1623,10 +1621,9 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   result: generator.Base = outputAttrs
     ? generator.toCall(
-        RENDER_CUSTOM,
+        outputAttrs,
         [
           vnode,
-          outputAttrs
         ]
       )
     : vnode
@@ -2370,7 +2367,6 @@ export function generate(node: Node): string {
       RENDER_EVENT_NAME,
       RENDER_DIRECTIVE,
       RENDER_SPREAD,
-      RENDER_CUSTOM,
       RENDER_SLOTS,
       RENDER_SLOT_CHILDREN,
       RENDER_PARTIAL,
