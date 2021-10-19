@@ -1538,7 +1538,9 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         : generator.toBinary(
             generator.toPrimitive(SLOT_DATA_PREFIX),
             '+',
-            generateAttributeValue(nameAttr)
+            generator.toPrecedence(
+              generateAttributeValue(nameAttr)
+            )
           )
     }
 
