@@ -43,7 +43,6 @@ import Node from './node/Node'
 import Element from './node/Element'
 import Attribute from './node/Attribute'
 import Directive from './node/Directive'
-import Property from './node/Property'
 import Style from './node/Style'
 import Each from './node/Each'
 import If from './node/If'
@@ -59,6 +58,11 @@ import {
   specialTag2VNodeType,
   parseStyleString,
 } from './helper'
+
+import {
+  isNumberNativeAttribute,
+  isBooleanNativeAttribute,
+} from './platform/web'
 
 // 是否正在收集虚拟节点
 const vnodeStack: boolean[] = [ constant.TRUE ],
@@ -83,8 +87,6 @@ magicVariables: string[] = [ MAGIC_VAR_KEYPATH, MAGIC_VAR_LENGTH, MAGIC_VAR_EVEN
 nodeGenerator: Record<number, (node: any) => generator.Base> = { },
 
 FIELD_NATIVE_ATTRIBUTES = 'nativeAttrs',
-
-FIELD_NATIVE_PROPERTIES = 'nativeProps',
 
 FIELD_NATIVE_STYLES = 'nativeStyles',
 
@@ -112,8 +114,6 @@ currentTextVNode: TextVNode | void = constant.UNDEFINED,
 
 RENDER_COMPOSE_VNODE = constant.EMPTY_STRING,
 
-APPEND_ATTRIBUTE = constant.EMPTY_STRING,
-
 RENDER_STYLE_STRING = constant.EMPTY_STRING,
 
 RENDER_STYLE_EXPR = constant.EMPTY_STRING,
@@ -139,6 +139,12 @@ RENDER_PARTIAL = constant.EMPTY_STRING,
 RENDER_EACH = constant.EMPTY_STRING,
 
 RENDER_RANGE = constant.EMPTY_STRING,
+
+APPEND_VNODE_PROPERTY = constant.EMPTY_STRING,
+
+FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE = constant.EMPTY_STRING,
+
+FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = constant.EMPTY_STRING,
 
 LOOKUP_KEYPATH = constant.EMPTY_STRING,
 
@@ -221,60 +227,61 @@ function init() {
 
   if (constant.PUBLIC_CONFIG.uglifyCompiled) {
     RENDER_COMPOSE_VNODE = '_a'
-    APPEND_ATTRIBUTE = '_b'
-    RENDER_STYLE_STRING = '_c'
-    RENDER_STYLE_EXPR = '_d'
-    RENDER_TRANSITION = '_e'
-    RENDER_MODEL = '_f'
-    RENDER_EVENT_METHOD = '_g'
-    RENDER_EVENT_NAME = '_h'
-    RENDER_DIRECTIVE = '_i'
-    RENDER_SPREAD = '_j'
-    RENDER_SLOTS = '_k'
-    RENDER_SLOT_CHILDREN = '_l'
-    RENDER_PARTIAL = '_m'
-    RENDER_EACH = '_n'
-    RENDER_RANGE = '_o'
-    LOOKUP_KEYPATH = '_p'
-    LOOKUP_PROP = '_q'
-    GET_THIS = '_r'
-    GET_THIS_BY_INDEX = '_s'
-    GET_PROP = '_t'
-    GET_PROP_BY_INDEX = '_u'
-    READ_KEYPATH = '_v'
-    EXECUTE_FUNCTION = '_w'
-    SET_HOLDER = '_x'
-    TO_STRING = '_y'
-    OPERATOR_TEXT_VNODE = '_z'
-    OPERATOR_COMMENT_VNODE = '_A'
-    OPERATOR_ELEMENT_VNODE = '_B'
-    OPERATOR_COMPONENT_VNODE = '_C'
-    OPERATOR_FRAGMENT_VNODE = '_D'
-    OPERATOR_PORTAL_VNODE = '_E'
-    OPERATOR_SLOT_VNODE = '_F'
-    ARG_INSTANCE = '_G'
-    ARG_FILTERS = '_H'
-    ARG_GLOBAL_FILTERS = '_I'
-    ARG_LOCAL_PARTIALS = '_J'
-    ARG_PARTIALS = '_K'
-    ARG_GLOBAL_PARTIALS = '_L'
-    ARG_DIRECTIVES = '_M'
-    ARG_GLOBAL_DIRECTIVES = '_N'
-    ARG_TRANSITIONS = '_O'
-    ARG_GLOBAL_TRANSITIONS = '_P'
-    ARG_STACK = '_Q'
-    ARG_VNODE = '_R'
-    ARG_CHILDREN = '_S'
-    ARG_COMPONENTS = '_T'
-    ARG_SCOPE = '_U'
-    ARG_KEYPATH = '_V'
-    ARG_LENGTH = '_W'
-    ARG_EVENT = '_X'
-    ARG_DATA = '_Y'
+    RENDER_STYLE_STRING = '_b'
+    RENDER_STYLE_EXPR = '_c'
+    RENDER_TRANSITION = '_d'
+    RENDER_MODEL = '_e'
+    RENDER_EVENT_METHOD = '_f'
+    RENDER_EVENT_NAME = '_g'
+    RENDER_DIRECTIVE = '_h'
+    RENDER_SPREAD = '_i'
+    RENDER_SLOTS = '_j'
+    RENDER_SLOT_CHILDREN = '_k'
+    RENDER_PARTIAL = '_l'
+    RENDER_EACH = '_m'
+    RENDER_RANGE = '_n'
+    APPEND_VNODE_PROPERTY = '_o'
+    FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE = '_p'
+    FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = '_q'
+    LOOKUP_KEYPATH = '_r'
+    LOOKUP_PROP = '_s'
+    GET_THIS = '_t'
+    GET_THIS_BY_INDEX = '_u'
+    GET_PROP = '_v'
+    GET_PROP_BY_INDEX = '_w'
+    READ_KEYPATH = '_x'
+    EXECUTE_FUNCTION = '_y'
+    SET_HOLDER = '_z'
+    TO_STRING = '_A'
+    OPERATOR_TEXT_VNODE = '_B'
+    OPERATOR_COMMENT_VNODE = '_C'
+    OPERATOR_ELEMENT_VNODE = '_D'
+    OPERATOR_COMPONENT_VNODE = '_E'
+    OPERATOR_FRAGMENT_VNODE = '_F'
+    OPERATOR_PORTAL_VNODE = '_G'
+    OPERATOR_SLOT_VNODE = '_H'
+    ARG_INSTANCE = '_I'
+    ARG_FILTERS = '_J'
+    ARG_GLOBAL_FILTERS = '_K'
+    ARG_LOCAL_PARTIALS = '_L'
+    ARG_PARTIALS = '_M'
+    ARG_GLOBAL_PARTIALS = '_N'
+    ARG_DIRECTIVES = '_O'
+    ARG_GLOBAL_DIRECTIVES = '_P'
+    ARG_TRANSITIONS = '_Q'
+    ARG_GLOBAL_TRANSITIONS = '_R'
+    ARG_STACK = '_S'
+    ARG_VNODE = '_T'
+    ARG_CHILDREN = '_U'
+    ARG_COMPONENTS = '_V'
+    ARG_SCOPE = '_W'
+    ARG_KEYPATH = '_X'
+    ARG_LENGTH = '_Y'
+    ARG_EVENT = '_Z'
+    ARG_DATA = '_1'
   }
   else {
     RENDER_COMPOSE_VNODE = 'renderComposeVNode'
-    APPEND_ATTRIBUTE = 'appendAttribute'
     RENDER_STYLE_STRING = 'renderStyleStyle'
     RENDER_STYLE_EXPR = 'renderStyleExpr'
     RENDER_TRANSITION = 'renderTransition'
@@ -288,6 +295,9 @@ function init() {
     RENDER_PARTIAL = 'renderPartial'
     RENDER_EACH = 'renderEach'
     RENDER_RANGE = 'renderRange'
+    APPEND_VNODE_PROPERTY = 'appendVNodeProperty'
+    FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE = 'formatNativeAttributeNumberValue'
+    FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = 'formatNativeAttributeBooleanValue'
     LOOKUP_KEYPATH = 'lookupKeypath'
     LOOKUP_PROP = 'lookupProp'
     GET_THIS = 'getThis'
@@ -962,8 +972,6 @@ function parseAttrs(attrs: Node[], isComponent: boolean | void) {
 
   let nativeAttributeList: Attribute[] = [ ],
 
-  nativePropertyList: Property[] = [ ],
-
   propertyList: Attribute[] = [ ],
 
   style: Style | void = constant.UNDEFINED,
@@ -999,12 +1007,6 @@ function parseAttrs(attrs: Node[], isComponent: boolean | void) {
           attributeNode
         )
       }
-    }
-    else if (attr.type === nodeType.PROPERTY) {
-      array.push(
-        nativePropertyList,
-        attr as Property
-      )
     }
     else if (attr.type === nodeType.STYLE) {
       style = attr as Style
@@ -1051,7 +1053,6 @@ function parseAttrs(attrs: Node[], isComponent: boolean | void) {
 
   return {
     nativeAttributeList,
-    nativePropertyList,
     propertyList,
     style,
     lazyList,
@@ -1068,7 +1069,6 @@ function sortAttrs(attrs: Node[], isComponent: boolean | void) {
 
   const {
     nativeAttributeList,
-    nativePropertyList,
     propertyList,
     style,
     lazyList,
@@ -1082,7 +1082,6 @@ function sortAttrs(attrs: Node[], isComponent: boolean | void) {
   const result: Node[] = []
 
   array.push(result, nativeAttributeList)
-  array.push(result, nativePropertyList)
   array.push(result, propertyList)
   if (style) {
     array.push(result, style)
@@ -1099,6 +1098,37 @@ function sortAttrs(attrs: Node[], isComponent: boolean | void) {
   array.push(result, otherList)
 
   return result
+
+}
+
+function generateNativeAttributeValue(node: Attribute) {
+
+  const { name } = node
+
+  let value = generateAttributeValue(node)
+
+  if (!(value instanceof generator.Primitive)) {
+    if (isNumberNativeAttribute(name)) {
+      value = generator.toCall(
+        FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE,
+        [
+          generator.toPrimitive(name),
+          value
+        ]
+      )
+    }
+    else if (isBooleanNativeAttribute(name)) {
+      value = generator.toCall(
+        FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE,
+        [
+          generator.toPrimitive(name),
+          value
+        ]
+      )
+    }
+  }
+
+  return value
 
 }
 
@@ -1276,7 +1306,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
     const {
       nativeAttributeList,
-      nativePropertyList,
       propertyList,
       style,
       lazyList,
@@ -1303,7 +1332,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
           nativeAttributes.set(
             node.name,
-            generateAttributeValue(node)
+            generateNativeAttributeValue(node)
           )
 
         }
@@ -1315,38 +1344,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
           ? nativeAttributes
           : generator.addVar(
               nativeAttributes,
-              constant.TRUE
-            )
-      )
-
-    }
-
-    if (nativePropertyList.length) {
-
-      let nativeProperties = generator.toMap(), isDynamic = hasDynamicAttrs
-
-      array.each(
-        nativePropertyList,
-        function (node) {
-
-          if (!node.isStatic) {
-            isDynamic = constant.TRUE
-          }
-
-          nativeProperties.set(
-            node.name,
-            generateAttributeValue(node)
-          )
-
-        }
-      )
-
-      vnode.set(
-        FIELD_NATIVE_PROPERTIES,
-        isDynamic
-          ? nativeProperties
-          : generator.addVar(
-              nativeProperties,
               constant.TRUE
             )
       )
@@ -1660,9 +1657,8 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 }
 
 nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
-
   return generator.toCall(
-    APPEND_ATTRIBUTE,
+    APPEND_VNODE_PROPERTY,
     [
       ARG_VNODE,
       generator.toPrimitive(
@@ -1670,22 +1666,8 @@ nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
           ? FIELD_PROPERTIES
           : FIELD_NATIVE_ATTRIBUTES
       ),
-      generateAttributeValue(node),
       generator.toPrimitive(node.name),
-    ]
-  )
-
-}
-
-nodeGenerator[nodeType.PROPERTY] = function (node: Property) {
-
-  return generator.toCall(
-    APPEND_ATTRIBUTE,
-    [
-      ARG_VNODE,
-      generator.toPrimitive(FIELD_NATIVE_PROPERTIES),
-      generateAttributeValue(node),
-      generator.toPrimitive(node.name),
+      generateNativeAttributeValue(node),
     ]
   )
 
@@ -2026,64 +2008,66 @@ nodeGenerator[nodeType.DIRECTIVE] = function (node: Directive) {
   switch (node.ns) {
     case DIRECTIVE_LAZY:
       return generator.toCall(
-        APPEND_ATTRIBUTE,
+        APPEND_VNODE_PROPERTY,
         [
           ARG_VNODE,
           generator.toPrimitive(FIELD_LAZY),
-          getLazyValue(node),
           generator.toPrimitive(node.name),
+          getLazyValue(node),
         ]
       )
 
     // <div transition="name">
     case DIRECTIVE_TRANSITION:
-      return generator.toCall(
-        APPEND_ATTRIBUTE,
-        [
+      return generator.toAssign(
+        generator.toMember(
           ARG_VNODE,
-          generator.toPrimitive(FIELD_TRANSITION),
-          getTransitionValue(node),
-        ]
+          [
+            generator.toPrimitive(FIELD_TRANSITION)
+          ]
+        ),
+        getTransitionValue(node)
       )
 
     // <input model="id">
     case DIRECTIVE_MODEL:
-      return generator.toCall(
-        APPEND_ATTRIBUTE,
-        [
+      return generator.toAssign(
+        generator.toMember(
           ARG_VNODE,
-          generator.toPrimitive(FIELD_MODEL),
-          getModelValue(node),
-        ]
+          [
+            generator.toPrimitive(FIELD_MODEL)
+          ]
+        ),
+        getModelValue(node)
       )
 
     // <div on-click="name">
     case DIRECTIVE_EVENT:
       const info = getEventInfo(node)
       return generator.toCall(
-        APPEND_ATTRIBUTE,
+        APPEND_VNODE_PROPERTY,
         [
           ARG_VNODE,
           generator.toPrimitive(FIELD_EVENTS),
+          generator.toPrimitive(getDirectiveKey(node)),
           generator.toCall(
             info.name,
             info.args
           ),
-          generator.toPrimitive(getDirectiveKey(node)),
         ]
       )
 
     default:
       return generator.toCall(
-        APPEND_ATTRIBUTE,
+        APPEND_VNODE_PROPERTY,
         [
           ARG_VNODE,
           generator.toPrimitive(FIELD_DIRECTIVES),
+          generator.toPrimitive(getDirectiveKey(node)),
           generator.toCall(
             RENDER_DIRECTIVE,
             getDirectiveArgs(node)
           ),
-          generator.toPrimitive(getDirectiveKey(node)),
         ]
       )
   }
@@ -2360,7 +2344,6 @@ export function generate(node: Node): string {
   return generator.generate(
     [
       RENDER_COMPOSE_VNODE,
-      APPEND_ATTRIBUTE,
       RENDER_STYLE_STRING,
       RENDER_STYLE_EXPR,
       RENDER_TRANSITION,
@@ -2374,6 +2357,9 @@ export function generate(node: Node): string {
       RENDER_PARTIAL,
       RENDER_EACH,
       RENDER_RANGE,
+      APPEND_VNODE_PROPERTY,
+      FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE,
+      FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE,
       LOOKUP_KEYPATH,
       LOOKUP_PROP,
       GET_THIS,

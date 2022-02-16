@@ -14,8 +14,6 @@ import {
   ATTR_TO,
   ATTR_SLOT,
   ATTR_NAME,
-  HINT_BOOLEAN,
-  HINT_NUMBER,
   DIRECTIVE_ON,
   DIRECTIVE_EVENT,
   DIRECTIVE_LAZY,
@@ -35,6 +33,7 @@ import {
   isNativeElement,
   createAttribute,
   getAttributeDefaultValue,
+  formatNativeAttributeValue,
   createElement,
   compatElement,
   setElementText,
@@ -43,7 +42,6 @@ import {
 
 import isDef from 'yox-common/src/function/isDef'
 import toString from 'yox-common/src/function/toString'
-import toNumber from 'yox-common/src/function/toNumber'
 
 import * as is from 'yox-common/src/util/is'
 import * as array from 'yox-common/src/util/array'
@@ -73,7 +71,6 @@ import Text from './node/Text'
 import Element from './node/Element'
 import Attribute from './node/Attribute'
 import Directive from './node/Directive'
-import Property from './node/Property'
 import Style from './node/Style'
 import Expression from './node/Expression'
 
@@ -275,7 +272,7 @@ export function compile(content: string): Branch[] {
 
   currentElement: Element | void,
 
-  currentAttribute: Attribute | Property | Style | Directive | void,
+  currentAttribute: Attribute | Style | Directive | void,
 
   length = content.length,
 
@@ -349,8 +346,6 @@ export function compile(content: string): Branch[] {
 
     isAttribute = type === nodeType.ATTRIBUTE,
 
-    isProperty = type === nodeType.PROPERTY,
-
     isStyle = type === nodeType.STYLE,
 
     isDirective = type === nodeType.DIRECTIVE,
@@ -399,9 +394,6 @@ export function compile(content: string): Branch[] {
             else if (isAttribute) {
               processAttributeSingleText(branchNode as Attribute, onlyChild as Text)
             }
-            else if (isProperty) {
-              processPropertySingleText(branchNode as Property, onlyChild as Text)
-            }
             else if (isStyle) {
               processStyleSingleText(branchNode as Style, onlyChild as Text)
             }
@@ -414,7 +406,7 @@ export function compile(content: string): Branch[] {
             if (isElement) {
               processElementSingleExpression(branchNode as Element, onlyChild as Expression)
             }
-            else if (isAttribute || isProperty || isStyle || isDirective) {
+            else if (isAttribute || isStyle || isDirective) {
               processAttributeSingleExpression(branchNode as any, onlyChild as Expression)
             }
             break
@@ -427,9 +419,6 @@ export function compile(content: string): Branch[] {
     else if (currentElement) {
       if (isAttribute) {
         processAttributeEmptyChildren(currentElement, branchNode as Attribute)
-      }
-      else if (isProperty) {
-        processPropertyEmptyChildren(currentElement, branchNode as Property)
       }
       else if (isStyle) {
         processStyleEmptyChildren(currentElement, branchNode as Style)
@@ -490,44 +479,6 @@ export function compile(content: string): Branch[] {
 
   },
 
-  processPropertyEmptyChildren = function (element: Element, prop: Property) {
-
-    if (prop.hint === HINT_BOOLEAN) {
-      prop.value = constant.TRUE
-    }
-    else {
-      // string 或 number 类型的属性，如果不写值，直接忽略
-      replaceChild(prop)
-    }
-
-  },
-
-  processPropertySingleText = function (prop: Property, child: Text) {
-
-    const { text } = child
-
-    // 数字类型需要严格校验格式，比如 width="100%" 要打印报错信息，提示用户类型错误
-    if (prop.hint === HINT_NUMBER) {
-      if (process.env.NODE_ENV === 'development') {
-        if (!is.numeric(text)) {
-          fatal(`The value of "${prop.name}" is not a number: ${text}.`)
-        }
-      }
-      prop.value = toNumber(text)
-    }
-    // 布尔类型的属性，只有值为 true 或 属性名 才表示 true
-    else if (prop.hint === HINT_BOOLEAN) {
-      prop.value = text === constant.RAW_TRUE || text === prop.name
-    }
-    // 字符串类型的属性，保持原样即可
-    else {
-      prop.value = text
-    }
-
-    prop.children = constant.UNDEFINED
-
-  },
-
   processStyleEmptyChildren = function (element: Element, style: Style) {
 
     // 如果不写值，直接忽略
@@ -563,17 +514,21 @@ export function compile(content: string): Branch[] {
 
   processAttributeSingleText = function (attr: Attribute, child: Text) {
 
-    attr.value = child.text
+    attr.value = formatNativeAttributeValue(attr.name, child.text)
     attr.children = constant.UNDEFINED
 
   },
 
-  processAttributeSingleExpression = function (attr: Attribute | Property | Style | Directive, child: Expression) {
+  processAttributeSingleExpression = function (attr: Attribute | Style | Directive, child: Expression) {
 
     const { expr } = child
 
     if (expr.type === exprNodeType.LITERAL) {
-      attr.value = (expr as ExpressionLiteral).value
+      let value = (expr as ExpressionLiteral).value
+      if (attr.type === nodeType.ATTRIBUTE) {
+        value = formatNativeAttributeValue((attr as Attribute).name, value)
+      }
+      attr.value = value
     }
     else {
       attr.expr = expr
@@ -1252,7 +1207,7 @@ export function compile(content: string): Branch[] {
         const match = content.match(attributePattern)
         if (match) {
 
-          let node: Attribute | Property | Style | Directive, name = match[1]
+          let node: Attribute | Style | Directive, name = match[1]
 
           if (name === DIRECTIVE_MODEL || name === DIRECTIVE_TRANSITION) {
             node = creator.createDirective(

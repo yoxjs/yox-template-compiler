@@ -1,12 +1,7 @@
-import {
-  HINT_STRING,
-  HINT_NUMBER,
-  HINT_BOOLEAN,
-} from 'yox-config/src/config'
-
 import * as is from 'yox-common/src/util/is'
 import * as array from 'yox-common/src/util/array'
 import * as string from 'yox-common/src/util/string'
+import * as logger from 'yox-common/src/util/logger'
 import * as constant from 'yox-common/src/util/constant'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
@@ -14,12 +9,13 @@ import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Node from '../node/Node'
 import Element from '../node/Element'
 import Attribute from '../node/Attribute'
-import Property from '../node/Property'
 import Style from '../node/Style'
 
 import * as helper from '../helper'
 import * as creator from '../creator'
 import * as nodeType from '../nodeType'
+
+import toString from 'yox-common/src/function/toString'
 
 function split2Map(str: string) {
   const map = Object.create(constant.NULL)
@@ -46,40 +42,17 @@ selfClosingTagNames = needCompile ? split2Map('area,base,embed,track,source,para
 // 常见的 svg 标签
 svgTagNames = needCompile ? split2Map('svg,g,defs,desc,metadata,symbol,use,image,path,rect,circle,line,ellipse,polyline,polygon,text,tspan,tref,textpath,marker,pattern,clippath,mask,filter,cursor,view,animate,font,font-face,glyph,missing-glyph,animateColor,animateMotion,animateTransform,textPath,foreignObject') : constant.EMPTY_OBJECT,
 
-// 常见的字符串类型的属性
-// 注意：autocomplete,autocapitalize 不是布尔类型
-stringPropertyNames = needCompile ? split2Map('id,class,name,value,for,accesskey,title,style,src,type,href,target,alt,placeholder,preload,poster,wrap,accept,pattern,dir,autocomplete,autocapitalize,valign') : constant.EMPTY_OBJECT,
-
 // 常见的数字类型的属性（width,height,cellpadding,cellspacing 支持百分比，因此不计入数字类型）
-numberPropertyNames = needCompile ? split2Map('min,minlength,max,maxlength,step,size,rows,cols,tabindex,colspan,rowspan,frameborder') : constant.EMPTY_OBJECT,
+numberAttributeNames = needCompile ? split2Map('min,minlength,max,maxlength,step,size,rows,cols,tabindex,colspan,rowspan,frameborder') : constant.EMPTY_OBJECT,
 
 // 常见的布尔类型的属性
-booleanPropertyNames = needCompile ? split2Map('disabled,checked,required,multiple,readonly,autofocus,autoplay,controls,loop,muted,novalidate,draggable,contenteditable,hidden,spellcheck') : constant.EMPTY_OBJECT,
-
-// 某些属性 attribute name 和 property name 不同
-attr2Prop = { }
-
-// 列举几个常见的
-attr2Prop['for'] = 'htmlFor'
-attr2Prop['class'] = 'className'
-attr2Prop['accesskey'] = 'accessKey'
-attr2Prop['novalidate'] = 'noValidate'
-attr2Prop['readonly'] = 'readOnly'
-attr2Prop['tabindex'] = 'tabIndex'
-attr2Prop['minlength'] = 'minLength'
-attr2Prop['maxlength'] = 'maxLength'
-attr2Prop['cellpadding'] = 'cellPadding'
-attr2Prop['cellspacing'] = 'cellSpacing'
-attr2Prop['colspan'] = 'colSpan'
-attr2Prop['rowspan'] = 'rowSpan'
-attr2Prop['valign'] = 'vAlign'
-attr2Prop['frameborder'] = 'frameBorder'
+booleanAttributeNames = needCompile ? split2Map('disabled,checked,required,multiple,readonly,autofocus,autoplay,controls,loop,muted,novalidate,draggable,contenteditable,hidden,spellcheck') : constant.EMPTY_OBJECT
 
 export function isSelfClosing(tagName: string) {
   return selfClosingTagNames[tagName] !== constant.UNDEFINED
 }
 
-export function createAttribute(element: Element, name: string, ns: string | void): Attribute | Property | Style {
+export function createAttribute(element: Element, name: string, ns: string | void): Attribute | Style {
 
   // 组件用驼峰格式
   if (element.isComponent) {
@@ -88,46 +61,12 @@ export function createAttribute(element: Element, name: string, ns: string | voi
       ns
     )
   }
+
   // 原生 dom 属性
-  else {
+  return name === 'style'
+    ? creator.createStyle()
+    : creator.createAttribute(name, ns)
 
-    // 把 attr 优化成 prop
-    const lowerName = string.lower(name)
-
-    if (name === 'style') {
-      return creator.createStyle()
-    }
-    // <slot> 、<template> 或 svg 中的属性不用识别为 property
-    else if (helper.specialTags[element.tag] || element.isSvg) {
-      return creator.createAttribute(name, ns)
-    }
-    // 尝试识别成 property
-    else if (stringPropertyNames[lowerName]) {
-      return creator.createProperty(
-        attr2Prop[lowerName] || lowerName,
-        ns,
-        HINT_STRING,
-      )
-    }
-    else if (numberPropertyNames[lowerName]) {
-      return creator.createProperty(
-        attr2Prop[lowerName] || lowerName,
-        ns,
-        HINT_NUMBER
-      )
-    }
-    else if (booleanPropertyNames[lowerName]) {
-      return creator.createProperty(
-        attr2Prop[lowerName] || lowerName,
-        ns,
-        HINT_BOOLEAN
-      )
-    }
-
-    // 没辙，还是个 attribute
-    return creator.createAttribute(name, ns)
-
-  }
 }
 
 export function getAttributeDefaultValue(element: Element, name: string) {
@@ -135,10 +74,50 @@ export function getAttributeDefaultValue(element: Element, name: string) {
   if (element.isComponent) {
     return constant.TRUE
   }
-  // <div data-name checked>
-  return string.startsWith(name, 'data-')
-    ? constant.EMPTY_STRING
-    : name
+  // 无视 <input min> 无效写法
+  if (isNumberNativeAttribute(name)) {
+    return constant.UNDEFINED
+  }
+  // 布尔类型或字符串类型的 attribute，统一返回空字符串即可
+  return constant.EMPTY_STRING
+}
+
+export function formatNativeAttributeValue(name: string, value: any) {
+
+  if (isNumberNativeAttribute(name)) {
+    return formatNumberNativeAttributeValue(name, value)
+  }
+  else if (isBooleanNativeAttribute(name)) {
+    return formatBooleanNativeAttributeValue(name, value)
+  }
+  // 字符串类型的属性，保持原样即可
+  return value
+
+}
+
+export function isNumberNativeAttribute(name: string) {
+  return numberAttributeNames[name]
+}
+
+export function isBooleanNativeAttribute(name: string) {
+  return booleanAttributeNames[name]
+}
+
+export function formatNumberNativeAttributeValue(name: string, value: any) {
+  // 数字类型需要严格校验格式，比如 width="100%" 要打印报错信息，提示用户类型错误
+  if (process.env.NODE_ENV === 'development') {
+    if (!is.numeric(value)) {
+      logger.warn(`The value of "${name}" is not a number: ${value}.`)
+    }
+  }
+  return toString(value)
+}
+
+export function formatBooleanNativeAttributeValue(name: string, value: any) {
+  // 布尔类型的属性，只有值为 true 或 属性名 才表示 true
+  return value === constant.TRUE || value === constant.RAW_TRUE || value === name
+      ? constant.EMPTY_STRING
+      : constant.UNDEFINED
 }
 
 export function isNativeElement(node: Node) {
@@ -190,8 +169,8 @@ export function compatElement(element: Element) {
       attrs,
       function (attr) {
 
-        const name = attr.type === nodeType.PROPERTY
-          ? (attr as Property).name
+        const name = attr.type === nodeType.ATTRIBUTE
+          ? (attr as Attribute).name
           : constant.UNDEFINED
 
         if (name === 'type') {
@@ -209,9 +188,11 @@ export function compatElement(element: Element) {
   // style 如果没有 type 则加一个 type="text/css"
   // 因为低版本 IE 没这个属性，没法正常渲染样式
   if (element.isStyle && !hasType) {
+    const attr = creator.createAttribute('type')
+    attr.value = 'text/css'
     array.push(
       element.attrs || (element.attrs = []),
-      creator.createProperty('type', constant.UNDEFINED, HINT_STRING, 'text/css')
+      attr
     )
   }
   // 低版本 IE 需要给 option 标签强制加 value

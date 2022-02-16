@@ -54,6 +54,11 @@ import {
   parseStyleString,
 } from './helper'
 
+import {
+  formatNumberNativeAttributeValue,
+  formatBooleanNativeAttributeValue,
+} from './platform/web'
+
 type Context = {
   scope: any,
   keypath: string,
@@ -102,20 +107,15 @@ export function render(
 
   },
 
-  appendAttribute = function (vnode: Data, key: string, value: any, name?: string) {
+  appendVNodeProperty = function (vnode: Data, key: string, name: string, value: any) {
 
-    if (name) {
-      if (vnode[key]) {
-        vnode[key][name] = value
-      }
-      else {
-        const map = { }
-        map[name] = value
-        vnode[key] = map
-      }
+    if (vnode[key]) {
+      vnode[key][name] = value
     }
     else {
-      vnode[key] = value
+      const map = { }
+      map[name] = value
+      vnode[key] = map
     }
 
   },
@@ -297,7 +297,7 @@ export function render(
       }
 
       for (let name in value) {
-        appendAttribute(
+        appendVNodeProperty(
           vnode,
           key,
           value[name],
@@ -705,7 +705,6 @@ export function render(
   renderTemplate = function (render: Function, scope: any, keypath: string, children: VNode[], components: VNode[]) {
     render(
       renderComposeVNode,
-      appendAttribute,
       renderStyleString,
       renderStyleExpr,
       renderTransition,
@@ -719,6 +718,9 @@ export function render(
       renderPartial,
       renderEach,
       renderRange,
+      appendVNodeProperty,
+      formatNumberNativeAttributeValue,
+      formatBooleanNativeAttributeValue,
       lookupKeypath,
       lookupProp,
       getThis,

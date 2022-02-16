@@ -1,8 +1,4 @@
 import {
-  PropertyHint,
-} from 'yox-type/src/type'
-
-import {
   TAG_SLOT,
   TAG_PORTAL,
 } from 'yox-config/src/config'
@@ -18,7 +14,6 @@ import Node from './node/Node'
 import Element from './node/Element'
 import Attribute from './node/Attribute'
 import Directive from './node/Directive'
-import Property from './node/Property'
 import Style from './node/Style'
 import Each from './node/Each'
 import If from './node/If'
@@ -45,19 +40,6 @@ export function createDirective(name: string, ns: string, modifier?: string): Di
     ns,
     name,
     modifier,
-  }
-}
-
-export function createProperty(name: string, ns: string | void, hint: PropertyHint, value?: string | number | boolean, expr?: ExpressionNode, children?: Node[]): Property {
-  return {
-    type: nodeType.PROPERTY,
-    isStatic: constant.TRUE,
-    name,
-    ns,
-    hint,
-    value,
-    expr,
-    children,
   }
 }
 
