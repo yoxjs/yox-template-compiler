@@ -391,14 +391,16 @@ export function compile(content: string): Branch[] {
             if (isElement) {
               processElementSingleText(branchNode as Element, onlyChild as Text)
             }
-            else if (isAttribute) {
-              processAttributeSingleText(branchNode as Attribute, onlyChild as Text)
-            }
-            else if (isStyle) {
-              processStyleSingleText(branchNode as Style, onlyChild as Text)
-            }
-            else if (isDirective) {
-              processDirectiveSingleText(branchNode as Directive, onlyChild as Text)
+            else if (currentElement) {
+              if (isAttribute) {
+                processAttributeSingleText(currentElement, branchNode as Attribute, onlyChild as Text)
+              }
+              else if (isStyle) {
+                processStyleSingleText(currentElement, branchNode as Style, onlyChild as Text)
+              }
+              else if (isDirective) {
+                processDirectiveSingleText(currentElement, branchNode as Directive, onlyChild as Text)
+              }
             }
             break
 
@@ -406,8 +408,8 @@ export function compile(content: string): Branch[] {
             if (isElement) {
               processElementSingleExpression(branchNode as Element, onlyChild as Expression)
             }
-            else if (isAttribute || isStyle || isDirective) {
-              processAttributeSingleExpression(branchNode as any, onlyChild as Expression)
+            else if (currentElement && (isAttribute || isStyle || isDirective)) {
+              processAttributeSingleExpression(currentElement, branchNode as any, onlyChild as Expression)
             }
             break
 
@@ -486,7 +488,7 @@ export function compile(content: string): Branch[] {
 
   },
 
-  processStyleSingleText = function (style: Style, child: Text) {
+  processStyleSingleText = function (element: Element, style: Style, child: Text) {
 
     if (child.text) {
       style.value = child.text
@@ -512,20 +514,23 @@ export function compile(content: string): Branch[] {
 
   },
 
-  processAttributeSingleText = function (attr: Attribute, child: Text) {
+  processAttributeSingleText = function (element: Element, attr: Attribute, child: Text) {
 
-    attr.value = formatNativeAttributeValue(attr.name, child.text)
+    attr.value = element.isComponent
+      ? child.text
+      : formatNativeAttributeValue(attr.name, child.text)
+
     attr.children = constant.UNDEFINED
 
   },
 
-  processAttributeSingleExpression = function (attr: Attribute | Style | Directive, child: Expression) {
+  processAttributeSingleExpression = function (element: Element, attr: Attribute | Style | Directive, child: Expression) {
 
     const { expr } = child
 
     if (expr.type === exprNodeType.LITERAL) {
       let value = (expr as ExpressionLiteral).value
-      if (attr.type === nodeType.ATTRIBUTE) {
+      if (!element.isComponent && attr.type === nodeType.ATTRIBUTE) {
         value = formatNativeAttributeValue((attr as Attribute).name, value)
       }
       attr.value = value
@@ -544,7 +549,7 @@ export function compile(content: string): Branch[] {
 
   },
 
-  processDirectiveSingleText = function (directive: Directive, child: Text) {
+  processDirectiveSingleText = function (element: Element, directive: Directive, child: Text) {
 
     let { ns } = directive, { text } = child,
 
