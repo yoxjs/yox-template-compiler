@@ -300,8 +300,8 @@ export function render(
         appendVNodeProperty(
           vnode,
           key,
-          value[name],
           name,
+          value[name]
         )
       }
 
