@@ -191,7 +191,7 @@ export function render(
     }
   },
 
-  createEventMethodListener = function (method: Function, runtime?: EventRuntime, isComponent?: boolean): Listener {
+  createEventMethodListener = function (method: string, runtime?: EventRuntime, isComponent?: boolean): Listener {
     return function (event: CustomEvent, data?: Data) {
 
       // 监听组件事件不用处理父组件传下来的事件
@@ -199,8 +199,16 @@ export function render(
         return
       }
 
+      const methodFunc = instance[method]
+
+      if (process.env.NODE_ENV === 'development') {
+        if (!methodFunc) {
+          logger.fatal(`The method "${method}" can't be found.`)
+        }
+      }
+
       const result = execute(
-        method,
+        methodFunc,
         instance,
         runtime
           ? runtime.args(runtime.stack, event, data)
@@ -214,7 +222,7 @@ export function render(
     }
   },
 
-  renderEventMethod = function (key: string, value: string, name: string, ns: string, method: Function, runtime?: EventRuntime, isComponent?: boolean, isNative?: boolean) {
+  renderEventMethod = function (key: string, value: string, name: string, ns: string, method: string, runtime?: EventRuntime, isComponent?: boolean, isNative?: boolean) {
     if (runtime) {
       runtime.stack = contextStack
     }
