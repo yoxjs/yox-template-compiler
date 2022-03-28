@@ -78,7 +78,11 @@ export function getAttributeDefaultValue(element: Element, name: string) {
   if (isNumberNativeAttribute(name)) {
     return constant.UNDEFINED
   }
-  // 布尔类型或字符串类型的 attribute，统一返回空字符串即可
+  // 布尔类型返回 'true'
+  if (isBooleanNativeAttribute(name)) {
+    return constant.RAW_TRUE
+  }
+  // 字符串类型返回空字符串
   return constant.EMPTY_STRING
 }
 
@@ -116,7 +120,7 @@ export function formatNumberNativeAttributeValue(name: string, value: any) {
 export function formatBooleanNativeAttributeValue(name: string, value: any) {
   // 布尔类型的属性，只有值为 true 或 属性名 才表示 true
   return value === constant.TRUE || value === constant.RAW_TRUE || value === name
-      ? constant.EMPTY_STRING
+      ? constant.RAW_TRUE
       : constant.UNDEFINED
 }
 
