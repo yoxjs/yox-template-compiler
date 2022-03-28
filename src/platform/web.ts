@@ -119,9 +119,15 @@ export function formatNumberNativeAttributeValue(name: string, value: any) {
 
 export function formatBooleanNativeAttributeValue(name: string, value: any) {
   // 布尔类型的属性，只有值为 true 或 属性名 才表示 true
-  return value === constant.TRUE || value === constant.RAW_TRUE || value === name
-      ? constant.RAW_TRUE
-      : constant.UNDEFINED
+  if (value === constant.TRUE || value === constant.RAW_TRUE || value === name) {
+    return constant.RAW_TRUE
+  }
+  // 有些元素的布尔类型属性值，默认是 true，因此如果开发者明确传了 false，还是要用 false
+  // 而不是用 undefined，否则会用回元素的默认值，即 true
+  if (value === constant.FALSE || value === constant.RAW_FALSE) {
+    return constant.RAW_FALSE
+  }
+  return constant.UNDEFINED
 }
 
 export function isNativeElement(node: Node) {
