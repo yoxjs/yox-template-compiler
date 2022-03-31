@@ -16,6 +16,7 @@ import {
 
 import {
   VNode,
+  Slots,
   EventRuntime,
   DirectiveRuntime,
 } from 'yox-type/src/vnode'
@@ -68,6 +69,7 @@ export function render(
   template: Function,
   data: Data,
   computed: Record<string, Computed> | undefined,
+  slots: Slots | undefined,
   filters: Record<string, Filter> | undefined,
   globalFilters: Record<string, Filter>,
   partials: Record<string, Function> | undefined,
@@ -76,7 +78,7 @@ export function render(
   globalDirectives: Record<string, DirectiveHooks>,
   transitions: Record<string, TransitionHooks> | undefined,
   globalTransitions: Record<string, TransitionHooks>,
-  setDependency: (keypath: string, value: any) => void
+  addDependency: (keypath: string) => void
 ) {
 
   let rootScope = object.merge(data, computed),
@@ -453,19 +455,60 @@ export function render(
 
   },
 
-  renderSlot = function (name: string) {
-    const result = object.get(rootScope, name)
-    if (result) {
-      const { value } = result
+  /**
+   * 直接渲染 slot，如下
+   * <Button>
+   *  click
+   * </Button>
+   *
+   * 在 Button 组件模板中，如果直接使用了 slot，则属于直接渲染，如下
+   * <div class="button">
+   *  <slot />
+   * </div>
+   */
+  renderSlotDirectly = function (name: string) {
+    return setSlotHodler(
+      name,
+      object.get(rootScope, name)
+    )
+  },
+
+  /**
+   * 间接渲染 slot，如下
+   * <Button>
+   *  click
+   * </Button>
+   *
+   * 在 Button 组件模板中，如果未直接使用 slot，而是透传给了其他组件，则属于间接渲染，如下
+   * <div class="button">
+   *  <Text>
+   *    <slot />
+   *  </Text>
+   * </div>
+   */
+  renderSlotIndirectly = function (name: string, parent: YoxInterface) {
+    return setSlotHodler(
+      name,
+      object.get(
+        slots as Slots,
+        name,
+        function (value) {
+          return is.func(value)
+            ? value(parent)
+            : value
+        }
+      )
+    )
+  },
+
+  setSlotHodler = function (name: string, holder?: ValueHolder) {
+    addDependency(name)
+    if (holder) {
+      const { value } = holder
       // slot 内容必须是个数组
-      return setHolder(
-        value !== constant.UNDEFINED
-          ? (is.array(value)
-            ? value
-            : [value])
-          : value,
-        name
-      ).value
+      return is.array(value)
+        ? value
+        : [value]
     }
   },
 
@@ -484,14 +527,14 @@ export function render(
     result = object.get(scope, name)
 
     if (result) {
-      return setHolder(
+      return setValueHolder(
         result.value,
         currentKeypath
       )
     }
 
     if (isFirstCall) {
-      setHolder(
+      setValueHolder(
         constant.UNDEFINED,
         currentKeypath
       )
@@ -518,7 +561,7 @@ export function render(
 
     return findKeypath(currentStack, getIndex(currentStack), keypath, lookup, constant.TRUE) || (
       filter
-        ? setHolder(filter)
+        ? setValueHolder(filter)
         : globalHolder
     )
 
@@ -535,7 +578,7 @@ export function render(
     currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
 
     if (name in scope) {
-      return setHolder(
+      return setValueHolder(
         scope[name],
         currentKeypath
       )
@@ -566,7 +609,7 @@ export function render(
     currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
 
     if (value !== constant.UNDEFINED) {
-      return setHolder(
+      return setValueHolder(
         value,
         currentKeypath
       )
@@ -574,8 +617,8 @@ export function render(
 
     return index > 0 && findProp(currentStack, index - 1, name) || (
       filter
-        ? setHolder(filter)
-        : setHolder(constant.UNDEFINED, currentKeypath)
+        ? setValueHolder(filter)
+        : setValueHolder(constant.UNDEFINED, currentKeypath)
     )
 
   },
@@ -589,7 +632,7 @@ export function render(
 
     { keypath } = currentStack[currentStack.length - 1]
 
-    return setHolder(
+    return setValueHolder(
       value,
       keypath
     )
@@ -605,7 +648,7 @@ export function render(
 
     { scope, keypath } = currentStack[getIndex(currentStack)]
 
-    return setHolder(
+    return setValueHolder(
       scope,
       keypath
     )
@@ -622,7 +665,7 @@ export function render(
 
     { keypath } = currentStack[currentStack.length - 1]
 
-    return setHolder(
+    return setValueHolder(
       value,
       keypath ? keypath + constant.RAW_DOT + name : name
     )
@@ -639,7 +682,7 @@ export function render(
 
     { scope, keypath } = currentStack[getIndex(currentStack)]
 
-    return setHolder(
+    return setValueHolder(
       scope[name],
       keypath ? keypath + constant.RAW_DOT + name : name
     )
@@ -651,12 +694,12 @@ export function render(
     keypath: string
   ) {
     const result = object.get(value, keypath)
-    return setHolder(
+    return setValueHolder(
       result ? result.value : constant.UNDEFINED
     )
   },
 
-  setHolder = function (value: any, keypath?: string) {
+  setValueHolder = function (value: any, keypath?: string) {
 
     if (value && is.func(value.get)) {
       value = value.get()
@@ -666,7 +709,7 @@ export function render(
     globalHolder.value = value
 
     if (keypath !== constant.UNDEFINED) {
-      setDependency(keypath, value)
+      addDependency(keypath)
     }
 
     return globalHolder
@@ -686,7 +729,8 @@ export function render(
       renderPartial,
       renderEach,
       renderRange,
-      renderSlot,
+      renderSlotDirectly,
+      renderSlotIndirectly,
       appendVNodeProperty,
       formatNumberNativeAttributeValue,
       formatBooleanNativeAttributeValue,
@@ -698,7 +742,7 @@ export function render(
       getPropByIndex,
       readKeypath,
       execute,
-      setHolder,
+      setValueHolder,
       toString,
       textVNodeOperator,
       commentVNodeOperator,

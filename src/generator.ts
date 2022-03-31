@@ -139,7 +139,9 @@ RENDER_EACH = constant.EMPTY_STRING,
 
 RENDER_RANGE = constant.EMPTY_STRING,
 
-RENDER_SLOT = constant.EMPTY_STRING,
+RENDER_SLOT_DIRECTLY = constant.EMPTY_STRING,
+
+RENDER_SLOT_INDIRECTLY = constant.EMPTY_STRING,
 
 APPEND_VNODE_PROPERTY = constant.EMPTY_STRING,
 
@@ -163,7 +165,7 @@ READ_KEYPATH = constant.EMPTY_STRING,
 
 EXECUTE_FUNCTION = constant.EMPTY_STRING,
 
-SET_HOLDER = constant.EMPTY_STRING,
+SET_VALUE_HOLDER = constant.EMPTY_STRING,
 
 TO_STRING = constant.EMPTY_STRING,
 
@@ -238,46 +240,47 @@ function init() {
     RENDER_PARTIAL = '_i'
     RENDER_EACH = '_j'
     RENDER_RANGE = '_k'
-    RENDER_SLOT = '_l'
-    APPEND_VNODE_PROPERTY = '_m'
-    FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE = '_n'
-    FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = '_o'
-    LOOKUP_KEYPATH = '_p'
-    LOOKUP_PROP = '_q'
-    GET_THIS = '_r'
-    GET_THIS_BY_INDEX = '_s'
-    GET_PROP = '_t'
-    GET_PROP_BY_INDEX = '_u'
-    READ_KEYPATH = '_v'
-    EXECUTE_FUNCTION = '_w'
-    SET_HOLDER = '_x'
-    TO_STRING = '_y'
-    OPERATOR_TEXT_VNODE = '_z'
-    OPERATOR_COMMENT_VNODE = '_A'
-    OPERATOR_ELEMENT_VNODE = '_B'
-    OPERATOR_COMPONENT_VNODE = '_C'
-    OPERATOR_FRAGMENT_VNODE = '_D'
-    OPERATOR_PORTAL_VNODE = '_E'
-    OPERATOR_SLOT_VNODE = '_F'
-    ARG_INSTANCE = '_G'
-    ARG_FILTERS = '_H'
-    ARG_GLOBAL_FILTERS = '_I'
-    ARG_LOCAL_PARTIALS = '_J'
-    ARG_PARTIALS = '_K'
-    ARG_GLOBAL_PARTIALS = '_L'
-    ARG_DIRECTIVES = '_M'
-    ARG_GLOBAL_DIRECTIVES = '_N'
-    ARG_TRANSITIONS = '_O'
-    ARG_GLOBAL_TRANSITIONS = '_P'
-    ARG_STACK = '_Q'
-    ARG_PARENT = '_R'
-    ARG_VNODE = '_S'
-    ARG_CHILDREN = '_T'
-    ARG_SCOPE = '_U'
-    ARG_KEYPATH = '_V'
-    ARG_LENGTH = '_W'
-    ARG_EVENT = '_X'
-    ARG_DATA = '_Y'
+    RENDER_SLOT_DIRECTLY = '_l'
+    RENDER_SLOT_INDIRECTLY = '_m'
+    APPEND_VNODE_PROPERTY = '_n'
+    FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE = '_o'
+    FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = '_p'
+    LOOKUP_KEYPATH = '_q'
+    LOOKUP_PROP = '_r'
+    GET_THIS = '_s'
+    GET_THIS_BY_INDEX = '_t'
+    GET_PROP = '_u'
+    GET_PROP_BY_INDEX = '_v'
+    READ_KEYPATH = '_w'
+    EXECUTE_FUNCTION = '_x'
+    SET_VALUE_HOLDER = '_y'
+    TO_STRING = '_z'
+    OPERATOR_TEXT_VNODE = '_A'
+    OPERATOR_COMMENT_VNODE = '_B'
+    OPERATOR_ELEMENT_VNODE = '_C'
+    OPERATOR_COMPONENT_VNODE = '_D'
+    OPERATOR_FRAGMENT_VNODE = '_E'
+    OPERATOR_PORTAL_VNODE = '_F'
+    OPERATOR_SLOT_VNODE = '_G'
+    ARG_INSTANCE = '_H'
+    ARG_FILTERS = '_I'
+    ARG_GLOBAL_FILTERS = '_J'
+    ARG_LOCAL_PARTIALS = '_K'
+    ARG_PARTIALS = '_L'
+    ARG_GLOBAL_PARTIALS = '_M'
+    ARG_DIRECTIVES = '_N'
+    ARG_GLOBAL_DIRECTIVES = '_O'
+    ARG_TRANSITIONS = '_P'
+    ARG_GLOBAL_TRANSITIONS = '_Q'
+    ARG_STACK = '_R'
+    ARG_PARENT = '_S'
+    ARG_VNODE = '_T'
+    ARG_CHILDREN = '_U'
+    ARG_SCOPE = '_V'
+    ARG_KEYPATH = '_W'
+    ARG_LENGTH = '_X'
+    ARG_EVENT = '_Y'
+    ARG_DATA = '_Z'
   }
   else {
     RENDER_STYLE_STRING = 'renderStyleStyle'
@@ -291,7 +294,8 @@ function init() {
     RENDER_PARTIAL = 'renderPartial'
     RENDER_EACH = 'renderEach'
     RENDER_RANGE = 'renderRange'
-    RENDER_SLOT = 'renderSlot'
+    RENDER_SLOT_DIRECTLY = 'renderSlotDirectly'
+    RENDER_SLOT_INDIRECTLY = 'renderSlotIndirectly'
     APPEND_VNODE_PROPERTY = 'appendVNodeProperty'
     FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE = 'formatNativeAttributeNumberValue'
     FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = 'formatNativeAttributeBooleanValue'
@@ -303,7 +307,7 @@ function init() {
     GET_PROP_BY_INDEX = 'getPropByIndex'
     READ_KEYPATH = 'readKeypath'
     EXECUTE_FUNCTION = 'executeFunction'
-    SET_HOLDER = 'setHolder'
+    SET_VALUE_HOLDER = 'setValueHolder'
     TO_STRING = 'toString'
     OPERATOR_TEXT_VNODE = 'textVNodeOperator'
     OPERATOR_COMMENT_VNODE = 'commentVNodeOperator'
@@ -658,7 +662,7 @@ function generateExpressionValue(value: generator.Base, keys: generator.Base[], 
   switch (keys.length) {
     case 0:
       result = generator.toCall(
-        SET_HOLDER,
+        SET_VALUE_HOLDER,
         [
           value,
         ]
@@ -666,7 +670,7 @@ function generateExpressionValue(value: generator.Base, keys: generator.Base[], 
       break
     case 1:
       result = generator.toCall(
-        SET_HOLDER,
+        SET_VALUE_HOLDER,
         [
           generator.toMember(
             value,
@@ -696,7 +700,7 @@ function generateExpressionCall(fn: generator.Base, args?: generator.Base[], hol
 
   return generateHolderIfNeeded(
     generator.toCall(
-      SET_HOLDER,
+      SET_VALUE_HOLDER,
       [
         generator.toCall(
           EXECUTE_FUNCTION,
@@ -980,72 +984,15 @@ function generateComponentSlots(children: Node[]) {
   object.each(
     slots,
     function (children: Node[], name: string) {
-      /*
-       * 如果组件内部有透传 slot 的情况，比如
-       *
-       * <Button>
-       *  <slot />
-       * </Button>
-       *
-       * 或者多个 slot
-       *
-       * <Button>
-       *  <slot name="icon" />
-       *  <slot name="label" />
-       * </Button>
-       *
-       * 透传需要判断 slot 内容是否真实存在，如果不存在，则不必往下传了
-       */
-
-      let conditions: generator.Base[] = []
-
-      array.each(
-        children,
-        function (child) {
-          if (child.type !== nodeType.ELEMENT) {
-            return constant.FALSE
-          }
-          const element = child as Element
-          if (specialTag2VNodeType[element.tag] !== VNODE_TYPE_SLOT) {
-            return constant.FALSE
-          }
-          // 如果是 slot，则 slot 必须有外部传入的内容
-          array.push(
-            conditions,
-            generator.toCall(
-              RENDER_SLOT,
-              [
-                generator.toPrimitive(name)
-              ]
-            )
-          )
-        }
-      )
-
-      let content: generator.Base = generateNodesToChildren(
-        children,
-        [
-          ARG_PARENT
-        ]
-      )
-
-      if (conditions.length) {
-        let conditionStatement: generator.Base = conditions[0]
-        for (let i = 1; i < conditions.length; i++) {
-          conditionStatement = generator.toBinary(
-            conditionStatement,
-            '&&',
-            conditions[i]
-          )
-        }
-        content = generator.toTernary(
-          conditionStatement,
-          content,
-          generator.toPrimitive(constant.UNDEFINED)
+      result.set(
+        name,
+        generateNodesToChildren(
+          children,
+          [
+            ARG_PARENT
+          ]
         )
-      }
-
-      result.set(name, content)
+      )
     }
   )
 
@@ -1393,12 +1340,23 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
           )
     }
 
-    renderSlot = generator.toCall(
-      RENDER_SLOT,
-      [
-        outputName
-      ]
-    )
+    if (array.last(slotStack)) {
+      renderSlot = generator.toCall(
+        RENDER_SLOT_INDIRECTLY,
+        [
+          outputName,
+          ARG_PARENT
+        ]
+      )
+    }
+    else {
+      renderSlot = generator.toCall(
+        RENDER_SLOT_DIRECTLY,
+        [
+          outputName
+        ]
+      )
+    }
 
   }
   if (text) {
@@ -2439,7 +2397,8 @@ export function generate(node: Node): string {
       RENDER_PARTIAL,
       RENDER_EACH,
       RENDER_RANGE,
-      RENDER_SLOT,
+      RENDER_SLOT_DIRECTLY,
+      RENDER_SLOT_INDIRECTLY,
       APPEND_VNODE_PROPERTY,
       FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE,
       FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE,
@@ -2451,7 +2410,7 @@ export function generate(node: Node): string {
       GET_PROP_BY_INDEX,
       READ_KEYPATH,
       EXECUTE_FUNCTION,
-      SET_HOLDER,
+      SET_VALUE_HOLDER,
       TO_STRING,
       OPERATOR_TEXT_VNODE,
       OPERATOR_COMMENT_VNODE,
