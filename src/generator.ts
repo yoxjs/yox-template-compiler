@@ -1556,11 +1556,19 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   }
   else if (isFragment) {
     vnode.set(
+      'isFragment',
+      generator.toPrimitive(constant.TRUE)
+    )
+    vnode.set(
       FIELD_OPERATOR,
       OPERATOR_FRAGMENT_VNODE
     )
   }
   else if (isPortal) {
+    vnode.set(
+      'isPortal',
+      generator.toPrimitive(constant.TRUE)
+    )
     vnode.set(
       FIELD_OPERATOR,
       OPERATOR_PORTAL_VNODE
@@ -1583,6 +1591,10 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
   }
   else if (isSlot) {
+    vnode.set(
+      'isSlot',
+      generator.toPrimitive(constant.TRUE)
+    )
     vnode.set(
       FIELD_OPERATOR,
       OPERATOR_SLOT_VNODE
