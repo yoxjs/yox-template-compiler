@@ -454,9 +454,19 @@ export function render(
   },
 
   renderSlot = function (name: string) {
-    const content = rootScope[name]
-    setDependency(name, content)
-    return content
+    const result = object.get(rootScope, name)
+    if (result) {
+      const { value } = result
+      // slot 内容必须是个数组
+      return setHolder(
+        value !== constant.UNDEFINED
+          ? (is.array(value)
+            ? value
+            : [value])
+          : value,
+        name
+      ).value
+    }
   },
 
   findKeypath = function (

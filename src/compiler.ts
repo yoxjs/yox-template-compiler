@@ -26,6 +26,7 @@ import {
   MAGIC_VAR_EVENT,
   MAGIC_VAR_DATA,
   MODIFER_NATIVE,
+  SLOT_DATA_PREFIX,
 } from 'yox-config/src/config'
 
 import {
@@ -1435,7 +1436,12 @@ export function compile(content: string): Branch[] {
           }
         }
         else {
-          const expr = exprCompiler.compile(literal)
+          // 如果 literal 包含 @，如 @children 或 ~/@children
+          // 表示要遍历 slot，至于为啥要这么设计，因为想复用 each 的逻辑，减少重复代码
+          // 再加上这个特性一般在业务逻辑中很少使用，只有 UI 库才可能用到，因此这里不必纠结这个语法设计
+          const expr = exprCompiler.compile(
+            literal.replace(/(^|\/)@/, '$1' + SLOT_DATA_PREFIX)
+          )
           if (expr) {
             return creator.createEach(
               expr,

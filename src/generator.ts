@@ -1030,8 +1030,16 @@ function generateComponentSlots(children: Node[]) {
       )
 
       if (conditions.length) {
+        let conditionStatement: generator.Base = conditions[0]
+        for (let i = 1; i < conditions.length; i++) {
+          conditionStatement = generator.toBinary(
+            conditionStatement,
+            '&&',
+            conditions[i]
+          )
+        }
         content = generator.toTernary(
-          generator.toList(conditions, '&&'),
+          conditionStatement,
           content,
           generator.toPrimitive(constant.UNDEFINED)
         )
@@ -1280,7 +1288,9 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   outputAttrs: generator.Base | void = constant.UNDEFINED,
   outputChildren: generator.Base | void = constant.UNDEFINED,
-  outputSlots: generator.Base | void = constant.UNDEFINED
+  outputSlots: generator.Base | void = constant.UNDEFINED,
+
+  renderSlot: generator.Base | void = constant.UNDEFINED
 
   // 先序列化 children，再序列化 attrs，原因需要举两个例子：
 
@@ -1359,6 +1369,37 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
             ]
           )
     )
+  }
+  if (isSlot) {
+
+    let nameAttr = node.name,
+
+    outputName: generator.Base = generator.toPrimitive(
+      SLOT_DATA_PREFIX + SLOT_NAME_DEFAULT
+    )
+
+    if (nameAttr) {
+      // 如果 name 是字面量，直接拼出结果
+      outputName = isDef(nameAttr.value)
+        ? generator.toPrimitive(
+            SLOT_DATA_PREFIX + nameAttr.value
+          )
+        : generator.toBinary(
+            generator.toPrimitive(SLOT_DATA_PREFIX),
+            '+',
+            generator.toPrecedence(
+              generateAttributeValue(nameAttr)
+            )
+          )
+    }
+
+    renderSlot = generator.toCall(
+      RENDER_SLOT,
+      [
+        outputName
+      ]
+    )
+
   }
   if (text) {
     vnode.set(
@@ -1588,7 +1629,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
   }
   else if (isSlot) {
-
     vnode.set(
       'isSlot',
       generator.toPrimitive(constant.TRUE)
@@ -1597,43 +1637,17 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       FIELD_OPERATOR,
       OPERATOR_SLOT_VNODE
     )
-
-    let nameAttr = node.name,
-
-    slotName: generator.Base = generator.toPrimitive(
-      SLOT_DATA_PREFIX + SLOT_NAME_DEFAULT
-    )
-
-    if (nameAttr) {
-      // 如果 name 是字面量，直接拼出结果
-      slotName = isDef(nameAttr.value)
-        ? generator.toPrimitive(
-            SLOT_DATA_PREFIX + nameAttr.value
-          )
-        : generator.toBinary(
-            generator.toPrimitive(SLOT_DATA_PREFIX),
-            '+',
-            generator.toPrecedence(
-              generateAttributeValue(nameAttr)
-            )
-          )
-    }
-
-    const slotContent = generator.toCall(
-      RENDER_SLOT,
-      [
-        slotName
-      ]
-    )
-
+    // 如果 renderSlot 没内容，则取 slot 元素的 children 作为内容
+    // <slot>
+    //  default
+    // </slot>
     outputChildren = outputChildren
       ? generator.toBinary(
-          slotContent,
+          renderSlot as generator.Base,
           '||',
           outputChildren
         )
-      : slotContent
-
+      : renderSlot
   }
   if (node.isOption) {
     vnode.set(
