@@ -76,6 +76,9 @@ attributeStack: boolean[] = [ ],
 // 是否正在处理特殊 each，包括 遍历 range 和 遍历数组字面量和对象字面量
 eachStack: boolean[] = [ ],
 
+// 是否正在处理 slot
+slotStack: boolean[] = [ ],
+
 // 是否正在收集动态 child
 dynamicChildrenStack: boolean[] = [ constant.TRUE ],
 
@@ -104,15 +107,15 @@ FIELD_TRANSITION = 'transition',
 
 FIELD_CHILDREN = 'children',
 
-FIELD_SLOTS = 'slots'
+FIELD_SLOTS = 'slots',
+
+FIELD_OPERATOR = 'operator'
 
 
 // 下面这些值需要根据外部配置才能确定
 let isUglify = constant.UNDEFINED,
 
 currentTextVNode: TextVNode | void = constant.UNDEFINED,
-
-RENDER_COMPOSE_VNODE = constant.EMPTY_STRING,
 
 RENDER_STYLE_STRING = constant.EMPTY_STRING,
 
@@ -130,15 +133,13 @@ RENDER_DIRECTIVE = constant.EMPTY_STRING,
 
 RENDER_SPREAD = constant.EMPTY_STRING,
 
-RENDER_SLOTS = constant.EMPTY_STRING,
-
-RENDER_SLOT_CHILDREN = constant.EMPTY_STRING,
-
 RENDER_PARTIAL = constant.EMPTY_STRING,
 
 RENDER_EACH = constant.EMPTY_STRING,
 
 RENDER_RANGE = constant.EMPTY_STRING,
+
+RENDER_SLOT = constant.EMPTY_STRING,
 
 APPEND_VNODE_PROPERTY = constant.EMPTY_STRING,
 
@@ -202,11 +203,11 @@ ARG_GLOBAL_TRANSITIONS = constant.EMPTY_STRING,
 
 ARG_STACK = constant.EMPTY_STRING,
 
+ARG_PARENT = constant.EMPTY_STRING,
+
 ARG_VNODE = constant.EMPTY_STRING,
 
 ARG_CHILDREN = constant.EMPTY_STRING,
-
-ARG_COMPONENTS = constant.EMPTY_STRING,
 
 ARG_SCOPE = constant.EMPTY_STRING,
 
@@ -226,62 +227,59 @@ function init() {
   }
 
   if (constant.PUBLIC_CONFIG.uglifyCompiled) {
-    RENDER_COMPOSE_VNODE = '_a'
-    RENDER_STYLE_STRING = '_b'
-    RENDER_STYLE_EXPR = '_c'
-    RENDER_TRANSITION = '_d'
-    RENDER_MODEL = '_e'
-    RENDER_EVENT_METHOD = '_f'
-    RENDER_EVENT_NAME = '_g'
-    RENDER_DIRECTIVE = '_h'
-    RENDER_SPREAD = '_i'
-    RENDER_SLOTS = '_j'
-    RENDER_SLOT_CHILDREN = '_k'
-    RENDER_PARTIAL = '_l'
-    RENDER_EACH = '_m'
-    RENDER_RANGE = '_n'
-    APPEND_VNODE_PROPERTY = '_o'
-    FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE = '_p'
-    FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = '_q'
-    LOOKUP_KEYPATH = '_r'
-    LOOKUP_PROP = '_s'
-    GET_THIS = '_t'
-    GET_THIS_BY_INDEX = '_u'
-    GET_PROP = '_v'
-    GET_PROP_BY_INDEX = '_w'
-    READ_KEYPATH = '_x'
-    EXECUTE_FUNCTION = '_y'
-    SET_HOLDER = '_z'
-    TO_STRING = '_A'
-    OPERATOR_TEXT_VNODE = '_B'
-    OPERATOR_COMMENT_VNODE = '_C'
-    OPERATOR_ELEMENT_VNODE = '_D'
-    OPERATOR_COMPONENT_VNODE = '_E'
-    OPERATOR_FRAGMENT_VNODE = '_F'
-    OPERATOR_PORTAL_VNODE = '_G'
-    OPERATOR_SLOT_VNODE = '_H'
-    ARG_INSTANCE = '_I'
-    ARG_FILTERS = '_J'
-    ARG_GLOBAL_FILTERS = '_K'
-    ARG_LOCAL_PARTIALS = '_L'
-    ARG_PARTIALS = '_M'
-    ARG_GLOBAL_PARTIALS = '_N'
-    ARG_DIRECTIVES = '_O'
-    ARG_GLOBAL_DIRECTIVES = '_P'
-    ARG_TRANSITIONS = '_Q'
-    ARG_GLOBAL_TRANSITIONS = '_R'
-    ARG_STACK = '_S'
-    ARG_VNODE = '_T'
-    ARG_CHILDREN = '_U'
-    ARG_COMPONENTS = '_V'
-    ARG_SCOPE = '_W'
-    ARG_KEYPATH = '_X'
-    ARG_LENGTH = '_Y'
-    ARG_EVENT = '_Z'
-    ARG_DATA = '_1'
+    RENDER_STYLE_STRING = '_a'
+    RENDER_STYLE_EXPR = '_b'
+    RENDER_TRANSITION = '_c'
+    RENDER_MODEL = '_d'
+    RENDER_EVENT_METHOD = '_e'
+    RENDER_EVENT_NAME = '_f'
+    RENDER_DIRECTIVE = '_g'
+    RENDER_SPREAD = '_h'
+    RENDER_PARTIAL = '_i'
+    RENDER_EACH = '_j'
+    RENDER_RANGE = '_k'
+    RENDER_SLOT = '_l'
+    APPEND_VNODE_PROPERTY = '_m'
+    FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE = '_n'
+    FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = '_o'
+    LOOKUP_KEYPATH = '_p'
+    LOOKUP_PROP = '_q'
+    GET_THIS = '_r'
+    GET_THIS_BY_INDEX = '_s'
+    GET_PROP = '_t'
+    GET_PROP_BY_INDEX = '_u'
+    READ_KEYPATH = '_v'
+    EXECUTE_FUNCTION = '_w'
+    SET_HOLDER = '_x'
+    TO_STRING = '_y'
+    OPERATOR_TEXT_VNODE = '_z'
+    OPERATOR_COMMENT_VNODE = '_A'
+    OPERATOR_ELEMENT_VNODE = '_B'
+    OPERATOR_COMPONENT_VNODE = '_C'
+    OPERATOR_FRAGMENT_VNODE = '_D'
+    OPERATOR_PORTAL_VNODE = '_E'
+    OPERATOR_SLOT_VNODE = '_F'
+    ARG_INSTANCE = '_G'
+    ARG_FILTERS = '_H'
+    ARG_GLOBAL_FILTERS = '_I'
+    ARG_LOCAL_PARTIALS = '_J'
+    ARG_PARTIALS = '_K'
+    ARG_GLOBAL_PARTIALS = '_L'
+    ARG_DIRECTIVES = '_M'
+    ARG_GLOBAL_DIRECTIVES = '_N'
+    ARG_TRANSITIONS = '_O'
+    ARG_GLOBAL_TRANSITIONS = '_P'
+    ARG_STACK = '_Q'
+    ARG_PARENT = '_R'
+    ARG_VNODE = '_S'
+    ARG_CHILDREN = '_T'
+    ARG_SCOPE = '_U'
+    ARG_KEYPATH = '_V'
+    ARG_LENGTH = '_W'
+    ARG_EVENT = '_X'
+    ARG_DATA = '_Y'
   }
   else {
-    RENDER_COMPOSE_VNODE = 'renderComposeVNode'
     RENDER_STYLE_STRING = 'renderStyleStyle'
     RENDER_STYLE_EXPR = 'renderStyleExpr'
     RENDER_TRANSITION = 'renderTransition'
@@ -290,11 +288,10 @@ function init() {
     RENDER_EVENT_NAME = 'renderEventName'
     RENDER_DIRECTIVE = 'renderDirective'
     RENDER_SPREAD = 'renderSpread'
-    RENDER_SLOTS = 'renderSlots'
-    RENDER_SLOT_CHILDREN = 'renderSlotChildren'
     RENDER_PARTIAL = 'renderPartial'
     RENDER_EACH = 'renderEach'
     RENDER_RANGE = 'renderRange'
+    RENDER_SLOT = 'renderSlot'
     APPEND_VNODE_PROPERTY = 'appendVNodeProperty'
     FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE = 'formatNativeAttributeNumberValue'
     FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = 'formatNativeAttributeBooleanValue'
@@ -326,9 +323,9 @@ function init() {
     ARG_TRANSITIONS = 'transition'
     ARG_GLOBAL_TRANSITIONS = 'globalTransitions'
     ARG_STACK = 'stack'
+    ARG_PARENT = 'parent'
     ARG_VNODE = 'vnode'
     ARG_CHILDREN = 'children'
-    ARG_COMPONENTS = 'components'
     ARG_SCOPE = MAGIC_VAR_SCOPE
     ARG_KEYPATH = MAGIC_VAR_KEYPATH
     ARG_LENGTH = MAGIC_VAR_LENGTH
@@ -456,14 +453,12 @@ function generateHolderIfNeeded(node: generator.Base, holder?: boolean) {
       )
 }
 
-function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.Base[], keypath?: string, holder?: boolean, stack?: boolean, parentNode?: ExpressionNode) {
+function generateExpressionIndex(root?: boolean, offset?: number) {
 
-  const { root, lookup, offset } = node, { length } = nodes
-
-  let getIndex: generator.Base
+  let result: generator.Base
 
   if (root) {
-    getIndex = generator.addVar(
+    result = generator.addVar(
       generator.toAnonymousFunction(
         constant.UNDEFINED,
         constant.UNDEFINED,
@@ -473,7 +468,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
     )
   }
   else if (offset) {
-    getIndex = generator.addVar(
+    result = generator.addVar(
       generator.toAnonymousFunction(
         [
           ARG_STACK
@@ -494,7 +489,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
     )
   }
   else {
-    getIndex = generator.addVar(
+    result = generator.addVar(
       generator.toAnonymousFunction(
         [
           ARG_STACK
@@ -514,6 +509,14 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
       constant.TRUE
     )
   }
+
+  return result
+
+}
+
+function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.Base[], keypath?: string, holder?: boolean, stack?: boolean, parentNode?: ExpressionNode) {
+
+  const { root, lookup, offset } = node, { length } = nodes, getIndex = generateExpressionIndex(root, offset)
 
   let filter: generator.Base = generator.toPrimitive(constant.UNDEFINED)
 
@@ -822,7 +825,7 @@ function generateNodesToTuple(nodes: Node[]) {
     ';',
     constant.TRUE,
     0,
-    mapNodes(nodes)
+    mapNodes(nodes as Node[])
   )
 }
 
@@ -830,6 +833,39 @@ function generateNodesToList(nodes: Node[]) {
   return generator.toList(
     mapNodes(nodes)
   )
+}
+
+function generateNodesToChildren(nodes: Node[], args: generator.Base[] | void) {
+
+  const tuple = generateNodesToTuple(nodes)
+
+  // 用 ARG_CHILDREN 收集所有的节点
+  tuple.unshift(
+    generator.toAssign(
+      ARG_CHILDREN,
+      generator.toList(),
+      constant.TRUE
+    )
+  )
+
+  return generator.toAnonymousFunction(
+    args,
+    tuple,
+    generator.toTernary(
+      generator.toMember(
+        ARG_CHILDREN,
+        [
+          generator.toPrimitive(constant.RAW_LENGTH)
+        ]
+      ),
+      ARG_CHILDREN,
+      generator.toPrimitive(
+        constant.UNDEFINED
+      )
+    )
+
+  )
+
 }
 
 function generateStatementIfNeeded(nodes: generator.Base[]) {
@@ -849,13 +885,6 @@ function appendDynamicChildVNode(vnode: generator.Base) {
     vnode
   )
 
-}
-
-function appendComponentVNode(vnode: generator.Base) {
-  return generator.toPush(
-    ARG_COMPONENTS,
-    vnode
-  )
 }
 
 function generateSelfAndGlobalReader(self: string, global: string, name: string) {
@@ -922,6 +951,8 @@ function generateComponentSlots(children: Node[]) {
 
   }
 
+  array.push(slotStack, constant.TRUE)
+
   array.each(
     children,
     function (child) {
@@ -949,18 +980,68 @@ function generateComponentSlots(children: Node[]) {
   object.each(
     slots,
     function (children: Node[], name: string) {
-      result.set(
-        name,
-        generator.toAnonymousFunction(
-          [
-            ARG_CHILDREN,
-            ARG_COMPONENTS
-          ],
-          generateNodesToTuple(children)
-        )
+      /*
+       * 如果组件内部有透传 slot 的情况，比如
+       *
+       * <Button>
+       *  <slot />
+       * </Button>
+       *
+       * 或者多个 slot
+       *
+       * <Button>
+       *  <slot name="icon" />
+       *  <slot name="label" />
+       * </Button>
+       *
+       * 透传需要判断 slot 内容是否真实存在，如果不存在，则不必往下传了
+       */
+
+      let conditions: generator.Base[] = []
+
+      array.each(
+        children,
+        function (child) {
+          if (child.type !== nodeType.ELEMENT) {
+            return constant.FALSE
+          }
+          const element = child as Element
+          if (specialTag2VNodeType[element.tag] !== VNODE_TYPE_SLOT) {
+            return constant.FALSE
+          }
+          // 如果是 slot，则 slot 必须有外部传入的内容
+          array.push(
+            conditions,
+            generator.toCall(
+              RENDER_SLOT,
+              [
+                generator.toPrimitive(name)
+              ]
+            )
+          )
+        }
       )
+
+      let content: generator.Base = generateNodesToChildren(
+        children,
+        [
+          ARG_PARENT
+        ]
+      )
+
+      if (conditions.length) {
+        content = generator.toTernary(
+          generator.toList(conditions, '&&'),
+          content,
+          generator.toPrimitive(constant.UNDEFINED)
+        )
+      }
+
+      result.set(name, content)
     }
   )
+
+  array.pop(slotStack)
 
   if (result.isNotEmpty()) {
     return result
@@ -1158,20 +1239,12 @@ function parseChildren(children: Node[], forceDynamic?: boolean) {
   )
 
   if (isDynamic) {
-    dynamicChildren = generator.toAnonymousFunction(
-      [
-        ARG_CHILDREN
-      ],
-      generateNodesToTuple(
-        children
-      ),
-      ARG_CHILDREN
+    dynamicChildren = generator.toCall(
+      generateNodesToChildren(children)
     )
   }
   else {
-    staticChildren = generateNodesToList(
-      children
-    )
+    staticChildren = generateNodesToList(children)
   }
 
   array.pop(
@@ -1228,13 +1301,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   array.push(componentStack, isComponent)
 
   if (children) {
-    if (isSlot) {
-      outputChildren = generator.toStatement(
-        mapNodes(children),
-        constant.TRUE
-      )
-    }
-    else if (isComponent) {
+    if (isComponent) {
       outputSlots = generateComponentSlots(children)
     }
     else {
@@ -1243,10 +1310,15 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         outputChildren = dynamicChildren
       }
       else if (staticChildren) {
-        vnode.set(
-          FIELD_CHILDREN,
-          staticChildren
-        )
+        if (isSlot) {
+          outputChildren = staticChildren
+        }
+        else {
+          vnode.set(
+            FIELD_CHILDREN,
+            staticChildren
+          )
+        }
       }
     }
   }
@@ -1479,7 +1551,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   if (vnodeType === VNODE_TYPE_ELEMENT) {
     vnode.set(
-      'operator',
+      FIELD_OPERATOR,
       OPERATOR_ELEMENT_VNODE
     )
   }
@@ -1489,13 +1561,13 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       generator.toPrimitive(constant.TRUE)
     )
     vnode.set(
-      'operator',
+      FIELD_OPERATOR,
       OPERATOR_FRAGMENT_VNODE
     )
   }
   else if (isPortal) {
     vnode.set(
-      'operator',
+      FIELD_OPERATOR,
       OPERATOR_PORTAL_VNODE
     )
   }
@@ -1505,9 +1577,15 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       generator.toPrimitive(constant.TRUE)
     )
     vnode.set(
-      'operator',
+      FIELD_OPERATOR,
       OPERATOR_COMPONENT_VNODE
     )
+    if (array.last(slotStack)) {
+      vnode.set(
+        'parent',
+        ARG_PARENT
+      )
+    }
   }
   else if (isSlot) {
 
@@ -1516,19 +1594,19 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       generator.toPrimitive(constant.TRUE)
     )
     vnode.set(
-      'operator',
+      FIELD_OPERATOR,
       OPERATOR_SLOT_VNODE
     )
 
     let nameAttr = node.name,
 
-    argName: generator.Base = generator.toPrimitive(
+    slotName: generator.Base = generator.toPrimitive(
       SLOT_DATA_PREFIX + SLOT_NAME_DEFAULT
     )
 
     if (nameAttr) {
       // 如果 name 是字面量，直接拼出结果
-      argName = isDef(nameAttr.value)
+      slotName = isDef(nameAttr.value)
         ? generator.toPrimitive(
             SLOT_DATA_PREFIX + nameAttr.value
           )
@@ -1541,27 +1619,20 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
           )
     }
 
-    const renderSlot = generator.toCall(
-      RENDER_SLOT_CHILDREN,
+    const slotContent = generator.toCall(
+      RENDER_SLOT,
       [
-        argName,
-        ARG_CHILDREN
+        slotName
       ]
     )
 
-    outputChildren = generator.toAnonymousFunction(
-      [
-        ARG_CHILDREN
-      ],
-      outputChildren
-        ? generator.toBinary(
-            renderSlot,
-            '||',
-            outputChildren
-          )
-        : renderSlot,
-      ARG_CHILDREN
-    )
+    outputChildren = outputChildren
+      ? generator.toBinary(
+          slotContent,
+          '||',
+          outputChildren
+        )
+      : slotContent
 
   }
   if (node.isOption) {
@@ -1596,23 +1667,13 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   if (outputChildren) {
     vnode.set(
       FIELD_CHILDREN,
-      generator.toCall(
-        outputChildren,
-        [
-          generator.toList()
-        ]
-      )
+      outputChildren
     )
   }
   if (outputSlots) {
     vnode.set(
       FIELD_SLOTS,
-      generator.toCall(
-        RENDER_SLOTS,
-        [
-          outputSlots
-        ]
-      )
+      outputSlots
     )
   }
 
@@ -1628,31 +1689,48 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     : vnode
 
   if (isFragment || isPortal || isSlot) {
+    const varName = generator.getTempName()
+
+    // temp = vnode
     array.push(
       list,
-      generator.toCall(
-        RENDER_COMPOSE_VNODE,
-        [
-          result,
+      generator.toAssign(
+        varName,
+        result
+      )
+    )
+
+    // temp.children && temp.children.length && childre.push(temp)
+    array.push(
+      list,
+      generator.toBinary(
+        generator.toBinary(
+          generator.toMember(
+            varName,
+            [
+              generator.toPrimitive(FIELD_CHILDREN)
+            ]
+          ),
+          '&&',
+          generator.toMember(
+            varName,
+            [
+              generator.toPrimitive(FIELD_CHILDREN),
+              generator.toPrimitive(constant.RAW_LENGTH)
+            ]
+          ),
+        ),
+        '&&',
+        generator.toPush(
           ARG_CHILDREN,
-        ]
+          varName
+        )
       )
     )
     return generateStatementIfNeeded(list)
   }
 
-  array.push(
-    list,
-    result
-  )
-
-  return generateVNode(
-    isComponent
-    ? appendComponentVNode(
-        generateStatementIfNeeded(list)
-      )
-    : generateStatementIfNeeded(list)
-  )
+  return generateVNode(result)
 
 }
 
@@ -2295,7 +2373,6 @@ nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
         ARG_SCOPE,
         ARG_KEYPATH,
         ARG_CHILDREN,
-        ARG_COMPONENTS,
       ],
       generateNodesToTuple(node.children as Node[])
     )
@@ -2314,7 +2391,6 @@ nodeGenerator[nodeType.IMPORT] = function (node: Import) {
       ARG_SCOPE,
       ARG_KEYPATH,
       ARG_CHILDREN,
-      ARG_COMPONENTS,
       generator.toMember(
         ARG_LOCAL_PARTIALS,
         [
@@ -2338,7 +2414,6 @@ export function generate(node: Node): string {
 
   return generator.generate(
     [
-      RENDER_COMPOSE_VNODE,
       RENDER_STYLE_STRING,
       RENDER_STYLE_EXPR,
       RENDER_TRANSITION,
@@ -2347,11 +2422,10 @@ export function generate(node: Node): string {
       RENDER_EVENT_NAME,
       RENDER_DIRECTIVE,
       RENDER_SPREAD,
-      RENDER_SLOTS,
-      RENDER_SLOT_CHILDREN,
       RENDER_PARTIAL,
       RENDER_EACH,
       RENDER_RANGE,
+      RENDER_SLOT,
       APPEND_VNODE_PROPERTY,
       FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE,
       FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE,
@@ -2385,7 +2459,6 @@ export function generate(node: Node): string {
       ARG_SCOPE,
       ARG_KEYPATH,
       ARG_CHILDREN,
-      ARG_COMPONENTS,
     ],
     nodeGenerator[node.type](node)
   )

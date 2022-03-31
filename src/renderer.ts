@@ -40,7 +40,6 @@ import globalHolder from 'yox-common/src/util/holder'
 import Computed from 'yox-observer/src/Computed'
 
 import {
-  clone,
   textVNodeOperator,
   commentVNodeOperator,
   elementVNodeOperator,
@@ -67,7 +66,6 @@ type Context = {
 export function render(
   instance: YoxInterface,
   template: Function,
-  dependencies: Record<string, any>,
   data: Data,
   computed: Record<string, Computed> | undefined,
   filters: Record<string, Filter> | undefined,
@@ -78,6 +76,7 @@ export function render(
   globalDirectives: Record<string, DirectiveHooks>,
   transitions: Record<string, TransitionHooks> | undefined,
   globalTransitions: Record<string, TransitionHooks>,
+  setDependency: (keypath: string, value: any) => void
 ) {
 
   let rootScope = object.merge(data, computed),
@@ -88,24 +87,10 @@ export function render(
     { scope: rootScope, keypath: rootKeypath }
   ],
 
-  localPartials: Record<string, (scope: any, keypath: string, children: VNode[], components: VNode[]) => void> = { },
+  localPartials: Record<string, (scope: any, keypath: string, children: VNode[]) => void> = { },
 
   // 模板渲染过程收集的 vnode
   children: VNode[] = [ ],
-
-  // 模板渲染过程收集的组件
-  components: VNode[] = [ ],
-
-  renderComposeVNode = function (
-    vnode: Data,
-    children: Data[]
-  ) {
-
-    if (vnode.children.length) {
-      children[children.length] = vnode
-    }
-
-  },
 
   appendVNodeProperty = function (vnode: Data, key: string, name: string, value: any) {
 
@@ -317,55 +302,17 @@ export function render(
 
   },
 
-  renderSlots = function (render: Record<string, (children: VNode[], components: VNode[]) => void>) {
-    const result = { }
-    for (let name in render) {
-      const children: VNode[] = [ ], components: VNode[] = [ ]
-      render[name](children, components)
-
-      // 就算是 undefined 也必须有值，用于覆盖旧值
-      result[name] = children.length
-        ? {
-            vnodes: children,
-            components: components.length
-              ? components
-              : constant.UNDEFINED
-          }
-        : constant.UNDEFINED
-
-    }
-    return result
-  },
-
-  // <slot name="xx"/>
-  renderSlotChildren = function (name: string, children: VNode[]) {
-    dependencies[name] = children
-    const result = rootScope[name]
-    if (result) {
-      const { vnodes, components } = result
-      if (components) {
-        for (let i = 0, length = components.length; i < length; i++) {
-          components[i].parent = instance
-        }
-      }
-      for (let i = 0, length = vnodes.length; i < length; i++) {
-        children[children.length] = clone(vnodes[i])
-      }
-      return constant.TRUE
-    }
-  },
-
   // {{> name}}
   renderPartial = function (
-    name: string, scope: any, keypath: string, children: VNode[], components: VNode[],
-    renderLocal?: (scope: any, keypath: string, children: VNode[], components: VNode[]) => void,
+    name: string, scope: any, keypath: string, children: VNode[],
+    renderLocal?: (scope: any, keypath: string, children: VNode[]) => void,
     render?: Function,
   ) {
     if (process.env.NODE_ENV === 'development') {
       logger.warn('Partial is not recommended for use, it may be removed in the future.')
     }
     if (renderLocal) {
-      renderLocal(scope, keypath, children, components)
+      renderLocal(scope, keypath, children)
       return
     }
     if (process.env.NODE_ENV === 'development') {
@@ -373,7 +320,7 @@ export function render(
         logger.fatal(`The partial "${name}" can't be found.`)
       }
     }
-    renderTemplate(render as Function, scope, keypath, children, components)
+    renderTemplate(render as Function, scope, keypath, children)
   },
 
   renderEach = function (
@@ -504,6 +451,12 @@ export function render(
       renderElse()
     }
 
+  },
+
+  renderSlot = function (name: string) {
+    const content = rootScope[name]
+    setDependency(name, content)
+    return content
   },
 
   findKeypath = function (
@@ -703,16 +656,15 @@ export function render(
     globalHolder.value = value
 
     if (keypath !== constant.UNDEFINED) {
-      dependencies[keypath] = value
+      setDependency(keypath, value)
     }
 
     return globalHolder
 
   },
 
-  renderTemplate = function (render: Function, scope: any, keypath: string, children: VNode[], components: VNode[]) {
+  renderTemplate = function (render: Function, scope: any, keypath: string, children: VNode[]) {
     render(
-      renderComposeVNode,
       renderStyleString,
       renderStyleExpr,
       renderTransition,
@@ -721,11 +673,10 @@ export function render(
       renderEventName,
       renderDirective,
       renderSpread,
-      renderSlots,
-      renderSlotChildren,
       renderPartial,
       renderEach,
       renderRange,
+      renderSlot,
       appendVNodeProperty,
       formatNumberNativeAttributeValue,
       formatBooleanNativeAttributeValue,
@@ -758,12 +709,11 @@ export function render(
       globalTransitions,
       scope,
       keypath,
-      children,
-      components
+      children
     )
   }
 
-  renderTemplate(template, rootScope, rootKeypath, children, components)
+  renderTemplate(template, rootScope, rootKeypath, children)
 
   if (process.env.NODE_ENV === 'development') {
     if (children.length > 1) {
