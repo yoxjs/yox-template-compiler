@@ -2,10 +2,10 @@ import { compile } from 'yox-template-compiler/src/compiler'
 import * as nodeType from 'yox-template-compiler/src/nodeType'
 import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 import ExprNode from 'yox-expression-compiler/src/node/Node'
+import IdentifierNode from 'yox-expression-compiler/src/node/Identifier'
 
 import Node from 'yox-template-compiler/src/node/Node'
 import Element from 'yox-template-compiler/src/node/Element'
-import Expression from 'yox-template-compiler/src/node/Expression'
 import Attribute from 'yox-template-compiler/src/node/Attribute'
 
 test('简单插值', () => {
@@ -17,10 +17,15 @@ test('简单插值', () => {
   `)
 
   let children = ast[0].children as Node[]
-  expect(children.length).toBe(1)
-  expect(children[0].type).toBe(nodeType.EXPRESSION)
-  expect((children[0] as Expression).safe).toBe(true)
-  expect((children[0] as Expression).expr.type).toBe(exprNodeType.IDENTIFIER)
+  expect(children).toBe(undefined)
+
+  let text = (ast[0] as Element).text
+
+  expect(text).not.toBe(undefined)
+  if (text) {
+    expect((text as ExprNode).type).toBe(exprNodeType.IDENTIFIER)
+    expect(((text as ExprNode) as IdentifierNode).name).toBe('name')
+  }
 
 })
 
@@ -104,8 +109,8 @@ test('插值优化', () => {
   expect(attrs.length).toBe(1)
   expect(attrs[0].type).toBe(nodeType.ATTRIBUTE)
   expect((attrs[0] as Attribute).children).toBe(undefined)
-  expect((attrs[0] as Attribute).value).toBe(undefined)
-  expect((attrs[0] as Attribute).expr != null).toBe(true)
+  expect((attrs[0] as Attribute).value).toBe(true)
+  expect((attrs[0] as Attribute).expr).toBe(undefined)
 
 
 
@@ -158,10 +163,14 @@ test('对象字面量', () => {
   `)
 
   let children = ast[0].children as Node[]
-  expect(children.length).toBe(1)
-  expect(children[0].type).toBe(nodeType.EXPRESSION)
-  expect((children[0] as Expression).safe).toBe(true)
-  expect((children[0] as Expression).expr.type).toBe(exprNodeType.OBJECT)
+  expect(children).toBe(undefined)
+
+  let text = (ast[0] as Element).text
+
+  expect(text).not.toBe(undefined)
+  if (text) {
+    expect((text as ExprNode).type).toBe(exprNodeType.OBJECT)
+  }
 
 })
 

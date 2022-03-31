@@ -1,6 +1,3 @@
-import {
-  SLOT_NAME_DEFAULT,
-} from 'yox-config/src/config'
 
 import { compile } from 'yox-template-compiler/src/compiler'
 import * as nodeType from 'yox-template-compiler/src/nodeType'
@@ -84,7 +81,7 @@ test('组件默认 slot', () => {
   let root = ast[0] as Element
   let children = root.children as Node[]
   expect(children).not.toBe(undefined)
-  expect((children[0] as Element).name).toBe(SLOT_NAME_DEFAULT)
+  expect((children[0] as Element).name).toBe(undefined)
 
 })
 

@@ -4,7 +4,7 @@ import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 
 import Node from 'yox-template-compiler/src/node/Node'
 import Element from 'yox-template-compiler/src/node/Element'
-import Property from 'yox-template-compiler/src/node/Property'
+import Attribute from 'yox-template-compiler/src/node/Attribute'
 import Expression from 'yox-template-compiler/src/node/Expression'
 import Text from 'yox-template-compiler/src/node/Text'
 
@@ -98,9 +98,9 @@ test('style', () => {
   expect(Array.isArray(attrs)).toBe(true)
   if (attrs) {
     expect(attrs.length).toBe(1)
-    expect(attrs[0].type).toBe(nodeType.PROPERTY)
-    expect((attrs[0] as Property).name).toBe('type')
-    expect((attrs[0] as Property).value).toBe('text/css')
+    expect(attrs[0].type).toBe(nodeType.ATTRIBUTE)
+    expect((attrs[0] as Attribute).name).toBe('type')
+    expect((attrs[0] as Attribute).value).toBe('text/css')
   }
 
 })

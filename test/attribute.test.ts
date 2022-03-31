@@ -52,11 +52,11 @@ test('property', () => {
 
     expect(attrs[2].type).toBe(nodeType.ATTRIBUTE)
     expect((attrs[2] as Attribute).name).toBe('disabled')
-    expect((attrs[2] as Attribute).value).toBe('')
+    expect((attrs[2] as Attribute).value).toBe('true')
 
     expect(attrs[3].type).toBe(nodeType.ATTRIBUTE)
     expect((attrs[3] as Attribute).name).toBe('draggable')
-    expect((attrs[3] as Attribute).value).toBe('')
+    expect((attrs[3] as Attribute).value).toBe('true')
 
     expect(attrs[4].type).toBe(nodeType.ATTRIBUTE)
     expect((attrs[4] as Attribute).name).toBe('data-id')
@@ -92,11 +92,11 @@ test('property', () => {
 
     expect(attrs[11].type).toBe(nodeType.ATTRIBUTE)
     expect((attrs[11] as Attribute).name).toBe('readonly')
-    expect((attrs[11] as Attribute).value).toBe('')
+    expect((attrs[11] as Attribute).value).toBe('true')
 
     expect(attrs[12].type).toBe(nodeType.ATTRIBUTE)
     expect((attrs[12] as Attribute).name).toBe('required')
-    expect((attrs[12] as Attribute).value).toBe(undefined)
+    expect((attrs[12] as Attribute).value).toBe('false')
   }
 
 

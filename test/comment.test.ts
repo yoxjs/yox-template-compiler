@@ -3,7 +3,7 @@ import * as nodeType from 'yox-template-compiler/src/nodeType'
 
 import Node from 'yox-template-compiler/src/node/Node'
 import Element from 'yox-template-compiler/src/node/Element'
-import Property from 'yox-template-compiler/src/node/Property'
+import Attribute from 'yox-template-compiler/src/node/Attribute'
 
 test('HTML 注释', () => {
 
@@ -31,8 +31,8 @@ test('HTML 注释', () => {
   expect(root.html).toBe(undefined)
   expect(root.text).toBe(undefined)
   expect(attrs.length).toBe(1)
-  expect(attrs[0].type).toBe(nodeType.PROPERTY)
-  expect((attrs[0] as Property).value).toBe('<!-- xxx -->')
+  expect(attrs[0].type).toBe(nodeType.ATTRIBUTE)
+  expect((attrs[0] as Attribute).value).toBe('<!-- xxx -->')
 
 })
 

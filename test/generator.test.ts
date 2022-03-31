@@ -17,54 +17,21 @@ test('event', () => {
   `
 
   tpl1 = `
-  <div on-click="post($event, a, 3)" o-xxx="post($keypath, $length, a, 1)">
-    {{$keypath}}
+  <div on-click="post($event, a, 3)" o-xxx="post($keypath, $length, a, 1)" {{#if a}} a="1" id="2" lazy transition="xx" on-mouseover="xxx" o-xx="xx"{{/if}}>
+  {{$keypath}}
+    <span>123</span>
+    <b>23</b>
+    44
   </div>
   `
 
-  tpl1 = `
-  <div>
-    {{$keypath}}
-    <ul>
-      {{#each list:outerIndex}}
-        <li>
-          {{$keypath}} + {{outerIndex}}
-
-          {{#each this:innerIndex}}
-            {{outerIndex}} + {{innerIndex}}
-          {{/each}}
-        </li>
-      {{/each}}
-    </ul>
-  </div>
-  `
 
   tpl1 = `
-  <div>
-  {{#each list:outerIndex}}
-    {{this}} {{outerIndex}}
-    <div on-click="post(this, $event, $data)"></div>
-
-    {{#each 1->5:index}}
-      {{this}} {{index}} {{outerIndex}}
-      <div on-click="post(this, $event, $data)"></div>
-    {{/each}}
-
-    {{#each ['11', '111', '1111']:index}}
-      {{this}} {{this.a.b}} {{index}} {{outerIndex}}
-      <div on-click="post(this, $event, $data)"></div>
-    {{/each}}
-  {{/each}}
-  </div>
-  `
-
-  tpl1 = `
-  <div>
-  {{#each list}}
-    <div on-click="print(this, this.name)">
-      {{this}}+{{this}}+{{this.name}}+{{this.name}}+{{this.list.0}}+{{this.list.0}}
-    </div>
-  {{/each}}
+  <div
+    id="n1" name="xxx"
+    data-xx="xx" data-y="aa"
+  >
+    1{{a}}2
   </div>
   `
 
