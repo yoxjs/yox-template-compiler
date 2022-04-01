@@ -17,8 +17,9 @@ import {
 import {
   VNode,
   Slots,
+  EventArgs,
+  DirectiveArgs,
   EventRuntime,
-  DirectiveRuntime,
 } from 'yox-type/src/vnode'
 
 import {
@@ -186,20 +187,11 @@ export function render(
         return
       }
 
-      const methodFunc = instance[method]
-
-      if (process.env.NODE_ENV === 'development') {
-        if (!methodFunc) {
-          logger.fatal(`The method "${method}" can't be found.`)
-        }
-      }
-
-      const result = execute(
-        methodFunc,
-        instance,
+      const result = callMethod(
+        method,
         runtime
-          ? runtime.args(runtime.stack, event, data)
-          : (data ? [event, data] : event)
+          ? runtime.execute(event, data)
+          : (data ? [event, data] : [event])
       )
 
       if (result === constant.FALSE) {
@@ -209,18 +201,22 @@ export function render(
     }
   },
 
-  renderEventMethod = function (key: string, value: string, name: string, ns: string, method: string, runtime?: EventRuntime, isComponent?: boolean, isNative?: boolean) {
-    if (runtime) {
-      runtime.stack = contextStack
-    }
+  renderEventMethod = function (key: string, value: string, name: string, ns: string, method: string, args?: EventArgs, isComponent?: boolean, isNative?: boolean) {
+
+    const runtime = args
+      ? {
+        execute: args
+      }
+      : constant.UNDEFINED
+
     return {
       key,
       value,
       name,
       ns,
       isNative,
-      listener: createEventMethodListener(method, runtime, isComponent),
       runtime,
+      listener: createEventMethodListener(method, runtime, isComponent),
     }
   },
 
@@ -235,25 +231,7 @@ export function render(
     }
   },
 
-  createDirectiveGetter = function (runtime: DirectiveRuntime): () => any {
-    return function () {
-      return (runtime.expr as Function)(runtime.stack)
-    }
-  },
-
-  createDirectiveHandler = function (method: Function, runtime: DirectiveRuntime | void) {
-    return function () {
-      execute(
-        method,
-        instance,
-        runtime
-          ? (runtime.args as Function)(runtime.stack)
-          : constant.UNDEFINED
-      )
-    }
-  },
-
-  renderDirective = function (key: string, name: string, modifier: string, value: any, hooks: DirectiveHooks, runtime?: DirectiveRuntime, method?: Function) {
+  renderDirective = function (key: string, name: string, modifier: string, value: any, hooks: DirectiveHooks, args?: DirectiveArgs, method?: string) {
 
     if (process.env.NODE_ENV === 'development') {
       if (!hooks) {
@@ -261,9 +239,11 @@ export function render(
       }
     }
 
-    if (runtime) {
-      runtime.stack = contextStack
-    }
+    const runtime = args
+      ? {
+        execute: args
+      }
+      : constant.UNDEFINED
 
     return {
       ns: DIRECTIVE_CUSTOM,
@@ -271,11 +251,45 @@ export function render(
       name,
       value,
       modifier,
-      getter: runtime && runtime.expr ? createDirectiveGetter(runtime) : constant.UNDEFINED,
-      handler: method ? createDirectiveHandler(method, runtime) : constant.UNDEFINED,
+      getter: runtime && !method
+        ? function () {
+            return runtime.execute()
+          }
+        : constant.UNDEFINED,
+      handler: method
+        ? function () {
+            callMethod(
+              method,
+              runtime
+                ? runtime.execute()
+                : constant.UNDEFINED
+            )
+          }
+        : constant.UNDEFINED,
       hooks,
-      runtime,
     }
+
+  },
+
+  callMethod = function (name: string, args: any[] | void) {
+
+    const method = instance[name]
+
+    if (process.env.NODE_ENV === 'development') {
+      if (!method) {
+        logger.fatal(`The method "${name}" can't be found.`)
+      }
+    }
+
+    if (args && args.length > 0) {
+      return execute(
+        method,
+        instance,
+        args
+      )
+    }
+
+    return instance[name]()
 
   },
 
@@ -348,6 +362,7 @@ export function render(
           })
         }
         renderChildren(
+          contextStack,
           value[i],
           currentKeypath,
           length,
@@ -374,6 +389,7 @@ export function render(
           })
         }
         renderChildren(
+          contextStack,
           value[key],
           currentKeypath,
           length,
@@ -407,6 +423,7 @@ export function render(
       if (equal) {
         for (let i = from; i <= to; i++) {
           renderChildren(
+            contextStack,
             i,
             currentKeypath,
             length,
@@ -417,6 +434,7 @@ export function render(
       else {
         for (let i = from; i < to; i++) {
           renderChildren(
+            contextStack,
             i,
             currentKeypath,
             length,
@@ -430,6 +448,7 @@ export function render(
       if (equal) {
         for (let i = from; i >= to; i--) {
           renderChildren(
+            contextStack,
             i,
             currentKeypath,
             length,
@@ -440,6 +459,7 @@ export function render(
       else {
         for (let i = from; i > to; i--) {
           renderChildren(
+            contextStack,
             i,
             currentKeypath,
             length,
@@ -550,16 +570,14 @@ export function render(
   },
 
   lookupKeypath = function (
+    stack: Context[],
     getIndex: (stack: Context[]) => number,
     keypath: string,
     lookup?: boolean,
-    stack?: Context[],
     filter?: Function
   ) {
 
-    const currentStack = stack || contextStack
-
-    return findKeypath(currentStack, getIndex(currentStack), keypath, lookup, constant.TRUE) || (
+    return findKeypath(stack, getIndex(stack), keypath, lookup, constant.TRUE) || (
       filter
         ? setValueHolder(filter)
         : globalHolder
@@ -594,17 +612,15 @@ export function render(
   },
 
   lookupProp = function (
+    stack: Context[],
     name: string,
     value: any,
-    stack?: Context[],
     filter?: Function
   ) {
 
-    const currentStack = stack || contextStack,
+    const index = stack.length - 1,
 
-    index = currentStack.length - 1,
-
-    { keypath } = currentStack[index],
+    { keypath } = stack[index],
 
     currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
 
@@ -615,7 +631,7 @@ export function render(
       )
     }
 
-    return index > 0 && findProp(currentStack, index - 1, name) || (
+    return index > 0 && findProp(stack, index - 1, name) || (
       filter
         ? setValueHolder(filter)
         : setValueHolder(constant.UNDEFINED, currentKeypath)
@@ -624,13 +640,11 @@ export function render(
   },
 
   getThis = function (
-    value: any,
-    stack?: Context[]
+    stack: Context[],
+    value: any
   ) {
 
-    const currentStack = stack || contextStack,
-
-    { keypath } = currentStack[currentStack.length - 1]
+    const { keypath } = stack[stack.length - 1]
 
     return setValueHolder(
       value,
@@ -640,13 +654,11 @@ export function render(
   },
 
   getThisByIndex = function (
-    getIndex: (stack: Context[]) => number,
-    stack?: Context[]
+    stack: Context[],
+    getIndex: (stack: Context[]) => number
   ) {
 
-    const currentStack = stack || contextStack,
-
-    { scope, keypath } = currentStack[getIndex(currentStack)]
+    const { scope, keypath } = stack[getIndex(stack)]
 
     return setValueHolder(
       scope,
@@ -656,14 +668,12 @@ export function render(
   },
 
   getProp = function (
+    stack: Context[],
     name: string,
-    value: any,
-    stack?: Context[]
+    value: any
   ) {
 
-    const currentStack = stack || contextStack,
-
-    { keypath } = currentStack[currentStack.length - 1]
+    const { keypath } = stack[stack.length - 1]
 
     return setValueHolder(
       value,
@@ -673,14 +683,12 @@ export function render(
   },
 
   getPropByIndex = function (
+    stack: Context[],
     getIndex: (stack: Context[]) => number,
-    name: string,
-    stack?: Context[]
+    name: string
   ) {
 
-    const currentStack = stack || contextStack,
-
-    { scope, keypath } = currentStack[getIndex(currentStack)]
+    const { scope, keypath } = stack[getIndex(stack)]
 
     return setValueHolder(
       scope[name],
@@ -761,6 +769,7 @@ export function render(
       globalDirectives,
       transitions,
       globalTransitions,
+      contextStack,
       scope,
       keypath,
       children

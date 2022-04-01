@@ -109,7 +109,11 @@ FIELD_CHILDREN = 'children',
 
 FIELD_SLOTS = 'slots',
 
-FIELD_OPERATOR = 'operator'
+FIELD_OPERATOR = 'operator',
+
+PRIMITIVE_UNDEFINED = generator.toPrimitive(constant.UNDEFINED),
+
+PRIMITIVE_TRUE = generator.toPrimitive(constant.TRUE)
 
 
 // 下面这些值需要根据外部配置才能确定
@@ -352,7 +356,7 @@ class CommentVNode implements generator.Base {
   toString(tabSize?: number) {
     return generator.toMap({
       type: generator.toPrimitive(VNODE_TYPE_COMMENT),
-      isPure: generator.toPrimitive(constant.TRUE),
+      isPure: PRIMITIVE_TRUE,
       operator: OPERATOR_COMMENT_VNODE,
       text: this.text,
     }).toString(tabSize)
@@ -376,7 +380,7 @@ class TextVNode implements generator.Base {
   toString(tabSize?: number) {
     return generator.toMap({
       type: generator.toPrimitive(VNODE_TYPE_TEXT),
-      isPure: generator.toPrimitive(constant.TRUE),
+      isPure: PRIMITIVE_TRUE,
       operator: OPERATOR_TEXT_VNODE,
       text: this.buffer,
     }).toString(tabSize)
@@ -518,11 +522,13 @@ function generateExpressionIndex(root?: boolean, offset?: number) {
 
 }
 
-function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.Base[], keypath?: string, holder?: boolean, stack?: boolean, parentNode?: ExpressionNode) {
+function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.Base[], keypath?: string, holder?: boolean, parentNode?: ExpressionNode) {
 
-  const { root, lookup, offset } = node, { length } = nodes, getIndex = generateExpressionIndex(root, offset)
+  const { root, lookup, offset } = node, { length } = nodes,
 
-  let filter: generator.Base = generator.toPrimitive(constant.UNDEFINED)
+  getIndex = generateExpressionIndex(root, offset)
+
+  let filter: generator.Base = PRIMITIVE_UNDEFINED
 
   // 函数调用
   if (parentNode
@@ -551,6 +557,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
   let result: generator.Base = generator.toCall(
     LOOKUP_KEYPATH,
     [
+      ARG_STACK,
       getIndex,
       is.string(keypath)
         ? generator.toPrimitive(keypath)
@@ -558,11 +565,8 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
           ? nodes[0]
           : generator.toList(nodes, constant.RAW_DOT),
       lookup
-        ? generator.toPrimitive(constant.TRUE)
-        : generator.toPrimitive(constant.UNDEFINED),
-      stack
-        ? ARG_STACK
-        : generator.toPrimitive(constant.UNDEFINED),
+        ? PRIMITIVE_TRUE
+        : PRIMITIVE_UNDEFINED,
       filter
     ]
   )
@@ -578,14 +582,12 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
       result = generator.toCall(
         GET_PROP,
         [
+          ARG_STACK,
           generator.toPrimitive(keypath),
           generator.toMember(
             ARG_SCOPE,
             nodes
-          ),
-          stack
-            ? ARG_STACK
-            : generator.toPrimitive(constant.UNDEFINED)
+          )
         ]
       )
     }
@@ -594,14 +596,12 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
       result = generator.toCall(
         LOOKUP_PROP,
         [
+          ARG_STACK,
           generator.toPrimitive(keypath),
           generator.toMember(
             ARG_SCOPE,
             nodes
           ),
-          stack
-            ? ARG_STACK
-            : generator.toPrimitive(constant.UNDEFINED),
           filter
         ]
       )
@@ -611,11 +611,9 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
       result = generator.toCall(
         GET_PROP_BY_INDEX,
         [
+          ARG_STACK,
           getIndex,
-          generator.toPrimitive(keypath),
-          stack
-            ? ARG_STACK
-            : generator.toPrimitive(constant.UNDEFINED)
+          generator.toPrimitive(keypath)
         ]
       )
     }
@@ -629,10 +627,8 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
       result = generator.toCall(
         GET_THIS,
         [
-          ARG_SCOPE,
-          stack
-            ? ARG_STACK
-            : generator.toPrimitive(constant.UNDEFINED)
+          ARG_STACK,
+          ARG_SCOPE
         ]
       )
     }
@@ -641,10 +637,8 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
       result = generator.toCall(
         GET_THIS_BY_INDEX,
         [
-          getIndex,
-          stack
-            ? ARG_STACK
-            : generator.toPrimitive(constant.UNDEFINED)
+          ARG_STACK,
+          getIndex
         ]
       )
     }
@@ -709,7 +703,7 @@ function generateExpressionCall(fn: generator.Base, args?: generator.Base[], hol
             ARG_INSTANCE,
             args
               ? generator.toList(args)
-              : generator.toPrimitive(constant.UNDEFINED)
+              : PRIMITIVE_UNDEFINED
           ]
         )
       ]
@@ -737,18 +731,6 @@ function generateExpressionHolder(expr: ExpressionNode) {
     generateExpressionValue,
     generateExpressionCall,
     constant.TRUE
-  )
-}
-
-function generateExpressionArg(expr: ExpressionNode) {
-  return exprGenerator.generate(
-    expr,
-    transformExpressionIdentifier,
-    generateExpressionIdentifier,
-    generateExpressionValue,
-    generateExpressionCall,
-    constant.FALSE,
-    constant.TRUE,
   )
 }
 
@@ -791,7 +773,7 @@ function generateAttributeValue(attr: Attribute) {
     // 因此走到这里，一定是多个插值或是单个特殊插值（比如 If)
     return createAttributeValue(attr.children)
   }
-  return generator.toPrimitive(constant.UNDEFINED)
+  return PRIMITIVE_UNDEFINED
 }
 
 function mapNodes(nodes: Node[]) {
@@ -867,7 +849,6 @@ function generateNodesToChildren(nodes: Node[], args: generator.Base[] | void) {
         constant.UNDEFINED
       )
     )
-
   )
 
 }
@@ -930,7 +911,7 @@ function generateCommentVNode() {
 function generateTextVNode(text: generator.Base) {
   if (currentTextVNode) {
     currentTextVNode.append(text)
-    return generator.toPrimitive(constant.UNDEFINED)
+    return PRIMITIVE_UNDEFINED
   }
   return generateVNode(
     new TextVNode(text)
@@ -1557,7 +1538,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   else if (isFragment) {
     vnode.set(
       'isFragment',
-      generator.toPrimitive(constant.TRUE)
+      PRIMITIVE_TRUE
     )
     vnode.set(
       FIELD_OPERATOR,
@@ -1567,7 +1548,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   else if (isPortal) {
     vnode.set(
       'isPortal',
-      generator.toPrimitive(constant.TRUE)
+      PRIMITIVE_TRUE
     )
     vnode.set(
       FIELD_OPERATOR,
@@ -1577,7 +1558,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   else if (isComponent) {
     vnode.set(
       'isComponent',
-      generator.toPrimitive(constant.TRUE)
+      PRIMITIVE_TRUE
     )
     vnode.set(
       FIELD_OPERATOR,
@@ -1593,7 +1574,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   else if (isSlot) {
     vnode.set(
       'isSlot',
-      generator.toPrimitive(constant.TRUE)
+      PRIMITIVE_TRUE
     )
     vnode.set(
       FIELD_OPERATOR,
@@ -1614,29 +1595,29 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   if (node.isOption) {
     vnode.set(
       'isOption',
-      generator.toPrimitive(constant.TRUE)
+      PRIMITIVE_TRUE
     )
   }
   if (node.isStyle) {
     vnode.set(
       'isStyle',
-      generator.toPrimitive(constant.TRUE)
+      PRIMITIVE_TRUE
     )
   }
   if (node.isSvg) {
     vnode.set(
       'isSvg',
-      generator.toPrimitive(constant.TRUE)
+      PRIMITIVE_TRUE
     )
   }
   if (node.isStatic) {
     vnode.set(
       'isStatic',
-      generator.toPrimitive(constant.TRUE)
+      PRIMITIVE_TRUE
     )
     vnode.set(
       'isPure',
-      generator.toPrimitive(constant.TRUE)
+      PRIMITIVE_TRUE
     )
   }
 
@@ -1811,23 +1792,23 @@ function addEventBooleanInfo(args: generator.Base[], node: Directive) {
   // isComponent
   array.push(
     args,
-    generator.toPrimitive(constant.UNDEFINED)
+    PRIMITIVE_UNDEFINED
   )
 
   // isNative
   array.push(
     args,
-    generator.toPrimitive(constant.UNDEFINED)
+    PRIMITIVE_UNDEFINED
   )
 
   if (array.last(componentStack)) {
     if (node.modifier === MODIFER_NATIVE) {
       // isNative
-      args[args.length - 1] = generator.toPrimitive(constant.TRUE)
+      args[args.length - 1] = PRIMITIVE_TRUE
     }
     else {
       // isComponent
-      args[args.length - 2] = generator.toPrimitive(constant.TRUE)
+      args[args.length - 2] = PRIMITIVE_TRUE
     }
   }
 
@@ -1878,27 +1859,24 @@ function getEventInfo(node: Directive) {
 
     // 为了实现运行时动态收集参数，这里序列化成函数
     if (!array.falsy(callNode.args)) {
-      // runtime
+      // args
       array.push(
         args,
-        generator.toMap({
-          args: generator.toAnonymousFunction(
-            [
-              ARG_STACK,
-              ARG_EVENT,
-              ARG_DATA,
-            ],
-            constant.UNDEFINED,
-            generator.toList(callNode.args.map(generateExpressionArg))
-          )
-        })
+        generator.toAnonymousFunction(
+          [
+            ARG_EVENT,
+            ARG_DATA,
+          ],
+          constant.UNDEFINED,
+          generator.toList(callNode.args.map(generateExpression))
+        )
       )
     }
     else {
-      // runtime
+      // args
       array.push(
         args,
-        generator.toPrimitive(constant.UNDEFINED)
+        PRIMITIVE_UNDEFINED
       )
     }
 
@@ -1989,25 +1967,21 @@ function getDirectiveArgs(node: Directive) {
 
       // 为了实现运行时动态收集参数，这里序列化成函数
       if (!array.falsy(callNode.args)) {
-        // runtime
+        // args
         array.push(
           args,
-          generator.toMap({
-            args: generator.toAnonymousFunction(
-              [
-                ARG_STACK,
-              ],
-              constant.UNDEFINED,
-              generator.toList(callNode.args.map(generateExpressionArg))
-            )
-          })
+          generator.toAnonymousFunction(
+            constant.UNDEFINED,
+            constant.UNDEFINED,
+            generator.toList(callNode.args.map(generateExpression))
+          )
         )
       }
       else {
-        // runtime
+        // args
         array.push(
           args,
-          generator.toPrimitive(constant.UNDEFINED)
+          PRIMITIVE_UNDEFINED
         )
       }
 
@@ -2015,12 +1989,7 @@ function getDirectiveArgs(node: Directive) {
       // method
       array.push(
         args,
-        generator.toMember(
-          ARG_INSTANCE,
-          [
-            generator.toPrimitive((callNode.name as ExpressionIdentifier).name)
-          ]
-        )
+        generator.toPrimitive((callNode.name as ExpressionIdentifier).name)
       )
 
     }
@@ -2029,18 +1998,14 @@ function getDirectiveArgs(node: Directive) {
       // 取值函数
       // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
       if (expr.type !== exprNodeType.LITERAL) {
-        // runtime
+        // args
         array.push(
           args,
-          generator.toMap({
-            expr: generator.toAnonymousFunction(
-              [
-                ARG_STACK
-              ],
-              constant.UNDEFINED,
-              generateExpressionArg(expr)
-            )
-          })
+          generator.toAnonymousFunction(
+            constant.UNDEFINED,
+            constant.UNDEFINED,
+            generateExpression(expr)
+          )
         )
       }
 
@@ -2145,7 +2110,7 @@ nodeGenerator[nodeType.TEXT] = function (node: Text) {
   const attributeValue = array.last(attributeValueStack)
   if (attributeValue) {
     attributeValue.append(text)
-    return generator.toPrimitive(constant.UNDEFINED)
+    return PRIMITIVE_UNDEFINED
   }
 
   return text
@@ -2177,7 +2142,7 @@ nodeGenerator[nodeType.EXPRESSION] = function (node: Expression) {
         ]
       )
     )
-    return generator.toPrimitive(constant.UNDEFINED)
+    return PRIMITIVE_UNDEFINED
   }
 
   return value
@@ -2189,7 +2154,7 @@ function getBranchDefaultValue() {
     ? generateCommentVNode()
     : array.last(attributeValueStack)
       ? generator.toPrimitive(constant.EMPTY_STRING)
-      : generator.toPrimitive(constant.UNDEFINED)
+      : PRIMITIVE_UNDEFINED
 }
 
 function getBranchValue(children: Node[] | void) {
@@ -2224,7 +2189,7 @@ nodeGenerator[nodeType.IF] = function (node: If) {
 
   if (attributeValue) {
     attributeValue.append(result)
-    return generator.toPrimitive(constant.UNDEFINED)
+    return PRIMITIVE_UNDEFINED
   }
 
   return result
@@ -2260,6 +2225,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   isSpecial = to || from.type === exprNodeType.ARRAY || from.type === exprNodeType.OBJECT
 
   const args = [
+    ARG_STACK,
     ARG_SCOPE,
     ARG_KEYPATH,
     ARG_LENGTH,
@@ -2305,7 +2271,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
         constant.UNDEFINED,
         generateNodesToTuple(next.children as Node[])
       )
-    : generator.toPrimitive(constant.UNDEFINED)
+    : PRIMITIVE_UNDEFINED
 
   // 遍历区间
   if (to) {
@@ -2433,6 +2399,7 @@ export function generate(node: Node): string {
       ARG_GLOBAL_DIRECTIVES,
       ARG_TRANSITIONS,
       ARG_GLOBAL_TRANSITIONS,
+      ARG_STACK,
       ARG_SCOPE,
       ARG_KEYPATH,
       ARG_CHILDREN,
