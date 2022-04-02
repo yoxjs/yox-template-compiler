@@ -17,9 +17,8 @@ import {
 import {
   VNode,
   Slots,
-  EventArgs,
-  DirectiveArgs,
   EventRuntime,
+  DirectiveRuntime,
 } from 'yox-type/src/vnode'
 
 import {
@@ -201,14 +200,7 @@ export function render(
     }
   },
 
-  renderEventMethod = function (key: string, value: string, name: string, ns: string, method: string, args?: EventArgs, isComponent?: boolean, isNative?: boolean) {
-
-    const runtime = args
-      ? {
-        execute: args
-      }
-      : constant.UNDEFINED
-
+  renderEventMethod = function (key: string, value: string, name: string, ns: string, method: string, runtime?: EventRuntime, isComponent?: boolean, isNative?: boolean) {
     return {
       key,
       value,
@@ -231,19 +223,13 @@ export function render(
     }
   },
 
-  renderDirective = function (key: string, name: string, modifier: string, value: any, hooks: DirectiveHooks, args?: DirectiveArgs, method?: string) {
+  renderDirective = function (key: string, name: string, modifier: string, value: any, hooks: DirectiveHooks, runtime?: DirectiveRuntime, method?: string) {
 
     if (process.env.NODE_ENV === 'development') {
       if (!hooks) {
         logger.fatal(`The directive "${name}" can't be found.`)
       }
     }
-
-    const runtime = args
-      ? {
-        execute: args
-      }
-      : constant.UNDEFINED
 
     return {
       ns: DIRECTIVE_CUSTOM,

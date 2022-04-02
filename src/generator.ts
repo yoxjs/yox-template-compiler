@@ -1859,21 +1859,23 @@ function getEventInfo(node: Directive) {
 
     // 为了实现运行时动态收集参数，这里序列化成函数
     if (!array.falsy(callNode.args)) {
-      // args
+      // runtime
       array.push(
         args,
-        generator.toAnonymousFunction(
-          [
-            ARG_EVENT,
-            ARG_DATA,
-          ],
-          constant.UNDEFINED,
-          generator.toList(callNode.args.map(generateExpression))
-        )
+        generator.toMap({
+          execute: generator.toAnonymousFunction(
+            [
+              ARG_EVENT,
+              ARG_DATA,
+            ],
+            constant.UNDEFINED,
+            generator.toList(callNode.args.map(generateExpression))
+          )
+        })
       )
     }
     else {
-      // args
+      // runtime
       array.push(
         args,
         PRIMITIVE_UNDEFINED
@@ -1967,18 +1969,20 @@ function getDirectiveArgs(node: Directive) {
 
       // 为了实现运行时动态收集参数，这里序列化成函数
       if (!array.falsy(callNode.args)) {
-        // args
+        // runtime
         array.push(
           args,
-          generator.toAnonymousFunction(
-            constant.UNDEFINED,
-            constant.UNDEFINED,
-            generator.toList(callNode.args.map(generateExpression))
-          )
+          generator.toMap({
+            execute: generator.toAnonymousFunction(
+              constant.UNDEFINED,
+              constant.UNDEFINED,
+              generator.toList(callNode.args.map(generateExpression))
+            )
+          })
         )
       }
       else {
-        // args
+        // runtime
         array.push(
           args,
           PRIMITIVE_UNDEFINED
@@ -1996,16 +2000,17 @@ function getDirectiveArgs(node: Directive) {
     else {
 
       // 取值函数
-      // getter 函数在触发事件时调用，调用时会传入它的作用域，因此这里要加一个参数
       if (expr.type !== exprNodeType.LITERAL) {
-        // args
+        // runtime
         array.push(
           args,
-          generator.toAnonymousFunction(
-            constant.UNDEFINED,
-            constant.UNDEFINED,
-            generateExpression(expr)
-          )
+          generator.toMap({
+            execute: generator.toAnonymousFunction(
+              constant.UNDEFINED,
+              constant.UNDEFINED,
+              generateExpression(expr)
+            )
+          })
         )
       }
 
