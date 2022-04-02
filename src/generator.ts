@@ -713,24 +713,14 @@ function generateExpressionCall(fn: generator.Base, args?: generator.Base[], hol
 
 }
 
-function generateExpression(expr: ExpressionNode) {
-  return exprGenerator.generate(
-    expr,
-    transformExpressionIdentifier,
-    generateExpressionIdentifier,
-    generateExpressionValue,
-    generateExpressionCall
-  )
-}
-
-function generateExpressionHolder(expr: ExpressionNode) {
+function generateExpression(expr: ExpressionNode, holder?: true) {
   return exprGenerator.generate(
     expr,
     transformExpressionIdentifier,
     generateExpressionIdentifier,
     generateExpressionValue,
     generateExpressionCall,
-    constant.TRUE
+    holder
   )
 }
 
@@ -1782,7 +1772,7 @@ function getModelValue(node: Directive) {
   return generator.toCall(
     RENDER_MODEL,
     [
-      generateExpressionHolder(node.expr as ExpressionNode)
+      generateExpression(node.expr as ExpressionNode, constant.TRUE)
     ]
   )
 }
@@ -2298,7 +2288,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
   return generator.toCall(
     RENDER_EACH,
     [
-      generateExpressionHolder(from),
+      generateExpression(from, constant.TRUE),
       renderChildren,
       renderElse,
     ]
