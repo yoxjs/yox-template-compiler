@@ -356,6 +356,7 @@ class CommentVNode implements generator.Base {
   toString(tabSize?: number) {
     return generator.toMap({
       type: generator.toPrimitive(VNODE_TYPE_COMMENT),
+      isComment: PRIMITIVE_TRUE,
       isPure: PRIMITIVE_TRUE,
       operator: OPERATOR_COMMENT_VNODE,
       text: this.text,
