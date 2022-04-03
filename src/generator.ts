@@ -158,8 +158,6 @@ LOOKUP_KEYPATH = constant.EMPTY_STRING,
 
 LOOKUP_PROP = constant.EMPTY_STRING,
 
-GET_THIS = constant.EMPTY_STRING,
-
 GET_THIS_BY_INDEX = constant.EMPTY_STRING,
 
 GET_PROP = constant.EMPTY_STRING,
@@ -252,40 +250,39 @@ function init() {
     FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = '_p'
     LOOKUP_KEYPATH = '_q'
     LOOKUP_PROP = '_r'
-    GET_THIS = '_s'
-    GET_THIS_BY_INDEX = '_t'
-    GET_PROP = '_u'
-    GET_PROP_BY_INDEX = '_v'
-    READ_KEYPATH = '_w'
-    EXECUTE_FUNCTION = '_x'
-    SET_VALUE_HOLDER = '_y'
-    TO_STRING = '_z'
-    OPERATOR_TEXT_VNODE = '_A'
-    OPERATOR_COMMENT_VNODE = '_B'
-    OPERATOR_ELEMENT_VNODE = '_C'
-    OPERATOR_COMPONENT_VNODE = '_D'
-    OPERATOR_FRAGMENT_VNODE = '_E'
-    OPERATOR_PORTAL_VNODE = '_F'
-    OPERATOR_SLOT_VNODE = '_G'
-    ARG_INSTANCE = '_H'
-    ARG_FILTERS = '_I'
-    ARG_GLOBAL_FILTERS = '_J'
-    ARG_LOCAL_PARTIALS = '_K'
-    ARG_PARTIALS = '_L'
-    ARG_GLOBAL_PARTIALS = '_M'
-    ARG_DIRECTIVES = '_N'
-    ARG_GLOBAL_DIRECTIVES = '_O'
-    ARG_TRANSITIONS = '_P'
-    ARG_GLOBAL_TRANSITIONS = '_Q'
-    ARG_STACK = '_R'
-    ARG_PARENT = '_S'
-    ARG_VNODE = '_T'
-    ARG_CHILDREN = '_U'
-    ARG_SCOPE = '_V'
-    ARG_KEYPATH = '_W'
-    ARG_LENGTH = '_X'
-    ARG_EVENT = '_Y'
-    ARG_DATA = '_Z'
+    GET_THIS_BY_INDEX = '_s'
+    GET_PROP = '_t'
+    GET_PROP_BY_INDEX = '_u'
+    READ_KEYPATH = '_v'
+    EXECUTE_FUNCTION = '_w'
+    SET_VALUE_HOLDER = '_x'
+    TO_STRING = '_y'
+    OPERATOR_TEXT_VNODE = '_z'
+    OPERATOR_COMMENT_VNODE = '_A'
+    OPERATOR_ELEMENT_VNODE = '_B'
+    OPERATOR_COMPONENT_VNODE = '_C'
+    OPERATOR_FRAGMENT_VNODE = '_D'
+    OPERATOR_PORTAL_VNODE = '_E'
+    OPERATOR_SLOT_VNODE = '_F'
+    ARG_INSTANCE = '_G'
+    ARG_FILTERS = '_H'
+    ARG_GLOBAL_FILTERS = '_I'
+    ARG_LOCAL_PARTIALS = '_J'
+    ARG_PARTIALS = '_K'
+    ARG_GLOBAL_PARTIALS = '_L'
+    ARG_DIRECTIVES = '_M'
+    ARG_GLOBAL_DIRECTIVES = '_N'
+    ARG_TRANSITIONS = '_O'
+    ARG_GLOBAL_TRANSITIONS = '_P'
+    ARG_STACK = '_Q'
+    ARG_PARENT = '_R'
+    ARG_VNODE = '_S'
+    ARG_CHILDREN = '_T'
+    ARG_SCOPE = '_U'
+    ARG_KEYPATH = '_V'
+    ARG_LENGTH = '_W'
+    ARG_EVENT = '_X'
+    ARG_DATA = '_Y'
   }
   else {
     RENDER_STYLE_STRING = 'renderStyleStyle'
@@ -306,7 +303,6 @@ function init() {
     FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = 'formatNativeAttributeBooleanValue'
     LOOKUP_KEYPATH = 'lookupKeypath'
     LOOKUP_PROP = 'lookupProp'
-    GET_THIS = 'getThis'
     GET_THIS_BY_INDEX = 'getThisByIndex'
     GET_PROP = 'getProp'
     GET_PROP_BY_INDEX = 'getPropByIndex'
@@ -465,62 +461,20 @@ function generateHolderIfNeeded(node: generator.Base, holder?: boolean) {
 
 function generateExpressionIndex(root?: boolean, offset?: number) {
 
-  let result: generator.Base
-
   if (root) {
-    result = generator.addVar(
-      generator.toAnonymousFunction(
-        constant.UNDEFINED,
-        constant.UNDEFINED,
-        generator.toPrimitive(0)
-      ),
-      constant.TRUE
-    )
-  }
-  else if (offset) {
-    result = generator.addVar(
-      generator.toAnonymousFunction(
-        [
-          ARG_STACK
-        ],
-        constant.UNDEFINED,
-        generator.toBinary(
-          generator.toMember(
-            ARG_STACK,
-            [
-              generator.toPrimitive(constant.RAW_LENGTH)
-            ]
-          ),
-          '-',
-          generator.toPrimitive(1 + offset)
-        )
-      ),
-      constant.TRUE
-    )
-  }
-  else {
-    result = generator.addVar(
-      generator.toAnonymousFunction(
-        [
-          ARG_STACK
-        ],
-        constant.UNDEFINED,
-        generator.toBinary(
-          generator.toMember(
-            ARG_STACK,
-            [
-              generator.toPrimitive(constant.RAW_LENGTH)
-            ]
-          ),
-          '-',
-          generator.toPrimitive(1)
-        )
-      ),
-      constant.TRUE
-    )
+    return generator.toPrimitive(0)
   }
 
-  return result
+  return generator.toBinary(
+    generator.toMember(
+      ARG_STACK,
+      [
+        generator.toPrimitive(constant.RAW_LENGTH)
+      ]
+    ),
+    '-',
+    generator.toPrimitive(1 + (offset ? offset : 0))
+  )
 
 }
 
@@ -528,7 +482,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
 
   const { root, lookup, offset } = node, { length } = nodes,
 
-  getIndex = generateExpressionIndex(root, offset)
+  index = generateExpressionIndex(root, offset)
 
   let filter: generator.Base = PRIMITIVE_UNDEFINED
 
@@ -560,7 +514,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
     LOOKUP_KEYPATH,
     [
       ARG_STACK,
-      getIndex,
+      index,
       is.string(keypath)
         ? generator.toPrimitive(keypath)
         : length === 1
@@ -614,7 +568,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
         GET_PROP_BY_INDEX,
         [
           ARG_STACK,
-          getIndex,
+          index,
           generator.toPrimitive(keypath)
         ]
       )
@@ -623,28 +577,13 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
   }
   // 处理属性为空串，如 this、../this、~/this 之类的
   else if (!keypath && !length) {
-
-    // this
-    if (!root && !offset && !lookup) {
-      result = generator.toCall(
-        GET_THIS,
-        [
-          ARG_STACK,
-          ARG_SCOPE
-        ]
-      )
-    }
-    // 指定了路径，如 ~/name 或 ../name
-    else if (root || offset) {
-      result = generator.toCall(
-        GET_THIS_BY_INDEX,
-        [
-          ARG_STACK,
-          getIndex
-        ]
-      )
-    }
-
+    result = generator.toCall(
+      GET_THIS_BY_INDEX,
+      [
+        ARG_STACK,
+        index
+      ]
+    )
   }
 
   return generateHolderIfNeeded(result, holder)
@@ -2394,7 +2333,6 @@ export function generate(node: Node): string {
       FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE,
       LOOKUP_KEYPATH,
       LOOKUP_PROP,
-      GET_THIS,
       GET_THIS_BY_INDEX,
       GET_PROP,
       GET_PROP_BY_INDEX,

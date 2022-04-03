@@ -492,7 +492,8 @@ export function render(
    */
   renderSlotIndirectly = function (name: string, parent: YoxInterface) {
     addDependency(name)
-    return (slots as Slots)[name](parent)
+    const render = slots && slots[name]
+    return render ? render(parent) : constant.UNDEFINED
   },
 
   findKeypath = function (
@@ -534,13 +535,13 @@ export function render(
 
   lookupKeypath = function (
     stack: Context[],
-    getIndex: (stack: Context[]) => number,
+    index: number,
     keypath: string,
     lookup?: boolean,
     filter?: Function
   ) {
 
-    return findKeypath(stack, getIndex(stack), keypath, lookup, constant.TRUE) || (
+    return findKeypath(stack, index, keypath, lookup, constant.TRUE) || (
       filter
         ? setValueHolder(filter)
         : globalHolder
@@ -602,26 +603,12 @@ export function render(
 
   },
 
-  getThis = function (
-    stack: Context[],
-    value: any
-  ) {
-
-    const { keypath } = stack[stack.length - 1]
-
-    return setValueHolder(
-      value,
-      keypath
-    )
-
-  },
-
   getThisByIndex = function (
     stack: Context[],
-    getIndex: (stack: Context[]) => number
+    index: number
   ) {
 
-    const { scope, keypath } = stack[getIndex(stack)]
+    const { scope, keypath } = stack[index]
 
     return setValueHolder(
       scope,
@@ -647,11 +634,11 @@ export function render(
 
   getPropByIndex = function (
     stack: Context[],
-    getIndex: (stack: Context[]) => number,
+    index: number,
     name: string
   ) {
 
-    const { scope, keypath } = stack[getIndex(stack)]
+    const { scope, keypath } = stack[index]
 
     return setValueHolder(
       scope[name],
@@ -707,7 +694,6 @@ export function render(
       formatBooleanNativeAttributeValue,
       lookupKeypath,
       lookupProp,
-      getThis,
       getThisByIndex,
       getProp,
       getPropByIndex,
