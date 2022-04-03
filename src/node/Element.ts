@@ -33,6 +33,9 @@ export default interface Element extends Branch {
   // <slot name="xx">
   name?: Attribute
 
+  // <vnode value="{{this}}">
+  value?: Attribute
+
   // <portal to="#id">
   to?: Attribute
 

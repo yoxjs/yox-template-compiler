@@ -473,10 +473,8 @@ export function render(
    * </div>
    */
   renderSlotDirectly = function (name: string) {
-    return setSlotHodler(
-      name,
-      object.get(rootScope, name)
-    )
+    addDependency(name)
+    return rootScope[name]
   },
 
   /**
@@ -493,29 +491,8 @@ export function render(
    * </div>
    */
   renderSlotIndirectly = function (name: string, parent: YoxInterface) {
-    return setSlotHodler(
-      name,
-      object.get(
-        slots as Slots,
-        name,
-        function (value) {
-          return is.func(value)
-            ? value(parent)
-            : value
-        }
-      )
-    )
-  },
-
-  setSlotHodler = function (name: string, holder?: ValueHolder) {
     addDependency(name)
-    if (holder) {
-      const { value } = holder
-      // slot 内容必须是个数组
-      return is.array(value)
-        ? value
-        : [value]
-    }
+    return (slots as Slots)[name](parent)
   },
 
   findKeypath = function (

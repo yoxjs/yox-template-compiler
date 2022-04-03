@@ -8,12 +8,14 @@ import {
   SYNTAX_PARTIAL,
   SYNTAX_SPREAD,
   TAG_SLOT,
+  TAG_VNODE,
   TAG_PORTAL,
   TAG_FRAGMENT,
   TAG_TEMPLATE,
   ATTR_TO,
   ATTR_SLOT,
   ATTR_NAME,
+  ATTR_VALUE,
   DIRECTIVE_ON,
   DIRECTIVE_EVENT,
   DIRECTIVE_LAZY,
@@ -168,6 +170,7 @@ function isSpecialAttr(element: Element, attr: Attribute) {
   return helper.specialAttrs[attr.name]
     || element.tag === TAG_SLOT && attr.name === ATTR_NAME
     || element.tag === TAG_PORTAL && attr.name === ATTR_TO
+    || element.tag === TAG_VNODE && attr.name === ATTR_VALUE
 }
 
 function removeComment(children: Node[]) {
@@ -709,13 +712,15 @@ export function compile(content: string): Branch[] {
 
   checkElement = function (element: Element) {
 
-    const { tag, slot } = element,
+    const { tag, slot, value } = element,
 
     isTemplate = tag === TAG_TEMPLATE,
 
     isFragment = tag === TAG_FRAGMENT,
 
-    isPortal = tag === TAG_PORTAL
+    isPortal = tag === TAG_PORTAL,
+
+    isVNode = tag === TAG_VNODE
 
     if (process.env.NODE_ENV === 'development') {
       if (isTemplate) {
@@ -730,6 +735,14 @@ export function compile(content: string): Branch[] {
         }
         else if (!slot) {
           fatal(`The "slot" is required in <template>.`)
+        }
+      }
+      else if (isVNode) {
+        if (!value) {
+          fatal(`The "value" is required in <vnode>.`)
+        }
+        else if (element.text || element.html || element.children) {
+          fatal(`The child nodes is not supported in <vnode>.`)
         }
       }
     }
@@ -762,7 +775,7 @@ export function compile(content: string): Branch[] {
 
     if (isSpecialAttr(element, attr)) {
 
-      const isStringValueRequired = isSlot
+      const isStringValueRequired = isSlot, isExprValueRequired = element.tag === TAG_VNODE && name === ATTR_VALUE
 
       if (process.env.NODE_ENV === 'development') {
         // 因为要拎出来给 element，所以不能用 if
@@ -775,6 +788,9 @@ export function compile(content: string): Branch[] {
         }
         else if (isStringValueRequired && string.falsy(value)) {
           fatal(`The value of "${name}" can only be a string literal.`)
+        }
+        else if (isExprValueRequired && isDef(value)) {
+          fatal(`The value of "${name}" can not be a literal.`)
         }
       }
 

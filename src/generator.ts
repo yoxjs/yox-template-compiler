@@ -1,4 +1,5 @@
 import {
+  TAG_VNODE,
   TAG_TEMPLATE,
   SLOT_DATA_PREFIX,
   SLOT_NAME_DEFAULT,
@@ -1204,12 +1205,16 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   isFragment = vnodeType === VNODE_TYPE_FRAGMENT,
   isPortal = vnodeType === VNODE_TYPE_PORTAL,
   isSlot = vnodeType === VNODE_TYPE_SLOT,
+  // isVNode 不用 vnodeType 判断
+  // 因为 <vnode value="{{expr}}"> 不会创建实际的 vnode，它只是把 value 直接输出
+  isVNode = tag === TAG_VNODE,
 
   outputAttrs: generator.Base | void = constant.UNDEFINED,
   outputChildren: generator.Base | void = constant.UNDEFINED,
   outputSlots: generator.Base | void = constant.UNDEFINED,
 
-  renderSlot: generator.Base | void = constant.UNDEFINED
+  renderSlot: generator.Base | void = constant.UNDEFINED,
+  renderVNode: generator.Base | void = constant.UNDEFINED
 
   // 先序列化 children，再序列化 attrs，原因需要举两个例子：
 
@@ -1289,48 +1294,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
           )
     )
   }
-  if (isSlot) {
-
-    let nameAttr = node.name,
-
-    outputName: generator.Base = generator.toPrimitive(
-      SLOT_DATA_PREFIX + SLOT_NAME_DEFAULT
-    )
-
-    if (nameAttr) {
-      // 如果 name 是字面量，直接拼出结果
-      outputName = isDef(nameAttr.value)
-        ? generator.toPrimitive(
-            SLOT_DATA_PREFIX + nameAttr.value
-          )
-        : generator.toBinary(
-            generator.toPrimitive(SLOT_DATA_PREFIX),
-            '+',
-            generator.toPrecedence(
-              generateAttributeValue(nameAttr)
-            )
-          )
-    }
-
-    if (array.last(slotStack)) {
-      renderSlot = generator.toCall(
-        RENDER_SLOT_INDIRECTLY,
-        [
-          outputName,
-          ARG_PARENT
-        ]
-      )
-    }
-    else {
-      renderSlot = generator.toCall(
-        RENDER_SLOT_DIRECTLY,
-        [
-          outputName
-        ]
-      )
-    }
-
-  }
   if (text) {
     vnode.set(
       'text',
@@ -1344,7 +1307,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
           )
     )
   }
-
   if (attrs) {
 
     const {
@@ -1515,10 +1477,60 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       )
     }
   }
+  if (isSlot) {
+
+    const nameAttr = node.name
+
+    let outputName: generator.Base = generator.toPrimitive(
+      SLOT_DATA_PREFIX + SLOT_NAME_DEFAULT
+    )
+
+    if (nameAttr) {
+      // 如果 name 是字面量，直接拼出结果
+      outputName = isDef(nameAttr.value)
+        ? generator.toPrimitive(
+            SLOT_DATA_PREFIX + nameAttr.value
+          )
+        : generator.toBinary(
+            generator.toPrimitive(SLOT_DATA_PREFIX),
+            '+',
+            generator.toPrecedence(
+              generateAttributeValue(nameAttr)
+            )
+          )
+    }
+
+    if (array.last(slotStack)) {
+      renderSlot = generator.toCall(
+        RENDER_SLOT_INDIRECTLY,
+        [
+          outputName,
+          ARG_PARENT
+        ]
+      )
+    }
+    else {
+      renderSlot = generator.toCall(
+        RENDER_SLOT_DIRECTLY,
+        [
+          outputName
+        ]
+      )
+    }
+
+  }
+  if (isVNode) {
+    // 编译器保证了 value 一定是 Attribute
+    renderVNode = generateAttributeValue(node.value as Attribute)
+  }
 
   array.pop(vnodeStack)
   array.pop(attributeStack)
   array.pop(componentStack)
+
+  if (renderVNode) {
+    return generateVNode(renderVNode)
+  }
 
   if (vnodeType === VNODE_TYPE_ELEMENT) {
     vnode.set(
@@ -1860,7 +1872,13 @@ function getEventInfo(node: Directive) {
               ARG_DATA,
             ],
             constant.UNDEFINED,
-            generator.toList(callNode.args.map(generateExpression))
+            generator.toList(
+              callNode.args.map(
+                function (arg) {
+                  return generateExpression(arg)
+                }
+              )
+            )
           )
         })
       )
@@ -1967,7 +1985,13 @@ function getDirectiveArgs(node: Directive) {
             execute: generator.toAnonymousFunction(
               constant.UNDEFINED,
               constant.UNDEFINED,
-              generator.toList(callNode.args.map(generateExpression))
+              generator.toList(
+                callNode.args.map(
+                  function (arg) {
+                    return generateExpression(arg)
+                  }
+                )
+              )
             )
           })
         )
