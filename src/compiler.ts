@@ -12,9 +12,7 @@ import {
   TAG_PORTAL,
   TAG_FRAGMENT,
   TAG_TEMPLATE,
-  ATTR_TO,
   ATTR_SLOT,
-  ATTR_NAME,
   ATTR_VALUE,
   DIRECTIVE_ON,
   DIRECTIVE_EVENT,
@@ -164,13 +162,6 @@ function isDangerousInterpolation(node: Node | void) {
   return node
     && node.type === nodeType.EXPRESSION
     && !(node as Expression).safe
-}
-
-function isSpecialAttr(element: Element, attr: Attribute) {
-  return helper.specialAttrs[attr.name]
-    || element.tag === TAG_SLOT && attr.name === ATTR_NAME
-    || element.tag === TAG_PORTAL && attr.name === ATTR_TO
-    || element.tag === TAG_VNODE && attr.name === ATTR_VALUE
 }
 
 function removeComment(children: Node[]) {
@@ -380,7 +371,7 @@ export function compile(content: string): Branch[] {
 
     }
 
-    // 除了 helper.specialAttrs 里指定的特殊属性，attrs 里的任何节点都不能单独拎出来赋给 element
+    // 除了符合 isSpecialAttr() 定义的特殊属性，attrs 里的任何节点都不能单独拎出来赋给 element
     // 因为 attrs 可能存在 if，所以每个 attr 最终都不一定会存在
     if (children) {
 
@@ -507,7 +498,7 @@ export function compile(content: string): Branch[] {
 
   processAttributeEmptyChildren = function (element: Element, attr: Attribute) {
 
-    if (isSpecialAttr(element, attr)) {
+    if (helper.isSpecialAttr(element, attr)) {
       if (process.env.NODE_ENV === 'development') {
         fatal(`The value of "${attr.name}" is empty.`)
       }
@@ -712,7 +703,7 @@ export function compile(content: string): Branch[] {
 
   checkElement = function (element: Element) {
 
-    const { tag, slot, value } = element,
+    const { tag, slot } = element,
 
     isTemplate = tag === TAG_TEMPLATE,
 
@@ -725,23 +716,23 @@ export function compile(content: string): Branch[] {
     if (process.env.NODE_ENV === 'development') {
       if (isTemplate) {
         if (element.key) {
-          fatal(`The "key" is not supported in <template>.`)
+          fatal(`The "key" attribute is not supported in <template>.`)
         }
         else if (element.ref) {
-          fatal(`The "ref" is not supported in <template>.`)
+          fatal(`The "ref" attribute is not supported in <template>.`)
         }
         else if (element.attrs) {
           fatal(`The attributes and directives are not supported in <template>.`)
         }
         else if (!slot) {
-          fatal(`The "slot" is required in <template>.`)
+          fatal(`The "slot" attribute is required in <template>.`)
         }
       }
       else if (isVNode) {
-        if (!value) {
-          fatal(`The "value" is required in <vnode>.`)
+        if (!element.value) {
+          fatal(`The "value" attribute is required in <vnode>.`)
         }
-        else if (element.text || element.html || element.children) {
+        else if (element.children) {
           fatal(`The child nodes is not supported in <vnode>.`)
         }
       }
@@ -766,31 +757,34 @@ export function compile(content: string): Branch[] {
 
     if (process.env.NODE_ENV === 'development') {
       if (isSlot) {
-        // 只能是 <template> 和 其他原生标签
-        if (helper.specialTag2VNodeType[element.tag]) {
-          fatal(`The "slot" attribute can't be used in <${element.tag}>.`)
+        // 只能是 <template> 、组件、native 元素
+        const { tag, isComponent } = element
+        if (tag !== TAG_TEMPLATE && !isComponent && !isNativeElement(element)) {
+          fatal(`The "slot" attribute can't be used in <${tag}>.`)
         }
       }
     }
 
-    if (isSpecialAttr(element, attr)) {
+    if (helper.isSpecialAttr(element, attr)) {
 
-      const isStringValueRequired = isSlot, isExprValueRequired = element.tag === TAG_VNODE && name === ATTR_VALUE
+      const isStringValueRequired = isSlot,
+
+      isExprValueRequired = element.tag === TAG_VNODE && name === ATTR_VALUE
 
       if (process.env.NODE_ENV === 'development') {
         // 因为要拎出来给 element，所以不能用 if
         if (array.last(nodeStack) !== element) {
-          fatal(`The "${name}" can't be used in an if block.`)
+          fatal(`The "${name}" attribute can't be used in an if block.`)
         }
         // 对于所有特殊属性来说，空字符串是肯定不行的，没有任何意义
         if (value === constant.EMPTY_STRING) {
-          fatal(`The value of "${name}" is empty.`)
+          fatal(`The value of "${name}" attribute is empty.`)
         }
         else if (isStringValueRequired && string.falsy(value)) {
-          fatal(`The value of "${name}" can only be a string literal.`)
+          fatal(`The value of "${name}" attribute can only be a string literal.`)
         }
         else if (isExprValueRequired && isDef(value)) {
-          fatal(`The value of "${name}" can not be a literal.`)
+          fatal(`The value of "${name}" attribute can not be a literal.`)
         }
       }
 
