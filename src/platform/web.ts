@@ -46,7 +46,7 @@ svgTagNames = needCompile ? split2Map('svg,g,defs,desc,metadata,symbol,use,image
 numberAttributeNames = needCompile ? split2Map('min,minlength,max,maxlength,step,size,rows,cols,tabindex,colspan,rowspan,frameborder') : constant.EMPTY_OBJECT,
 
 // 常见的布尔类型的属性
-booleanAttributeNames = needCompile ? split2Map('disabled,checked,required,multiple,readonly,autofocus,autoplay,controls,loop,muted,novalidate,draggable,contenteditable,hidden,spellcheck') : constant.EMPTY_OBJECT
+booleanAttributeNames = needCompile ? split2Map('disabled,checked,required,multiple,readonly,autofocus,autoplay,reversed,selected,controls,default,loop,muted,novalidate,draggable,contenteditable,hidden,spellcheck,allowfullscreen') : constant.EMPTY_OBJECT
 
 export function isSelfClosing(tagName: string) {
   return selfClosingTagNames[tagName] !== constant.UNDEFINED
@@ -63,13 +63,22 @@ export function createAttribute(element: Element, name: string, ns: string | voi
   }
 
   // 原生 dom 属性
-  return name === 'style'
-    ? creator.createStyle()
-    : creator.createAttribute(name, ns)
+  if (name === 'style') {
+    return creator.createStyle()
+  }
+
+  const attribute = creator.createAttribute(name, ns)
+  if (isBooleanNativeAttribute(name)) {
+    // 默认为 true 的布尔属性只有以下两种情况
+    attribute.defaultValue = name === 'spellcheck'
+      || (element.tag === 'img' && name === 'draggable')
+  }
+
+  return attribute
 
 }
 
-export function getAttributeDefaultValue(element: Element, name: string) {
+export function getAttributeDefaultValue(element: Element, name: string, defaultValue: any) {
   // 比如 <Dog isLive>
   if (element.isComponent) {
     return constant.TRUE
@@ -78,21 +87,21 @@ export function getAttributeDefaultValue(element: Element, name: string) {
   if (isNumberNativeAttribute(name)) {
     return constant.UNDEFINED
   }
-  // 布尔类型返回 'true'
+  // 布尔类型取决于 defaultValue
   if (isBooleanNativeAttribute(name)) {
-    return constant.RAW_TRUE
+    return formatBooleanNativeAttributeValue(name, constant.TRUE, defaultValue)
   }
   // 字符串类型返回空字符串
   return constant.EMPTY_STRING
 }
 
-export function formatNativeAttributeValue(name: string, value: any) {
+export function formatNativeAttributeValue(name: string, value: any, defaultValue: any) {
 
   if (isNumberNativeAttribute(name)) {
     return formatNumberNativeAttributeValue(name, value)
   }
   else if (isBooleanNativeAttribute(name)) {
-    return formatBooleanNativeAttributeValue(name, value)
+    return formatBooleanNativeAttributeValue(name, value, defaultValue)
   }
   // 字符串类型的属性，保持原样即可
   return value
@@ -117,17 +126,15 @@ export function formatNumberNativeAttributeValue(name: string, value: any) {
   return toString(value)
 }
 
-export function formatBooleanNativeAttributeValue(name: string, value: any) {
+export function formatBooleanNativeAttributeValue(name: string, value: any, defaultValue: any) {
+
   // 布尔类型的属性，只有值为 true 或 属性名 才表示 true
-  if (value === constant.TRUE || value === constant.RAW_TRUE || value === name) {
-    return constant.RAW_TRUE
-  }
-  // 有些元素的布尔类型属性值，默认是 true，因此如果开发者明确传了 false，还是要用 false
-  // 而不是用 undefined，否则会用回元素的默认值，即 true
-  if (value === constant.FALSE || value === constant.RAW_FALSE) {
-    return constant.RAW_FALSE
-  }
-  return constant.UNDEFINED
+  const isTrue = value === constant.TRUE || value === constant.RAW_TRUE || value === name
+
+  return isTrue === defaultValue
+    ? constant.UNDEFINED
+    : (isTrue ? constant.RAW_TRUE : constant.RAW_FALSE)
+
 }
 
 export function isNativeElement(node: Node) {

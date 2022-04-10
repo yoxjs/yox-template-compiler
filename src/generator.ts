@@ -1070,7 +1070,8 @@ function generateNativeAttributeValue(node: Attribute) {
         FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE,
         [
           generator.toPrimitive(name),
-          value
+          value,
+          generator.toPrimitive(node.defaultValue)
         ]
       )
     }

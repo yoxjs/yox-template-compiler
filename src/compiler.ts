@@ -503,7 +503,7 @@ export function compile(content: string): Branch[] {
       }
     }
     else {
-      attr.value = getAttributeDefaultValue(element, attr.name)
+      attr.value = getAttributeDefaultValue(element, attr.name, attr.defaultValue)
     }
 
   },
@@ -512,7 +512,7 @@ export function compile(content: string): Branch[] {
 
     attr.value = element.isComponent
       ? child.text
-      : formatNativeAttributeValue(attr.name, child.text)
+      : formatNativeAttributeValue(attr.name, child.text, attr.defaultValue)
 
     attr.children = constant.UNDEFINED
 
@@ -525,7 +525,11 @@ export function compile(content: string): Branch[] {
     if (expr.type === exprNodeType.LITERAL) {
       let value = (expr as ExpressionLiteral).value
       if (!element.isComponent && attr.type === nodeType.ATTRIBUTE) {
-        value = formatNativeAttributeValue((attr as Attribute).name, value)
+        value = formatNativeAttributeValue(
+          (attr as Attribute).name,
+          value,
+          (attr as Attribute).defaultValue
+        )
       }
       attr.value = value
     }
