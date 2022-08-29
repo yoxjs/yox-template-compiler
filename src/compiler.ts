@@ -118,7 +118,8 @@ breaklinePattern = /^\s*[\n\r]\s*|\s*[\n\r]\s*$/g,
 rangePattern = /\s*(=>|->)\s*/,
 
 // 标签
-tagPattern = /<(\/)?([$a-z][-a-z0-9]*)/i,
+// 动态标签支持路径表达式，比如 $this.name、$../name、$~/name
+tagPattern = /<(\/)?([a-z][-a-z0-9]*|\$[^\s]*)/i,
 
 // 注释
 commentPattern = /<!--[\s\S]*?-->/g,
