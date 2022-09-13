@@ -1600,7 +1600,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       )
     )
 
-    // temp.children && temp.children.length && childre.push(temp)
+    // temp.children && temp.children.length && children.push(temp)
     array.push(
       list,
       generator.toBinary(
@@ -1628,9 +1628,12 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       )
     )
     return generateStatementIfNeeded(list)
+
   }
 
-  return generateVNode(result)
+  return generateVNode(
+    result
+  )
 
 }
 
