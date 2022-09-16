@@ -637,7 +637,7 @@ function generateExpressionCall(fn: generator.Base, args?: generator.Base[], hol
 }
 
 function generateExpression(expr: ExpressionNode, holder?: true) {
-  return exprGenerator.generate(
+  const result = exprGenerator.generate(
     expr,
     transformExpressionIdentifier,
     generateExpressionIdentifier,
@@ -645,6 +645,9 @@ function generateExpression(expr: ExpressionNode, holder?: true) {
     generateExpressionCall,
     holder
   )
+  return expr.isStatic
+    ? generator.addVar(result, constant.TRUE)
+    : result
 }
 
 function createAttributeValue(nodes: Node[]) {

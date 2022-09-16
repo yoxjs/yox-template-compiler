@@ -94,7 +94,7 @@ export function createExpression(expr: ExpressionNode, safe: boolean): Expressio
     expr,
     safe,
     isLeaf: constant.TRUE,
-    isStatic: expr.type === exprNodeType.LITERAL,
+    isStatic: expr.isStatic,
   }
 }
 
