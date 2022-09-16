@@ -5,15 +5,12 @@ import {
   SYNTAX_ELSE_IF,
   SYNTAX_IF,
   SYNTAX_IMPORT,
-  SYNTAX_PARTIAL,
   SYNTAX_SPREAD,
   TAG_SLOT,
-  TAG_VNODE,
   TAG_PORTAL,
   TAG_FRAGMENT,
   TAG_TEMPLATE,
   ATTR_SLOT,
-  ATTR_VALUE,
   DIRECTIVE_ON,
   DIRECTIVE_EVENT,
   DIRECTIVE_LAZY,
@@ -713,9 +710,7 @@ export function compile(content: string): Branch[] {
 
     isFragment = tag === TAG_FRAGMENT,
 
-    isPortal = tag === TAG_PORTAL,
-
-    isVNode = tag === TAG_VNODE
+    isPortal = tag === TAG_PORTAL
 
     if (process.env.NODE_ENV === 'development') {
       if (isTemplate) {
@@ -730,14 +725,6 @@ export function compile(content: string): Branch[] {
         }
         else if (!slot) {
           fatal(`The "slot" attribute is required in <template>.`)
-        }
-      }
-      else if (isVNode) {
-        if (!element.value) {
-          fatal(`The "value" attribute is required in <vnode>.`)
-        }
-        else if (element.children) {
-          fatal(`The child nodes is not supported in <vnode>.`)
         }
       }
     }
@@ -771,9 +758,7 @@ export function compile(content: string): Branch[] {
 
     if (helper.isSpecialAttr(element, attr)) {
 
-      const isStringValueRequired = isSlot,
-
-      isExprValueRequired = element.tag === TAG_VNODE && name === ATTR_VALUE
+      const isStringValueRequired = isSlot
 
       if (process.env.NODE_ENV === 'development') {
         // 因为要拎出来给 element，所以不能用 if
@@ -786,9 +771,6 @@ export function compile(content: string): Branch[] {
         }
         else if (isStringValueRequired && string.falsy(value)) {
           fatal(`The value of "${name}" attribute can only be a string literal.`)
-        }
-        else if (isExprValueRequired && isDef(value)) {
-          fatal(`The value of "${name}" attribute can not be a literal.`)
         }
       }
 
@@ -1485,28 +1467,13 @@ export function compile(content: string): Branch[] {
             )
           }
         }
-        return creator.createImport(source)
-      }
-    },
-    // {{#partial name}}
-    function (source: string) {
-      if (string.startsWith(source, SYNTAX_PARTIAL)) {
-        source = slicePrefix(source, SYNTAX_PARTIAL)
+        const expr = exprCompiler.compile(source)
         if (process.env.NODE_ENV === 'development') {
-          if (!source) {
-            fatal(`Invalid partial`)
+          if (!expr) {
+            fatal(`Invalid import`)
           }
         }
-        if (process.env.NODE_ENV === 'development') {
-          if (currentElement) {
-            fatal(
-              currentAttribute
-                ? `The "partial" block can't be appear in an attribute value.`
-                : `The "partial" block can't be appear in attribute level.`
-            )
-          }
-        }
-        return creator.createPartial(source)
+        return creator.createImport(expr)
       }
     },
     // {{#if expr}}

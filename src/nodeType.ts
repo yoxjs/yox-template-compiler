@@ -44,21 +44,16 @@ export const ELSE = 8
 export const EACH = 9
 
 /**
- * partial 节点
- */
-export const PARTIAL = 10
-
-/**
  * import 节点
  */
-export const IMPORT = 11
+export const IMPORT = 10
 
 /**
  * 表达式 节点
  */
-export const EXPRESSION = 12
+export const EXPRESSION = 11
 
 /**
  * 延展操作 节点
  */
-export const SPREAD = 13
+export const SPREAD = 12

@@ -1,5 +1,4 @@
 import {
-  TAG_VNODE,
   TAG_TEMPLATE,
   SLOT_DATA_PREFIX,
   SLOT_NAME_DEFAULT,
@@ -50,7 +49,6 @@ import If from './node/If'
 import ElseIf from './node/ElseIf'
 import Else from './node/Else'
 import Import from './node/Import'
-import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Expression from './node/Expression'
 import Text from './node/Text'
@@ -138,8 +136,6 @@ RENDER_DIRECTIVE = constant.EMPTY_STRING,
 
 RENDER_SPREAD = constant.EMPTY_STRING,
 
-RENDER_PARTIAL = constant.EMPTY_STRING,
-
 RENDER_EACH = constant.EMPTY_STRING,
 
 RENDER_RANGE = constant.EMPTY_STRING,
@@ -192,12 +188,6 @@ ARG_FILTERS = constant.EMPTY_STRING,
 
 ARG_GLOBAL_FILTERS = constant.EMPTY_STRING,
 
-ARG_LOCAL_PARTIALS = constant.EMPTY_STRING,
-
-ARG_PARTIALS = constant.EMPTY_STRING,
-
-ARG_GLOBAL_PARTIALS = constant.EMPTY_STRING,
-
 ARG_DIRECTIVES = constant.EMPTY_STRING,
 
 ARG_GLOBAL_DIRECTIVES = constant.EMPTY_STRING,
@@ -240,49 +230,45 @@ function init() {
     RENDER_EVENT_NAME = '_f'
     RENDER_DIRECTIVE = '_g'
     RENDER_SPREAD = '_h'
-    RENDER_PARTIAL = '_i'
-    RENDER_EACH = '_j'
-    RENDER_RANGE = '_k'
-    RENDER_SLOT_DIRECTLY = '_l'
-    RENDER_SLOT_INDIRECTLY = '_m'
-    APPEND_VNODE_PROPERTY = '_n'
-    FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE = '_o'
-    FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = '_p'
-    LOOKUP_KEYPATH = '_q'
-    LOOKUP_PROP = '_r'
-    GET_THIS_BY_INDEX = '_s'
-    GET_PROP = '_t'
-    GET_PROP_BY_INDEX = '_u'
-    READ_KEYPATH = '_v'
-    EXECUTE_FUNCTION = '_w'
-    SET_VALUE_HOLDER = '_x'
-    TO_STRING = '_y'
-    OPERATOR_TEXT_VNODE = '_z'
-    OPERATOR_COMMENT_VNODE = '_A'
-    OPERATOR_ELEMENT_VNODE = '_B'
-    OPERATOR_COMPONENT_VNODE = '_C'
-    OPERATOR_FRAGMENT_VNODE = '_D'
-    OPERATOR_PORTAL_VNODE = '_E'
-    OPERATOR_SLOT_VNODE = '_F'
-    ARG_INSTANCE = '_G'
-    ARG_FILTERS = '_H'
-    ARG_GLOBAL_FILTERS = '_I'
-    ARG_LOCAL_PARTIALS = '_J'
-    ARG_PARTIALS = '_K'
-    ARG_GLOBAL_PARTIALS = '_L'
-    ARG_DIRECTIVES = '_M'
-    ARG_GLOBAL_DIRECTIVES = '_N'
-    ARG_TRANSITIONS = '_O'
-    ARG_GLOBAL_TRANSITIONS = '_P'
-    ARG_STACK = '_Q'
-    ARG_PARENT = '_R'
-    ARG_VNODE = '_S'
-    ARG_CHILDREN = '_T'
-    ARG_SCOPE = '_U'
-    ARG_KEYPATH = '_V'
-    ARG_LENGTH = '_W'
-    ARG_EVENT = '_X'
-    ARG_DATA = '_Y'
+    RENDER_EACH = '_i'
+    RENDER_RANGE = '_j'
+    RENDER_SLOT_DIRECTLY = '_k'
+    RENDER_SLOT_INDIRECTLY = '_l'
+    APPEND_VNODE_PROPERTY = '_m'
+    FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE = '_n'
+    FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = '_o'
+    LOOKUP_KEYPATH = '_p'
+    LOOKUP_PROP = '_q'
+    GET_THIS_BY_INDEX = '_r'
+    GET_PROP = '_s'
+    GET_PROP_BY_INDEX = '_t'
+    READ_KEYPATH = '_u'
+    EXECUTE_FUNCTION = '_v'
+    SET_VALUE_HOLDER = '_w'
+    TO_STRING = '_x'
+    OPERATOR_TEXT_VNODE = '_y'
+    OPERATOR_COMMENT_VNODE = '_z'
+    OPERATOR_ELEMENT_VNODE = '_A'
+    OPERATOR_COMPONENT_VNODE = '_B'
+    OPERATOR_FRAGMENT_VNODE = '_C'
+    OPERATOR_PORTAL_VNODE = '_D'
+    OPERATOR_SLOT_VNODE = '_E'
+    ARG_INSTANCE = '_F'
+    ARG_FILTERS = '_G'
+    ARG_GLOBAL_FILTERS = '_H'
+    ARG_DIRECTIVES = '_I'
+    ARG_GLOBAL_DIRECTIVES = '_J'
+    ARG_TRANSITIONS = '_K'
+    ARG_GLOBAL_TRANSITIONS = '_L'
+    ARG_STACK = '_M'
+    ARG_PARENT = '_N'
+    ARG_VNODE = '_O'
+    ARG_CHILDREN = '_P'
+    ARG_SCOPE = '_Q'
+    ARG_KEYPATH = '_R'
+    ARG_LENGTH = '_S'
+    ARG_EVENT = '_T'
+    ARG_DATA = '_U'
   }
   else {
     RENDER_STYLE_STRING = 'renderStyleStyle'
@@ -293,7 +279,6 @@ function init() {
     RENDER_EVENT_NAME = 'renderEventName'
     RENDER_DIRECTIVE = 'renderDirective'
     RENDER_SPREAD = 'renderSpread'
-    RENDER_PARTIAL = 'renderPartial'
     RENDER_EACH = 'renderEach'
     RENDER_RANGE = 'renderRange'
     RENDER_SLOT_DIRECTLY = 'renderSlotDirectly'
@@ -320,9 +305,6 @@ function init() {
     ARG_INSTANCE = 'instance'
     ARG_FILTERS = 'filters'
     ARG_GLOBAL_FILTERS = 'globalFilters'
-    ARG_LOCAL_PARTIALS = 'localPartials'
-    ARG_PARTIALS = 'partials'
-    ARG_GLOBAL_PARTIALS = 'globalPartials'
     ARG_DIRECTIVES = 'directives'
     ARG_GLOBAL_DIRECTIVES = 'globalDirectives'
     ARG_TRANSITIONS = 'transition'
@@ -1145,16 +1127,12 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   isFragment = vnodeType === VNODE_TYPE_FRAGMENT,
   isPortal = vnodeType === VNODE_TYPE_PORTAL,
   isSlot = vnodeType === VNODE_TYPE_SLOT,
-  // isVNode 不用 vnodeType 判断
-  // 因为 <vnode value="{{expr}}"> 不会创建实际的 vnode，它只是把 value 直接输出
-  isVNode = tag === TAG_VNODE,
 
   outputAttrs: generator.Base | void = constant.UNDEFINED,
   outputChildren: generator.Base | void = constant.UNDEFINED,
   outputSlots: generator.Base | void = constant.UNDEFINED,
 
-  renderSlot: generator.Base | void = constant.UNDEFINED,
-  renderVNode: generator.Base | void = constant.UNDEFINED
+  renderSlot: generator.Base | void = constant.UNDEFINED
 
   // 先序列化 children，再序列化 attrs，原因需要举两个例子：
 
@@ -1459,18 +1437,10 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
 
   }
-  if (isVNode) {
-    // 编译器保证了 value 一定是 Attribute
-    renderVNode = generateAttributeValue(node.value as Attribute)
-  }
 
   array.pop(vnodeStack)
   array.pop(attributeStack)
   array.pop(componentStack)
-
-  if (renderVNode) {
-    return generateVNode(renderVNode)
-  }
 
   if (vnodeType === VNODE_TYPE_ELEMENT) {
     vnode.set(
@@ -2264,51 +2234,33 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
 
 }
 
-nodeGenerator[nodeType.PARTIAL] = function (node: Partial) {
+nodeGenerator[nodeType.IMPORT] = function (node: Import) {
 
-  return generator.toAssign(
-    generator.toMember(
-      ARG_LOCAL_PARTIALS,
-      [
-        generator.toPrimitive(node.name)
-      ]
-    ),
-    generator.toAnonymousFunction(
-      [
-        ARG_SCOPE,
-        ARG_KEYPATH,
-        ARG_CHILDREN,
-      ],
-      generateNodesToTuple(node.children as Node[])
+  const list: generator.Base[] = [],
+
+  vnode: generator.Base = generateExpression(node.expr),
+
+  varName = generator.getTempName()
+
+  // temp = vnode
+  array.push(
+    list,
+    generator.toAssign(
+      varName,
+      vnode
     )
   )
 
-}
-
-nodeGenerator[nodeType.IMPORT] = function (node: Import) {
-
-  const { name } = node
-
-  return generator.toCall(
-    RENDER_PARTIAL,
-    [
-      generator.toPrimitive(name),
-      ARG_SCOPE,
-      ARG_KEYPATH,
-      ARG_CHILDREN,
-      generator.toMember(
-        ARG_LOCAL_PARTIALS,
-        [
-          generator.toPrimitive(name)
-        ]
-      ),
-      generateSelfAndGlobalReader(
-        ARG_PARTIALS,
-        ARG_GLOBAL_PARTIALS,
-        name,
-      )
-    ]
+  array.push(
+    list,
+    generator.toTernary(
+      varName,
+      generateVNode(varName),
+      PRIMITIVE_UNDEFINED
+    )
   )
+
+  return generateStatementIfNeeded(list)
 
 }
 
@@ -2327,7 +2279,6 @@ export function generate(node: Node): string {
       RENDER_EVENT_NAME,
       RENDER_DIRECTIVE,
       RENDER_SPREAD,
-      RENDER_PARTIAL,
       RENDER_EACH,
       RENDER_RANGE,
       RENDER_SLOT_DIRECTLY,
@@ -2354,9 +2305,6 @@ export function generate(node: Node): string {
       ARG_INSTANCE,
       ARG_FILTERS,
       ARG_GLOBAL_FILTERS,
-      ARG_LOCAL_PARTIALS,
-      ARG_PARTIALS,
-      ARG_GLOBAL_PARTIALS,
       ARG_DIRECTIVES,
       ARG_GLOBAL_DIRECTIVES,
       ARG_TRANSITIONS,

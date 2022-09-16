@@ -19,7 +19,6 @@ import If from './node/If'
 import Else from './node/Else'
 import ElseIf from './node/ElseIf'
 import Import from './node/Import'
-import Partial from './node/Partial'
 import Spread from './node/Spread'
 import Expression from './node/Expression'
 import Text from './node/Text'
@@ -107,19 +106,11 @@ export function createIf(expr: ExpressionNode): If {
   }
 }
 
-export function createImport(name: string): Import {
+export function createImport(expr: ExpressionNode): Import {
   return {
     type: nodeType.IMPORT,
-    name,
+    expr,
     isLeaf: constant.TRUE,
-  }
-}
-
-export function createPartial(name: string): Partial {
-  return {
-    type: nodeType.PARTIAL,
-    name,
-    isVirtual: constant.TRUE,
   }
 }
 

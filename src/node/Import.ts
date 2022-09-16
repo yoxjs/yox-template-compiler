@@ -1,3 +1,4 @@
+import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 import Node from './Node'
 
 /**
@@ -5,6 +6,6 @@ import Node from './Node'
  */
 export default interface Import extends Node {
 
-  name: string
+  expr: ExpressionNode
 
 }

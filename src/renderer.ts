@@ -72,8 +72,6 @@ export function render(
   slots: Slots | undefined,
   filters: Record<string, Filter> | undefined,
   globalFilters: Record<string, Filter>,
-  partials: Record<string, Function> | undefined,
-  globalPartials: Record<string, Function>,
   directives: Record<string, DirectiveHooks> | undefined,
   globalDirectives: Record<string, DirectiveHooks>,
   transitions: Record<string, TransitionHooks> | undefined,
@@ -88,8 +86,6 @@ export function render(
   contextStack: Context[] = [
     { scope: rootScope, keypath: rootKeypath }
   ],
-
-  localPartials: Record<string, (scope: any, keypath: string, children: VNode[]) => void> = { },
 
   // 模板渲染过程收集的 vnode
   children: VNode[] = [ ],
@@ -302,27 +298,6 @@ export function render(
 
     }
 
-  },
-
-  // {{> name}}
-  renderPartial = function (
-    name: string, scope: any, keypath: string, children: VNode[],
-    renderLocal?: (scope: any, keypath: string, children: VNode[]) => void,
-    render?: Function,
-  ) {
-    if (process.env.NODE_ENV === 'development') {
-      logger.warn('Partial is not recommended for use, it may be removed in the future.')
-    }
-    if (renderLocal) {
-      renderLocal(scope, keypath, children)
-      return
-    }
-    if (process.env.NODE_ENV === 'development') {
-      if (!render) {
-        logger.fatal(`The partial "${name}" can't be found.`)
-      }
-    }
-    renderTemplate(render as Function, scope, keypath, children)
   },
 
   renderEach = function (
@@ -684,7 +659,6 @@ export function render(
       renderEventName,
       renderDirective,
       renderSpread,
-      renderPartial,
       renderEach,
       renderRange,
       renderSlotDirectly,
@@ -711,9 +685,6 @@ export function render(
       instance,
       filters,
       globalFilters,
-      localPartials,
-      partials,
-      globalPartials,
       directives,
       globalDirectives,
       transitions,

@@ -2,7 +2,6 @@ import {
   ATTR_KEY,
   ATTR_REF,
   TAG_SLOT,
-  TAG_VNODE,
   TAG_PORTAL,
   TAG_FRAGMENT,
   TAG_TEMPLATE,
@@ -31,7 +30,6 @@ export const name2Type = {}
 export const specialTag2VNodeType = {}
 
 specialTags[TAG_SLOT] =
-specialTags[TAG_VNODE] =
 specialTags[TAG_PORTAL] =
 specialTags[TAG_FRAGMENT] =
 specialTags[TAG_TEMPLATE] =
@@ -42,7 +40,6 @@ specialAttrs[TAG_SLOT] = constant.TRUE
 
 name2Type['if'] = nodeType.IF
 name2Type['each'] = nodeType.EACH
-name2Type['partial'] = nodeType.PARTIAL
 
 specialTag2VNodeType[TAG_FRAGMENT] = VNODE_TYPE_FRAGMENT
 specialTag2VNodeType[TAG_PORTAL] = VNODE_TYPE_PORTAL
@@ -52,7 +49,6 @@ export function isSpecialAttr(element: Element, attr: Attribute) {
   return specialAttrs[attr.name]
     || element.tag === TAG_PORTAL && attr.name === ATTR_TO
     || element.tag === TAG_SLOT && attr.name === ATTR_NAME
-    || element.tag === TAG_VNODE && attr.name === ATTR_VALUE
 }
 
 export function parseStyleString(value: string, callback: (key: string, value: string) => void) {
