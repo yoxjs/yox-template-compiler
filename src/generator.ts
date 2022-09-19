@@ -1318,9 +1318,10 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         }
       )
 
+      // 编译器保证了 lazy 的值是静态的
       vnode.set(
         FIELD_LAZY,
-        lazy
+        generator.addVar(lazy, constant.TRUE)
       )
 
     }
