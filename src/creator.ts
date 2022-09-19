@@ -6,7 +6,6 @@ import {
 import * as constant from 'yox-common/src/util/constant'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
-import * as exprNodeType from 'yox-expression-compiler/src/nodeType'
 
 import * as nodeType from './nodeType'
 

@@ -1654,7 +1654,7 @@ function getStyleValue(node: Style) {
         )
       }
     )
-    return styles
+    return generator.addVar(styles, constant.TRUE)
   }
 
   if (node.expr) {

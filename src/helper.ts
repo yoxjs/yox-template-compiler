@@ -10,7 +10,6 @@ import {
   VNODE_TYPE_SLOT,
   ATTR_TO,
   ATTR_NAME,
-  ATTR_VALUE,
 } from 'yox-config/src/config'
 
 import * as constant from 'yox-common/src/util/constant'
@@ -51,14 +50,14 @@ export function isSpecialAttr(element: Element, attr: Attribute) {
     || element.tag === TAG_SLOT && attr.name === ATTR_NAME
 }
 
-export function parseStyleString(value: string, callback: (key: string, value: string) => void) {
-  const parts = value.split(';')
+export function parseStyleString(source: string, callback: (key: string, value: string) => void) {
+  const parts = source.split(';')
   for (let i = 0, len = parts.length; i < len; i++) {
     const item = parts[i]
     const index = item.indexOf(':')
     if (index > 0) {
-      const key = string.trim(item.substr(0, index))
-      const value = string.trim(item.substr(index + 1))
+      const key = string.trim(item.substring(0, index))
+      const value = string.trim(item.substring(index + 1))
       if (key && value) {
         callback(string.camelize(key), value)
       }
