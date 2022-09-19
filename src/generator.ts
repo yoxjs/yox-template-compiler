@@ -66,9 +66,6 @@ import {
 // 是否正在收集虚拟节点
 const vnodeStack: boolean[] = [ constant.TRUE ],
 
-// 是否正在处理组件节点
-componentStack: boolean[] = [ ],
-
 // 是否正在处理 attribute
 attributeStack: boolean[] = [ ],
 
@@ -83,6 +80,9 @@ dynamicChildrenStack: boolean[] = [ constant.TRUE ],
 
 // 收集属性值
 attributeValueStack: generator.StringBuffer[] = [ ],
+
+// vnode 类型
+vnodeTypeStack: number[] = [],
 
 magicVariables: string[] = [ MAGIC_VAR_KEYPATH, MAGIC_VAR_LENGTH, MAGIC_VAR_EVENT, MAGIC_VAR_DATA ],
 
@@ -901,7 +901,7 @@ function generateComponentSlots(children: Node[]) {
 
 }
 
-function parseAttrs(attrs: Node[], isComponent: boolean | void) {
+function parseAttrs(attrs: Node[], vnodeType: number | void) {
 
   let nativeAttributeList: Attribute[] = [ ],
 
@@ -928,7 +928,7 @@ function parseAttrs(attrs: Node[], isComponent: boolean | void) {
 
     if (attr.type === nodeType.ATTRIBUTE) {
       const attributeNode = attr as Attribute
-      if (isComponent) {
+      if (vnodeType === VNODE_TYPE_COMPONENT || vnodeType === VNODE_TYPE_SLOT) {
         array.push(
           propertyList,
           attributeNode
@@ -998,7 +998,7 @@ function parseAttrs(attrs: Node[], isComponent: boolean | void) {
 
 }
 
-function sortAttrs(attrs: Node[], isComponent: boolean | void) {
+function sortAttrs(attrs: Node[], vnodeType: number | void) {
 
   const {
     nativeAttributeList,
@@ -1010,7 +1010,7 @@ function sortAttrs(attrs: Node[], isComponent: boolean | void) {
     eventList,
     customDirectiveList,
     otherList,
-  } = parseAttrs(attrs, isComponent)
+  } = parseAttrs(attrs, vnodeType)
 
   const result: Node[] = []
 
@@ -1153,7 +1153,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   array.push(vnodeStack, constant.TRUE)
   array.push(attributeStack, constant.FALSE)
-  array.push(componentStack, isComponent)
+  array.push(vnodeTypeStack, vnodeType)
 
   if (children) {
     if (isComponent) {
@@ -1240,7 +1240,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
       eventList,
       customDirectiveList,
       otherList,
-    } = parseAttrs(attrs, isComponent),
+    } = parseAttrs(attrs, vnodeType),
 
     hasDynamicAttrs = otherList.length > 0
 
@@ -1444,7 +1444,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 
   array.pop(vnodeStack)
   array.pop(attributeStack)
-  array.pop(componentStack)
+  array.pop(vnodeTypeStack)
 
   if (vnodeType === VNODE_TYPE_ELEMENT) {
     vnode.set(
@@ -1612,12 +1612,13 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
 }
 
 nodeGenerator[nodeType.ATTRIBUTE] = function (node: Attribute) {
+  const lastVNodeType = array.last(vnodeTypeStack)
   return generator.toCall(
     APPEND_VNODE_PROPERTY,
     [
       ARG_VNODE,
       generator.toPrimitive(
-        array.last(componentStack)
+        (lastVNodeType === VNODE_TYPE_COMPONENT || lastVNodeType === VNODE_TYPE_SLOT)
           ? FIELD_PROPERTIES
           : FIELD_NATIVE_ATTRIBUTES
       ),
@@ -1721,7 +1722,7 @@ function addEventBooleanInfo(args: generator.Base[], node: Directive) {
     PRIMITIVE_UNDEFINED
   )
 
-  if (array.last(componentStack)) {
+  if (array.last(vnodeTypeStack) === VNODE_TYPE_COMPONENT) {
     if (node.modifier === MODIFER_NATIVE) {
       // isNative
       args[args.length - 1] = PRIMITIVE_TRUE
@@ -2097,7 +2098,7 @@ function getBranchDefaultValue() {
 function getBranchValue(children: Node[] | void) {
   if (children) {
     if (array.last(attributeStack)) {
-      children = sortAttrs(children, array.last(componentStack))
+      children = sortAttrs(children, array.last(vnodeTypeStack))
     }
     if (array.last(attributeValueStack)) {
       return createAttributeValue(children)
