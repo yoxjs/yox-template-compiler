@@ -446,13 +446,7 @@ export function render(
    * <div class="button">
    *  <slot />
    * </div>
-   */
-  renderSlotDirectly = function (name: string) {
-    addDependency(name)
-    return rootScope[name]
-  },
-
-  /**
+   *
    * 间接渲染 slot，如下
    * <Button>
    *  click
@@ -465,10 +459,13 @@ export function render(
    *  </Text>
    * </div>
    */
-  renderSlotIndirectly = function (name: string, parent: YoxInterface) {
+  renderSlot = function (name: string, parent?: YoxInterface) {
     addDependency(name)
-    const render = slots && slots[name]
-    return render ? render(parent) : constant.UNDEFINED
+    if (parent) {
+      const render = slots && slots[name]
+      return render ? render(parent) : constant.UNDEFINED
+    }
+    return rootScope[name]
   },
 
   findKeypath = function (
@@ -661,8 +658,7 @@ export function render(
       renderSpread,
       renderEach,
       renderRange,
-      renderSlotDirectly,
-      renderSlotIndirectly,
+      renderSlot,
       appendVNodeProperty,
       formatNumberNativeAttributeValue,
       formatBooleanNativeAttributeValue,

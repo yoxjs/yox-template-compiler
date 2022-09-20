@@ -140,9 +140,7 @@ RENDER_EACH = constant.EMPTY_STRING,
 
 RENDER_RANGE = constant.EMPTY_STRING,
 
-RENDER_SLOT_DIRECTLY = constant.EMPTY_STRING,
-
-RENDER_SLOT_INDIRECTLY = constant.EMPTY_STRING,
+RENDER_SLOT = constant.EMPTY_STRING,
 
 APPEND_VNODE_PROPERTY = constant.EMPTY_STRING,
 
@@ -232,43 +230,42 @@ function init() {
     RENDER_SPREAD = '_h'
     RENDER_EACH = '_i'
     RENDER_RANGE = '_j'
-    RENDER_SLOT_DIRECTLY = '_k'
-    RENDER_SLOT_INDIRECTLY = '_l'
-    APPEND_VNODE_PROPERTY = '_m'
-    FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE = '_n'
-    FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = '_o'
-    LOOKUP_KEYPATH = '_p'
-    LOOKUP_PROP = '_q'
-    GET_THIS_BY_INDEX = '_r'
-    GET_PROP = '_s'
-    GET_PROP_BY_INDEX = '_t'
-    READ_KEYPATH = '_u'
-    EXECUTE_FUNCTION = '_v'
-    SET_VALUE_HOLDER = '_w'
-    TO_STRING = '_x'
-    OPERATOR_TEXT_VNODE = '_y'
-    OPERATOR_COMMENT_VNODE = '_z'
-    OPERATOR_ELEMENT_VNODE = '_A'
-    OPERATOR_COMPONENT_VNODE = '_B'
-    OPERATOR_FRAGMENT_VNODE = '_C'
-    OPERATOR_PORTAL_VNODE = '_D'
-    OPERATOR_SLOT_VNODE = '_E'
-    ARG_INSTANCE = '_F'
-    ARG_FILTERS = '_G'
-    ARG_GLOBAL_FILTERS = '_H'
-    ARG_DIRECTIVES = '_I'
-    ARG_GLOBAL_DIRECTIVES = '_J'
-    ARG_TRANSITIONS = '_K'
-    ARG_GLOBAL_TRANSITIONS = '_L'
-    ARG_STACK = '_M'
-    ARG_PARENT = '_N'
-    ARG_VNODE = '_O'
-    ARG_CHILDREN = '_P'
-    ARG_SCOPE = '_Q'
-    ARG_KEYPATH = '_R'
-    ARG_LENGTH = '_S'
-    ARG_EVENT = '_T'
-    ARG_DATA = '_U'
+    RENDER_SLOT = '_k'
+    APPEND_VNODE_PROPERTY = '_l'
+    FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE = '_m'
+    FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = '_n'
+    LOOKUP_KEYPATH = '_o'
+    LOOKUP_PROP = '_p'
+    GET_THIS_BY_INDEX = '_q'
+    GET_PROP = '_r'
+    GET_PROP_BY_INDEX = '_s'
+    READ_KEYPATH = '_t'
+    EXECUTE_FUNCTION = '_u'
+    SET_VALUE_HOLDER = '_v'
+    TO_STRING = '_w'
+    OPERATOR_TEXT_VNODE = '_x'
+    OPERATOR_COMMENT_VNODE = '_y'
+    OPERATOR_ELEMENT_VNODE = '_z'
+    OPERATOR_COMPONENT_VNODE = '_A'
+    OPERATOR_FRAGMENT_VNODE = '_B'
+    OPERATOR_PORTAL_VNODE = '_C'
+    OPERATOR_SLOT_VNODE = '_D'
+    ARG_INSTANCE = '_E'
+    ARG_FILTERS = '_F'
+    ARG_GLOBAL_FILTERS = '_G'
+    ARG_DIRECTIVES = '_H'
+    ARG_GLOBAL_DIRECTIVES = '_I'
+    ARG_TRANSITIONS = '_J'
+    ARG_GLOBAL_TRANSITIONS = '_K'
+    ARG_STACK = '_L'
+    ARG_PARENT = '_M'
+    ARG_VNODE = '_N'
+    ARG_CHILDREN = '_O'
+    ARG_SCOPE = '_P'
+    ARG_KEYPATH = '_Q'
+    ARG_LENGTH = '_R'
+    ARG_EVENT = '_S'
+    ARG_DATA = '_T'
   }
   else {
     RENDER_STYLE_STRING = 'renderStyleStyle'
@@ -281,8 +278,7 @@ function init() {
     RENDER_SPREAD = 'renderSpread'
     RENDER_EACH = 'renderEach'
     RENDER_RANGE = 'renderRange'
-    RENDER_SLOT_DIRECTLY = 'renderSlotDirectly'
-    RENDER_SLOT_INDIRECTLY = 'renderSlotIndirectly'
+    RENDER_SLOT = 'renderSlot'
     APPEND_VNODE_PROPERTY = 'appendVNodeProperty'
     FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE = 'formatNativeAttributeNumberValue'
     FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = 'formatNativeAttributeBooleanValue'
@@ -1422,23 +1418,15 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
           )
     }
 
-    if (array.last(slotStack)) {
-      renderSlot = generator.toCall(
-        RENDER_SLOT_INDIRECTLY,
-        [
-          outputName,
-          ARG_PARENT
-        ]
-      )
-    }
-    else {
-      renderSlot = generator.toCall(
-        RENDER_SLOT_DIRECTLY,
-        [
-          outputName
-        ]
-      )
-    }
+    renderSlot = generator.toCall(
+      RENDER_SLOT,
+      [
+        outputName,
+        array.last(slotStack)
+          ? ARG_PARENT
+          : PRIMITIVE_UNDEFINED
+      ]
+    )
 
   }
 
@@ -2286,8 +2274,7 @@ export function generate(node: Node): string {
       RENDER_SPREAD,
       RENDER_EACH,
       RENDER_RANGE,
-      RENDER_SLOT_DIRECTLY,
-      RENDER_SLOT_INDIRECTLY,
+      RENDER_SLOT,
       APPEND_VNODE_PROPERTY,
       FORMAT_NATIVE_ATTRIBUTE_NUMBER_VALUE,
       FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE,
