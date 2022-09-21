@@ -16,7 +16,6 @@ import {
 
 import {
   VNode,
-  Slots,
   EventRuntime,
   DirectiveRuntime,
 } from 'yox-type/src/vnode'
@@ -69,7 +68,6 @@ export function render(
   template: Function,
   data: Data,
   computed: Record<string, Computed> | undefined,
-  slots: Slots | undefined,
   filters: Record<string, Filter> | undefined,
   globalFilters: Record<string, Filter>,
   directives: Record<string, DirectiveHooks> | undefined,
@@ -436,36 +434,14 @@ export function render(
 
   },
 
-  /**
-   * 直接渲染 slot，如下
-   * <Button>
-   *  click
-   * </Button>
-   *
-   * 在 Button 组件模板中，如果直接使用了 slot，则属于直接渲染，如下
-   * <div class="button">
-   *  <slot />
-   * </div>
-   *
-   * 间接渲染 slot，如下
-   * <Button>
-   *  click
-   * </Button>
-   *
-   * 在 Button 组件模板中，如果未直接使用 slot，而是透传给了其他组件，则属于间接渲染，如下
-   * <div class="button">
-   *  <Text>
-   *    <slot />
-   *  </Text>
-   * </div>
-   */
   renderSlot = function (name: string, parent?: YoxInterface) {
     addDependency(name)
-    if (parent) {
-      const render = slots && slots[name]
-      return render ? render(parent) : constant.UNDEFINED
-    }
-    return rootScope[name]
+    const target = (computed as Record<string, Computed>)[name]
+    // 如果 slot 透传好几层组件，最里面的那个组件调用 renderSlot 时，会把自己传入 parent 参数
+    // 那么在它之上的每一层组件，都应该调用原始的渲染函数 getter，而不是调用经过封装的 get
+    return parent
+      ? target.getter(parent)
+      : target.get()
   },
 
   findKeypath = function (
