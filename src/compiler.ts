@@ -118,9 +118,6 @@ rangePattern = /\s*(=>|->)\s*/,
 // 动态标签支持路径表达式，比如 $this.name、$../name、$~/name
 tagPattern = /<(\/)?([a-z][-a-z0-9]*|\$[^\s]*)/i,
 
-// 注释
-commentPattern = /<!--[\s\S]*?-->/g,
-
 // 开始注释
 openCommentPattern = /^([\s\S]*?)<!--/,
 
@@ -161,7 +158,68 @@ function isDangerousInterpolation(node: Node | void) {
     && !(node as Expression).safe
 }
 
-function removeComment(children: Node[]) {
+function compareMatchIndex(index1: number, index2: number) : number {
+  if (index1 >= 0 && index2 >= 0) {
+    return index1 < index2 ? -1 : 1
+  }
+  else if (index1 >= 0) {
+    return -1
+  }
+  else if (index2 >= 0) {
+    return 1
+  }
+  return 0
+}
+
+function removeCommentString(content: string) {
+
+  const stack: number[] = [], openCode = '<!--', endCode = '-->'
+
+  // 注释的开始结束位置
+  let startIndex = -1, endIndex = -1, position = 0
+
+  loop: while (constant.TRUE) {
+
+    const openIndex = content.indexOf(openCode, position),
+    closeIndex = content.indexOf(endCode, position)
+
+    switch (compareMatchIndex(openIndex, closeIndex)) {
+      case -1:
+        position = openIndex + 1
+        array.push(stack, openIndex)
+        if (startIndex < 0) {
+          startIndex = openIndex
+        }
+        break
+
+      case 1:
+        position = closeIndex + 1
+        // 如果 stack.length 为 0，却匹配到了一个 -->
+        // 这种情况不用处理，因为可能就是纯字符串，或者 <!-- 被插值语法隔断了
+        const { length } = stack
+        if (length > 0) {
+          array.pop(stack)
+          if (length === 1) {
+            endIndex = closeIndex + endCode.length
+            break loop
+          }
+        }
+        break
+
+      case 0:
+        break loop
+    }
+
+  }
+
+  return {
+    startIndex,
+    endIndex,
+  }
+
+}
+
+function removeCommentNode(children: Node[]) {
 
   // 类似 <!-- xx {{name}} yy {{age}} zz --> 这样的注释里包含插值
   // 按照目前的解析逻辑，是根据定界符进行模板分拆
@@ -360,7 +418,7 @@ export function compile(content: string): Branch[] {
 
       // 元素层级
       if (!currentElement) {
-        removeComment(children)
+        removeCommentNode(children)
         if (!children.length) {
           children = branchNode.children = constant.UNDEFINED
         }
@@ -1354,18 +1412,43 @@ export function compile(content: string): Branch[] {
       // 属性值通过上面的 if 处理过了，这里只需要处理元素内容
       else if (!currentElement) {
 
-        // 获取 <tag 前面的字符
+        // 获取 <tag 和 <!-- 前面的字符
+        const { startIndex, endIndex } = removeCommentString(content)
+
         match = content.match(tagPattern)
 
-        text = match
-          ? string.slice(content, 0, match.index)
-          : content
+        // 利用 break 退出 block
+        while (constant.TRUE) {
 
-        // 元素层级的 HTML 注释都要删掉
-        if (text) {
-          addTextChild(
-            text.replace(commentPattern, constant.EMPTY_STRING)
-          )
+          if (match) {
+            const tagIndex = match.index as number
+            // tag 在 comment 前面
+            if (compareMatchIndex(tagIndex, startIndex) < 0) {
+              text = string.slice(content, 0, tagIndex)
+              addTextChild(text)
+              break
+            }
+          }
+
+          // 如果有注释
+          if (startIndex >= 0) {
+            // 注释是完整的
+            if (endIndex > startIndex) {
+              addTextChild(
+                string.slice(content, 0, startIndex)
+              )
+              text = string.slice(content, 0, endIndex)
+              break
+            }
+            // 如果注释是不完整的，很可能是被插值语法截断了，这里不做处理
+            // removeCommentNode 函数会处理
+          }
+
+          text = content
+          addTextChild(text)
+
+          break
+
         }
 
       }
@@ -1815,7 +1898,7 @@ export function compile(content: string): Branch[] {
   }
 
   if (nodeList.length > 0) {
-    removeComment(nodeList)
+    removeCommentNode(nodeList)
   }
 
   return nodeList

@@ -101,6 +101,42 @@ test('HTML 注释 - 地狱模式3', () => {
 
 })
 
+test('HTML 注释 - 地狱模式4', () => {
+
+  let ast = compile(`
+    <div>
+      2<!-- <div>333</div> -->2
+    </div>
+  `)
+
+  let root = ast[0] as Element
+
+  expect(root.attrs).toBe(undefined)
+  expect(root.children).toBe(undefined)
+  expect(root.html).toBe(undefined)
+  expect(root.text).toBe('22')
+
+})
+
+test('HTML 注释 - 地狱模式5', () => {
+
+  let ast = compile(`
+    <div>
+      <!-- <div> -->
+      22
+      <!-- </div> -->
+    </div>
+  `)
+
+  let root = ast[0] as Element
+
+  expect(root.attrs).toBe(undefined)
+  expect(root.children).toBe(undefined)
+  expect(root.html).toBe(undefined)
+  expect(root.text).toBe('22')
+
+})
+
 test('Mustache 注释', () => {
 
   let ast = compile(`
