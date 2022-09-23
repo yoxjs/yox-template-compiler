@@ -66,8 +66,7 @@ type Context = {
 export function render(
   instance: YoxInterface,
   template: Function,
-  data: Data,
-  computed: Record<string, Computed> | undefined,
+  rootScope: Data,
   filters: Record<string, Filter> | undefined,
   globalFilters: Record<string, Filter>,
   directives: Record<string, DirectiveHooks> | undefined,
@@ -77,9 +76,7 @@ export function render(
   addDependency: (keypath: string) => void
 ) {
 
-  let rootScope = object.merge(data, computed),
-
-  rootKeypath = constant.EMPTY_STRING,
+  let rootKeypath = constant.EMPTY_STRING,
 
   contextStack: Context[] = [
     { scope: rootScope, keypath: rootKeypath }
@@ -436,12 +433,17 @@ export function render(
 
   renderSlot = function (name: string, parent?: YoxInterface) {
     addDependency(name)
-    const target = (computed as Record<string, Computed>)[name]
-    // 如果 slot 透传好几层组件，最里面的那个组件调用 renderSlot 时，会把自己传入 parent 参数
-    // 那么在它之上的每一层组件，都应该调用原始的渲染函数 getter，而不是调用经过封装的 get
-    return parent
-      ? target.getter(parent)
-      : target.get()
+    const target = rootScope[name]
+    if (target) {
+      if (target instanceof Computed) {
+        // 如果 slot 透传好几层组件，最里面的那个组件调用 renderSlot 时，会把自己传入 parent 参数
+        // 那么在它之上的每一层组件，都应该调用原始的渲染函数 getter，而不是调用经过封装的 get
+        return parent
+        ? target.getter(parent)
+        : target.get()
+      }
+      return target
+    }
   },
 
   findKeypath = function (
