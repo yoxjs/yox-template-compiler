@@ -331,7 +331,6 @@ class CommentVNode implements generator.Base {
   toString(tabSize?: number) {
     return generator.toMap({
       type: generator.toPrimitive(VNODE_TYPE_COMMENT),
-      isComment: PRIMITIVE_TRUE,
       isPure: PRIMITIVE_TRUE,
       operator: OPERATOR_COMMENT_VNODE,
       text: this.text,
@@ -1442,19 +1441,11 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   }
   else if (isFragment) {
     vnode.set(
-      'isFragment',
-      PRIMITIVE_TRUE
-    )
-    vnode.set(
       FIELD_OPERATOR,
       OPERATOR_FRAGMENT_VNODE
     )
   }
   else if (isPortal) {
-    vnode.set(
-      'isPortal',
-      PRIMITIVE_TRUE
-    )
     vnode.set(
       FIELD_OPERATOR,
       OPERATOR_PORTAL_VNODE
@@ -1477,10 +1468,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     }
   }
   else if (isSlot) {
-    vnode.set(
-      'isSlot',
-      PRIMITIVE_TRUE
-    )
     vnode.set(
       FIELD_OPERATOR,
       OPERATOR_SLOT_VNODE

@@ -439,8 +439,8 @@ export function render(
         // 如果 slot 透传好几层组件，最里面的那个组件调用 renderSlot 时，会把自己传入 parent 参数
         // 那么在它之上的每一层组件，都应该调用原始的渲染函数 getter，而不是调用经过封装的 get
         return parent
-        ? target.getter(parent)
-        : target.get()
+          ? target.getter(parent)
+          : target.get()
       }
       return target
     }
