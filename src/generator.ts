@@ -160,8 +160,6 @@ GET_PROP_BY_INDEX = constant.EMPTY_STRING,
 
 READ_KEYPATH = constant.EMPTY_STRING,
 
-EXECUTE_FUNCTION = constant.EMPTY_STRING,
-
 SET_VALUE_HOLDER = constant.EMPTY_STRING,
 
 TO_STRING = constant.EMPTY_STRING,
@@ -240,32 +238,31 @@ function init() {
     GET_PROP = '_r'
     GET_PROP_BY_INDEX = '_s'
     READ_KEYPATH = '_t'
-    EXECUTE_FUNCTION = '_u'
-    SET_VALUE_HOLDER = '_v'
-    TO_STRING = '_w'
-    OPERATOR_TEXT_VNODE = '_x'
-    OPERATOR_COMMENT_VNODE = '_y'
-    OPERATOR_ELEMENT_VNODE = '_z'
-    OPERATOR_COMPONENT_VNODE = '_A'
-    OPERATOR_FRAGMENT_VNODE = '_B'
-    OPERATOR_PORTAL_VNODE = '_C'
-    OPERATOR_SLOT_VNODE = '_D'
-    ARG_INSTANCE = '_E'
-    ARG_FILTERS = '_F'
-    ARG_GLOBAL_FILTERS = '_G'
-    ARG_DIRECTIVES = '_H'
-    ARG_GLOBAL_DIRECTIVES = '_I'
-    ARG_TRANSITIONS = '_J'
-    ARG_GLOBAL_TRANSITIONS = '_K'
-    ARG_STACK = '_L'
-    ARG_PARENT = '_M'
-    ARG_VNODE = '_N'
-    ARG_CHILDREN = '_O'
-    ARG_SCOPE = '_P'
-    ARG_KEYPATH = '_Q'
-    ARG_LENGTH = '_R'
-    ARG_EVENT = '_S'
-    ARG_DATA = '_T'
+    SET_VALUE_HOLDER = '_u'
+    TO_STRING = '_v'
+    OPERATOR_TEXT_VNODE = '_w'
+    OPERATOR_COMMENT_VNODE = '_x'
+    OPERATOR_ELEMENT_VNODE = '_y'
+    OPERATOR_COMPONENT_VNODE = '_z'
+    OPERATOR_FRAGMENT_VNODE = '_A'
+    OPERATOR_PORTAL_VNODE = '_B'
+    OPERATOR_SLOT_VNODE = '_C'
+    ARG_INSTANCE = '_D'
+    ARG_FILTERS = '_E'
+    ARG_GLOBAL_FILTERS = '_F'
+    ARG_DIRECTIVES = '_G'
+    ARG_GLOBAL_DIRECTIVES = '_H'
+    ARG_TRANSITIONS = '_I'
+    ARG_GLOBAL_TRANSITIONS = '_J'
+    ARG_STACK = '_K'
+    ARG_PARENT = '_L'
+    ARG_VNODE = '_M'
+    ARG_CHILDREN = '_N'
+    ARG_SCOPE = '_O'
+    ARG_KEYPATH = '_P'
+    ARG_LENGTH = '_Q'
+    ARG_EVENT = '_R'
+    ARG_DATA = '_S'
   }
   else {
     RENDER_STYLE_STRING = 'renderStyleStyle'
@@ -288,7 +285,6 @@ function init() {
     GET_PROP = 'getProp'
     GET_PROP_BY_INDEX = 'getPropByIndex'
     READ_KEYPATH = 'readKeypath'
-    EXECUTE_FUNCTION = 'executeFunction'
     SET_VALUE_HOLDER = 'setValueHolder'
     TO_STRING = 'toString'
     OPERATOR_TEXT_VNODE = 'textVNodeOperator'
@@ -610,20 +606,33 @@ function generateExpressionValue(value: generator.Base, keys: generator.Base[], 
 
 function generateExpressionCall(fn: generator.Base, args?: generator.Base[], holder?: boolean) {
 
+  const list: generator.Base[] = [],
+
+  varName = generator.getTempName()
+
+  // temp = fn
+  array.push(
+    list,
+    generator.toAssign(
+      varName,
+      fn
+    )
+  )
+
+  // temp()
+  array.push(
+    list,
+    generator.toCall(
+      varName,
+      args
+    )
+  )
+
   return generateHolderIfNeeded(
     generator.toCall(
       SET_VALUE_HOLDER,
       [
-        generator.toCall(
-          EXECUTE_FUNCTION,
-          [
-            fn,
-            ARG_INSTANCE,
-            args
-              ? generator.toList(args)
-              : PRIMITIVE_UNDEFINED
-          ]
-        )
+        generateStatementIfNeeded(list)
       ]
     ),
     holder
@@ -2271,7 +2280,6 @@ export function generate(node: Node): string {
       GET_PROP,
       GET_PROP_BY_INDEX,
       READ_KEYPATH,
-      EXECUTE_FUNCTION,
       SET_VALUE_HOLDER,
       TO_STRING,
       OPERATOR_TEXT_VNODE,

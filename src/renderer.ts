@@ -646,7 +646,6 @@ export function render(
       getProp,
       getPropByIndex,
       readKeypath,
-      execute,
       setValueHolder,
       toString,
       textVNodeOperator,
