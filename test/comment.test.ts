@@ -80,7 +80,7 @@ test('HTML 注释 - 地狱模式2', () => {
   expect(root.attrs).toBe(undefined)
   expect(root.children).toBe(undefined)
   expect(root.html).toBe(undefined)
-  expect(root.text).toBe('22')
+  expect(root.text).toBe('2 -->2')
 
 })
 
@@ -97,7 +97,7 @@ test('HTML 注释 - 地狱模式3', () => {
   expect(root.attrs).toBe(undefined)
   expect(root.children).toBe(undefined)
   expect(root.html).toBe(undefined)
-  expect(root.text).toBe('22')
+  expect(root.text).toBe('2<!-- 2')
 
 })
 
@@ -125,6 +125,66 @@ test('HTML 注释 - 地狱模式5', () => {
       <!-- <div> -->
       22
       <!-- </div> -->
+    </div>
+  `)
+
+  let root = ast[0] as Element
+
+  expect(root.attrs).toBe(undefined)
+  expect(root.children).toBe(undefined)
+  expect(root.html).toBe(undefined)
+  expect(root.text).toBe('22')
+
+})
+
+test('HTML 注释 - 地狱模式6', () => {
+
+  let ast = compile(`
+    <div>
+      2<!-- <span>
+        {{name}}
+      </span> -->2
+    </div>
+  `)
+
+  let root = ast[0] as Element
+
+  expect(root.attrs).toBe(undefined)
+  expect(root.children).toBe(undefined)
+  expect(root.html).toBe(undefined)
+  expect(root.text).toBe('22')
+
+})
+
+test('HTML 注释 - 地狱模式6', () => {
+
+  let ast = compile(`
+    <div>
+      2<!-- <span>
+        {{name}}<!-- hello -->
+      </span> -->2
+    </div>
+  `)
+
+  let root = ast[0] as Element
+
+  expect(root.attrs).toBe(undefined)
+  expect(root.children).toBe(undefined)
+  expect(root.html).toBe(undefined)
+  expect(root.text).toBe('22')
+
+})
+
+test('HTML 注释 - 地狱模式7', () => {
+
+  let ast = compile(`
+    <div>
+      2<!-- <span>
+        {{name}}<!-- hello
+        {{name}}
+        <!-- hi -->
+        -->
+      </span> -->2
     </div>
   `)
 

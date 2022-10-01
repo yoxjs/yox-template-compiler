@@ -119,10 +119,10 @@ rangePattern = /\s*(=>|->)\s*/,
 tagPattern = /<(\/)?([a-z][-a-z0-9]*|\$[^\s]*)/i,
 
 // 开始注释
-openCommentPattern = /^([\s\S]*?)<!--/,
+openCommentCode = '<!--',
 
 // 结束注释
-closeCommentPattern = /-->([\s\S]*?)$/,
+endCommentCode = '-->',
 
 // 属性的 name
 // 支持 on-click.namespace="" 或 on-get-out="" 或 xml:xx=""
@@ -158,7 +158,7 @@ function isDangerousInterpolation(node: Node | void) {
     && !(node as Expression).safe
 }
 
-function compareMatchIndex(index1: number, index2: number) : number {
+function compareMatchIndex(index1: number, index2: number): number {
   if (index1 >= 0 && index2 >= 0) {
     return index1 < index2 ? -1 : 1
   }
@@ -171,50 +171,71 @@ function compareMatchIndex(index1: number, index2: number) : number {
   return 0
 }
 
-function removeCommentString(content: string) {
+interface CommentRange {
+  startIndex: number
+  endIndex?: number
+  text?: string
+  index?: number
+}
 
-  const stack: number[] = [], openCode = '<!--', endCode = '-->'
+interface CommentPosition {
+  text: string
+  position: number
+}
 
-  // 注释的开始结束位置
-  let startIndex = -1, endIndex = -1, position = 0
+function walkCommentString(
+  stack: CommentRange[],
+  code: CommentPosition,
+  push?: (position: CommentPosition, range: CommentRange) => void,
+  pop?: (position: CommentPosition, range: CommentRange, isEmpty: boolean) => false | void,
+) {
 
-  loop: while (constant.TRUE) {
+  while (constant.TRUE) {
 
-    const openIndex = content.indexOf(openCode, position),
-    closeIndex = content.indexOf(endCode, position)
+    const openIndex = code.text.indexOf(openCommentCode, code.position),
+    closeIndex = code.text.indexOf(endCommentCode, code.position)
 
     switch (compareMatchIndex(openIndex, closeIndex)) {
       case -1:
-        position = openIndex + 1
-        array.push(stack, openIndex)
-        if (startIndex < 0) {
-          startIndex = openIndex
+        code.position = openIndex + 1
+        const range: CommentRange = {
+          startIndex: openIndex
+        }
+        array.push(stack, range)
+        if (push) {
+          push(code, range)
         }
         break
 
       case 1:
-        position = closeIndex + 1
+        code.position = closeIndex + 1
         // 如果 stack.length 为 0，却匹配到了一个 -->
         // 这种情况不用处理，因为可能就是纯字符串，或者 <!-- 被插值语法隔断了
         const { length } = stack
         if (length > 0) {
-          array.pop(stack)
-          if (length === 1) {
-            endIndex = closeIndex + endCode.length
-            break loop
+
+          const range = array.pop(stack) as CommentRange
+          range.endIndex = closeIndex + endCommentCode.length
+
+          const isEmpty = length === 1
+
+          if (pop) {
+            const result = pop(code, range, isEmpty)
+            if (result === constant.FALSE) {
+              return
+            }
+          }
+
+          if (isEmpty) {
+            return
           }
         }
         break
 
       case 0:
-        break loop
+        return
     }
 
-  }
-
-  return {
-    startIndex,
-    endIndex,
   }
 
 }
@@ -225,71 +246,81 @@ function removeCommentNode(children: Node[]) {
   // 按照目前的解析逻辑，是根据定界符进行模板分拆
   // 一旦出现插值，children 长度必然大于 1
 
-  let openIndex = -1,
+  const stack: CommentRange[] = []
 
-  openText = constant.EMPTY_STRING,
+  // children 是否发生 splice 操作
+  let hasSplice = constant.FALSE
 
-  closeIndex = -1,
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i]
+    if (child.type === nodeType.TEXT) {
 
-  closeText = constant.EMPTY_STRING
+      const textNode = child as Text
 
-  array.each(
-    children,
-    function (child, index) {
-      if (child.type === nodeType.TEXT) {
-        // 有了结束 index，这里的任务是配对开始 index
-        if (closeIndex >= 0) {
-          openText = (child as Text).text
-          // 处理 <!-- <!-- 这样有多个的情况
-          while (openCommentPattern.test(openText)) {
-            openText = RegExp.$1
-            openIndex = index
+      walkCommentString(
+        stack,
+        {
+          text: textNode.text,
+          position: 0,
+        },
+        function (_, commentRange) {
+          commentRange.index = i
+          commentRange.text = string.slice(textNode.text, 0, commentRange.startIndex)
+        },
+        function (commentPosition, commentRange) {
+
+          const openIndex = commentRange.index as number,
+          closeIndex = i,
+
+          openText = commentRange.text as string,
+          closeText = string.slice(textNode.text, commentRange.endIndex as number)
+
+          if (openIndex === closeIndex) {
+            commentPosition.text = textNode.text = openText + closeText
+            commentPosition.position = commentRange.startIndex
+            return
           }
 
-          if (openIndex >= 0) {
-            // openIndex 肯定小于 closeIndex，因为完整的注释在解析过程中会被干掉
-            // 只有包含插值的注释才会走进这里
+          let startIndex = openIndex, endIndex = closeIndex
 
-            let startIndex = openIndex, endIndex = closeIndex
-
-            // 现在要确定开始和结束的文本节点，是否包含正常文本
-            if (openText) {
-              (children[openIndex] as Text).text = openText
-              startIndex++
-            }
-            if (closeText) {
-              // 合并开始和结束文本，如 1<!-- {{x}}{{y}} -->2
-              // 这里要把 1 和 2 两个文本节点合并成一个
-              if (openText) {
-                (children[openIndex] as Text).text += closeText
-              }
-              else {
-                (children[closeIndex] as Text).text = closeText
-                endIndex--
-              }
-            }
-
-            children.splice(startIndex, endIndex - startIndex + 1)
-
-            // 重置，再继续寻找结束 index
-            openIndex = closeIndex = -1
+          if (openText) {
+            (children[openIndex] as Text).text = openText
+            startIndex++
           }
+          if (closeText) {
+            (children[closeIndex] as Text).text = closeText
+            endIndex--
+          }
+
+          const deleteCount = endIndex - startIndex + 1
+          if (deleteCount > 0) {
+            hasSplice = constant.TRUE
+            children.splice(startIndex, deleteCount)
+            i = startIndex - 1
+          }
+
+          return constant.FALSE
+
         }
-        else {
-          // 从后往前遍历
-          // 一旦发现能匹配 --> 就可以断定这是注释的结束 index
-          // 剩下的就是找开始 index
-          closeText = (child as Text).text
-          // 处理 --> --> 这样有多个的情况
-          while (closeCommentPattern.test(closeText)) {
-            closeText = RegExp.$1
-            closeIndex = index
-          }
+      )
+
+    }
+  }
+
+  if (hasSplice) {
+    // 合并相邻的静态文本节点
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i]
+      if (child.type === nodeType.TEXT) {
+        const nextChild = children[i + 1]
+        if (nextChild && nextChild.type === nodeType.TEXT) {
+          (child as Text).text += (nextChild as Text).text
+          children.splice(i + 1, 1)
         }
       }
-    },
-    constant.TRUE
-  )
+    }
+  }
+
 }
 
 export function compile(content: string): Branch[] {
@@ -307,6 +338,8 @@ export function compile(content: string): Branch[] {
   nodeList: Branch[] = [],
 
   nodeStack: Branch[] = [],
+
+  commentStack: CommentRange[] | void,
 
   // 持有 if 节点，方便 if/elseif/else 出栈时，获取到 if 节点
   ifList: If[] = [],
@@ -1151,7 +1184,7 @@ export function compile(content: string): Branch[] {
 
   htmlParsers = [
     function (content: string): string | void {
-      if (!currentElement) {
+      if (!commentStack && !currentElement) {
         const match = content.match(tagPattern)
         // 必须以 <tag 开头才能继续
         // 如果 <tag 前面有别的字符，会走进第四个 parser
@@ -1228,6 +1261,9 @@ export function compile(content: string): Branch[] {
     },
     // 处理标签的 > 或 />，不论开始还是结束标签
     function (content: string): string | void {
+      if (commentStack) {
+        return
+      }
       const match = content.match(selfClosingTagPattern)
       if (match) {
 
@@ -1255,7 +1291,7 @@ export function compile(content: string): Branch[] {
     // 处理 attribute directive 的 name 部分
     function (content: string): string | void {
       // 当前在 element 层级
-      if (currentElement && !currentAttribute) {
+      if (!commentStack && currentElement && !currentAttribute) {
 
         if (process.env.NODE_ENV === 'development') {
           const match = content.match(notEndAttributePattern)
@@ -1372,10 +1408,10 @@ export function compile(content: string): Branch[] {
     },
     function (content: string): string | void {
 
-      let text: string | void, match: RegExpMatchArray | null
+      let text: string | void = constant.UNDEFINED, match: RegExpMatchArray | null
 
       // 处理 attribute directive 的 value 部分
-      if (currentAttribute && attributeStartQuote) {
+      if (!commentStack && currentAttribute && attributeStartQuote) {
 
         match = content.match(patternCache[attributeStartQuote] || (patternCache[attributeStartQuote] = new RegExp(attributeStartQuote)))
 
@@ -1412,44 +1448,78 @@ export function compile(content: string): Branch[] {
       // 属性值通过上面的 if 处理过了，这里只需要处理元素内容
       else if (!currentElement) {
 
-        // 获取 <tag 和 <!-- 前面的字符
-        const { startIndex, endIndex } = removeCommentString(content)
+        let childText = constant.EMPTY_STRING
 
-        match = content.match(tagPattern)
-
-        // 利用 break 退出 block
-        while (constant.TRUE) {
-
+        // 如果当前位置不在注释中，则先判断是否有标签
+        if (!commentStack) {
+          match = content.match(tagPattern)
           if (match) {
-            const tagIndex = match.index as number
+            const tagIndex = match.index as number, commentIndex = content.indexOf(openCommentCode)
             // tag 在 comment 前面
-            if (compareMatchIndex(tagIndex, startIndex) < 0) {
+            if (compareMatchIndex(tagIndex, commentIndex) < 0) {
               text = string.slice(content, 0, tagIndex)
-              addTextChild(text)
-              break
+              childText = text
             }
           }
-
-          // 如果有注释
-          if (startIndex >= 0) {
-            // 注释是完整的
-            if (endIndex > startIndex) {
-              addTextChild(
-                string.slice(content, 0, startIndex)
-              )
-              text = string.slice(content, 0, endIndex)
-              break
-            }
-            // 如果注释是不完整的，很可能是被插值语法截断了，这里不做处理
-            // removeCommentNode 函数会处理
-          }
-
-          text = content
-          addTextChild(text)
-
-          break
-
         }
+
+        if (!isDef(text)) {
+
+          let startIndex = -1, endIndex = -1
+
+          const oldCommentStack = commentStack, newCommentStack = commentStack || []
+
+          // 重置 commentStack
+          commentStack = constant.UNDEFINED
+
+          walkCommentString(
+            newCommentStack,
+            {
+              text: content,
+              position: 0,
+            },
+            function (_, commentRange) {
+              if (startIndex < 0) {
+                startIndex = commentRange.startIndex
+
+                text = content
+                childText = content
+                commentStack = newCommentStack
+              }
+            },
+            function (_, commentRange, isEmpty) {
+              if (isEmpty) {
+                commentStack = constant.UNDEFINED
+
+                endIndex = commentRange.endIndex as number
+                // 注释是完整的
+                if (startIndex >= 0) {
+                  if (oldCommentStack) {
+                    text = string.slice(content, 0, endIndex)
+                    childText = text
+                  }
+                  else {
+                    text = string.slice(content, 0, endIndex)
+                    childText = string.slice(content, 0, startIndex)
+                  }
+                }
+                // 只匹配到注释结束符
+                else {
+                  text = string.slice(content, 0, endIndex)
+                  childText = text
+                }
+              }
+            }
+          )
+        }
+
+        if (!isDef(text)) {
+          // 普通文本
+          text = content
+          childText = content
+        }
+
+        addTextChild(childText)
 
       }
       else {
