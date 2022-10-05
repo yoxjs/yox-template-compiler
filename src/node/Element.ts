@@ -24,6 +24,9 @@ export default interface Element extends Branch {
   // 是否是 <option> 元素
   isOption: boolean
 
+  // 是否是平台内置元素
+  isNative: boolean
+
   // 是否是组件元素，而不是平台内置元素
   isComponent: boolean
 
@@ -32,9 +35,6 @@ export default interface Element extends Branch {
 
   // <slot name="xx">
   name?: Attribute
-
-  // <vnode value="{{this}}">
-  value?: Attribute
 
   // <portal to="#id">
   to?: Attribute

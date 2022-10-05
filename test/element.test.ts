@@ -226,6 +226,50 @@ test('空的 template', () => {
   expect(ast[0].children).toBe(undefined)
 })
 
+test('空的 portal', () => {
+  let ast = compile('<div><portal></portal></div>')
+  expect(ast[0].children).toBe(undefined)
+})
+
+test('空的 fragment', () => {
+  let ast = compile('<div><fragment></fragment></div>')
+  expect(ast[0].children).toBe(undefined)
+})
+
+test('元素类型', () => {
+
+  let ast = compile('<div></div>')
+
+  expect((ast[0] as Element).isNative).toBe(true)
+  expect((ast[0] as Element).isVirtual).toBe(false)
+  expect((ast[0] as Element).isComponent).toBe(false)
+
+  ast = compile('<Dog></Dog>')
+
+  expect((ast[0] as Element).isNative).toBe(false)
+  expect((ast[0] as Element).isVirtual).toBe(false)
+  expect((ast[0] as Element).isComponent).toBe(true)
+
+  ast = compile('<fragment><div></div></fragment>')
+
+  expect((ast[0] as Element).isNative).toBe(false)
+  expect((ast[0] as Element).isVirtual).toBe(true)
+  expect((ast[0] as Element).isComponent).toBe(false)
+
+  ast = compile('<portal><div></div></portal>')
+
+  expect((ast[0] as Element).isNative).toBe(false)
+  expect((ast[0] as Element).isVirtual).toBe(true)
+  expect((ast[0] as Element).isComponent).toBe(false)
+
+  ast = compile('<Dog><template slot="header"><div></div></template></Dog>')
+
+  expect((ast[0].children as Element[])[0].isNative).toBe(false)
+  expect((ast[0].children as Element[])[0].isVirtual).toBe(true)
+  expect((ast[0].children as Element[])[0].isComponent).toBe(false)
+
+})
+
 test('静态元素', () => {
 
   let ast = compile('<div><span id="xx">1123</span></div>')

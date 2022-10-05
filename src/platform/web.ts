@@ -6,12 +6,10 @@ import * as constant from 'yox-common/src/util/constant'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 
-import Node from '../node/Node'
 import Element from '../node/Element'
 import Attribute from '../node/Attribute'
 import Style from '../node/Style'
 
-import * as helper from '../helper'
 import * as creator from '../creator'
 import * as nodeType from '../nodeType'
 
@@ -135,17 +133,6 @@ export function formatBooleanNativeAttributeValue(name: string, value: any, defa
     ? constant.UNDEFINED
     : (isTrue ? constant.RAW_TRUE : constant.RAW_FALSE)
 
-}
-
-export function isNativeElement(node: Node) {
-  if (node.type !== nodeType.ELEMENT) {
-    return constant.FALSE
-  }
-  const element = node as Element
-  if (element.isComponent) {
-    return constant.FALSE
-  }
-  return helper.specialTags[element.tag] === constant.UNDEFINED
 }
 
 export function createElement(staticTag: string, dynamicTag: ExpressionNode | void) {

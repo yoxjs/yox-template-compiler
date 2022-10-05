@@ -1,12 +1,10 @@
-import {
-  TAG_SLOT,
-  TAG_PORTAL,
-} from 'yox-config/src/config'
+import { TAG_SLOT } from 'yox-config/src/config'
 
 import * as constant from 'yox-common/src/util/constant'
 
 import ExpressionNode from 'yox-expression-compiler/src/node/Node'
 
+import * as helper from './helper'
 import * as nodeType from './nodeType'
 
 import Element from './node/Element'
@@ -59,16 +57,19 @@ export function createEach(from: ExpressionNode, to: ExpressionNode | void, equa
 }
 
 export function createElement(tag: string, dynamicTag: ExpressionNode | void, isSvg: boolean, isStyle: boolean, isComponent: boolean): Element {
+  const isSlot = tag === TAG_SLOT, isVirtual = !isComponent && !isSlot && !!helper.specialTags[tag], isNative = !isComponent && !isSlot && !isVirtual
   return {
     type: nodeType.ELEMENT,
     tag,
     dynamicTag,
     isSvg,
     isStyle,
-    isComponent,
     // 只有 <option> 没有 value 属性时才为 true
     isOption: constant.FALSE,
-    isStatic: !isComponent && tag !== TAG_SLOT && tag !== TAG_PORTAL,
+    isStatic: isNative,
+    isNative,
+    isVirtual,
+    isComponent,
   }
 }
 

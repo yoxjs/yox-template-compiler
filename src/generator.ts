@@ -1462,10 +1462,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   }
   else if (isComponent) {
     vnode.set(
-      'isComponent',
-      PRIMITIVE_TRUE
-    )
-    vnode.set(
       FIELD_OPERATOR,
       OPERATOR_COMPONENT_VNODE
     )

@@ -27,7 +27,6 @@ import {
 
 import {
   isSelfClosing,
-  isNativeElement,
   createAttribute,
   getAttributeDefaultValue,
   formatNativeAttributeValue,
@@ -513,7 +512,9 @@ export function compile(content: string): Branch[] {
       }
     }
 
-    if (branchNode.isVirtual && !branchNode.children) {
+    if (branchNode.isVirtual
+      && !branchNode.children
+    ) {
       replaceChild(branchNode)
     }
 
@@ -544,7 +545,7 @@ export function compile(content: string): Branch[] {
 
     // 需要在这特殊处理的是 html 实体
     // 但这只是 WEB 平台的特殊逻辑，所以丢给 platform 处理
-    if (isNativeElement(element)
+    if (element.isNative
       && setElementText(element, child.text)
     ) {
       element.children = constant.UNDEFINED
@@ -554,7 +555,7 @@ export function compile(content: string): Branch[] {
 
   processElementSingleExpression = function (element: Element, child: Expression) {
 
-    if (isNativeElement(element)) {
+    if (element.isNative) {
       if (child.safe && setElementText(element, child.expr)
         || !child.safe && setElementHtml(element, child.expr)
       ) {
@@ -599,9 +600,14 @@ export function compile(content: string): Branch[] {
 
   processAttributeSingleText = function (element: Element, attr: Attribute, child: Text) {
 
-    attr.value = element.isComponent
-      ? child.text
-      : formatNativeAttributeValue(attr.name, child.text, attr.defaultValue)
+    const { text } = child
+
+    if (element.isNative) {
+      attr.value = formatNativeAttributeValue(attr.name, text, attr.defaultValue)
+    }
+    else {
+      attr.value = text
+    }
 
     attr.children = constant.UNDEFINED
 
@@ -613,7 +619,7 @@ export function compile(content: string): Branch[] {
 
     if (expr.type === exprNodeType.LITERAL) {
       let value = (expr as ExpressionLiteral).value
-      if (!element.isComponent && attr.type === nodeType.ATTRIBUTE) {
+      if (element.isNative && attr.type === nodeType.ATTRIBUTE) {
         value = formatNativeAttributeValue(
           (attr as Attribute).name,
           value,
@@ -840,8 +846,8 @@ export function compile(content: string): Branch[] {
     if (process.env.NODE_ENV === 'development') {
       if (isSlot) {
         // 只能是 <template> 、组件、native 元素
-        const { tag, isComponent } = element
-        if (tag !== TAG_TEMPLATE && !isComponent && !isNativeElement(element)) {
+        const { tag, isComponent, isNative } = element
+        if (tag !== TAG_TEMPLATE && !isComponent && !isNative) {
           fatal(`The "slot" attribute can't be used in <${tag}>.`)
         }
       }
@@ -1099,7 +1105,9 @@ export function compile(content: string): Branch[] {
                 fatal('The dangerous interpolation must be the only child of a HTML element.')
               }
               // 危险插值的父节点必须是 html element
-              else if (!isNativeElement(currentBranch)) {
+              else if (currentBranch.type !== nodeType.ELEMENT
+                || !(currentBranch as Element).isNative
+              ) {
                 fatal('The dangerous interpolation must be the only child of a HTML element.')
               }
             }
