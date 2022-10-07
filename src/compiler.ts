@@ -729,6 +729,10 @@ export function compile(content: string): Branch[] {
           fatal('The value of the model must be an identifier.')
         }
 
+        if (isCustom && expr.type === exprNodeType.CALL) {
+          fatal(`The value of the directive [${directive.ns}${directiveSeparator}${directive.name}] can't be a method call.`)
+        }
+
       }
 
       directive.expr = expr

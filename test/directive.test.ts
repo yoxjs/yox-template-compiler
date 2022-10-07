@@ -166,7 +166,7 @@ test('error', () => {
     hasError = true
   }
 
-  expect(hasError).toBe(false)
+  expect(hasError).toBe(true)
 
 
   hasError = false

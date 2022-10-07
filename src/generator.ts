@@ -1843,12 +1843,16 @@ function getDirectiveArgs(node: Directive) {
     args,
     generator.toPrimitive(node.modifier)
   )
+
   // value
   array.push(
     args,
-    generator.toPrimitive(node.value)
+    node.expr
+      ? generateExpression(node.expr)
+      : generator.toPrimitive(node.value)
   )
-  // hooks
+
+  // create
   array.push(
     args,
     generateSelfAndGlobalReader(
@@ -1857,79 +1861,6 @@ function getDirectiveArgs(node: Directive) {
       node.name
     )
   )
-
-  // 尽可能把表达式编译成函数，这样对外界最友好
-  //
-  // 众所周知，事件指令会编译成函数，对于自定义指令来说，也要尽可能编译成函数
-  //
-  // 比如 o-tap="method()" 或 o-log="{'id': '11'}"
-  // 前者会编译成 handler（调用方法），后者会编译成 getter（取值）
-
-  const { expr } = node
-
-  if (expr) {
-
-    // 如果表达式明确是在调用方法，则序列化成 method + args 的形式
-    if (expr.type === exprNodeType.CALL) {
-
-      const callNode = expr as ExpressionCall
-
-      // 为了实现运行时动态收集参数，这里序列化成函数
-      if (!array.falsy(callNode.args)) {
-        // runtime
-        array.push(
-          args,
-          generator.toMap({
-            execute: generator.toAnonymousFunction(
-              constant.UNDEFINED,
-              constant.UNDEFINED,
-              generator.toList(
-                callNode.args.map(
-                  function (arg) {
-                    return generateExpression(arg)
-                  }
-                )
-              )
-            )
-          })
-        )
-      }
-      else {
-        // runtime
-        array.push(
-          args,
-          PRIMITIVE_UNDEFINED
-        )
-      }
-
-      // compiler 保证了函数调用的 name 是标识符
-      // method
-      array.push(
-        args,
-        generator.toPrimitive((callNode.name as ExpressionIdentifier).name)
-      )
-
-    }
-    else {
-
-      // 取值函数
-      if (expr.type !== exprNodeType.LITERAL) {
-        // runtime
-        array.push(
-          args,
-          generator.toMap({
-            execute: generator.toAnonymousFunction(
-              constant.UNDEFINED,
-              constant.UNDEFINED,
-              generateExpression(expr)
-            )
-          })
-        )
-      }
-
-    }
-
-  }
 
   return args
 

@@ -7,6 +7,7 @@ import {
   Filter,
   Listener,
   ValueHolder,
+  DirectiveFunction,
 } from 'yox-type/src/type'
 
 import {
@@ -16,8 +17,8 @@ import {
 
 import {
   VNode,
+  Directive,
   EventRuntime,
-  DirectiveRuntime,
 } from 'yox-type/src/vnode'
 
 import {
@@ -214,36 +215,20 @@ export function render(
     }
   },
 
-  renderDirective = function (key: string, name: string, modifier: string, value: any, hooks: DirectiveHooks, runtime?: DirectiveRuntime, method?: string) {
+  renderDirective = function (key: string, name: string, modifier: string, value: any, create: DirectiveFunction): Directive {
 
     if (process.env.NODE_ENV === 'development') {
-      if (!hooks) {
+      if (!create) {
         logger.fatal(`The directive "${name}" can't be found.`)
       }
     }
 
     return {
       ns: DIRECTIVE_CUSTOM,
-      key,
       name,
       value,
       modifier,
-      getter: runtime && !method
-        ? function () {
-            return runtime.execute()
-          }
-        : constant.UNDEFINED,
-      handler: method
-        ? function () {
-            callMethod(
-              method,
-              runtime
-                ? runtime.execute()
-                : constant.UNDEFINED
-            )
-          }
-        : constant.UNDEFINED,
-      hooks,
+      create,
     }
 
   },
