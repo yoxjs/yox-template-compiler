@@ -11,7 +11,6 @@ import {
 } from 'yox-type/src/type'
 
 import {
-  DirectiveHooks,
   TransitionHooks,
 } from 'yox-type/src/hooks'
 
@@ -70,8 +69,8 @@ export function render(
   rootScope: Data,
   filters: Record<string, Filter> | undefined,
   globalFilters: Record<string, Filter>,
-  directives: Record<string, DirectiveHooks> | undefined,
-  globalDirectives: Record<string, DirectiveHooks>,
+  directives: Record<string, DirectiveFunction> | undefined,
+  globalDirectives: Record<string, DirectiveFunction>,
   transitions: Record<string, TransitionHooks> | undefined,
   globalTransitions: Record<string, TransitionHooks>,
   addDependency: (keypath: string) => void
