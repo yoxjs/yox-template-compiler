@@ -21,9 +21,6 @@ export default interface Element extends Branch {
   // 是否是 <style> 元素
   isStyle: boolean
 
-  // 是否是 <option> 元素
-  isOption: boolean
-
   // 是否是平台内置元素
   isNative: boolean
 

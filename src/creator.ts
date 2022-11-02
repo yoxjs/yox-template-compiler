@@ -64,8 +64,6 @@ export function createElement(tag: string, dynamicTag: ExpressionNode | void, is
     dynamicTag,
     isSvg,
     isStyle,
-    // 只有 <option> 没有 value 属性时才为 true
-    isOption: constant.FALSE,
     isStatic: isNative,
     isNative,
     isVirtual,

@@ -6,7 +6,6 @@ import {
   SYNTAX_IF,
   SYNTAX_IMPORT,
   SYNTAX_SPREAD,
-  TAG_SLOT,
   TAG_PORTAL,
   TAG_FRAGMENT,
   TAG_TEMPLATE,
@@ -835,7 +834,7 @@ export function compile(content: string): Branch[] {
       replaceChild(element)
     }
     // 处理浏览器兼容问题
-    else if (tag !== TAG_SLOT) {
+    else if (element.isNative) {
       compatElement(element)
     }
 

@@ -155,7 +155,7 @@ export function createElement(staticTag: string, dynamicTag: ExpressionNode | vo
 
 export function compatElement(element: Element) {
 
-  let { tag, attrs } = element, hasType = constant.FALSE, hasValue = constant.FALSE
+  let { attrs } = element, hasType = constant.FALSE
 
   if (attrs) {
     array.each(
@@ -168,9 +168,6 @@ export function compatElement(element: Element) {
 
         if (name === 'type') {
           hasType = constant.TRUE
-        }
-        else if (name === 'value') {
-          hasValue = constant.TRUE
         }
 
       }
@@ -187,10 +184,6 @@ export function compatElement(element: Element) {
       element.attrs || (element.attrs = []),
       attr
     )
-  }
-  // 低版本 IE 需要给 option 标签强制加 value
-  else if (tag === 'option' && !hasValue) {
-    element.isOption = constant.TRUE
   }
 
 }

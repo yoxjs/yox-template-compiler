@@ -1489,18 +1489,6 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         )
       : renderSlot
   }
-  if (node.isOption) {
-    vnode.set(
-      'isOption',
-      PRIMITIVE_TRUE
-    )
-  }
-  if (node.isStyle) {
-    vnode.set(
-      'isStyle',
-      PRIMITIVE_TRUE
-    )
-  }
   if (node.isSvg) {
     vnode.set(
       'isSvg',
