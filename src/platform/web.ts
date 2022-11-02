@@ -15,17 +15,6 @@ import * as nodeType from '../nodeType'
 
 import toString from 'yox-common/src/function/toString'
 
-function split2Map(str: string) {
-  const map = Object.create(constant.NULL)
-  array.each(
-    str.split(','),
-    function (item) {
-      map[item] = constant.TRUE
-    }
-  )
-  return map
-}
-
 const needCompile = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'production',
 
 // 首字母大写，或中间包含 -
@@ -35,16 +24,16 @@ componentNamePattern = /^[A-Z]|-/,
 htmlEntityPattern = /&[#\w\d]{2,6};/,
 
 // 常见的自闭合标签
-selfClosingTagNames = needCompile ? split2Map('area,base,embed,track,source,param,input,col,img,br,hr') : constant.EMPTY_OBJECT,
+selfClosingTagNames = needCompile ? string.toMap('area,base,embed,track,source,param,input,col,img,br,hr') : constant.EMPTY_OBJECT,
 
 // 常见的 svg 标签
-svgTagNames = needCompile ? split2Map('svg,g,defs,desc,metadata,symbol,use,image,path,rect,circle,line,ellipse,polyline,polygon,text,tspan,tref,textpath,marker,pattern,clippath,mask,filter,cursor,view,animate,font,font-face,glyph,missing-glyph,animateColor,animateMotion,animateTransform,textPath,foreignObject') : constant.EMPTY_OBJECT,
+svgTagNames = needCompile ? string.toMap('svg,g,defs,desc,metadata,symbol,use,image,path,rect,circle,line,ellipse,polyline,polygon,text,tspan,tref,textpath,marker,pattern,clippath,mask,filter,cursor,view,animate,font,font-face,glyph,missing-glyph,animateColor,animateMotion,animateTransform,textPath,foreignObject') : constant.EMPTY_OBJECT,
 
 // 常见的数字类型的属性（width,height,cellpadding,cellspacing 支持百分比，因此不计入数字类型）
-numberAttributeNames = needCompile ? split2Map('min,minlength,max,maxlength,step,size,rows,cols,tabindex,colspan,rowspan,frameborder') : constant.EMPTY_OBJECT,
+numberAttributeNames = needCompile ? string.toMap('min,minlength,max,maxlength,step,size,rows,cols,tabindex,colspan,rowspan,frameborder') : constant.EMPTY_OBJECT,
 
 // 常见的布尔类型的属性
-booleanAttributeNames = needCompile ? split2Map('disabled,checked,required,multiple,readonly,autofocus,autoplay,reversed,selected,controls,default,loop,muted,novalidate,draggable,contenteditable,hidden,spellcheck,allowfullscreen') : constant.EMPTY_OBJECT
+booleanAttributeNames = needCompile ? string.toMap('disabled,checked,required,multiple,readonly,autofocus,autoplay,reversed,selected,controls,default,loop,muted,novalidate,draggable,contenteditable,hidden,spellcheck,allowfullscreen') : constant.EMPTY_OBJECT
 
 export function isSelfClosing(tagName: string) {
   return selfClosingTagNames[tagName] !== constant.UNDEFINED
