@@ -33,7 +33,6 @@ import * as array from 'yox-common/src/util/array'
 import * as object from 'yox-common/src/util/object'
 import * as logger from 'yox-common/src/util/logger'
 import * as constant from 'yox-common/src/util/constant'
-import * as keypathUtil from 'yox-common/src/util/keypath'
 
 import globalHolder from 'yox-common/src/util/holder'
 
@@ -59,7 +58,8 @@ import {
 } from './platform/web'
 
 type Context = {
-  scope: any,
+  scopeValue: any,
+  scopeKey?: string | number,
   keypath: string,
 }
 
@@ -79,7 +79,7 @@ export function render(
   let rootKeypath = constant.EMPTY_STRING,
 
   contextStack: Context[] = [
-    { scope: rootScope, keypath: rootKeypath }
+    { scopeValue: rootScope, keypath: rootKeypath }
   ],
 
   // 模板渲染过程收集的 vnode
@@ -297,7 +297,8 @@ export function render(
           // slice + push 比直接 concat 快多了
           contextStack = oldScopeStack.slice()
           contextStack.push({
-            scope: value[i],
+            scopeValue: value,
+            scopeKey: i,
             keypath: currentKeypath,
           })
         }
@@ -324,7 +325,8 @@ export function render(
           // slice + push 比直接 concat 快多了
           contextStack = oldScopeStack.slice()
           contextStack.push({
-            scope: value[key],
+            scopeValue: value,
+            scopeKey: key,
             keypath: currentKeypath,
           })
         }
@@ -438,9 +440,11 @@ export function render(
     isFirstCall?: boolean
   ) {
 
-    const { scope, keypath } = stack[index],
+    const { scopeValue, scopeKey, keypath } = stack[index],
 
-    currentKeypath = keypathUtil.join(keypath, name),
+    scope = scopeKey != constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue,
+
+    currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name,
 
     result = object.get(scope, name)
 
@@ -489,7 +493,9 @@ export function render(
     name: string
   ) {
 
-    const { scope, keypath } = stack[index],
+    const { scopeValue, scopeKey, keypath } = stack[index],
+
+    scope = scopeKey != constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue,
 
     currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
 
@@ -542,10 +548,10 @@ export function render(
     index: number
   ) {
 
-    const { scope, keypath } = stack[index]
+    const { scopeValue, scopeKey, keypath } = stack[index]
 
     return setValueHolder(
-      scope,
+      scopeKey != constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue,
       keypath
     )
 
@@ -572,10 +578,10 @@ export function render(
     name: string
   ) {
 
-    const { scope, keypath } = stack[index]
+    const { scopeValue, scopeKey, keypath } = stack[index]
 
     return setValueHolder(
-      scope[name],
+      (scopeKey != constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue)[name],
       keypath ? keypath + constant.RAW_DOT + name : name
     )
 
