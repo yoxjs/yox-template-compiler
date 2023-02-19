@@ -534,6 +534,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
         LOOKUP_PROP,
         [
           ARG_STACK,
+          index,
           generator.toPrimitive(keypath),
           generator.toMember(
             ARG_SCOPE,

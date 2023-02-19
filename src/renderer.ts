@@ -540,14 +540,13 @@ export function render(
 
   lookupProp = function (
     stack: Context[],
+    index: number,
     name: string,
     value: any,
     filter?: Function
   ) {
 
-    const index = stack.length - 1,
-
-    currentKeypath = stack[index].getKeypath(name)
+    const currentKeypath = stack[index].getKeypath(name)
 
     if (value !== constant.UNDEFINED) {
       return setValueHolder(
