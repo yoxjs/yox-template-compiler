@@ -546,13 +546,12 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
     // 指定了路径，如 ~/name 或 ../name
     else {
 
-      const list: generator.Base[] = [],
+      const statement = generator.toStatement(),
 
       varName = generator.getTempName()
 
       // temp = stack[index]
-      array.push(
-        list,
+      statement.add(
         generator.toAssign(
           varName,
           generator.toMember(
@@ -568,8 +567,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
       //   temp.getScope()[name],
       //   temp.getKeypath(name)
       // )
-      array.push(
-        list,
+      statement.add(
         generator.toCall(
           SET_VALUE_HOLDER,
           [
@@ -601,7 +599,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
         )
       )
 
-      result = generateStatementIfNeeded(list)
+      result = statement
 
     }
 
@@ -609,13 +607,12 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
   // 处理属性为空串，如 this、../this、~/this 之类的
   else if (!keypath && !length) {
 
-    const list: generator.Base[] = [],
+    const statement = generator.toStatement(),
 
     varName = generator.getTempName()
 
     // temp = stack[index]
-    array.push(
-      list,
+    statement.add(
       generator.toAssign(
         varName,
         generator.toMember(
@@ -628,8 +625,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
     )
 
     // setValueHolder(temp.getScope(), temp.keypath)
-    array.push(
-      list,
+    statement.add(
       generator.toCall(
         SET_VALUE_HOLDER,
         [
@@ -651,7 +647,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
       )
     )
 
-    result = generateStatementIfNeeded(list)
+    result = statement
   }
 
   return generateHolderIfNeeded(result, holder)
@@ -701,13 +697,12 @@ function generateExpressionValue(value: generator.Base, keys: generator.Base[], 
 
 function generateExpressionCall(fn: generator.Base, args?: generator.Base[], holder?: boolean) {
 
-  const list: generator.Base[] = [],
+  const statement = generator.toStatement(),
 
   varName = generator.getTempName()
 
   // temp = fn
-  array.push(
-    list,
+  statement.add(
     generator.toAssign(
       varName,
       fn
@@ -715,8 +710,7 @@ function generateExpressionCall(fn: generator.Base, args?: generator.Base[], hol
   )
 
   // temp()
-  array.push(
-    list,
+  statement.add(
     generator.toCall(
       varName,
       args
@@ -727,7 +721,7 @@ function generateExpressionCall(fn: generator.Base, args?: generator.Base[], hol
     generator.toCall(
       SET_VALUE_HOLDER,
       [
-        generateStatementIfNeeded(list)
+        statement
       ]
     ),
     holder
@@ -866,12 +860,6 @@ function generateNodesToChildren(nodes: Node[], args: generator.Base[] | void) {
     )
   )
 
-}
-
-function generateStatementIfNeeded(nodes: generator.Base[]) {
-  return nodes.length === 1
-    ? nodes[0]
-    : generator.toStatement(nodes, constant.TRUE)
 }
 
 function appendDynamicChildVNode(vnode: generator.Base) {
@@ -1614,9 +1602,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     )
   }
 
-  const list: generator.Base[] = [],
-
-  result: generator.Base = outputAttrs
+  const result: generator.Base = outputAttrs
     ? generator.toCall(
         outputAttrs,
         [
@@ -1626,11 +1612,12 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     : vnode
 
   if (isFragment || isPortal || isSlot) {
-    const varName = generator.getTempName()
+    const statement = generator.toStatement(),
+
+    varName = generator.getTempName()
 
     // temp = vnode
-    array.push(
-      list,
+    statement.add(
       generator.toAssign(
         varName,
         result
@@ -1638,8 +1625,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
     )
 
     // temp.children && temp.children.length && children.push(temp)
-    array.push(
-      list,
+    statement.add(
       generator.toBinary(
         generator.toBinary(
           generator.toMember(
@@ -1664,7 +1650,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
         )
       )
     )
-    return generateStatementIfNeeded(list)
+    return statement
 
   }
 
@@ -2097,7 +2083,7 @@ function getBranchValue(children: Node[] | void) {
     if (array.last(attributeValueStack)) {
       return createAttributeValue(children)
     }
-    return generateStatementIfNeeded(
+    return generator.toStatement(
       mapNodes(children)
     )
   }
@@ -2235,23 +2221,19 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
 
 nodeGenerator[nodeType.IMPORT] = function (node: Import) {
 
-  const list: generator.Base[] = [],
+  const varName = generator.getTempName(),
 
-  vnode: generator.Base = generateExpression(node.expr),
-
-  varName = generator.getTempName()
+  statement = generator.toStatement()
 
   // temp = vnode
-  array.push(
-    list,
+  statement.add(
     generator.toAssign(
       varName,
-      vnode
+      generateExpression(node.expr)
     )
   )
 
-  array.push(
-    list,
+  statement.add(
     generator.toTernary(
       varName,
       generateVNode(varName),
@@ -2259,7 +2241,7 @@ nodeGenerator[nodeType.IMPORT] = function (node: Import) {
     )
   )
 
-  return generateStatementIfNeeded(list)
+  return statement
 
 }
 
