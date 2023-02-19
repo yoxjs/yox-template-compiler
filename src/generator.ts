@@ -152,12 +152,6 @@ LOOKUP_KEYPATH = constant.EMPTY_STRING,
 
 LOOKUP_PROP = constant.EMPTY_STRING,
 
-GET_THIS_BY_INDEX = constant.EMPTY_STRING,
-
-GET_PROP = constant.EMPTY_STRING,
-
-GET_PROP_BY_INDEX = constant.EMPTY_STRING,
-
 READ_KEYPATH = constant.EMPTY_STRING,
 
 SET_VALUE_HOLDER = constant.EMPTY_STRING,
@@ -234,35 +228,32 @@ function init() {
     FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = '_n'
     LOOKUP_KEYPATH = '_o'
     LOOKUP_PROP = '_p'
-    GET_THIS_BY_INDEX = '_q'
-    GET_PROP = '_r'
-    GET_PROP_BY_INDEX = '_s'
-    READ_KEYPATH = '_t'
-    SET_VALUE_HOLDER = '_u'
-    TO_STRING = '_v'
-    OPERATOR_TEXT_VNODE = '_w'
-    OPERATOR_COMMENT_VNODE = '_x'
-    OPERATOR_ELEMENT_VNODE = '_y'
-    OPERATOR_COMPONENT_VNODE = '_z'
-    OPERATOR_FRAGMENT_VNODE = '_A'
-    OPERATOR_PORTAL_VNODE = '_B'
-    OPERATOR_SLOT_VNODE = '_C'
-    ARG_INSTANCE = '_D'
-    ARG_FILTERS = '_E'
-    ARG_GLOBAL_FILTERS = '_F'
-    ARG_DIRECTIVES = '_G'
-    ARG_GLOBAL_DIRECTIVES = '_H'
-    ARG_TRANSITIONS = '_I'
-    ARG_GLOBAL_TRANSITIONS = '_J'
-    ARG_STACK = '_K'
-    ARG_PARENT = '_L'
-    ARG_VNODE = '_M'
-    ARG_CHILDREN = '_N'
-    ARG_SCOPE = '_O'
-    ARG_KEYPATH = '_P'
-    ARG_LENGTH = '_Q'
-    ARG_EVENT = '_R'
-    ARG_DATA = '_S'
+    READ_KEYPATH = '_q'
+    SET_VALUE_HOLDER = '_r'
+    TO_STRING = '_s'
+    OPERATOR_TEXT_VNODE = '_t'
+    OPERATOR_COMMENT_VNODE = '_u'
+    OPERATOR_ELEMENT_VNODE = '_v'
+    OPERATOR_COMPONENT_VNODE = '_w'
+    OPERATOR_FRAGMENT_VNODE = '_X'
+    OPERATOR_PORTAL_VNODE = '_Y'
+    OPERATOR_SLOT_VNODE = '_Z'
+    ARG_INSTANCE = '_A'
+    ARG_FILTERS = '_B'
+    ARG_GLOBAL_FILTERS = '_C'
+    ARG_DIRECTIVES = '_D'
+    ARG_GLOBAL_DIRECTIVES = '_E'
+    ARG_TRANSITIONS = '_F'
+    ARG_GLOBAL_TRANSITIONS = '_G'
+    ARG_STACK = '_H'
+    ARG_PARENT = '_I'
+    ARG_VNODE = '_J'
+    ARG_CHILDREN = '_K'
+    ARG_SCOPE = '_L'
+    ARG_KEYPATH = '_M'
+    ARG_LENGTH = '_N'
+    ARG_EVENT = '_O'
+    ARG_DATA = '_P'
   }
   else {
     RENDER_STYLE_STRING = 'renderStyleStyle'
@@ -281,9 +272,6 @@ function init() {
     FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE = 'formatNativeAttributeBooleanValue'
     LOOKUP_KEYPATH = 'lookupKeypath'
     LOOKUP_PROP = 'lookupProp'
-    GET_THIS_BY_INDEX = 'getThisByIndex'
-    GET_PROP = 'getProp'
-    GET_PROP_BY_INDEX = 'getPropByIndex'
     READ_KEYPATH = 'readKeypath'
     SET_VALUE_HOLDER = 'setValueHolder'
     TO_STRING = 'toString'
@@ -508,17 +496,37 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
 
     // this.name
     if (!root && !offset && !lookup) {
+
+      // setValueHolder(
+      //   value,
+      //   stack[index].getKeypath(name)
+      // )
       result = generator.toCall(
-        GET_PROP,
+        SET_VALUE_HOLDER,
         [
-          ARG_STACK,
-          generator.toPrimitive(keypath),
           generator.toMember(
             ARG_SCOPE,
             nodes
+          ),
+          generator.toCall(
+            generator.toMember(
+              generator.toMember(
+                ARG_STACK,
+                [
+                  index
+                ]
+              ),
+              [
+                generator.toPrimitive('getKeypath')
+              ]
+            ),
+            [
+              generator.toPrimitive(keypath),
+            ]
           )
         ]
       )
+
     }
     // 未指定路径，如 name
     else if (!root && !offset) {
@@ -537,26 +545,113 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
     }
     // 指定了路径，如 ~/name 或 ../name
     else {
-      result = generator.toCall(
-        GET_PROP_BY_INDEX,
-        [
-          ARG_STACK,
-          index,
-          generator.toPrimitive(keypath)
-        ]
+
+      const list: generator.Base[] = [],
+
+      varName = generator.getTempName()
+
+      // temp = stack[index]
+      array.push(
+        list,
+        generator.toAssign(
+          varName,
+          generator.toMember(
+            ARG_STACK,
+            [
+              index
+            ]
+          )
+        )
       )
+
+      // setValueHolder(
+      //   temp.getScope()[name],
+      //   temp.getKeypath(name)
+      // )
+      array.push(
+        list,
+        generator.toCall(
+          SET_VALUE_HOLDER,
+          [
+            generator.toMember(
+              generator.toCall(
+                generator.toMember(
+                  varName,
+                  [
+                    generator.toPrimitive('getScope')
+                  ]
+                )
+              ),
+              [
+                generator.toPrimitive(keypath),
+              ]
+            ),
+            generator.toCall(
+              generator.toMember(
+                varName,
+                [
+                  generator.toPrimitive('getKeypath')
+                ]
+              ),
+              [
+                generator.toPrimitive(keypath),
+              ]
+            ),
+          ]
+        )
+      )
+
+      result = generateStatementIfNeeded(list)
+
     }
 
   }
   // 处理属性为空串，如 this、../this、~/this 之类的
   else if (!keypath && !length) {
-    result = generator.toCall(
-      GET_THIS_BY_INDEX,
-      [
-        ARG_STACK,
-        index
-      ]
+
+    const list: generator.Base[] = [],
+
+    varName = generator.getTempName()
+
+    // temp = stack[index]
+    array.push(
+      list,
+      generator.toAssign(
+        varName,
+        generator.toMember(
+          ARG_STACK,
+          [
+            index
+          ]
+        )
+      )
     )
+
+    // setValueHolder(temp.getScope(), temp.keypath)
+    array.push(
+      list,
+      generator.toCall(
+        SET_VALUE_HOLDER,
+        [
+          generator.toCall(
+            generator.toMember(
+              varName,
+              [
+                generator.toPrimitive('getScope')
+              ]
+            )
+          ),
+          generator.toMember(
+            varName,
+            [
+              generator.toPrimitive('keypath')
+            ]
+          )
+        ]
+      )
+    )
+
+    result = generateStatementIfNeeded(list)
   }
 
   return generateHolderIfNeeded(result, holder)
@@ -2191,9 +2286,6 @@ export function generate(node: Node): string {
       FORMAT_NATIVE_ATTRIBUTE_BOOLEAN_VALUE,
       LOOKUP_KEYPATH,
       LOOKUP_PROP,
-      GET_THIS_BY_INDEX,
-      GET_PROP,
-      GET_PROP_BY_INDEX,
       READ_KEYPATH,
       SET_VALUE_HOLDER,
       TO_STRING,

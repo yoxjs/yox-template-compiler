@@ -564,48 +564,6 @@ export function render(
 
   },
 
-  getThisByIndex = function (
-    stack: Context[],
-    index: number
-  ) {
-
-    const item = stack[index]
-
-    return setValueHolder(
-      item.getScope(),
-      item.keypath
-    )
-
-  },
-
-  getProp = function (
-    stack: Context[],
-    name: string,
-    value: any
-  ) {
-
-    return setValueHolder(
-      value,
-      stack[stack.length - 1].getKeypath(name)
-    )
-
-  },
-
-  getPropByIndex = function (
-    stack: Context[],
-    index: number,
-    name: string
-  ) {
-
-    const item = stack[index]
-
-    return setValueHolder(
-      item.getScope()[name],
-      item.getKeypath(name)
-    )
-
-  },
-
   readKeypath = function (
     value: any,
     keypath: string
@@ -651,9 +609,6 @@ export function render(
       formatBooleanNativeAttributeValue,
       lookupKeypath,
       lookupProp,
-      getThisByIndex,
-      getProp,
-      getPropByIndex,
       readKeypath,
       setValueHolder,
       toString,
