@@ -57,10 +57,31 @@ import {
   formatBooleanNativeAttributeValue,
 } from './platform/web'
 
-type Context = {
-  scopeValue: any,
-  scopeKey?: string | number,
-  keypath: string,
+class Context {
+  keypath: string
+  scopeValue: any
+  scopeKey?: string | number
+
+  constructor(
+    keypath: string,
+    scopeValue: any,
+    scopeKey?: string | number
+  ) {
+    this.keypath = keypath
+    this.scopeValue = scopeValue
+    this.scopeKey = scopeKey
+  }
+
+  getScope() {
+    const { scopeValue, scopeKey } = this
+    return scopeKey !== constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue
+  }
+
+  getKeypath(name: string) {
+    const { keypath } = this
+    return keypath ? keypath + constant.RAW_DOT + name : name
+  }
+
 }
 
 export function render(
@@ -79,7 +100,7 @@ export function render(
   let rootKeypath = constant.EMPTY_STRING,
 
   contextStack: Context[] = [
-    { scopeValue: rootScope, keypath: rootKeypath }
+    new Context(rootKeypath, rootScope )
   ],
 
   // 模板渲染过程收集的 vnode
@@ -296,11 +317,13 @@ export function render(
           currentKeypath = keypath + constant.RAW_DOT + i
           // slice + push 比直接 concat 快多了
           contextStack = oldScopeStack.slice()
-          contextStack.push({
-            scopeValue: value,
-            scopeKey: i,
-            keypath: currentKeypath,
-          })
+          contextStack.push(
+            new Context(
+              currentKeypath,
+              value,
+              i
+            )
+          )
         }
         renderChildren(
           contextStack,
@@ -324,11 +347,13 @@ export function render(
           currentKeypath = keypath + constant.RAW_DOT + key
           // slice + push 比直接 concat 快多了
           contextStack = oldScopeStack.slice()
-          contextStack.push({
-            scopeValue: value,
-            scopeKey: key,
-            keypath: currentKeypath,
-          })
+          contextStack.push(
+            new Context(
+              currentKeypath,
+              value,
+              key
+            )
+          )
         }
         renderChildren(
           contextStack,
@@ -440,13 +465,11 @@ export function render(
     isFirstCall?: boolean
   ) {
 
-    const { scopeValue, scopeKey, keypath } = stack[index],
+    const item = stack[index],
 
-    scope = scopeKey !== constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue,
+    currentKeypath = item.getKeypath(name),
 
-    currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name,
-
-    result = object.get(scope, name)
+    result = object.get(item.getScope(), name)
 
     if (result) {
       return setValueHolder(
@@ -493,11 +516,11 @@ export function render(
     name: string
   ) {
 
-    const { scopeValue, scopeKey, keypath } = stack[index],
+    const item = stack[index],
 
-    scope = scopeKey !== constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue,
+    scope = item.getScope(),
 
-    currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
+    currentKeypath = item.getKeypath(name)
 
     if (name in scope) {
       return setValueHolder(
@@ -524,9 +547,7 @@ export function render(
 
     const index = stack.length - 1,
 
-    { keypath } = stack[index],
-
-    currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
+    currentKeypath = stack[index].getKeypath(name)
 
     if (value !== constant.UNDEFINED) {
       return setValueHolder(
@@ -548,11 +569,11 @@ export function render(
     index: number
   ) {
 
-    const { scopeValue, scopeKey, keypath } = stack[index]
+    const item = stack[index]
 
     return setValueHolder(
-      scopeKey !== constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue,
-      keypath
+      item.getScope(),
+      item.keypath
     )
 
   },
@@ -563,11 +584,9 @@ export function render(
     value: any
   ) {
 
-    const { keypath } = stack[stack.length - 1]
-
     return setValueHolder(
       value,
-      keypath ? keypath + constant.RAW_DOT + name : name
+      stack[stack.length - 1].getKeypath(name)
     )
 
   },
@@ -578,11 +597,11 @@ export function render(
     name: string
   ) {
 
-    const { scopeValue, scopeKey, keypath } = stack[index]
+    const item = stack[index]
 
     return setValueHolder(
-      (scopeKey !== constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue)[name],
-      keypath ? keypath + constant.RAW_DOT + name : name
+      item.getScope()[name],
+      item.getKeypath(name)
     )
 
   },
