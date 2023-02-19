@@ -442,7 +442,7 @@ export function render(
 
     const { scopeValue, scopeKey, keypath } = stack[index],
 
-    scope = scopeKey != constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue,
+    scope = scopeKey !== constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue,
 
     currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name,
 
@@ -495,7 +495,7 @@ export function render(
 
     const { scopeValue, scopeKey, keypath } = stack[index],
 
-    scope = scopeKey != constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue,
+    scope = scopeKey !== constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue,
 
     currentKeypath = keypath ? keypath + constant.RAW_DOT + name : name
 
@@ -551,7 +551,7 @@ export function render(
     const { scopeValue, scopeKey, keypath } = stack[index]
 
     return setValueHolder(
-      scopeKey != constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue,
+      scopeKey !== constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue,
       keypath
     )
 
@@ -581,7 +581,7 @@ export function render(
     const { scopeValue, scopeKey, keypath } = stack[index]
 
     return setValueHolder(
-      (scopeKey != constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue)[name],
+      (scopeKey !== constant.UNDEFINED ? scopeValue[scopeKey] : scopeValue)[name],
       keypath ? keypath + constant.RAW_DOT + name : name
     )
 
