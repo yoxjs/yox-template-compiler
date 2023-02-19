@@ -510,7 +510,7 @@ export function render(
 
   },
 
-  findProp = function (
+  lookupProp = function (
     stack: Context[],
     index: number,
     name: string
@@ -533,33 +533,8 @@ export function render(
       if (process.env.NODE_ENV === 'development') {
         logger.debug(`The data "${currentKeypath}" can't be found in the current context, start looking up.`)
       }
-      return findProp(stack, index - 1, name)
+      return lookupProp(stack, index - 1, name)
     }
-
-  },
-
-  lookupProp = function (
-    stack: Context[],
-    index: number,
-    name: string,
-    value: any,
-    filter?: Function
-  ) {
-
-    const currentKeypath = stack[index].getKeypath(name)
-
-    if (value !== constant.UNDEFINED) {
-      return setValueHolder(
-        value,
-        currentKeypath
-      )
-    }
-
-    return index > 0 && findProp(stack, index - 1, name) || (
-      filter
-        ? setValueHolder(filter)
-        : setValueHolder(constant.UNDEFINED, currentKeypath)
-    )
 
   },
 

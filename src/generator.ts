@@ -530,26 +530,160 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
     }
     // 未指定路径，如 name
     else if (!root && !offset) {
-      result = generator.toCall(
-        LOOKUP_PROP,
-        [
-          ARG_STACK,
-          index,
-          generator.toPrimitive(keypath),
+
+      const statement = generator.toStatement(),
+
+      var1Name = generator.getTemp1Name(),
+
+      var2Name = generator.getTemp2Name(),
+
+      var3Name = generator.getTemp3Name(),
+
+      var4Name = generator.getTemp4Name(),
+
+      var5Name = generator.getTemp5Name()
+
+      // temp1 = index
+      statement.add(
+        generator.toAssign(
+          var1Name,
+          index
+        )
+      )
+
+      // temp2 = stack[temp1]
+      statement.add(
+        generator.toAssign(
+          var2Name,
+          generator.toMember(
+            ARG_STACK,
+            [
+              var1Name
+            ]
+          )
+        )
+      )
+
+      // temp3 = temp2.getKeypath(name)
+      statement.add(
+        generator.toAssign(
+          var3Name,
+          generator.toCall(
+            generator.toMember(
+              var2Name,
+              [
+                generator.toPrimitive('getKeypath')
+              ]
+            ),
+            [
+              generator.toPrimitive(keypath),
+            ]
+          )
+        )
+      )
+
+      // temp4 = value
+      statement.add(
+        generator.toAssign(
+          var4Name,
           generator.toMember(
             ARG_SCOPE,
             nodes
           ),
-          filter
-        ]
+        )
       )
+
+      // temp5 = filter
+      statement.add(
+        generator.toAssign(
+          var5Name,
+          filter
+        )
+      )
+
+
+      // temp4 !== undefined
+      // ? setValueHolder(temp4, temp3)
+      // : (
+      //   temp1 > 0 && lookupProp(stack, temp1 - 1, name) || (
+      //     temp5
+      //     ? setValueHolder(temp5)
+      //     : setValueHolder(constant.UNDEFINED, temp3)
+      //   )
+      // )
+      statement.add(
+        generator.toTernary(
+
+          generator.toBinary(
+            var4Name,
+            '!==',
+            PRIMITIVE_UNDEFINED
+          ),
+
+          generator.toCall(
+            SET_VALUE_HOLDER,
+            [
+              var4Name,
+              var3Name
+            ]
+          ),
+
+          generator.toBinary(
+            generator.toPrecedence(
+              generator.toBinary(
+                generator.toBinary(
+                  var1Name,
+                  '>',
+                  generator.toPrimitive(0)
+                ),
+                '&&',
+                generator.toCall(
+                  LOOKUP_PROP,
+                  [
+                    ARG_STACK,
+                    generator.toBinary(
+                      var1Name,
+                      '-',
+                      generator.toPrimitive(1)
+                    ),
+                    generator.toPrimitive(keypath)
+                  ]
+                )
+              )
+            ),
+            '||',
+            generator.toPrecedence(
+              generator.toTernary(
+                var5Name,
+                generator.toCall(
+                  SET_VALUE_HOLDER,
+                  [
+                    var5Name
+                  ]
+                ),
+                generator.toCall(
+                  SET_VALUE_HOLDER,
+                  [
+                    PRIMITIVE_UNDEFINED,
+                    var3Name
+                  ]
+                ),
+              )
+            )
+          )
+        )
+
+      )
+
+      result = statement
+
     }
     // 指定了路径，如 ~/name 或 ../name
     else {
 
       const statement = generator.toStatement(),
 
-      varName = generator.getTempName()
+      varName = generator.getTemp1Name()
 
       // temp = stack[index]
       statement.add(
@@ -610,7 +744,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
 
     const statement = generator.toStatement(),
 
-    varName = generator.getTempName()
+    varName = generator.getTemp1Name()
 
     // temp = stack[index]
     statement.add(
@@ -696,11 +830,11 @@ function generateExpressionValue(value: generator.Base, keys: generator.Base[], 
 
 }
 
-function generateExpressionCall(fn: generator.Base, args?: generator.Base[], holder?: boolean) {
+function generateExpressionCall(node: ExpressionCall, fn: generator.Base, args?: generator.Base[], holder?: boolean) {
 
   const statement = generator.toStatement(),
 
-  varName = generator.getTempName()
+  varName = generator.getTemp1Name()
 
   // temp = fn
   statement.add(
@@ -712,10 +846,15 @@ function generateExpressionCall(fn: generator.Base, args?: generator.Base[], hol
 
   // temp()
   statement.add(
-    generator.toCall(
-      varName,
-      args
+    generator.toTernary(
+      generator.toTypeof(varName, 'function'),
+      generator.toCall(
+        varName,
+        args
+      ),
+      `(console.error('"${node.raw}" is not a function.'))`
     )
+
   )
 
   return generateHolderIfNeeded(
@@ -1615,7 +1754,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   if (isFragment || isPortal || isSlot) {
     const statement = generator.toStatement(),
 
-    varName = generator.getTempName()
+    varName = generator.getTemp1Name()
 
     // temp = vnode
     statement.add(
@@ -2222,7 +2361,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
 
 nodeGenerator[nodeType.IMPORT] = function (node: Import) {
 
-  const varName = generator.getTempName(),
+  const varName = generator.getTemp1Name(),
 
   statement = generator.toStatement()
 
