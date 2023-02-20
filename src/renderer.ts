@@ -594,6 +594,7 @@ export function render(
       portalVNodeOperator,
       slotVNodeOperator,
       instance,
+      logger,
       filters,
       globalFilters,
       directives,

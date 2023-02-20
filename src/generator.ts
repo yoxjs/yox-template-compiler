@@ -174,6 +174,8 @@ OPERATOR_SLOT_VNODE = constant.EMPTY_STRING,
 
 ARG_INSTANCE = constant.EMPTY_STRING,
 
+ARG_LOGGER = constant.EMPTY_STRING,
+
 ARG_FILTERS = constant.EMPTY_STRING,
 
 ARG_GLOBAL_FILTERS = constant.EMPTY_STRING,
@@ -239,21 +241,22 @@ function init() {
     OPERATOR_PORTAL_VNODE = '_Y'
     OPERATOR_SLOT_VNODE = '_Z'
     ARG_INSTANCE = '_A'
-    ARG_FILTERS = '_B'
-    ARG_GLOBAL_FILTERS = '_C'
-    ARG_DIRECTIVES = '_D'
-    ARG_GLOBAL_DIRECTIVES = '_E'
-    ARG_TRANSITIONS = '_F'
-    ARG_GLOBAL_TRANSITIONS = '_G'
-    ARG_STACK = '_H'
-    ARG_PARENT = '_I'
-    ARG_VNODE = '_J'
-    ARG_CHILDREN = '_K'
-    ARG_SCOPE = '_L'
-    ARG_KEYPATH = '_M'
-    ARG_LENGTH = '_N'
-    ARG_EVENT = '_O'
-    ARG_DATA = '_P'
+    ARG_LOGGER = '_B'
+    ARG_FILTERS = '_C'
+    ARG_GLOBAL_FILTERS = '_D'
+    ARG_DIRECTIVES = '_E'
+    ARG_GLOBAL_DIRECTIVES = '_F'
+    ARG_TRANSITIONS = '_G'
+    ARG_GLOBAL_TRANSITIONS = '_H'
+    ARG_STACK = '_I'
+    ARG_PARENT = '_J'
+    ARG_VNODE = '_K'
+    ARG_CHILDREN = '_L'
+    ARG_SCOPE = '_M'
+    ARG_KEYPATH = '_N'
+    ARG_LENGTH = '_O'
+    ARG_EVENT = '_P'
+    ARG_DATA = '_Q'
   }
   else {
     RENDER_STYLE_STRING = 'renderStyleStyle'
@@ -283,6 +286,7 @@ function init() {
     OPERATOR_PORTAL_VNODE = 'portalVNodeOperator'
     OPERATOR_SLOT_VNODE = 'slotVNodeOperator'
     ARG_INSTANCE = 'instance'
+    ARG_LOGGER = 'logger'
     ARG_FILTERS = 'filters'
     ARG_GLOBAL_FILTERS = 'globalFilters'
     ARG_DIRECTIVES = 'directives'
@@ -852,7 +856,17 @@ function generateExpressionCall(node: ExpressionCall, fn: generator.Base, args?:
         varName,
         args
       ),
-      `(console.error('"${node.raw}" is not a function.'))`
+      generator.toCall(
+        generator.toMember(
+          ARG_LOGGER,
+          [
+            generator.toPrimitive('fatal')
+          ]
+        ),
+        [
+          generator.toPrimitive(`"${node.raw}" is not a function.`)
+        ]
+      )
     )
 
   )
@@ -2419,6 +2433,7 @@ export function generate(node: Node): string {
       OPERATOR_PORTAL_VNODE,
       OPERATOR_SLOT_VNODE,
       ARG_INSTANCE,
+      ARG_LOGGER,
       ARG_FILTERS,
       ARG_GLOBAL_FILTERS,
       ARG_DIRECTIVES,
