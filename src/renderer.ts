@@ -457,43 +457,6 @@ export function render(
     }
   },
 
-  findKeypath = function (
-    stack: Context[],
-    index: number,
-    name: string,
-    lookup?: boolean,
-    isFirstCall?: boolean
-  ) {
-
-    const item = stack[index],
-
-    currentKeypath = item.getKeypath(name),
-
-    result = object.get(item.getScope(), name)
-
-    if (result) {
-      return setValueHolder(
-        result.value,
-        currentKeypath
-      )
-    }
-
-    if (isFirstCall) {
-      setValueHolder(
-        constant.UNDEFINED,
-        currentKeypath
-      )
-    }
-
-    if (lookup && index > 0) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.debug(`The data "${currentKeypath}" can't be found in the current context, start looking up.`)
-      }
-      return findKeypath(stack, index - 1, name, lookup)
-    }
-
-  },
-
   lookupKeypath = function (
     stack: Context[],
     index: number,
@@ -502,39 +465,94 @@ export function render(
     filter?: Function
   ) {
 
-    return findKeypath(stack, index, keypath, lookup, constant.TRUE) || (
-      filter
-        ? setValueHolder(filter)
-        : globalHolder
-    )
+    let defaultResult: ValueHolder | void
+
+    while (index >= 0) {
+
+      const item = stack[index],
+
+      currentKeypath = item.getKeypath(keypath),
+
+      result = object.get(item.getScope(), keypath)
+
+      if (result) {
+        return setValueHolder(
+          result.value,
+          currentKeypath
+        )
+      }
+
+      const valueHolder = setValueHolder(
+        constant.UNDEFINED,
+        currentKeypath
+      )
+      if (!defaultResult) {
+        defaultResult = valueHolder
+      }
+
+      if (lookup && index > 0) {
+        if (process.env.NODE_ENV === 'development') {
+          logger.debug(`The data "${currentKeypath}" can't be found in the current context, start looking up.`)
+        }
+        index--
+      }
+
+    }
+
+    if (filter) {
+      return setValueHolder(filter)
+    }
+
+    return defaultResult
 
   },
 
   lookupProp = function (
     stack: Context[],
     index: number,
-    name: string
+    prop: string,
+    filter?: Function
   ) {
 
-    const item = stack[index],
+    let defaultResult: ValueHolder | void
 
-    scope = item.getScope(),
+    while (index >= 0) {
 
-    currentKeypath = item.getKeypath(name)
+      const item = stack[index],
 
-    if (name in scope) {
-      return setValueHolder(
-        scope[name],
+      scope = item.getScope(),
+
+      currentKeypath = item.getKeypath(prop)
+
+      if (prop in scope) {
+        return setValueHolder(
+          scope[prop],
+          currentKeypath
+        )
+      }
+
+      const valueHolder = setValueHolder(
+        constant.UNDEFINED,
         currentKeypath
       )
+      if (!defaultResult) {
+        defaultResult = valueHolder
+      }
+
+      if (index > 0) {
+        if (process.env.NODE_ENV === 'development') {
+          logger.debug(`The data "${currentKeypath}" can't be found in the current context, start looking up.`)
+        }
+        index--
+      }
+
     }
 
-    if (index > 0) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.debug(`The data "${currentKeypath}" can't be found in the current context, start looking up.`)
-      }
-      return lookupProp(stack, index - 1, name)
+    if (filter) {
+      return setValueHolder(filter)
     }
+
+    return defaultResult
 
   },
 

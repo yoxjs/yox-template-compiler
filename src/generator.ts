@@ -535,151 +535,15 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
     // 未指定路径，如 name
     else if (!root && !offset) {
 
-      const statement = generator.toStatement(),
-
-      var1Name = generator.getTemp1Name(),
-
-      var2Name = generator.getTemp2Name(),
-
-      var3Name = generator.getTemp3Name(),
-
-      var4Name = generator.getTemp4Name(),
-
-      var5Name = generator.getTemp5Name()
-
-      // temp1 = index
-      statement.add(
-        generator.toAssign(
-          var1Name,
-          index
-        )
-      )
-
-      // temp2 = stack[temp1]
-      statement.add(
-        generator.toAssign(
-          var2Name,
-          generator.toMember(
-            ARG_STACK,
-            [
-              var1Name
-            ]
-          )
-        )
-      )
-
-      // temp3 = temp2.getKeypath(name)
-      statement.add(
-        generator.toAssign(
-          var3Name,
-          generator.toCall(
-            generator.toMember(
-              var2Name,
-              [
-                generator.toPrimitive('getKeypath')
-              ]
-            ),
-            [
-              generator.toPrimitive(keypath),
-            ]
-          )
-        )
-      )
-
-      // temp4 = value
-      statement.add(
-        generator.toAssign(
-          var4Name,
-          generator.toMember(
-            ARG_SCOPE,
-            nodes
-          ),
-        )
-      )
-
-      // temp5 = filter
-      statement.add(
-        generator.toAssign(
-          var5Name,
+      result = generator.toCall(
+        LOOKUP_PROP,
+        [
+          ARG_STACK,
+          index,
+          generator.toPrimitive(keypath),
           filter
-        )
+        ]
       )
-
-
-      // temp4 !== undefined
-      // ? setValueHolder(temp4, temp3)
-      // : (
-      //   temp1 > 0 && lookupProp(stack, temp1 - 1, name) || (
-      //     temp5
-      //     ? setValueHolder(temp5)
-      //     : setValueHolder(constant.UNDEFINED, temp3)
-      //   )
-      // )
-      statement.add(
-        generator.toTernary(
-
-          generator.toBinary(
-            var4Name,
-            '!==',
-            PRIMITIVE_UNDEFINED
-          ),
-
-          generator.toCall(
-            SET_VALUE_HOLDER,
-            [
-              var4Name,
-              var3Name
-            ]
-          ),
-
-          generator.toBinary(
-            generator.toPrecedence(
-              generator.toBinary(
-                generator.toBinary(
-                  var1Name,
-                  '>',
-                  generator.toPrimitive(0)
-                ),
-                '&&',
-                generator.toCall(
-                  LOOKUP_PROP,
-                  [
-                    ARG_STACK,
-                    generator.toBinary(
-                      var1Name,
-                      '-',
-                      generator.toPrimitive(1)
-                    ),
-                    generator.toPrimitive(keypath)
-                  ]
-                )
-              )
-            ),
-            '||',
-            generator.toPrecedence(
-              generator.toTernary(
-                var5Name,
-                generator.toCall(
-                  SET_VALUE_HOLDER,
-                  [
-                    var5Name
-                  ]
-                ),
-                generator.toCall(
-                  SET_VALUE_HOLDER,
-                  [
-                    PRIMITIVE_UNDEFINED,
-                    var3Name
-                  ]
-                ),
-              )
-            )
-          )
-        )
-
-      )
-
-      result = statement
 
     }
     // 指定了路径，如 ~/name 或 ../name
