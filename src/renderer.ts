@@ -460,7 +460,8 @@ export function render(
   lookupKeypath = function (
     stack: Context[],
     index: number,
-    keypath: string,
+    keypathStr: string,
+    keypathList: string[],
     lookup?: boolean,
     filter?: Function
   ) {
@@ -471,9 +472,9 @@ export function render(
 
       const item = stack[index],
 
-      currentKeypath = item.getKeypath(keypath),
+      currentKeypath = item.getKeypath(keypathStr),
 
-      result = object.get(item.getScope(), keypath)
+      result = object.get(item.getScope(), keypathList)
 
       if (result) {
         return setValueHolder(
@@ -496,14 +497,15 @@ export function render(
         }
         index--
       }
+      else {
+        break
+      }
 
     }
 
-    if (filter) {
-      return setValueHolder(filter)
-    }
-
-    return defaultResult
+    return filter
+      ? setValueHolder(filter)
+      : defaultResult
 
   },
 
@@ -545,20 +547,21 @@ export function render(
         }
         index--
       }
+      else {
+        break
+      }
 
     }
 
-    if (filter) {
-      return setValueHolder(filter)
-    }
-
-    return defaultResult
+    return filter
+      ? setValueHolder(filter)
+      : defaultResult
 
   },
 
   readKeypath = function (
     value: any,
-    keypath: string
+    keypath: string[]
   ) {
     const result = object.get(value, keypath)
     return setValueHolder(

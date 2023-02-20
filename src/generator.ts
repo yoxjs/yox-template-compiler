@@ -482,9 +482,8 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
       index,
       is.string(keypath)
         ? generator.toPrimitive(keypath)
-        : length === 1
-          ? nodes[0]
-          : generator.toList(nodes, constant.RAW_DOT),
+        : generator.toList(nodes, constant.RAW_DOT),
+      generator.toList(nodes),
       lookup
         ? PRIMITIVE_TRUE
         : PRIMITIVE_UNDEFINED,
@@ -551,7 +550,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
 
       const statement = generator.toStatement(),
 
-      varName = generator.getTemp1Name()
+      varName = generator.getTempName()
 
       // temp = stack[index]
       statement.add(
@@ -612,7 +611,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
 
     const statement = generator.toStatement(),
 
-    varName = generator.getTemp1Name()
+    varName = generator.getTempName()
 
     // temp = stack[index]
     statement.add(
@@ -657,7 +656,7 @@ function generateExpressionIdentifier(node: ExpressionKeypath, nodes: generator.
 
 }
 
-function generateExpressionValue(value: generator.Base, keys: generator.Base[], keypath?: string, holder?: boolean) {
+function generateExpressionValue(value: generator.Base, keys: generator.Base[], holder?: boolean) {
 
   let result: generator.Base
 
@@ -686,9 +685,7 @@ function generateExpressionValue(value: generator.Base, keys: generator.Base[], 
         READ_KEYPATH,
         [
           value,
-          keypath
-            ? generator.toPrimitive(keypath)
-            : generator.toList(keys, constant.RAW_DOT)
+          generator.toList(keys)
         ]
       )
       break
@@ -702,7 +699,7 @@ function generateExpressionCall(node: ExpressionCall, fn: generator.Base, args?:
 
   const statement = generator.toStatement(),
 
-  varName = generator.getTemp1Name()
+  varName = generator.getTempName()
 
   // temp = fn
   statement.add(
@@ -1632,7 +1629,7 @@ nodeGenerator[nodeType.ELEMENT] = function (node: Element) {
   if (isFragment || isPortal || isSlot) {
     const statement = generator.toStatement(),
 
-    varName = generator.getTemp1Name()
+    varName = generator.getTempName()
 
     // temp = vnode
     statement.add(
@@ -2239,7 +2236,7 @@ nodeGenerator[nodeType.EACH] = function (node: Each) {
 
 nodeGenerator[nodeType.IMPORT] = function (node: Import) {
 
-  const varName = generator.getTemp1Name(),
+  const varName = generator.getTempName(),
 
   statement = generator.toStatement()
 
