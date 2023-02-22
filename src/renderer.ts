@@ -476,17 +476,14 @@ export function render(
 
       result = object.get(item.getScope(), keypathList)
 
-      if (result) {
-        return setValueHolder(
-          result.value,
-          currentKeypath
-        )
-      }
-
       const valueHolder = setValueHolder(
-        constant.UNDEFINED,
+        result ? result.value : constant.UNDEFINED,
         currentKeypath
       )
+
+      if (result) {
+        return valueHolder
+      }
       if (!defaultResult) {
         defaultResult = valueHolder
       }
@@ -516,46 +513,14 @@ export function render(
     filter?: Function
   ) {
 
-    let defaultResult: ValueHolder | void
-
-    while (index >= 0) {
-
-      const item = stack[index],
-
-      scope = item.getScope(),
-
-      currentKeypath = item.getKeypath(prop)
-
-      if (prop in scope) {
-        return setValueHolder(
-          scope[prop],
-          currentKeypath
-        )
-      }
-
-      const valueHolder = setValueHolder(
-        constant.UNDEFINED,
-        currentKeypath
-      )
-      if (!defaultResult) {
-        defaultResult = valueHolder
-      }
-
-      if (index > 0) {
-        if (process.env.NODE_ENV === 'development') {
-          logger.debug(`The data "${currentKeypath}" can't be found in the current context, start looking up.`)
-        }
-        index--
-      }
-      else {
-        break
-      }
-
-    }
-
-    return filter
-      ? setValueHolder(filter)
-      : defaultResult
+    return lookupKeypath(
+      stack,
+      index,
+      prop,
+      [prop],
+      constant.TRUE,
+      filter
+    )
 
   },
 

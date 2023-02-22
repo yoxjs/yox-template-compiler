@@ -237,9 +237,9 @@ function init() {
     OPERATOR_COMMENT_VNODE = '_u'
     OPERATOR_ELEMENT_VNODE = '_v'
     OPERATOR_COMPONENT_VNODE = '_w'
-    OPERATOR_FRAGMENT_VNODE = '_X'
-    OPERATOR_PORTAL_VNODE = '_Y'
-    OPERATOR_SLOT_VNODE = '_Z'
+    OPERATOR_FRAGMENT_VNODE = '_x'
+    OPERATOR_PORTAL_VNODE = '_y'
+    OPERATOR_SLOT_VNODE = '_z'
     ARG_INSTANCE = '_A'
     ARG_LOGGER = '_B'
     ARG_FILTERS = '_C'
@@ -725,7 +725,7 @@ function generateExpressionCall(node: ExpressionCall, fn: generator.Base, args?:
           ]
         ),
         [
-          generator.toPrimitive(`"${node.raw}" is not a function.`)
+          generator.toPrimitive(`[${node.raw}] is not a function.`)
         ]
       )
     )
